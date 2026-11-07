@@ -760,8 +760,10 @@ interface NameSlot {
  * 2行以上の名前は、点の左右に置く候補を、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り（図の中へ寄せた後で判定する）、角の候補を使わない。
  * 点の高さから遠い行だけが点のそばに残る置き方を避けるため。上下の候補と1行の名前の候補は変えない。
  * 印が重なる2点の組は、まず点ごとに1行の名前を分けて置けるか試す。各点を1点だけの組とみなした時の、引き出し線が付かない候補（隙間が`MIN_LEADER`未満）のうち、
- * 組の2点以外の全ての点との隙間が`MIN_LEADER`以上（他の点の名前を線無しで置ける範囲を取らない）、もう1つの点との隙間も`MIN_LEADER`以上で、重なりが無いものに限る。線の付く距離にもう1つの点の名前が来ないので、線の無い名前は自分の点のものと読める。
- * 縦軸の値が大きい点の候補を先に、候補の順（隙間の小さい順、同じ隙間では右・左・下・上の辺、続けて角）に試し、もう1つの点の名前が置ける最初の組み合わせを採る。2点の横の位置の差は問わない。
+ * 組の2点以外の全ての点との隙間が`MIN_LEADER`以上（他の点の名前を線無しで置ける範囲を取らない）、自分の点との隙間がもう1つの点との隙間より小さく、重なりが無いものに限る。
+ * さらに2つの名前の並びは2点の並びと同じにする。2点の縦の差の大きさが横の差の大きさ以上なら縦で比べ、画面の上の点の名前の長方形の縦の中央が、下の点の名前のそれより上にある。そうでなければ横で比べ、左の点の名前の長方形の横の中央が、右の点の名前のそれより左にある。
+ * 自分の点の方が近く、並びが点と同じなので、線の無い名前は自分の点のものと読める。
+ * 縦軸の値が大きい点の候補を先に、候補の順（隙間の小さい順、同じ隙間では右・左・下・上の辺、続けて角）に試し、もう1つの点の名前が置ける（重ならず、並びが点と同じになる）最初の組み合わせを採る。2点の横の位置の差は問わない。
  * 分けて置けない組は、まとめた名前を置く。まとめた名前を引き出し線無しで重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
  * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
  *
@@ -972,19 +974,30 @@ export function placeNames(
   const separate = (upper: number, lower: number): PlotName[] | undefined => {
     const upperGroup = prepare({ members: [upper], cx: points[upper]!.px, cy: points[upper]!.py });
     const lowerGroup = prepare({ members: [lower], cx: points[lower]!.px, cy: points[lower]!.py });
-    // 自分の点の名前と読める置き方。自分の点との隙間が`MIN_LEADER`未満、組の2点以外の全ての点との隙間が`MIN_LEADER`以上
-    // （他の点の名前を線無しで置ける範囲を、まだ置いていない名前の分まで先に取らない）で、重なりが無い
-    const apart = (rect: Rect, other: number): boolean => {
+    // 自分の点の名前と読める置き方。自分の点との隙間が`MIN_LEADER`未満（候補の側で満たす）で、もう1つの点との隙間より小さく、
+    // 組の2点以外の全ての点との隙間が`MIN_LEADER`以上（他の点の名前を線無しで置ける範囲を、まだ置いていない名前の分まで先に取らない）で、重なりが無い
+    const apart = (rect: Rect, own: number, other: number): boolean => {
       for (let index = 0; index < marks.length; index++) {
         if (index !== upper && index !== lower && clearance(rect, index) < MIN_LEADER) return false;
       }
-      return clearance(rect, other) >= MIN_LEADER;
+      return clearance(rect, own) < clearance(rect, other);
     };
-    const upperRoom = upperGroup.nearCandidates().filter((c) => apart(c.rect, lower) && upperGroup.costOf(c, upperGroup.nearNames, 0) === 0);
+    const upperRoom = upperGroup.nearCandidates().filter((c) => apart(c.rect, upper, lower) && upperGroup.costOf(c, upperGroup.nearNames, 0) === 0);
     if (upperRoom.length === 0) return undefined;
-    const lowerRoom = lowerGroup.nearCandidates().filter((c) => apart(c.rect, upper) && lowerGroup.costOf(c, lowerGroup.nearNames, 0) === 0);
+    const lowerRoom = lowerGroup.nearCandidates().filter((c) => apart(c.rect, lower, upper) && lowerGroup.costOf(c, lowerGroup.nearNames, 0) === 0);
+    // 2つの名前の並びが2点の並びと同じ。縦の差が横の差以上なら縦（画面の上の点の名前が上）、そうでなければ横（左の点の名前が左）で、名前の長方形の中央を比べる
+    const dx = points[upper]!.px - points[lower]!.px;
+    const dy = points[upper]!.py - points[lower]!.py;
+    const sameOrder = (u: Rect, l: Rect): boolean => {
+      if (Math.abs(dy) >= Math.abs(dx)) {
+        const [top, bottom] = dy < 0 ? [u, l] : [l, u];
+        return top.y0 + top.y1 < bottom.y0 + bottom.y1;
+      }
+      const [left, right] = dx < 0 ? [u, l] : [l, u];
+      return left.x0 + left.x1 < right.x0 + right.x1;
+    };
     for (const u of upperRoom) {
-      const l = lowerRoom.find((candidate) => !overlaps(u.rect, candidate.rect));
+      const l = lowerRoom.find((candidate) => !overlaps(u.rect, candidate.rect) && sameOrder(u.rect, candidate.rect));
       if (l !== undefined) return [upperGroup.toName(u), lowerGroup.toName(l)];
     }
     return undefined;
