@@ -264,6 +264,24 @@ test.describe('個別画面', () => {
     await expect(grouped.locator('[data-scatter-name-of][data-active]')).toHaveCount(0);
   });
 
+  test('印が重なる点の名前は、行ごとにその行の点を押して留められる', async ({ page }) => {
+    const settings = await openSettings(page);
+    await selectOnlyPreset(settings, 'press');
+    const grouped = feature(page).locator('[data-scatter-name="2"]');
+    const readout = feature(page).locator('[data-scatter-readout]');
+    const second = grouped.locator('[data-scatter-name-of]').nth(1);
+    const first = grouped.locator('[data-scatter-name-of]').nth(0);
+    const secondName = (await second.textContent())!;
+    const firstName = (await first.textContent())!;
+    expect(new Set([firstName, secondName])).toEqual(new Set(['QWERTY', 'Dvorak']));
+    const key = await second.getAttribute('data-scatter-name-of');
+    await feature(page).locator(`[data-scatter-name-hit-of="${key}"]`).click();
+    await expect(pointOf(feature(page), key!)).toHaveAttribute('data-pinned', 'true');
+    await expect(feature(page).locator('[data-scatter-point][data-pinned]')).toHaveCount(1);
+    await expect(readout).toContainText(secondName);
+    await expect(readout).not.toContainText(firstName);
+  });
+
   test('図の見方のⓘに、種類の色と形を書く', async ({ page }) => {
     await page.getByRole('button', { name: '図の見方の説明' }).first().click();
     await expect(page.getByText('赤の菱形はかな配列')).toBeVisible();

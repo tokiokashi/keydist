@@ -140,6 +140,15 @@
   pointer-events: none;
 }
 
+/* 名前の文字を押せるようにする透明な層。点の要素の上と同じ既定のポインターの形にする */
+.scatter-name-hit {
+  fill: transparent;
+  stroke: none;
+  font-size: 11px;
+  pointer-events: all;
+  cursor: default;
+}
+
 /* 点に重ねた時やフォーカスした時、その点の名前を点の印の輪と同じ色で描く。下線は、印が重なる点の組で名前を行に並べた時に下の行と重なるので使わない */
 .scatter-point-label[data-active],
 .scatter-point-label[data-pinned] {
