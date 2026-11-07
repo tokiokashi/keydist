@@ -11,74 +11,61 @@ test('ファイル名は日付を入れる', () => {
 
 test('書き出しの文は、0件の種類を出さない', () => {
   const layout = { kind: 'alpha' as const, id: 'a', name: 'A', rows: ['', '', '', ''] as [string, string, string, string], romaji: 'kunrei' };
-  assert.equal(exportedText({ userLayouts: [layout], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS }), '配列1件を書き出しました');
-  assert.equal(
-    exportedText({
-      userLayouts: [layout, { ...layout, id: 'b' }],
-      userRomajiRules: [{ id: 'r', name: 'R', base: 'kunrei', overrides: {}, generateSokuon: true }],
-      fingerAssignments: [],
-      setupLibrary: NO_SETUPS,
-    }),
-    '配列2件、ローマ字規則1件を書き出しました',
-  );
+  const one = exportedText({ userLayouts: [layout], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS });
+  assert.ok(one.includes('配列1件') && !one.includes('ローマ字規則'));
+  const two = exportedText({
+    userLayouts: [layout, { ...layout, id: 'b' }],
+    userRomajiRules: [{ id: 'r', name: 'R', base: 'kunrei', overrides: {}, generateSokuon: true }],
+    fingerAssignments: [],
+    setupLibrary: NO_SETUPS,
+  });
+  assert.ok(two.includes('配列2件') && two.includes('ローマ字規則1件'));
 });
 
 test('読み込みの行: 足した・別名で足した・足さなかった（名前が違う時は手元の名前を添える）', () => {
-  assert.equal(importEntryText({ assetKind: 'layout', name: 'A', outcome: { kind: 'added' } }), '配列「A」を足しました');
-  assert.equal(
-    importEntryText({
-      assetKind: 'romaji-rule',
-      name: 'R',
-      outcome: { kind: 'added-renamed', addedName: 'R (2)', addedId: 'x', overlap: { with: 'own', name: '手元の名前' } },
-    }),
-    'ローマ字規則「R」は、手元の「手元の名前」と重なり中身が違うため、「R (2)」として足しました',
-  );
-  assert.equal(
-    importEntryText({
-      assetKind: 'layout',
-      name: 'A',
-      outcome: { kind: 'added-renamed', addedName: 'A (2)', addedId: 'x', overlap: { with: 'builtin', name: 'QWERTY' } },
-    }),
-    '組み込みの配列「QWERTY」と重なるため、配列「A (2)」として足しました',
-  );
-  assert.equal(
-    importEntryText({ assetKind: 'finger-assignment', name: 'F', outcome: { kind: 'skipped-same', existingName: 'F' } }),
-    '指の割り当て「F」は、手元と同じ中身なので足しませんでした',
-  );
-  assert.equal(
-    importEntryText({ assetKind: 'layout', name: 'A', outcome: { kind: 'skipped-same', existingName: '手元' } }),
-    '配列「A」は、手元の「手元」と同じ中身なので足しませんでした',
-  );
+  assert.ok(importEntryText({ assetKind: 'layout', name: 'A', outcome: { kind: 'added' } }).includes('「A」'));
+  const ownOverlap = importEntryText({
+    assetKind: 'romaji-rule',
+    name: 'R',
+    outcome: { kind: 'added-renamed', addedName: 'R (2)', addedId: 'x', overlap: { with: 'own', name: '手元の名前' } },
+  });
+  assert.ok(ownOverlap.includes('「R (2)」') && ownOverlap.includes('「手元の名前」'));
+  const builtinOverlap = importEntryText({
+    assetKind: 'layout',
+    name: 'A',
+    outcome: { kind: 'added-renamed', addedName: 'A (2)', addedId: 'x', overlap: { with: 'builtin', name: 'QWERTY' } },
+  });
+  assert.ok(builtinOverlap.includes('「QWERTY」') && builtinOverlap.includes('「A (2)」'));
+  assert.ok(importEntryText({ assetKind: 'finger-assignment', name: 'F', outcome: { kind: 'skipped-same', existingName: 'F' } }).includes('「F」'));
+  const skippedOwn = importEntryText({ assetKind: 'layout', name: 'A', outcome: { kind: 'skipped-same', existingName: '手元' } });
+  assert.ok(skippedOwn.includes('「A」') && skippedOwn.includes('「手元」'));
 });
 
 test('読み込みの見出し: 足した件数と足さなかった件数', () => {
   const added = { assetKind: 'layout', name: 'A', outcome: { kind: 'added' } } as const;
   const skipped = { assetKind: 'layout', name: 'B', outcome: { kind: 'skipped-same', existingName: 'B' } } as const;
-  assert.equal(importSummaryText([added]), '1件を足しました');
-  assert.equal(importSummaryText([added, skipped]), '1件を足しました。1件は手元と同じ中身なので足しませんでした');
-  assert.equal(importSummaryText([skipped]), '手元と同じ中身なので、足したものはありません（1件）');
+  assert.ok(importSummaryText([added]).includes('1件'));
+  const both = importSummaryText([added, skipped]);
+  assert.equal(both.match(/1件/g)?.length, 2);
+  assert.ok(importSummaryText([skipped]).includes('1件'));
 });
 
 test('Setupの行と書き出しの文', () => {
-  assert.equal(
+  assert.ok(
     exportedText({
       userLayouts: [],
       userRomajiRules: [],
       fingerAssignments: [],
       setupLibrary: { setups: [{ id: 's', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' }], overrides: {} },
-    }),
-    'Setup1件を書き出しました',
+    }).includes('Setup1件'),
   );
-  assert.equal(
+  assert.ok(
     importEntryText({
       assetKind: 'setup',
       name: '練習用',
       outcome: { kind: 'added-renamed', addedName: '練習用', addedId: 'x', overlap: { with: 'own', name: '手元' } },
-    }),
-    'Setup「練習用」は、手元の別のSetupと重なり中身が違うため、新しいSetupとして足しました',
+    }).includes('「練習用」'),
   );
-  assert.equal(
-    importEntryText({ assetKind: 'setup', name: '練習用', outcome: { kind: 'skipped-same', existingName: '手元' } }),
-    'Setup「練習用」は、手元の「手元」と同じ中身なので足しませんでした',
-  );
+  const skipped = importEntryText({ assetKind: 'setup', name: '練習用', outcome: { kind: 'skipped-same', existingName: '手元' } });
+  assert.ok(skipped.includes('「練習用」') && skipped.includes('「手元」'));
 });

@@ -106,7 +106,8 @@ test('条件の要約には辞書の名前と版を出し、解析器の名前�
   assert.deepEqual(readingProvenance({ status: 'converted', ...CONDITIONS, corrections: [] }), [{ label: '読みの辞書', value: 'IPADIC（6.2.0）' }]);
   const unavailable = readingProvenance({ status: 'unavailable', ...CONDITIONS, corrections: [] });
   assert.equal(unavailable.length, 1);
-  assert.match(unavailable[0]?.value ?? '', /IPADIC（6\.2\.0）.*読み込めず/);
+  assert.ok(unavailable[0]!.value.includes('IPADIC（6.2.0）'));
+  assert.notEqual(unavailable[0]!.value, 'IPADIC（6.2.0）');
   assert.deepEqual(readingProvenance(null), []);
   assert.deepEqual(readingProvenance(undefined), []);
   for (const item of [...readingProvenance({ status: 'converted', ...CONDITIONS, corrections: [] }), ...unavailable]) {

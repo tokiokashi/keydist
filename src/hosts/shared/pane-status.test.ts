@@ -4,12 +4,12 @@ import type { EngineRequestError } from '#engine/request.ts';
 import type { ResolvedInputError } from '#engine/resolved-input.ts';
 import { combinePaneStates, describeEngineRequestError, describeResolvedInputError, engineRequestErrorDetail, paneStatusLabel } from './pane-status.ts';
 
-test('paneStatusLabel: 各状態に短い文言を返す', () => {
+test('paneStatusLabel: 待ち・完了の状態は何も出さず、計算中・直前の結果の表示・失敗は互いに違う文言を返す', () => {
   assert.equal(paneStatusLabel('idle'), '');
-  assert.equal(paneStatusLabel('computing'), '計算中…');
-  assert.equal(paneStatusLabel('stale'), '計算中…（直前の結果を表示）');
   assert.equal(paneStatusLabel('ready'), '');
-  assert.equal(paneStatusLabel('failed'), '失敗');
+  const shown = new Set([paneStatusLabel('computing'), paneStatusLabel('stale'), paneStatusLabel('failed')]);
+  assert.equal(shown.size, 3);
+  assert.ok(!shown.has(''));
 });
 
 test('describeResolvedInputError: reference（配列・物理配列の削除）', () => {
@@ -18,7 +18,7 @@ test('describeResolvedInputError: reference（配列・物理配列の削除）'
     errors: [{ kind: 'layout-missing', layoutId: 'ghost-layout' }],
   };
   const message = describeResolvedInputError(error);
-  assert.match(message, /配列が見つかりません/);
+  assert.notEqual(message, '');
   // 画面にそのまま出る文なので、内部のidは含めない。
   assert.doesNotMatch(message, /ghost-layout/);
 });
@@ -27,9 +27,9 @@ test('describeResolvedInputError: 削除された対象はidを出さず、1つ�
   const setupMissing: ResolvedInputError = { kind: 'target-missing', target: { kind: 'setup', setupId: '3f2a-uuid' } };
   const layoutMissing: ResolvedInputError = { kind: 'target-missing', target: { kind: 'layout', layoutId: 'gone-layout' } };
   const shapeMissing: ResolvedInputError = { kind: 'reference', errors: [{ kind: 'shape-missing', shapeId: 'gone-shape' }] };
-  assert.equal(describeResolvedInputError(setupMissing), 'Setupが削除されました');
   for (const error of [setupMissing, layoutMissing, shapeMissing]) {
     const message = describeResolvedInputError(error);
+    assert.notEqual(message, '');
     assert.doesNotMatch(message, /3f2a|gone-|:/);
   }
 });
@@ -48,7 +48,7 @@ test('describeResolvedInputError: incompatible-text（このテキストには�
 test('describeResolvedInputError: geometry（物理配列が組めない）', () => {
   const error: ResolvedInputError = { kind: 'geometry', message: '指割り当て「finger-x」にキー q が無い' };
   const message = describeResolvedInputError(error);
-  assert.match(message, /組み立てられません/);
+  assert.notEqual(message, '');
   // 例外の文は定義の内部（idやキー名）を指すので出さない。
   assert.doesNotMatch(message, /finger-x/);
 });

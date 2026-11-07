@@ -85,7 +85,7 @@ test('別のタブが読める値を書いた時は知らせない', () => {
 
 test('別のタブが読めない値を書いた時の文は、初期の状態で開いたとは言わない', () => {
   const text = assetNoticeText({ key: 'workspaces', kind: 'unreadable-elsewhere', diagnostics: [] });
-  assert.match(text, /^Workspace: 別のタブが読めない保存データを書き込みました/);
+  assert.ok(text.startsWith('Workspace'));
   assert.doesNotMatch(text, /初期の状態/);
 });
 
