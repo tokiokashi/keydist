@@ -227,17 +227,25 @@ function sceneAt(offsets: readonly { readonly key: string; readonly label: strin
   });
 }
 
-/** 2点の組（A=左、B=右）。まとめた名前の近くの4か所（右・左・上・下）を、別の点の印が1つずつ塞ぐ。点の横の位置は2点の中央からdx、縦は同じ。 */
+/**
+ * 点の周りを、名前が入らない隙間（2px）で敷き詰めた点。行は点の高さから±16・±32・±48、列は16ごとに`center`の左右へ広げる。
+ * 名前を点のすぐ横（隙間6px未満）のどこに置いても、どれかの印と重なる。点の高さの帯（±8）は空けるので、1行の名前は点の真左・真右に置ける。
+ * `maxDx`を超える列は置かない（図の範囲を広げないため）。
+ */
+function lattice(center: number, maxDx = 225) {
+  const found: Array<{ key: string; label: string; dx: number; dy: number }> = [];
+  for (const dy of [-48, -32, -16, 16, 32, 48]) {
+    for (let k = -6; k <= 6; k++) {
+      const dx = center + 16 * k;
+      if (Math.abs(dx) <= maxDx) found.push({ key: `l${dy}_${k}`, label: 'L', dx, dy });
+    }
+  }
+  return found;
+}
+
+/** 2点の組（A=左、B=右）。まとめた名前を点のすぐ横のどこにも重ならずに置けない。点の横の位置は2点の中央からdx、縦は同じ。 */
 function blockedPair(half: number, extra: readonly { readonly key: string; readonly label: string; readonly dx: number; readonly dy: number }[] = []) {
-  return sceneAt([
-    { key: 'a', label: 'AAAA', dx: -half, dy: 0 },
-    { key: 'b', label: 'BBBB', dx: half, dy: 0 },
-    { key: 'up', label: 'U', dx: 0, dy: -20 },
-    { key: 'down', label: 'D', dx: 0, dy: 20 },
-    { key: 'r', label: 'R', dx: 20, dy: 21 },
-    { key: 'l', label: 'L', dx: -20, dy: 21 },
-    ...extra,
-  ]);
+  return sceneAt([{ key: 'a', label: 'AAAA', dx: -half, dy: 0 }, { key: 'b', label: 'BBBB', dx: half, dy: 0 }, ...lattice(0), ...extra]);
 }
 
 test('scatterPlotModel: 印が重なる2点の名前が近くに置けず左右が空いている時は、左の点の左と右の点の右に1行ずつ、引き出し線無しで置く', () => {
@@ -278,15 +286,9 @@ test('scatterPlotModel: 分けた片方の側が別の点の印と重なる時�
 });
 
 test('scatterPlotModel: 分けた片方の側が図の外に出る時は、1つにまとめて積む', () => {
-  // 描画領域の右端に寄せた2点。右の点の右には名前が収まらず、上と下は別の点の印が塞ぐ
+  // 描画領域の右端に寄せた2点。右の点の右には名前が収まらず、点のすぐ横は別の点の印が塞ぐ
   const shift = 215;
-  const model = sceneAt([
-    { key: 'a', label: 'AAAA', dx: shift - 4, dy: 0 },
-    { key: 'b', label: 'BBBBBBBBBB', dx: shift + 4, dy: 0 },
-    { key: 'up', label: 'U', dx: shift, dy: -20 },
-    { key: 'down', label: 'D', dx: shift, dy: 20 },
-    { key: 'l', label: 'L', dx: shift - 20, dy: 21 },
-  ]);
+  const model = sceneAt([{ key: 'a', label: 'AAAA', dx: shift - 4, dy: 0 }, { key: 'b', label: 'BBBBBBBBBB', dx: shift + 4, dy: 0 }, ...lattice(shift)]);
   const b = model.points.find((point) => point.targetKey === 'b')!;
   assert.ok(b.px + NAME_GAP_FOR_TEST + estimateTextWidth('BBBBBBBBBB') > PLOT_WIDTH - PLOT_MARGIN.right);
   const pair = model.names.filter((name) => name.lines.length === 2);
@@ -295,14 +297,7 @@ test('scatterPlotModel: 分けた片方の側が図の外に出る時は、1つ�
 });
 
 test('scatterPlotModel: 横の位置が同じ（差が0.5px未満）2点は、近くに置けなくても分けずに1つにまとめる', () => {
-  const model = sceneAt([
-    { key: 'a', label: 'AAAA', dx: -0.2, dy: -3 },
-    { key: 'b', label: 'BBBB', dx: 0.2, dy: 3 },
-    { key: 'up', label: 'U', dx: 0, dy: -26 },
-    { key: 'down', label: 'D', dx: 0, dy: 26 },
-    { key: 'r', label: 'R', dx: 20, dy: 24 },
-    { key: 'l', label: 'L', dx: -20, dy: 24 },
-  ]);
+  const model = sceneAt([{ key: 'a', label: 'AAAA', dx: -0.2, dy: -3 }, { key: 'b', label: 'BBBB', dx: 0.2, dy: 3 }, ...lattice(0)]);
   const pair = model.names.filter((name) => name.lines.length === 2);
   assert.equal(pair.length, 1);
   assert.deepEqual(nameTexts(pair[0]!), ['AAAA', 'BBBB']);
@@ -314,25 +309,16 @@ test('scatterPlotModel: 3点の組は、近くに置けなくても分けない'
   assert.equal(triple.length, 1);
 });
 
-test('scatterPlotModel: 例の15配列で、親指シフトとシン蜂蜜小梅の名前は分けて置き、ほかの2組はまとめたまま', () => {
+test('scatterPlotModel: 例の15配列で、印が重なる組はまとめた名前を引き出し線無しで点のすぐ横に置き、名前どうし・点の印と重ならない', () => {
   const model = scatterPlotModel({ points: EXAMPLE_DEFAULT, ...NO_LINES });
   const nameOf = (key: string) => model.names.find((name) => name.lines.some((line) => line.targetKey === key))!;
-  const nicola = nameOf('nicola');
-  const koume = nameOf('shin-koume');
-  assert.notEqual(nicola, koume);
-  for (const name of [nicola, koume]) {
-    assert.equal(name.lines.length, 1);
-    assert.equal(name.leader, undefined);
-  }
-  const nicolaPoint = model.points.find((point) => point.targetKey === 'nicola')!;
-  const koumePoint = model.points.find((point) => point.targetKey === 'shin-koume')!;
-  assert.ok(koumePoint.px < nicolaPoint.px);
-  assert.ok(koume.rect.x1 < koumePoint.px, 'シン蜂蜜小梅は点の左');
-  assert.ok(nicola.rect.x0 > nicolaPoint.px, '親指シフトは点の右');
+  assert.equal(nameOf('nicola'), nameOf('shin-koume'));
+  assert.equal(nameOf('nicola').lines.length, 2);
   assert.equal(nameOf('tsuki-ringo'), nameOf('tsukimisou-extract'));
   assert.equal(nameOf('tsuki-ringo').lines.length, 2);
   assert.equal(nameOf('naginata-v18'), nameOf('shingeta'));
   assert.equal(nameOf('naginata-v18').lines.length, 2);
+  for (const name of model.names) assert.equal(name.leader, undefined);
   assert.equal(nameOverlapCount(model.names), 0);
   for (const name of model.names) for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false);
 });
@@ -361,20 +347,13 @@ test('scatterPlotModel: 近くに置いた名前には引き出し線を付け�
   for (const name of model.names) assert.equal(name.leader, undefined);
 });
 
-test('scatterPlotModel: 近くの4か所に置けない名前は、点から離して置き、点の印と名前を細い線で結ぶ', () => {
-  // 中央の点の右・左・上・下を、少し離れた別の点が1つずつ塞ぐ（4点の印は中央の点と重ならない）
-  const model = scatterPlotModel({
-    points: [
-      { targetKey: 'lo', label: 'LO', x: 0, y: 0 },
-      { targetKey: 'hi', label: 'HI', x: 100, y: 100 },
-      { targetKey: 'center', label: 'CENTER配列', x: 50, y: 50 },
-      { targetKey: 'e', label: 'R1', x: 54, y: 50 },
-      { targetKey: 'w', label: 'R2', x: 46, y: 50 },
-      { targetKey: 'n', label: 'R3', x: 50, y: 56 },
-      { targetKey: 's', label: 'R4', x: 50, y: 44 },
-    ],
-    ...NO_LINES,
-  });
+test('scatterPlotModel: 点のすぐ横のどこにも置けない名前は、点から離して置き、点の印と名前を細い線で結ぶ', () => {
+  // 中央の点を除き、点の周りを名前が入らない隙間で敷き詰める
+  const model = sceneAt([
+    { key: 'center', label: 'CENTER配列', dx: 0, dy: 0 },
+    ...lattice(0),
+    ...[-6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6].map((k) => ({ key: `band${k}`, label: 'B', dx: 16 * k, dy: 0 })),
+  ]);
   const center = model.points.find((point) => point.targetKey === 'center')!;
   const name = model.names.find((candidate) => candidate.lines.some((line) => line.targetKey === 'center'))!;
   const leader = name.leader;
@@ -384,6 +363,144 @@ test('scatterPlotModel: 近くの4か所に置けない名前は、点から離�
   const inRect = (x: number, y: number) => x >= name.rect.x0 - 1e-6 && x <= name.rect.x1 + 1e-6 && y >= name.rect.y0 - 1e-6 && y <= name.rect.y1 + 1e-6;
   assert.ok(inRect(leader.x2, leader.y2));
   assert.equal(inRect(leader.x1, leader.y1), false);
+});
+
+/** 名前と点の距離。名前の長方形と、名前の点のうち一番近い点の余白の正方形（中心から7px）との間の、上下左右のうち一番大きい差。 */
+function nameGap(name: PlotName, points: readonly { readonly targetKey: string; readonly px: number; readonly py: number }[]): number {
+  const keys = new Set(name.lines.map((line) => line.targetKey));
+  let gap = Number.POSITIVE_INFINITY;
+  for (const point of points) {
+    if (!keys.has(point.targetKey)) continue;
+    const square = markRect(point, 7);
+    gap = Math.min(gap, Math.max(name.rect.x0 - square.x1, square.x0 - name.rect.x1, name.rect.y0 - square.y1, square.y0 - name.rect.y1));
+  }
+  return gap;
+}
+
+/** 名前と、名前の点の余白の正方形を全て囲む長方形（外接長方形）との距離。 */
+function boundingGap(name: PlotName, points: readonly { readonly targetKey: string; readonly px: number; readonly py: number }[]): number {
+  const keys = new Set(name.lines.map((line) => line.targetKey));
+  const squares = points.filter((point) => keys.has(point.targetKey)).map((point) => markRect(point, 7));
+  const box = {
+    x0: Math.min(...squares.map((square) => square.x0)),
+    x1: Math.max(...squares.map((square) => square.x1)),
+    y0: Math.min(...squares.map((square) => square.y0)),
+    y1: Math.max(...squares.map((square) => square.y1)),
+  };
+  return Math.max(name.rect.x0 - box.x1, box.x0 - name.rect.x1, name.rect.y0 - box.y1, box.y0 - name.rect.y1);
+}
+
+/** 点の周りの8か所を、中心から16px離した点で塞ぐ（余白の正方形が点の中心から23pxまで届く）。 */
+const RING_AROUND_CENTER = [-16, 0, 16].flatMap((dx) =>
+  [-16, 0, 16].filter((dy) => dx !== 0 || dy !== 0).map((dy) => ({ key: `r${dx}_${dy}`, label: 'R', dx, dy })),
+);
+
+test('scatterPlotModel: 点のすぐ横の真右・真左・真上・真下がふさがっていても、点の箱に沿ってずらせば置ける時は、線無しで点のすぐ横（隙間1px）に置く', () => {
+  const model = sceneAt([
+    { key: 'p', label: 'CENTER配列', dx: 0, dy: 0 },
+    { key: 'r', label: 'R', dx: 30, dy: 12 },
+    { key: 'l', label: 'L', dx: -30, dy: 12 },
+    { key: 'u', label: 'U', dx: 0, dy: -22 },
+    { key: 'd', label: 'D', dx: 0, dy: 22 },
+  ]);
+  const point = model.points.find((candidate) => candidate.targetKey === 'p')!;
+  const name = model.names.find((candidate) => candidate.lines[0]!.targetKey === 'p')!;
+  assert.equal(name.leader, undefined);
+  assert.ok(Math.abs(nameGap(name, model.points) - 1) < 1e-6, '点のすぐ横');
+  assert.notEqual(name.lines[0]!.y, point.py + 4, '点の高さにそろえた位置はふさがっている');
+  assert.equal(nameOverlapCount(model.names), 0);
+  for (const other of model.points) assert.equal(overlapsRect(name.rect, markRect(other, 7)), false);
+});
+
+test('scatterPlotModel: 点のすぐ横に空きが無くても、隙間が24pxより小さい位置に空きがあれば、そこに置く', () => {
+  const model = sceneAt([{ key: 'p', label: 'CENTER', dx: 0, dy: 0 }, ...RING_AROUND_CENTER]);
+  const name = model.names.find((candidate) => candidate.lines[0]!.targetKey === 'p')!;
+  const gap = nameGap(name, model.points);
+  assert.ok(gap > 1 && gap < 24, `隙間 ${gap}`);
+  for (const other of model.points) assert.equal(overlapsRect(name.rect, markRect(other, 7)), false);
+});
+
+test('scatterPlotModel: 名前と点の隙間が6px未満の名前には引き出し線を付けず、6px以上の名前には付ける', () => {
+  const scenes = [
+    scatterPlotModel({ points: EXAMPLE_DEFAULT, ...NO_LINES }),
+    scatterPlotModel({ points: EXAMPLE_PRESS, ...NO_LINES }),
+    scatterPlotModel({ points: grid(12, 8, (column, row) => `配列${column}-${row}`), ...NO_LINES }),
+    sceneAt([{ key: 'p', label: 'CENTER', dx: 0, dy: 0 }, ...RING_AROUND_CENTER]),
+    blockedPair(4, [{ key: 'w', label: 'W', dx: -24, dy: 0 }]),
+  ];
+  let near = 0;
+  let far = 0;
+  for (const model of scenes) {
+    for (const name of model.names) {
+      const gap = nameGap(name, model.points);
+      // 境目の6pxちょうどは、浮動小数点の誤差でどちらにもなりうる
+      if (gap < 6 - 1e-6) {
+        near++;
+        assert.equal(name.leader, undefined, `隙間 ${gap}`);
+      } else if (gap > 6 + 1e-6) {
+        far++;
+        assert.ok(name.leader !== undefined, `隙間 ${gap}`);
+      }
+    }
+  }
+  assert.ok(near > 0 && far > 0, '線の有無の両方を確かめている');
+});
+
+test('scatterPlotModel: 斜めに連なった組の名前が、外接長方形の角の近くにあっても、組のどの点からも6px以上離れていれば引き出し線を付ける', () => {
+  // 左上から右下へ斜めに連なる5点。右上の角（点から離れた場所）だけを空け、その周りを名前が入らない隙間で敷き詰める
+  const chain = [0, 7, 14, 21, 28].map((d) => ({ key: `c${d}`, label: 'CHAIN', dx: d, dy: d }));
+  const blockers: Array<{ key: string; label: string; dx: number; dy: number }> = [];
+  for (let i = -7; i <= 7; i++) {
+    for (let j = -7; j <= 7; j++) {
+      const dx = 16 * i;
+      const dy = 16 * j;
+      if (chain.some((point) => Math.hypot(point.dx - dx, point.dy - dy) < 2 * MARK_RADIUS)) continue;
+      if (dx + 7 > 34 && dy - 7 < -8) continue;
+      blockers.push({ key: `b${i}_${j}`, label: 'B', dx, dy });
+    }
+  }
+  const model = sceneAt([...chain, ...blockers].map((point) => ({ ...point, dx: point.dx - 14, dy: point.dy - 14 })));
+  const name = model.names.find((candidate) => candidate.lines.length === chain.length)!;
+  assert.ok(boundingGap(name, model.points) < 6, '外接長方形から見ると近い');
+  assert.ok(nameGap(name, model.points) >= 6, 'どの点からも離れている');
+  assert.ok(name.leader !== undefined);
+});
+
+/** 2本の線分が互いの内側で交わる。 */
+function leadersCross(a: NonNullable<PlotName['leader']>, b: NonNullable<PlotName['leader']>): boolean {
+  const side = (s: NonNullable<PlotName['leader']>, x: number, y: number) => (s.x2 - s.x1) * (y - s.y1) - (s.y2 - s.y1) * (x - s.x1);
+  return side(a, b.x1, b.y1) * side(a, b.x2, b.y2) < 0 && side(b, a.x1, a.y1) * side(b, a.x2, a.y2) < 0;
+}
+
+/** 点が混み合い、引き出し線を付ける名前が2つ出る図。引き出し線どうしの交差を数えなければ、2本の線が交差する。 */
+const CROWDED = [
+  { targetKey: 'p0', label: 'PXYZWXYZW', x: 2.4, y: 2.6 },
+  { targetKey: 'p1', label: 'PXYZW', x: 1.9, y: 2.7 },
+  { targetKey: 'p2', label: 'PXYZWXYZW', x: 3, y: 2.1 },
+  { targetKey: 'p3', label: 'PXYZWXYZW', x: 2, y: 1.2 },
+  { targetKey: 'p4', label: 'PXYZW', x: 2, y: 2.7 },
+  { targetKey: 'p5', label: 'PXYZWXYZW', x: 2.4, y: 2.8 },
+  { targetKey: 'p6', label: 'PXYZWXYZW', x: 2.9, y: 2.7 },
+  { targetKey: 'p7', label: 'PXYZW', x: 1.3, y: 2.8 },
+  { targetKey: 'p8', label: 'PXYZWXYZW', x: 2.3, y: 1.4 },
+  { targetKey: 'p9', label: 'PXYZW', x: 2.9, y: 2.3 },
+  { targetKey: 'p10', label: 'PXYZW', x: 1.1, y: 2.6 },
+  { targetKey: 'p11', label: 'PXYZWXYZW', x: 3, y: 2.2 },
+  { targetKey: 'p12', label: 'PXYZWXYZW', x: 2.2, y: 2.2 },
+  { targetKey: 'p13', label: 'PXYZWXYZW', x: 2.6, y: 2.3 },
+  { targetKey: 'p14', label: 'PXYZW', x: 2.7, y: 3 },
+  { targetKey: 'p15', label: 'PXYZWXYZW', x: 1.1, y: 3 },
+  { targetKey: 'p16', label: 'PXYZWXYZW', x: 1.8, y: 2.4 },
+  { targetKey: 'p17', label: 'PXYZWXYZW', x: 1.4, y: 2.4 },
+  { targetKey: 'p18', label: 'PXYZWXYZW', x: 1.9, y: 2.6 },
+];
+
+test('scatterPlotModel: 引き出し線どうしが交差する置き方は、交差しない候補がある時に選ばない', () => {
+  const model = scatterPlotModel({ points: CROWDED, ...NO_LINES });
+  const leaders = model.names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
+  assert.ok(leaders.length >= 2, '線を付ける名前が複数ある');
+  for (let i = 0; i < leaders.length; i++) for (let j = i + 1; j < leaders.length; j++) assert.equal(leadersCross(leaders[i]!, leaders[j]!), false);
+  assert.equal(nameOverlapCount(model.names), 0);
 });
 
 test('scatterPlotModel: どこにも重ならずに置けない時は、重なりが最も少ない場所に置き、枠の外へは出さない', () => {
