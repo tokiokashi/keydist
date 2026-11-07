@@ -116,7 +116,7 @@ function centerLineNotes(axes: ScatterAxes, language: TextLanguage): string[] {
 }
 
 /**
- * 同じ手の続きの割合と同指率を軸に取った時の説明。2列を結ぶ恒等式は無いので線は引かないが、
+ * 同じ手が続く割合と同指率を軸に取った時の説明。2列を結ぶ恒等式は無いので線は引かないが、
  * 数え方と分母が違う別の量であることを書く。軸の順は問わない。
  */
 function handFingerRateNotes(axes: ScatterAxes, language: TextLanguage): string[] {

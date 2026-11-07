@@ -147,7 +147,7 @@ test('組み込みの全配列: 用意する組み合わせのうち線を引く
     [keyof typeof SCATTER_PRESET_AXES, (typeof SCATTER_PRESET_AXES)[keyof typeof SCATTER_PRESET_AXES]]
   >) {
     if (preset === 'handShare' || preset === 'handRates') {
-      // 左右のキーと距離の割合、同じ手の続きの割合と同指率は、恒等式で結ばれる3つ目の量が無く、線を引かない
+      // 左右のキーと距離の割合、同じ手が続く割合と同指率は、恒等式で結ばれる3つ目の量が無く、線を引かない
       assert.equal(scatterContour(axes.x, axes.y, 100, 'ja'), undefined);
       continue;
     }
@@ -353,7 +353,7 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   assert.equal(column('perCharSteps', 'sameFinger'), 'sameFingerRate');
   // 残りの量が比較表の列に無い（同指を入力文字数で割った量）組には引かない
   assert.equal(column('perCharSteps', 'sameFingerRate'), undefined);
-  // 同じ手の続きの割合
+  // 同じ手が続く割合
   assert.equal(column('handSwitches', 'handContinuations'), 'sameHandContinuationRate');
   assert.equal(column('handSwitches', 'sameHandContinuationRate'), 'handContinuations');
   assert.equal(column('handContinuations', 'sameHandContinuationRate'), 'handSwitches');
@@ -602,7 +602,7 @@ test('細い線の量: 用意した組み合わせは、移動ありキーの割
   assert.equal(free('perActionPresses', 'perPressUnits')?.valueAt(2, 1.5), 3);
 });
 
-test('同じ手の続きの割合と同指率の組: 軸は横が同じ手の続きの割合、縦が同指率で、どちらの順でも等位線も50%の線も無い', () => {
+test('同じ手が続く割合と同指率の組: 軸は横が同じ手が続く割合、縦が同指率で、どちらの順でも等位線も50%の線も無い', () => {
   assert.deepEqual(SCATTER_PRESET_AXES.handRates, { x: 'sameHandContinuationRate', y: 'sameFingerRate' });
   assert.equal(scatterAxisProblem('sameHandContinuationRate', 'sameFingerRate'), undefined);
   assert.equal(scatterContour('sameHandContinuationRate', 'sameFingerRate', 100, 'ja'), undefined);
@@ -668,12 +668,12 @@ test('対数の図で直線になるか: 恒等式の全ての軸の組で、str
   assert.ok(straight > 0 && notStraight > 0);
 });
 
-test('対数の図で直線になるか: 同じ手の続きの割合の線は、軸が手の切り替えの回数と同じ手の続きの回数の時だけ直線になる', () => {
+test('対数の図で直線になるか: 同じ手が続く割合の線は、軸が手を切り替える回数と同じ手が続く回数の時だけ直線になる', () => {
   const free = (x: ComparisonColumnId, y: ComparisonColumnId) => scatterContour(x, y, 100, 'ja');
   assert.equal(free('handSwitches', 'handContinuations')?.column, 'sameHandContinuationRate');
   assert.equal(free('handSwitches', 'handContinuations')?.straightInLog, true);
   assert.equal(free('handContinuations', 'handSwitches')?.straightInLog, true);
-  // 同じ手の続きの割合を軸の一方に選ぶと、線の量は回数になり、2軸の積でも比でもない
+  // 同じ手が続く割合を軸の一方に選ぶと、線の量は回数になり、2軸の積でも比でもない
   assert.equal(free('handSwitches', 'sameHandContinuationRate')?.column, 'handContinuations');
   assert.equal(free('handSwitches', 'sameHandContinuationRate')?.straightInLog, false);
   assert.equal(free('sameHandContinuationRate', 'handContinuations')?.column, 'handSwitches');

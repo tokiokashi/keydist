@@ -130,7 +130,7 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
             </table>
           </div>
           <details className="run-chart-segment-seeds">
-            <summary>ランダムの種ごとの値（1{k}あたりの距離）</summary>
+            <summary>ランダムの種ごとの値（1{k}で動く距離）</summary>
             <table className="run-chart-segment-table" data-run-chart-segment-seeds="">
               <thead>
                 <tr>
@@ -152,11 +152,11 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
           </details>
           <ul className="run-chart-segment-rank" data-run-chart-segment-rank="">
             <li>
-              1{k}あたりの距離の区間の90%点: 文節の値は、ランダムの{SEGMENT_SEED_COUNT}個と合わせた
+              1{k}で動く距離の区間の90%点: 文節の値は、ランダムの{SEGMENT_SEED_COUNT}個と合わせた
               {rankSentence(report.rank.p90)}
             </li>
             <li>
-              1{k}あたりの距離の区切りの直後の1文字: 文節の値は、同じく
+              1{k}で動く距離の区切りの直後の1文字: 文節の値は、同じく
               {rankSentence(report.rank.after)}
             </li>
           </ul>

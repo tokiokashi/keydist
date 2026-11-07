@@ -35,11 +35,11 @@ test('単位uと1/uを宣言した列は比較表の説明に単位uが出て、
 });
 
 test('単位は名前の直後に全角のカッコで囲んで付け、単位が無い列は名前だけにする', () => {
-  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションあたりの距離（u）');
+  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションで動く距離（u）');
   assert.equal(axisTitle('sameFingerRate', 'ja'), '同指率（%）');
-  assert.equal(axisTitle('actionsPerUnit', 'ja'), '1uあたりのアクション数（1/u）');
-  assert.equal(axisTitle('perCharSteps', 'ja'), '1カナあたりのアクション数');
-  assert.equal(axisTitle('perCharSteps', 'en'), '1字あたりのアクション数');
+  assert.equal(axisTitle('actionsPerUnit', 'ja'), '1u動く間に打つアクション数（1/u）');
+  assert.equal(axisTitle('perCharSteps', 'ja'), '1カナを打つアクション数');
+  assert.equal(axisTitle('perCharSteps', 'en'), '1字を打つアクション数');
   for (const column of COMPARISON_COLUMN_IDS) {
     for (const language of LANGUAGES) {
       const unit = axisUnit(column);
@@ -145,25 +145,25 @@ const AXIS_PLOT_TITLES: Readonly<Record<string, readonly [string, string]>> = {
   textCharsPerUnit: ['文字数/距離（1/u）', '文字数/距離（1/u）'],
 };
 
-test('組み合わせの名前: コスパの組だけ「コスパ（文字数/アクション）と1uあたりのアクション数」で、ほかの組は軸の長い名前をつなぐ。軸の名前と凡例は変えない', () => {
+test('組み合わせの名前: コスパの組だけ「コスパ（文字数/アクション）と1u動く間に打つアクション数」で、ほかの組は軸の長い名前をつなぐ。軸の名前と凡例は変えない', () => {
   const labels = scatterPresetLabels('ja');
-  assert.equal(labels.charsPerAction, 'コスパ（文字数/アクション）と1uあたりのアクション数');
-  assert.equal(labels.handRates, '同じ手の続きの割合と同指率');
-  assert.equal(labels.distance, '1カナあたりのアクション数と1アクションあたりの距離');
-  assert.equal(labels.textDistance, '1文字あたりのアクション数と1アクションあたりの距離');
-  assert.equal(labels.press, '1アクションあたりのキー数と1カナあたりのアクション数');
-  assert.equal(labels.perPress, '1カナあたりのキー数と1キーあたりの距離');
+  assert.equal(labels.charsPerAction, 'コスパ（文字数/アクション）と1u動く間に打つアクション数');
+  assert.equal(labels.handRates, '同じ手が続く割合と同指率');
+  assert.equal(labels.distance, '1カナを打つアクション数と1アクションで動く距離');
+  assert.equal(labels.textDistance, '1文字を打つアクション数と1アクションで動く距離');
+  assert.equal(labels.press, '1アクションで押すキー数と1カナを打つアクション数');
+  assert.equal(labels.perPress, '1カナで押すキー数と1キーで動く距離');
   assert.equal(labels.sameFinger, 'アクション数と同指率');
-  assert.equal(labels.hand, '手の切り替えの回数と同じ手の続きの回数');
+  assert.equal(labels.hand, '手を切り替える回数と同じ手が続く回数');
   assert.equal(labels.handShare, '右手キー率と右手距離率');
-  assert.equal(labels.movedPress, '移動ありキー率と移動ありキー1つあたりの距離');
+  assert.equal(labels.movedPress, '移動ありキー率と移動ありキー1つで動く距離');
   assert.equal(labels.free, '自由に選ぶ');
-  assert.equal(axisName('textCharsPerAction', 'ja'), '1アクションあたりの文字数');
-  assert.equal(axisTitle('actionsPerUnit', 'ja'), '1uあたりのアクション数（1/u）');
+  assert.equal(axisName('textCharsPerAction', 'ja'), '1アクションで打つ文字数');
+  assert.equal(axisTitle('actionsPerUnit', 'ja'), '1u動く間に打つアクション数（1/u）');
   assert.equal(axisPlotTitle('textCharsPerAction', 'ja'), '文字数/アクション');
   assert.equal(axisPlotTitle('actionsPerTextChar', 'ja'), 'アクション数/文字');
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.textDistance, 'ja'), '1アクションあたりの距離と1文字あたりのアクション数の関係');
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.charsPerAction, 'ja'), '1uあたりのアクション数と1アクションあたりの文字数の関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.textDistance, 'ja'), '1アクションで動く距離と1文字を打つアクション数の関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.charsPerAction, 'ja'), '1u動く間に打つアクション数と1アクションで打つ文字数の関係');
 });
 
 test('軸の名前は「量/何あたり（単位）」の形で、「かな」はテキストの言語で出し分ける', () => {
@@ -189,26 +189,26 @@ test('軸の名前は、長い名前と同じ単位で、宣言の無い列は�
 });
 
 test('凡例とキャプションは、軸の名前を宣言した列でも長い名前のまま', () => {
-  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションあたりの距離（u）');
+  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションで動く距離（u）');
   assert.equal(axisPlotTitle('meanPerStroke', 'ja'), '距離/アクション（u）');
   assert.equal(axisPlotTitle('sameFingerRate', 'ja'), '同指率（%）');
-  assert.equal(scatterCaption({ x: 'perCharSteps', y: 'meanPerStroke' }, 'ja'), '1アクションあたりの距離と1カナあたりのアクション数の関係');
+  assert.equal(scatterCaption({ x: 'perCharSteps', y: 'meanPerStroke' }, 'ja'), '1アクションで動く距離と1カナを打つアクション数の関係');
 });
 
 test('長い名前は「1〜あたりの」の形で、日本語と英語のテキストで表のとおりになる', () => {
   const expected: ReadonlyArray<readonly [ComparisonColumnId, string, string]> = [
-    ['meanPerStroke', '1アクションあたりの距離', '1アクションあたりの距離'],
-    ['perCharUnits', '1カナあたりの距離', '1字あたりの距離'],
-    ['perCharSteps', '1カナあたりのアクション数', '1字あたりのアクション数'],
-    ['perCharPresses', '1カナあたりのキー数', '1字あたりのキー数'],
-    ['perActionPresses', '1アクションあたりのキー数', '1アクションあたりのキー数'],
-    ['perPressUnits', '1キーあたりの距離', '1キーあたりの距離'],
-    ['perMovedPressUnits', '移動ありキー1つあたりの距離', '移動ありキー1つあたりの距離'],
-    ['textCharsPerAction', '1アクションあたりの文字数', '1アクションあたりの文字数'],
-    ['actionsPerTextChar', '1文字あたりのアクション数', '1文字あたりのアクション数'],
-    ['actionsPerUnit', '1uあたりのアクション数', '1uあたりのアクション数'],
-    ['textCharsPerUnit', '1uあたりの文字数', '1uあたりの文字数'],
-    ['unitsPerTextChar', '1文字あたりの距離', '1文字あたりの距離'],
+    ['meanPerStroke', '1アクションで動く距離', '1アクションで動く距離'],
+    ['perCharUnits', '1カナで動く距離', '1字で動く距離'],
+    ['perCharSteps', '1カナを打つアクション数', '1字を打つアクション数'],
+    ['perCharPresses', '1カナで押すキー数', '1字で押すキー数'],
+    ['perActionPresses', '1アクションで押すキー数', '1アクションで押すキー数'],
+    ['perPressUnits', '1キーで動く距離', '1キーで動く距離'],
+    ['perMovedPressUnits', '移動ありキー1つで動く距離', '移動ありキー1つで動く距離'],
+    ['textCharsPerAction', '1アクションで打つ文字数', '1アクションで打つ文字数'],
+    ['actionsPerTextChar', '1文字を打つアクション数', '1文字を打つアクション数'],
+    ['actionsPerUnit', '1u動く間に打つアクション数', '1u動く間に打つアクション数'],
+    ['textCharsPerUnit', '1u動く間に打つ文字数', '1u動く間に打つ文字数'],
+    ['unitsPerTextChar', '1文字で動く距離', '1文字で動く距離'],
   ];
   for (const [column, ja, en] of expected) {
     assert.equal(axisName(column, 'ja'), ja, column);

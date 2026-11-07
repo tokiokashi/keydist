@@ -133,11 +133,11 @@ test('距離の単位の説明は、単位がuか1/uの量がある時だけ出�
 
 test('1かなあたりの列が入る組は、総数を入力かな数で割った値だという換算を関係の文に足す', () => {
   const perPress = scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS, 'ja')!;
-  assert.equal(perPress.relation, '総移動距離 = キー数 × 1キーあたりの距離');
-  assert.equal(perPress.conversion, '1カナあたりのキー数はキー数を入力カナ数で割った値、1カナあたりの距離は総移動距離を入力カナ数で割った値');
+  assert.equal(perPress.relation, '総移動距離 = キー数 × 1キーで動く距離');
+  assert.equal(perPress.conversion, '1カナで押すキー数はキー数を入力カナ数で割った値、1カナで動く距離は総移動距離を入力カナ数で割った値');
   const distance = scatterContour('perCharSteps', 'meanPerStroke', INPUT_CHARS, 'ja')!;
-  assert.equal(distance.relation, '総移動距離 = アクション数 × 1アクションあたりの距離');
-  assert.equal(distance.conversion, '1カナあたりのアクション数はアクション数を入力カナ数で割った値、1カナあたりの距離は総移動距離を入力カナ数で割った値');
+  assert.equal(distance.relation, '総移動距離 = アクション数 × 1アクションで動く距離');
+  assert.equal(distance.conversion, '1カナを打つアクション数はアクション数を入力カナ数で割った値、1カナで動く距離は総移動距離を入力カナ数で割った値');
   // 総数の形の軸だけの組には換算を足さない
   const hand = scatterContour('handSwitches', 'handContinuations', INPUT_CHARS, 'ja')!;
   assert.equal(hand.relation, identityRelation(IDENTITIES[5]!, 'ja'));
@@ -173,18 +173,18 @@ test('見出しのⓘの組み合わせの一覧は、組み合わせの全部�
   );
 });
 
-test('移動ありキーの割合と移動ありキー1つあたりの距離: 線を引かず、図の見方にu/キーとの関係の文が出る', () => {
+test('移動ありキーの割合と移動ありキー1つで動く距離: 線を引かず、図の見方にu/キーとの関係の文が出る', () => {
   const axes = SCATTER_PRESET_AXES.movedPress;
   const contour = scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja');
   assert.equal(contour?.drawsLines, false);
   const { help } = scatterQuantityHelp(axes, contour, 'ja');
   assert.deepEqual(help.notes, [
-    '1キーあたりの距離を含む3つの量の関係は、1キーあたりの距離 = 移動ありキー率 ÷ 100 × 移動ありキー1つあたりの距離です。',
+    '1キーで動く距離を含む3つの量の関係は、1キーで動く距離 = 移動ありキー率 ÷ 100 × 移動ありキー1つで動く距離です。',
     COMPARISON_UNIT_NOTE,
   ]);
   assert.deepEqual(
     help.items.map((item) => item.name),
-    ['横軸　移動ありキー率（%）', '縦軸　移動ありキー1つあたりの距離（u）'],
+    ['横軸　移動ありキー率（%）', '縦軸　移動ありキー1つで動く距離（u）'],
   );
 });
 
@@ -203,10 +203,10 @@ test('左右のキーと距離の割合: 50%の線と4つの区画、2軸が同�
   assert.ok(swapped[1]!.includes('右下は距離は右手が多いのに押すキーの数は左手が多い区画です'));
 });
 
-test('同じ手の続きの割合と同指率: 線を引かず、数え方と分母が違う別の量だという説明を、どちらの順でも出す', () => {
+test('同じ手が続く割合と同指率: 線を引かず、数え方と分母が違う別の量だという説明を、どちらの順でも出す', () => {
   const axes = SCATTER_PRESET_AXES.handRates;
   const note =
-    '同じ手の続きの割合と同指率は、どちらも各アクションをどの手、どの指が打つかから作る割合です。数え方と分母が違い、2つを結ぶ関係式はありません。';
+    '同じ手が続く割合と同指率は、どちらも各アクションをどの手、どの指が打つかから作る割合です。数え方と分母が違い、2つを結ぶ関係式はありません。';
   for (const [x, y] of [
     [axes.x, axes.y],
     [axes.y, axes.x],
@@ -252,11 +252,11 @@ test('50%の線の説明: 軸の片方だけが右手の割合の時は、その
 });
 
 test('図の下のキャプション: 縦軸の量と横軸の量の関係を、軸の名前から単位を除いた言葉で言い切る', () => {
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションあたりの距離と1カナあたりのアクション数の関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションで動く距離と1カナを打つアクション数の関係');
   assert.equal(scatterCaption(SCATTER_PRESET_AXES.handShare, 'ja'), '右手距離率と右手キー率の関係');
   assert.equal(scatterCaption({ x: 'totalUnits', y: 'sameFinger' }, 'ja'), '同指の回数と総移動距離の関係');
   // 英語のテキストでは、名前の「かな」が「字」になる
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'en'), '1アクションあたりの距離と1字あたりのアクション数の関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'en'), '1アクションで動く距離と1字を打つアクション数の関係');
 });
 
 test('固定の説明は、線を引かない図があることと食い違わない', () => {
@@ -277,7 +277,7 @@ test('点の読み取り: 名前と「(横, 縦)」に続けて、線を引く�
   assert.equal(readout(SCATTER_PRESET_AXES.movedPress, 50, 4, { ...values, perPressUnits: 2 }), 'QWERTY　(50.0%, 4.000)');
   assert.equal(
     readout(SCATTER_PRESET_AXES.hand, 520.5, 702.5, { ...values, sameHandContinuationRate: 57.4 }),
-    'QWERTY　(520.5, 702.5)　同じ手の続きの割合 57.4%',
+    'QWERTY　(520.5, 702.5)　同じ手が続く割合 57.4%',
   );
   assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　(2.000, 1.500)');
   assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　(2.000, 6.000)');
@@ -318,7 +318,7 @@ test('点の読み上げ用の名前は、量の名前を長い形で全て添�
       scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'),
       'ja',
     ),
-    'QWERTY　1カナあたりのアクション数 1.500　1アクションあたりの距離 2.000　1カナあたりの距離 3.000',
+    'QWERTY　1カナを打つアクション数 1.500　1アクションで動く距離 2.000　1カナで動く距離 3.000',
   );
 });
 
