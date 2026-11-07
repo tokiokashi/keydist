@@ -309,10 +309,17 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
                 <span className="scatter-readout-text">
                   {parts.name}
                   {'　'}
-                  <span className="scatter-readout-coordinates" data-scatter-readout-coordinates="">
+                  <span className="scatter-readout-nowrap" data-scatter-readout-coordinates="">
                     {parts.coordinates}
                   </span>
-                  {parts.contour === undefined ? null : `　${parts.contour}`}
+                  {parts.contour === undefined ? null : (
+                    <>
+                      {'　'}
+                      <span className="scatter-readout-nowrap" data-scatter-readout-contour="">
+                        {parts.contour}
+                      </span>
+                    </>
+                  )}
                 </span>
               </p>
             ))}

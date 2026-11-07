@@ -217,7 +217,7 @@
   background: color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
-.scatter-readout-coordinates {
+.scatter-readout-nowrap {
   white-space: nowrap;
 }
 

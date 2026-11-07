@@ -222,17 +222,24 @@ test.describe('個別画面', () => {
     await expect(readout).toHaveCount(0);
   });
 
-  test('狭い図でも、読み取りの「(横, 縦)」は途中で折り返さず、1つのまとまりで折り返す', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 1000 });
-    await openWithPresets(page, ['distance', 'hand', 'press']);
-    await pointOf(figureOf(page, 'distance'), 'layout:qwerty').click();
-    await pointOf(figureOf(page, 'hand'), 'layout:jis-kana').hover();
-    const coordinates = feature(page).locator('[data-scatter-readout-coordinates]');
-    await expect(coordinates).toHaveCount(6);
-    // 1280pxで3列に並べた図（1枚約320px）では、座標が行の端に掛かる。折り返された要素の矩形は2つ以上になる
-    const rects = await coordinates.evaluateAll((elements) => elements.map((element) => element.getClientRects().length));
-    expect(rects).toEqual([1, 1, 1, 1, 1, 1]);
-  });
+  for (const width of [1280, 390]) {
+    test(`幅${width}pxでも、読み取りの「(横, 縦)」と線の量は途中で折り返さず、1つのまとまりで折り返す`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await openWithPresets(page, ['distance', 'hand', 'press']);
+      await pointOf(figureOf(page, 'distance'), 'layout:qwerty').click();
+      // 狭い幅では、読み取りが増えて図の位置が動くとポインターが点から外れるので、重ねる点はフォーカスで選ぶ
+      await pointOf(figureOf(page, 'hand'), 'layout:jis-kana').focus();
+      // 留めた点と重ねた点の2つが、3つの図に出る
+      await expect(feature(page).locator('[data-scatter-readout]')).toHaveCount(6);
+      // 折り返された要素の矩形は2つ以上になる。1280pxの3列（1枚約320px）では座標が、390pxでは線の量の名前が行の端に掛かる
+      for (const part of ['coordinates', 'contour']) {
+        const parts = feature(page).locator(`[data-scatter-readout-${part}]`);
+        await expect(parts).toHaveCount(6);
+        const rects = await parts.evaluateAll((elements) => elements.map((element) => element.getClientRects().length));
+        expect(rects).toEqual([1, 1, 1, 1, 1, 1]);
+      }
+    });
+  }
 
   test('印が重なる点は名前を1つにまとめ、点は1つずつフォーカスして値を読める', async ({ page }) => {
     // 同じローマ字で打つQWERTYとDvorakは、1アクションあたりのキー数もアクション数/かなも同じで、印が重なる
