@@ -69,6 +69,7 @@ function KindMark({ kind, size = MARK_SIZE }: { readonly kind: LayoutKind; reado
 
 /** 画像の書き出しの結果を、ボタンのそばにしばらく出す時間 [ms]。 */
 const COPY_STATUS_MS = 1800;
+const COPY_IMAGE_LABEL = '図を画像でコピー';
 
 /** 図を画像にして書き出すボタンと、結果の知らせ。 */
 function CopyImageControl({
@@ -100,7 +101,7 @@ function CopyImageControl({
   };
   return (
     <span className="scatter-copy">
-      <button type="button" className="scatter-copy-button" aria-label="図を画像でコピー" title="図を画像でコピー" onClick={copy}>
+      <button type="button" className="scatter-copy-button" aria-label={COPY_IMAGE_LABEL} title={COPY_IMAGE_LABEL} onClick={copy}>
         <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
           <rect x="5.25" y="5.25" width="8.25" height="8.25" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
           <path
