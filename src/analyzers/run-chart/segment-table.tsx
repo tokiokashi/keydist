@@ -10,7 +10,7 @@ import { displayValue, metricDigits, runChartMetrics } from './metric-catalog.ts
 /**
  * 区切り方ごとの区間の指標と、区切りの前後の指標の表（定義は `docs/segment-metrics.md`）。
  * 抽出が出した値を並べるだけで、計算し直さない。配列の優劣・順位・合成スコアは出さない。
- * 順位を付けるのは、文節の区切りとランダムの区切りの比べだけ（1かなあたりの距離の2つの量）。
+ * 順位を付けるのは、文節の区切りとランダムの区切りの比べだけ（1かなで動く距離の2つの量）。
  */
 
 export interface SegmentTableRow {
