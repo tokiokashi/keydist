@@ -101,8 +101,7 @@ test('外部変更: 購読開始(startAssetSyncs)後、他タブの書き込み�
 /**
  * ReactのStrictMode（開発時のmount→cleanup→mount二重実行）を模した回帰テスト
  * （`useKeydistAssets`が構築時に自動購読・`useEffect`のcleanupでだけ
- * 停止する形だと、二重実行後は外部タブの変更を二度と受け取れなくなる。
- * 実機での再現は`e2e/standalone-bigram-flow.spec.ts`「複数タブ」テスト参照）。
+ * 停止する形だと、二重実行後は外部タブの変更を二度と受け取れなくなる）。
  */
 test('startAssetSyncs→stop→startAssetSyncs（StrictModeの二重実行を模す）しても、外部変更が届き続ける', () => {
   const storage = createFakeStorage();
