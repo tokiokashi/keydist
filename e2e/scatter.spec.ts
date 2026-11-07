@@ -222,6 +222,18 @@ test.describe('個別画面', () => {
     await expect(readout).toHaveCount(0);
   });
 
+  test('狭い図でも、読み取りの「(横, 縦)」は途中で折り返さず、1つのまとまりで折り返す', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await openWithPresets(page, ['distance', 'hand', 'press']);
+    await pointOf(figureOf(page, 'distance'), 'layout:qwerty').click();
+    await pointOf(figureOf(page, 'hand'), 'layout:jis-kana').hover();
+    const coordinates = feature(page).locator('[data-scatter-readout-coordinates]');
+    await expect(coordinates).toHaveCount(6);
+    // 1280pxで3列に並べた図（1枚約320px）では、座標が行の端に掛かる。折り返された要素の矩形は2つ以上になる
+    const rects = await coordinates.evaluateAll((elements) => elements.map((element) => element.getClientRects().length));
+    expect(rects).toEqual([1, 1, 1, 1, 1, 1]);
+  });
+
   test('印が重なる点は名前を1つにまとめ、点は1つずつフォーカスして値を読める', async ({ page }) => {
     // 同じローマ字で打つQWERTYとDvorakは、1アクションあたりのキー数もアクション数/かなも同じで、印が重なる
     const settings = await openSettings(page);

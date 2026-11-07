@@ -217,6 +217,10 @@
   background: color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
+.scatter-readout-coordinates {
+  white-space: nowrap;
+}
+
 .scatter-excluded {
   list-style: none;
   margin: 0;

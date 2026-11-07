@@ -13,7 +13,7 @@ import {
   scatterContour,
 } from './axes.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { mentionsUnit, readoutAriaLabel, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
+import { mentionsUnit, readoutAriaLabel, readoutParts, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 
 const INPUT_CHARS = 100;
 const PRESETS = SCATTER_PRESET_IDS.filter((id) => id !== 'free');
@@ -289,6 +289,15 @@ test('点の読み取り: 名前と「(横, 縦)」に続けて、線を引く�
   assert.equal(readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: Number.NaN }), 'QWERTY　(1.500, 2.000)');
   // 英語のテキストでは、何あたりの語が「字」になる
   assert.equal(readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }, 'en'), 'QWERTY　(1.500, 2.000)　距離/字 3.000');
+});
+
+test('点の読み取りの部品: 座標は「(横, 縦)」の1つの文字列で、読み取りの文は部品を全角空白でつないだもの', () => {
+  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((c) => [c, 7])) as Parameters<typeof readoutText>[0]['values'];
+  const axes = SCATTER_PRESET_AXES.distance;
+  const row = { label: 'A', fullName: 'QWERTY', x: 1.5, y: 2, values: { ...values, perCharUnits: 3 } };
+  const contour = scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja');
+  assert.deepEqual(readoutParts(row, axes, contour, 'ja'), { name: 'QWERTY', coordinates: '(1.500, 2.000)', contour: '距離/カナ 3.000' });
+  assert.equal(readoutText(row, axes, contour, 'ja'), 'QWERTY　(1.500, 2.000)　距離/カナ 3.000');
 });
 
 test('点の読み取り: 軸の名前に添える単位と「対数」の印は、線の量の名前に付けない', () => {

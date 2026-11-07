@@ -39,17 +39,35 @@ function contourValue(row: ReadoutRow, contour: ScatterContour | undefined): num
   return contour.readoutAt(row.x, row.y, row.values[contour.column]);
 }
 
+/** 画面に出す点の読み取りの部品。座標は途中で折り返さない1つのまとまりとして描くため、文と分けて持つ。 */
+export interface ReadoutParts {
+  readonly name: string;
+  /** 「(横軸の値, 縦軸の値)」。 */
+  readonly coordinates: string;
+  /** 線の量の短い名前と値。線を引かない組と、線の量の列が値を持たない対象には無い。 */
+  readonly contour: string | undefined;
+}
+
 /**
- * 画面に出す点の読み取りの文。「名前　(横軸の値, 縦軸の値)　線の量の短い名前 値」。
- * 横軸と縦軸の量の名前は図の軸に出ているので付けない。線の量は軸の名前と同じ縮めた名前で示す（単位と「対数」の印は付けない）。
- * 細い線を引く組だけ線の量を出し、線の量の列が値を持たない対象には出さない。
+ * 画面に出す点の読み取りの部品。横軸と縦軸の量の名前は図の軸に出ているので付けず、座標だけにする。
+ * 線の量は軸の名前と同じ縮めた名前で示す（単位と「対数」の印は付けない）。
  */
-export function readoutText(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): string {
-  const parts = [row.fullName || row.label, `(${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}, ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)})`];
+export function readoutParts(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): ReadoutParts {
   const value = contourValue(row, contour);
-  if (contour !== undefined && value !== undefined)
-    parts.push(`${axisShortName(contour.column, language)} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
-  return parts.join('　');
+  return {
+    name: row.fullName || row.label,
+    coordinates: `(${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}, ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)})`,
+    contour:
+      contour === undefined || value === undefined
+        ? undefined
+        : `${axisShortName(contour.column, language)} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`,
+  };
+}
+
+/** 画面に出す点の読み取りの文。「名前　(横軸の値, 縦軸の値)　線の量の短い名前 値」。部品（`readoutParts`）を全角空白でつなぐ。 */
+export function readoutText(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): string {
+  const { name, coordinates, contour: line } = readoutParts(row, axes, contour, language);
+  return [name, coordinates, ...(line === undefined ? [] : [line])].join('　');
 }
 
 /** 点の読み上げ用の名前。読み上げでは軸の名前と目盛りを見られないので、量の名前を長い形で全て添える。 */
