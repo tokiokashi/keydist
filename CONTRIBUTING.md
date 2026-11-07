@@ -469,7 +469,7 @@ PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を
   4. 置いた画像を目で確かめ、意図した変化だけであることをPR本文に書く
 - 画像が無い、または図が変わっていると、`browser-e2e` のこのspecが落ちる。差分の画像は、失敗時のartifact（`browser-e2e-trace-<N>`）に入る
 
-e2eの本文: 字数に依存しない検査は、短い本文（`e2e/short-text-helper.ts` の `SHORT_TEXT_REF`）を使う。個別画面は `e2e/fixtures.ts` の `test` が既定で短い本文から始め、保存値でWorkspaceを作る検査は保存値の `text` に `SHORT_TEXT_REF` を書いて `useShortText(page)` を呼ぶ。組み込みのテキストを書き換える場面を見る検査だけが、既定のテキストを使う。
+e2eの本文: 字数に依存しない検査は、短い本文（`e2e/short-text-helper.ts` の `SHORT_TEXT_REF`）を使う。個別画面は `e2e/fixtures.ts` の `test` が既定で短い本文から始め、保存値でWorkspaceを作る検査は保存値の `text` に `SHORT_TEXT_REF` を書いて `useShortText(page)` を呼ぶ。既定のテキストを使うのは、`standalone-bigram-flow.spec.ts` の全部の検査と、`fixtures.ts` を通さない `visual-figures.spec.ts`・`text-content-timer-race.spec.ts` だけである。
 
 e2eに書く範囲: ページのe2eは、次の2種類だけにする。図のスクリーンショットは、上の「スクリーンショットの基準の画像」に従う。e2eで確かめたくなった計算は、unit testに移す。
 
