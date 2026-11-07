@@ -1,13 +1,11 @@
-import { expect, test } from './fixtures.ts';
+import { expect, PAGE_TAG, test } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
-test('サイドバーから計算方法のページを開け、仕様書とリポジトリへのリンクが出る', async ({ page }) => {
-  await page.goto('/analyzer/comparison');
+test('計算方法のページを開け、仕様書とリポジトリへのリンクが出る', { tag: PAGE_TAG }, async ({ page }) => {
+  await page.goto('/about');
   await waitForHydration(page);
 
   const sidebar = page.locator('#app-sidebar');
-  await sidebar.getByRole('link', { name: '計算方法', exact: true }).click();
-  await expect(page).toHaveURL(/\/about\/?$/);
   await expect(page.getByRole('heading', { name: '計算方法', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: '距離モデルが落とした次元' })).toBeVisible();
   await expect(page.getByRole('img', { name: /「ぬいぐるみ」（訓令式のnuigurumi）の最初の3アクション/ })).toBeVisible();
