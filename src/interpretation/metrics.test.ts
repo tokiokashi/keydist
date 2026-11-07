@@ -77,7 +77,7 @@ test('スキップされた文字も入力文字数に数える', () => {
   assert.equal(t.inputChars, 3);
 });
 
-test('1文字あたりの距離は打鍵数ではなく入力文字数を分母にする', () => {
+test('1文字で動く距離は打鍵数ではなく入力文字数を分母にする', () => {
   // 「し」→ si（2打鍵、入力文字数は1）
   const m = computeMetrics(generateTrace('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);
@@ -107,11 +107,11 @@ test('コンボ相当（複数文字を1見出しで打つ）でも入力文字�
   assert.equal(split.strokes, 2);
   assert.equal(split.inputChars, 2);
 
-  // 打鍵数は減っても入力文字数は同じなので、削減の効果が1文字あたりの距離に出る
+  // 打鍵数は減っても入力文字数は同じなので、削減の効果が1文字で動く距離に出る
   assert.ok(combo.perCharUnits <= split.perCharUnits + 1e-9);
 });
 
-test('1文字あたりのアクション数はステップ数を入力文字数で割った値になる', () => {
+test('1文字を打つアクション数はステップ数を入力文字数で割った値になる', () => {
   // 「し」→ si（2打鍵、入力文字数は1）
   const m = computeMetrics(generateTrace('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);

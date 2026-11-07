@@ -22,7 +22,7 @@ export function pairRowsOf(extracted: HandRhythmExtracted): ValueRow[] {
     { id: 'continuations', label: '同じ手の続き', text: `${formatTurnCount(aggregate.continuations)}回` },
     {
       id: 'continuation-rate',
-      label: '同じ手の続きの割合',
+      label: '同じ手が続く割合',
       text: formatContinuationRate(aggregate.continuationRate, aggregate.switches, aggregate.continuations),
     },
     {

@@ -805,13 +805,13 @@ test('logScaleBlockers: 線を引かない図・線の量が積でも比でも�
   const noLines = scatterContour('perActionPresses', 'perPressUnits', 100, 'ja')!;
   assert.equal(noLines.drawsLines, false);
   assert.equal(logScaleBlockers(noLines, points).noStraightLines, true);
-  // 同じ手の続きの割合を軸の一方に選んだ図（線の量は回数）
+  // 同じ手が続く割合を軸の一方に選んだ図（線の量は回数）
   const notProduct = scatterContour('handSwitches', 'sameHandContinuationRate', 100, 'ja')!;
   assert.equal(notProduct.drawsLines, true);
   assert.equal(logScaleBlockers(notProduct, points).noStraightLines, true);
   // 恒等式が無い図
   assert.equal(logScaleBlockers(undefined, points).noStraightLines, true);
-  // 手の切り替えの回数と同じ手の続きの回数の図は直線になる
+  // 手を切り替える回数と同じ手が続く回数の図は直線になる
   assert.equal(logScaleBlockers(scatterContour('handSwitches', 'handContinuations', 100, 'ja'), points).noStraightLines, false);
 });
 
@@ -855,7 +855,7 @@ test('対数を選んだまま組み合わせを変える: 対数にできる図
   assert.deepEqual(resolve('actions', 'meanPerStroke'), { logScale: true, reasons: [] });
   // 同指率が0%の配列がある図
   assert.deepEqual(resolve('actions', 'sameFingerRate'), { logScale: false, reasons: ['nonPositive'] });
-  // 線の無い図（同じ手の続きの割合と同指率）に0以下の値が重なる
+  // 線の無い図（同じ手が続く割合と同指率）に0以下の値が重なる
   assert.deepEqual(resolve('sameFingerRate', 'perCharSteps'), { logScale: false, reasons: ['noStraightLines', 'nonPositive'] });
   // 対数を選んだままでも、対数にできる図に戻れば対数になる
   assert.deepEqual(resolve('perCharSteps', 'meanPerStroke'), { logScale: true, reasons: [] });
@@ -966,7 +966,7 @@ test('割合の細い線: 今の規則で0%の線が選ばれる範囲でも、�
   assert.deepEqual(percentLines(zero, false), [10, 20, 30, 40, 50]);
 });
 
-test('割合の細い線: 同指率・同じ手の続きの割合・移動ありキー率は割合として扱う', () => {
+test('割合の細い線: 同指率・同じ手が続く割合・移動ありキー率は割合として扱う', () => {
   for (const column of ['sameFingerRate', 'sameHandContinuationRate', 'movedPressShare'] as const) {
     assert.equal(axisUnit(column), '%', column);
   }

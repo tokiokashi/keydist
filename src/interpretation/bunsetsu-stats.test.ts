@@ -73,7 +73,7 @@ test('境目の文字・内側の文字・先頭の文字・打鍵できなか�
   assert.equal(stats.skippedAfterBoundary, 1);
 });
 
-test('境目の文字と内側の文字の1文字あたりの距離と標準偏差は、打鍵できなかった文字を数えない', () => {
+test('境目の文字と内側の文字の1文字で動く距離と標準偏差は、打鍵できなかった文字を数えない', () => {
   const stats = bunsetsuLayoutStats(buildBunsetsuTraceBasis(TRACE), BUNSETSU, analyzeBunsetsuText(CHARS, BUNSETSU));
   // 境目の文字: 位置2・4・6・9（位置7は打鍵できなかった文字）。位置9は打鍵できた文字で距離0
   assert.equal(stats.boundary.chars, 4);
@@ -85,7 +85,7 @@ test('境目の文字と内側の文字の1文字あたりの距離と標準偏�
   assert.ok(Math.abs(stats.interior.deviation! - Math.sqrt(194.75 / 4)) < 1e-12);
 });
 
-test('打鍵できなかった文字を分母に数えるboundaryInteriorとは、境目の文字の1文字あたりの距離が違う', () => {
+test('打鍵できなかった文字を分母に数えるboundaryInteriorとは、境目の文字の1文字で動く距離が違う', () => {
   const stats = bunsetsuLayoutStats(buildBunsetsuTraceBasis(TRACE), BUNSETSU, analyzeBunsetsuText(CHARS, BUNSETSU));
   const counted = boundaryInterior(buildSpanIndex(TRACE), BUNSETSU);
   assert.equal(counted.boundaryDistance, stats.distanceParts.boundary);
@@ -102,7 +102,7 @@ test('1文節の距離の標準偏差と90%点は、先頭の文字を含む文�
   assert.equal(stats.segmentDistance.p90, 20);
 });
 
-test('文節ごとの1文字あたりの距離の中央値と90%点が定義どおりで、Run Chartの区間の値と一致する', () => {
+test('文節ごとの1文字で動く距離の中央値と90%点が定義どおりで、Run Chartの区間の値と一致する', () => {
   const stats = bunsetsuLayoutStats(buildBunsetsuTraceBasis(TRACE), BUNSETSU, analyzeBunsetsuText(CHARS, BUNSETSU));
   // 文字数 [2, 2, 2, 1, 2, 2] で割った値: [1.5, 3.5, 2.5, 7, 4.5, 10]。小さい順の6個の中央値は中央2つの平均
   assert.equal(stats.segmentPerChar.count, 6);

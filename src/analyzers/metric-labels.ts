@@ -23,10 +23,10 @@ export interface SharedMetricTexts {
 export function sharedMetricText(language: TextLanguage, script: KanaScript = 'hiragana'): SharedMetricTexts {
   const k = kanaUnitOf(language, script);
   return {
-    perCharUnits: { label: `1${k}あたりの距離`, unit: `u/${k}` },
-    perCharSteps: { label: `1${k}あたりのアクション数`, unit: `アクション/${k}` },
-    meanPerStroke: { label: '1アクションあたりの距離', unit: 'u/アクション' },
-    perPressUnits: { label: '1キーあたりの距離', unit: 'u/キー' },
+    perCharUnits: { label: `1${k}で動く距離`, unit: `u/${k}` },
+    perCharSteps: { label: `1${k}を打つアクション数`, unit: `アクション/${k}` },
+    meanPerStroke: { label: '1アクションで動く距離', unit: 'u/アクション' },
+    perPressUnits: { label: '1キーで動く距離', unit: 'u/キー' },
     sameFingerRate: { label: '同指率', unit: '%' },
   };
 }
