@@ -1,6 +1,7 @@
 import { expect, test, type Page } from './fixtures.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import {
+  closeTargetSelection,
   dismissAutoOpenedSelection,
   expectChosenTarget,
   expectTargetNames,
@@ -436,25 +437,25 @@ test('絞り込み欄は読みでも探せ、カタカナで打っても同じ�
   await expect(selection.locator('input[value="layout:naginata-v18"]')).toBeVisible();
 });
 
-test('Tabで選択の最後から先へ進むと閉じてボタンの次へ、最初から戻るとボタンへ移る', async ({ page }) => {
+test('Tabで選択の最後から先へ進むとボタンの次へ、最初から戻るとボタンへフォーカスだけが移り、閉じない', async ({ page }) => {
   await page.goto('/analyzer/comparison');
   const button = page.getByRole('button', { name: /^対象: / });
   const selection = page.getByRole('dialog', { name: '対象の選択' });
   await dismissAutoOpenedSelection(page);
 
-  // 最初（絞り込み欄）からShift+Tabで戻ると、閉じて対象ボタンへ。
+  // 最初（見出しの×）からShift+Tabで戻ると、対象ボタンへ移る。閉じない。
   await button.click();
   await expect(selection.getByRole('searchbox')).toBeFocused();
+  await selection.getByRole('button', { name: '対象の選択を閉じる' }).focus();
   await page.keyboard.press('Shift+Tab');
-  await expect(selection).toHaveCount(0);
   await expect(button).toBeFocused();
+  await expect(selection).toBeVisible();
 
-  // 最後（閉じる）からTabで進むと、閉じてボタンの次（解析設定）へ。
-  await button.click();
-  await selection.getByRole('button', { name: '閉じる' }).focus();
+  // 最後（すべて外す）からTabで進むと、ボタンの次（解析設定）へ移る。閉じない。
+  await selection.getByRole('button', { name: 'すべて外す' }).focus();
   await page.keyboard.press('Tab');
-  await expect(selection).toHaveCount(0);
   await expect(page.getByRole('button', { name: '解析設定', exact: true })).toBeFocused();
+  await expect(selection).toBeVisible();
 });
 
 test('ラベル付きのSetupは、候補の2行目にフル名を出す', async ({ page }) => {
@@ -478,14 +479,15 @@ test('ラベル付きのSetupは、候補の2行目にフル名を出す', async
 test.describe('スマホ幅', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('選択は画面下からのシートで出て、暗い所を押すと閉じて対象ボタンへフォーカスが戻る', async ({ page }) => {
+  test('選択は画面下からのシートで出て、外を押しても閉じず、×で閉じると対象ボタンへフォーカスが戻る', async ({ page }) => {
     await page.goto('/analyzer/comparison');
     const button = page.getByRole('button', { name: /^対象: / });
     const selection = await openTargetSelection(page);
     const box = (await selection.boundingBox())!;
     expect(Math.round(box.y + box.height)).toBe(844);
     await page.mouse.click(195, 40);
-    await expect(selection).toHaveCount(0);
+    await expect(selection).toBeVisible();
+    await closeTargetSelection(page);
     await expect(button).toBeFocused();
   });
 });
@@ -497,7 +499,7 @@ test('候補に当てはまる配列・Setupが無い時は、その旨を出す
   await expect(selection).toContainText('当てはまる配列・Setupはありません。');
 });
 
-test('対象の選択は組み込み・英字 / 組み込み・かな / Setupの区分に分かれ、外を押すと閉じる', async ({ page }) => {
+test('対象の選択は組み込み・英字 / 組み込み・かな / Setupの区分に分かれる', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
   await page.goto('/analyzer/comparison');
   const selection = await openTargetSelection(page);
@@ -506,11 +508,11 @@ test('対象の選択は組み込み・英字 / 組み込み・かな / Setupの
   await toggleTarget(page, 'layout:qwerty');
   await toggleTarget(page, 'layout:naginata-v18');
   await expect(selection.getByRole('status')).toHaveText('2件を選択中');
+  // 外を押しても閉じない
   await page.getByRole('heading', { name: '比較表', level: 1 }).click();
-  await expect(selection).toHaveCount(0);
+  await expect(selection).toBeVisible();
 
   // 「すべて外す」は選択を空にする（戻す時はUndo）。
-  await openTargetSelection(page);
   await selection.getByRole('button', { name: 'すべて外す' }).click();
   await expectTargetNames(page, []);
   await expect(page.locator('[data-pane-empty="true"]')).toBeVisible();
@@ -581,8 +583,7 @@ test('対象が空の時は、ペインに選ぶボタンだけを出し、パ�
   await expect(selection.getByRole('searchbox')).not.toBeFocused();
 
   // 閉じたら同じペインでは出し直さない。空のボタンから開けば同じ選択が開く。
-  await page.getByRole('heading', { name: '比較表', level: 1 }).click();
-  await expect(selection).toHaveCount(0);
+  await closeTargetSelection(page);
   // 「閉じた後に開き直されない」ことが検査の中身なので、猶予の分は実時間で待つ
   await page.waitForTimeout(300);
   await expect(selection).toHaveCount(0);

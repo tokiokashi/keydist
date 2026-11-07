@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom';
 import {
   useEffect,
   useEffectEvent,
@@ -11,10 +10,18 @@ import {
   type ReactNode,
 } from 'react';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
-import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup, type TargetKindFilter } from './target-choices.ts';
+import {
+  filterTargetChoiceGroups,
+  targetSummaryText,
+  unselectedVisibleTargets,
+  type TargetChoiceGroup,
+  type TargetKindFilter,
+} from './target-choices.ts';
 import { isStrokeOnlyMark, targetMark, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
 import './target-selection.css';
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
+import { FloatingWindow } from './FloatingWindow.tsx';
+import { claimTargetSelection, openTargetSelectionId, releaseTargetSelection, subscribeTargetSelection } from './target-selection-open.ts';
 
 /**
  * 見出しの「対象」ボタンと、そこから開く対象の選択（docs/architecture.md「対象の選択」）。
@@ -24,9 +31,13 @@ import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
  * - 見出しには対象の名前を並べ、入り切らなければ「先頭 他N件」に畳む。全件はhover
  * - Analyzerが差し込む項目（比較表の基準）は、選択の中の一覧の下に置く
  *
- * パソコン幅ではボタンの下に重ねて開く非モーダルのポップオーバー、スマホ幅では画面下からのシート
- * （`target-selection.css`）。どちらも`document.body`へ出す。ペインの枠はcontainer（レイアウト封じ込め）
- * なので、中に置くと`position: fixed`が画面ではなくペインを基準にしてしまう。
+ * 開く先は解析設定と同じ浮かぶ小窓（`FloatingWindow`）。非モーダルで背後を暗くせず、見出しをドラッグして動かせるので、
+ * 選んだ結果の図を見ながら対象を足し引きできる。外を押しても、フォーカスが外へ移っても閉じない。閉じるのは×・Escape・
+ * 対象ボタンをもう一度押す時。Escapeはフォーカスが小窓の外にあっても閉じる（別の小窓の中にフォーカスがあれば、その小窓が先に受ける）。
+ * パソコン幅は対象ボタンの近くに出し、スマホ幅は解析設定と同じ下からのシートにする。
+ * 開いている選択は画面全体で1つ（`target-selection-open.ts`）。別の選択を開くと、開いていた方は閉じる。
+ * 小窓は`document.body`へ出る。ペインの枠はcontainer（レイアウト封じ込め）なので、中に置くと`position: fixed`が
+ * 画面ではなくペインを基準にしてしまう。
  */
 export interface TargetSummaryItem {
   readonly key: string;
@@ -60,6 +71,7 @@ export interface TargetSelectionProps {
    * 自動で開くか。`undefined`の間はまだ決めない（資産の読み込み中）。最初に`true`/`false`が来た時の値で
    * 決めて固定し、`true`ならその時に一度だけ、フォーカスを奪わずに開く（対象が空のペインを開いた直後）。
    * 後から対象が空になっても開かない（最後の1件を外した・別のタブで外された時に勝手に開かないように）。
+   * 別の選択が既に開いている時は開かず、後でその選択が閉じても開かない（利用者が開いた選択を閉じないため）。
    * パソコン幅だけ。スマホ幅のシートは画面を覆うので自動では出さない。
    */
   readonly autoOpen?: boolean | undefined;
@@ -72,7 +84,6 @@ export interface TargetSelectionProps {
 
 /** スマホ幅（シートで出す幅）。解析設定のシートと同じ境目（`ui/theme/breakpoints.ts`）。 */
 const SHEET_MEDIA = MOBILE_QUERY;
-const EDGE = 8;
 
 /** 種類の切り替え。並びは「すべて」を先頭に置く。 */
 const KIND_FILTERS: readonly { readonly value: TargetKindFilter; readonly label: string }[] = [
@@ -83,31 +94,6 @@ const KIND_FILTERS: readonly { readonly value: TargetKindFilter; readonly label:
 
 function isSheet(): boolean {
   return typeof window !== 'undefined' && window.matchMedia(SHEET_MEDIA).matches;
-}
-
-interface Position {
-  readonly x: number;
-  readonly y: number;
-  /** 置いた位置から画面の端までの高さ。一覧はこの中でスクロールする。 */
-  readonly maxHeight?: number;
-}
-
-/** 下に置いて一覧が見られる最低限の高さ。これより狭く、上の方が広い時だけ上に出す。 */
-const MIN_BELOW = 280;
-
-/**
- * ボタンの左端に揃えて真下に出す。下が狭ければ高さを詰め、それでも足りず上の方が広い時だけ上に出す。
- * 上に出すと、開いた選択が見出しより上（テキスト等）を隠すため、下を優先する。
- */
-function popoverPosition(anchor: HTMLElement): Position {
-  const rect = anchor.getBoundingClientRect();
-  const width = Math.min(24 * 16, window.innerWidth - 2 * EDGE);
-  const x = Math.max(EDGE, Math.min(rect.left, window.innerWidth - width - EDGE));
-  const below = rect.bottom + 6;
-  const spaceBelow = window.innerHeight - below - EDGE;
-  const spaceAbove = rect.top - 6 - EDGE;
-  if (spaceBelow >= MIN_BELOW || spaceBelow >= spaceAbove) return { x, y: below, maxHeight: spaceBelow };
-  return { x, y: EDGE, maxHeight: spaceAbove };
 }
 
 const TABBABLE = 'a[href], button, input, select, textarea, [tabindex]';
@@ -134,11 +120,6 @@ function tabbables(root: HTMLElement): HTMLElement[] {
   });
 }
 
-/** スマホ幅はシート（位置はCSSが決める）、パソコン幅はボタンの近く。 */
-function placeFor(anchor: HTMLElement): Position {
-  return isSheet() ? { x: 0, y: 0 } : popoverPosition(anchor);
-}
-
 export function TargetSelection({
   mode,
   groups,
@@ -163,13 +144,10 @@ export function TargetSelection({
   const autoOpenDecidedRef = useRef(false);
   const [query, setQuery] = useState('');
   const [kindFilter, setKindFilter] = useState<TargetKindFilter>('all');
-  const [position, setPosition] = useState<Position | undefined>(undefined);
   const [fits, setFits] = useState(true);
   const panelId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const filterRef = useRef<HTMLInputElement>(null);
-  const scrimRef = useRef<HTMLDivElement>(null);
   const summaryRef = useRef<HTMLSpanElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const moreRef = useRef<HTMLSpanElement>(null);
@@ -186,6 +164,8 @@ export function TargetSelection({
   const selectedKeys = useMemo(() => new Set(summary.map((item) => item.key)), [summary]);
   const swatchByKey = useMemo(() => new Map(summary.map((item) => [item.key, item] as const)), [summary]);
   const visibleGroups = filterTargetChoiceGroups(groups, query, kindFilter);
+  // 一覧に出ている候補のうち、まだ選んでいないもの（一覧の順。同じ対象が複数の区分に出ても1回だけ）。
+  const unselectedVisible = useMemo(() => unselectedVisibleTargets(visibleGroups, selectedKeys), [visibleGroups, selectedKeys]);
 
   // 全部の名前が入るかを実寸で測る。測る用の要素（見えない・全文）と、ボタンが使える幅を比べる。
   // 使える幅 = 見出しの対象の欄の幅 − ボタンの名前以外の部分の幅。
@@ -212,7 +192,10 @@ export function TargetSelection({
   // 自動で開くかを決めるのは、autoOpenが決まった最初の一度だけ。開いているか・開く関数は、決める時の値を読む。
   const decideAutoOpen = useEffectEvent((shouldOpen: boolean) => {
     // すでに開いている（読み込み中に押した）時は、フォーカスの扱いを変えない。
-    if (!shouldOpen || open || isSheet()) return;
+    // 別の選択が開いている時は開かない（利用者が開いた選択を閉じないため）。
+    if (!shouldOpen || open || isSheet() || openTargetSelectionId() !== undefined) return;
+    // 同じ描画で決まる別のペインが重ねて開かないよう、開く前に押さえる。
+    claimTargetSelection(panelId);
     focusOnOpenRef.current = false;
     setOpen(true);
   });
@@ -226,68 +209,58 @@ export function TargetSelection({
     setOpen(false);
     setQuery('');
     setKindFilter('all');
-    setPosition(undefined);
     if (focusButton) buttonRef.current?.focus({ preventScroll: true });
   };
 
-  // 開いたら置き場を決める（描く前に決まるので、置く前の位置は見えない）。
-  useLayoutEffect(() => {
-    if (open && buttonRef.current) setPosition(placeFor(buttonRef.current));
-  }, [open]);
+  // 閉じる時にフォーカスをボタンへ戻すのは、小窓の中かボタンにあった時だけ（自動で開いたまま別の所を操作している時に、フォーカスを奪わない）。
+  const focusIsInside = () => {
+    const active = document.activeElement;
+    if (active === null) return false;
+    return document.getElementById(panelId)?.contains(active) === true || buttonRef.current?.contains(active) === true;
+  };
 
-  // フォーカスは置き場が決まって見えるようになってから移す（見えない要素へはフォーカスが入らない）。
-  // パソコン幅は絞り込み欄へ（すぐ打てるように）。スマホ幅はシート自体へ（絞り込み欄へ移すと
-  // ソフトキーボードが開き、一覧が隠れる）。
-  const placed = position !== undefined;
-  useEffect(() => {
-    if (!placed) return;
-    if (!focusOnOpenRef.current) {
-      focusOnOpenRef.current = true;
-      return;
-    }
-    if (isSheet()) panelRef.current?.focus();
-    else filterRef.current?.focus();
-  }, [placed]);
-
-  // 外を押す・Escapeで閉じる。画面の大きさ・スクロールが変わったら置き直す。
-  const closeFromOutside = useEffectEvent((focusButton: boolean) => close(focusButton));
+  // 開いている間は、画面全体で開いている選択として押さえる。別の選択が押さえたら閉じる。
+  const closeByOther = useEffectEvent(() => close(false));
   useEffect(() => {
     if (!open) return undefined;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      // 暗い所（スマホ幅）は自分のクリックで閉じ、フォーカスをボタンへ戻す。ここで先に閉じると
-      // フォーカスの行き先が無くなり、ページ全体へ落ちる。
-      if (panelRef.current?.contains(target) || buttonRef.current?.contains(target) || scrimRef.current?.contains(target)) return;
-      closeFromOutside(false);
-    };
-    const reposition = () => {
-      if (buttonRef.current) setPosition(placeFor(buttonRef.current));
-    };
-    // Escapeは、フォーカスが選択の外にあっても閉じる。フォーカスをボタンへ戻すのは、選択の中か
-    // ボタンにあった時だけ（自動で開いたまま別の所を操作している時に、フォーカスを奪わない）。
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      const active = document.activeElement;
-      closeFromOutside(active !== null && (panelRef.current?.contains(active) === true || buttonRef.current?.contains(active) === true));
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('resize', reposition);
-    window.addEventListener('scroll', reposition, { passive: true, capture: true });
+    claimTargetSelection(panelId);
+    const unsubscribe = subscribeTargetSelection(() => {
+      const current = openTargetSelectionId();
+      if (current !== undefined && current !== panelId) closeByOther();
+    });
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', reposition);
-      window.removeEventListener('scroll', reposition, { capture: true });
+      unsubscribe();
+      releaseTargetSelection(panelId);
     };
+  }, [open, panelId]);
+
+  // Escapeは、フォーカスが小窓の外にあっても閉じる。小窓の中にフォーカスがある時は、小窓自身が受けて閉じる。
+  const closeFromEscape = useEffectEvent(() => close(focusIsInside()));
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeFromEscape();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
+  // 開いた時のフォーカス。パソコン幅は絞り込み欄へ（すぐ打てるように）。スマホ幅は小窓自体へ（絞り込み欄へ移すと
+  // ソフトキーボードが開き、一覧が隠れる）。自動で開いた時は移さない。
+  const initialFocus = () => {
+    if (!focusOnOpenRef.current) {
+      focusOnOpenRef.current = true;
+      return false;
+    }
+    return isSheet() ? null : filterRef.current;
+  };
+
   /**
-   * 選択は`document.body`の末尾へ出しているので、Tabの順は画面上の位置とつながっていない。
-   * 最後から先へ進んだらボタンの次へ、最初から戻ったらボタンへ、閉じてから移す（非モーダルのポップオーバー）。
+   * 小窓は`document.body`の末尾へ出しているので、Tabの順は画面上の位置とつながっていない。
+   * 最後から先へ進んだらボタンの次へ、最初から戻ったらボタンへ、フォーカスだけを移す（閉じない）。
    */
   const leaveByTab = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const panel = panelRef.current;
+    const panel = document.getElementById(panelId);
     const button = buttonRef.current;
     if (!panel || !button) return;
     const inside = tabbables(panel);
@@ -296,12 +269,11 @@ export function TargetSelection({
     const atEnd = active === inside[inside.length - 1];
     if (event.shiftKey && atStart) {
       event.preventDefault();
-      close(true);
+      button.focus({ preventScroll: true });
     } else if (!event.shiftKey && atEnd) {
       event.preventDefault();
       const page = tabbables(document.body).filter((element) => !panel.contains(element));
       const next = page[page.indexOf(button) + 1];
-      close(false);
       (next ?? button).focus();
     }
   };
@@ -324,6 +296,8 @@ export function TargetSelection({
     toggle(target, key, true);
     close(true);
   };
+
+  const selectAllVisible = () => onChange([...selected, ...unselectedVisible]);
 
   const ariaSummary = names.length === 0 ? '未選択' : names.join('、');
 
@@ -362,133 +336,118 @@ export function TargetSelection({
           <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       </button>
-      {open
-        ? createPortal(
-            <>
-              <div ref={scrimRef} className="target-selection-scrim" aria-hidden="true" onClick={() => close(true)} />
-              <div
-                ref={panelRef}
-                id={panelId}
-                className="target-selection-panel"
-                role="dialog"
-                aria-modal="false"
-                aria-label={`${label}の選択`}
-                tabIndex={-1}
-                data-target-selection="true"
-                style={
-                  position === undefined
-                    ? { visibility: 'hidden' }
-                    : {
-                        ['--target-selection-x' as string]: `${position.x}px`,
-                        ['--target-selection-y' as string]: `${position.y}px`,
-                        ...(position.maxHeight === undefined ? {} : { ['--target-selection-max-height' as string]: `${position.maxHeight}px` }),
-                      }
-                }
-                onKeyDown={(event) => {
-                  pointerRef.current = false;
-                  if (event.key === 'Tab') leaveByTab(event);
-                }}
-                onBlur={(event) => {
-                  // Tab以外でフォーカスが選択の外へ出た時（ブラウザの操作等）も、開いたまま取り残さない。
-                  const next = event.relatedTarget as Node | null;
-                  if (next !== null && !panelRef.current?.contains(next) && !buttonRef.current?.contains(next)) close(false);
-                }}
-                onPointerDown={() => {
-                  pointerRef.current = true;
-                }}
-              >
-                <div className="target-selection-filter">
-                  <input
-                    ref={filterRef}
-                    type="search"
-                    value={query}
-                    placeholder="配列・Setupを名前で絞り込む"
-                    aria-label="配列・Setupを名前で絞り込む"
-                    onChange={(event) => setQuery(event.currentTarget.value)}
-                  />
-                  <fieldset className="plain-group target-selection-kind" aria-label="配列の種類で絞り込む">
-                    {KIND_FILTERS.map((item) => (
-                      <label key={item.value}>
-                        <input type="radio" name={`${panelId}-kind`} checked={kindFilter === item.value} onChange={() => setKindFilter(item.value)} />
-                        <span>{item.label}</span>
-                      </label>
-                    ))}
-                  </fieldset>
-                </div>
-                <div className="target-selection-list">
-                  {visibleGroups.length === 0 ? (
-                    <p className="target-selection-empty">当てはまる配列・Setupはありません。</p>
-                  ) : (
-                    visibleGroups.map((group) => (
-                      <fieldset key={group.id} className="target-selection-group" data-target-group={group.id}>
-                        <legend>{group.label}</legend>
-                        {group.choices.map((choice) => {
-                          const checked = selectedKeys.has(choice.key);
-                          const swatch = swatchByKey.get(choice.key);
-                          return (
-                            <label key={choice.key} className="target-selection-choice" title={choice.fullName ?? choice.name}>
-                              <input
-                                type={mode === 'single' ? 'radio' : 'checkbox'}
-                                name={mode === 'single' ? `${panelId}-target` : undefined}
-                                value={choice.key}
-                                checked={checked}
-                                onChange={(event) => toggle(choice.target, choice.key, event.currentTarget.checked)}
-                                // 選ばれているラジオを押してもchangeは起きない。ホストが既定の対象を表示しているだけの時も
-                                // 「選んだ」として書き込み、押したら閉じる動きも揃える（描画時点で選ばれていたものだけ。
-                                // 矢印キーで別のラジオへ移る時のclickは、移り先がまだ選ばれていないので対象にならない）。
-                                onClick={mode === 'single' && checked ? () => confirmChecked(choice.target, choice.key) : undefined}
-                                // Chromeでは選ばれているラジオでSpaceを押してもclickが起きないので、キーボードでも同じ確定を通す。
-                                // 矢印キーはここでは扱わず、これまでどおりchangeで書いて閉じない。
-                                onKeyDown={
-                                  mode === 'single' && checked
-                                    ? (event) => {
-                                        if (event.key !== ' ' && event.key !== 'Enter') return;
-                                        // Enterのフォーム送信・Spaceのスクロールやclick（ブラウザによっては二重に走る）を止める。
-                                        event.preventDefault();
-                                        confirmChecked(choice.target, choice.key);
-                                      }
-                                    : undefined
+      {open ? (
+        <FloatingWindow
+          open
+          onClose={() => close(focusIsInside())}
+          title={`${label}の選択`}
+          closeLabel={`${label}の選択を閉じる`}
+          kind="target-selection"
+          id={panelId}
+          anchor={buttonRef.current}
+          placement="popover"
+          initialFocus={initialFocus}
+          onKeyDown={(event) => {
+            pointerRef.current = false;
+            if (event.key === 'Tab') leaveByTab(event);
+          }}
+        >
+          <div className="target-selection-filter">
+            <input
+              ref={filterRef}
+              type="search"
+              value={query}
+              placeholder="配列・Setupを名前で絞り込む"
+              aria-label="配列・Setupを名前で絞り込む"
+              onChange={(event) => setQuery(event.currentTarget.value)}
+            />
+            <fieldset className="plain-group target-selection-kind" aria-label="配列の種類で絞り込む">
+              {KIND_FILTERS.map((item) => (
+                <label key={item.value}>
+                  <input type="radio" name={`${panelId}-kind`} checked={kindFilter === item.value} onChange={() => setKindFilter(item.value)} />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+            </fieldset>
+          </div>
+          {/* 直前の操作がポインタかを覚えるだけの入れ物。操作の対象は中のチェックボックスとラジオ */}
+          <div
+            className="target-selection-list"
+            role="presentation"
+            onPointerDown={() => {
+              pointerRef.current = true;
+            }}
+          >
+            {visibleGroups.length === 0 ? (
+              <p className="target-selection-empty">当てはまる配列・Setupはありません。</p>
+            ) : (
+              visibleGroups.map((group) => (
+                <fieldset key={group.id} className="target-selection-group" data-target-group={group.id}>
+                  <legend>{group.label}</legend>
+                  {group.choices.map((choice) => {
+                    const checked = selectedKeys.has(choice.key);
+                    const swatch = swatchByKey.get(choice.key);
+                    return (
+                      <label key={choice.key} className="target-selection-choice" title={choice.fullName ?? choice.name}>
+                        <input
+                          type={mode === 'single' ? 'radio' : 'checkbox'}
+                          name={mode === 'single' ? `${panelId}-target` : undefined}
+                          value={choice.key}
+                          checked={checked}
+                          onChange={(event) => toggle(choice.target, choice.key, event.currentTarget.checked)}
+                          // 選ばれているラジオを押してもchangeは起きない。ホストが既定の対象を表示しているだけの時も
+                          // 「選んだ」として書き込み、押したら閉じる動きも揃える（描画時点で選ばれていたものだけ。
+                          // 矢印キーで別のラジオへ移る時のclickは、移り先がまだ選ばれていないので対象にならない）。
+                          onClick={mode === 'single' && checked ? () => confirmChecked(choice.target, choice.key) : undefined}
+                          // Chromeでは選ばれているラジオでSpaceを押してもclickが起きないので、キーボードでも同じ確定を通す。
+                          // 矢印キーはここでは扱わず、これまでどおりchangeで書いて閉じない。
+                          onKeyDown={
+                            mode === 'single' && checked
+                              ? (event) => {
+                                  if (event.key !== ' ' && event.key !== 'Enter') return;
+                                  // Enterのフォーム送信・Spaceのスクロールやclick（ブラウザによっては二重に走る）を止める。
+                                  event.preventDefault();
+                                  confirmChecked(choice.target, choice.key);
                                 }
-                              />
-                              {mode === 'multiple' ? (
-                                <TargetSwatch color={checked ? swatch?.color : undefined} mark={checked ? swatch?.mark : undefined} />
-                              ) : null}
-                              <span className="target-selection-choice-text">
-                                <span className="target-selection-choice-name">{choice.name}</span>
-                                {/* ラベル付きのSetupは、何の配列・物理配列かを2行目に出す（hoverの無いタッチでも見えるように）。 */}
-                                {choice.fullName !== undefined ? <span className="target-selection-choice-detail">{choice.fullName}</span> : null}
-                              </span>
-                              {choice.tag !== undefined ? <span className="target-selection-choice-tag">{choice.tag}</span> : null}
-                            </label>
-                          );
-                        })}
-                      </fieldset>
-                    ))
-                  )}
-                </div>
-                {extraItem !== undefined ? <div className="target-selection-extra">{extraItem}</div> : null}
-                <div className="target-selection-foot">
-                  {mode === 'multiple' ? (
-                    <>
-                      <span className="target-selection-count" role="status">
-                        <b>{selected.length}</b>件を選択中
-                      </span>
-                      <button type="button" onClick={() => onChange([])} disabled={selected.length === 0}>
-                        すべて外す
-                      </button>
-                    </>
-                  ) : (
-                    <span className="target-selection-count">配列かSetupを1つ選んでください</span>
-                  )}
-                  <button type="button" onClick={() => close(true)}>
-                    閉じる
-                  </button>
-                </div>
-              </div>
-            </>,
-            document.body,
-          )
-        : null}
+                              : undefined
+                          }
+                        />
+                        {mode === 'multiple' ? (
+                          <TargetSwatch color={checked ? swatch?.color : undefined} mark={checked ? swatch?.mark : undefined} />
+                        ) : null}
+                        <span className="target-selection-choice-text">
+                          <span className="target-selection-choice-name">{choice.name}</span>
+                          {/* ラベル付きのSetupは、何の配列・物理配列かを2行目に出す（hoverの無いタッチでも見えるように）。 */}
+                          {choice.fullName !== undefined ? <span className="target-selection-choice-detail">{choice.fullName}</span> : null}
+                        </span>
+                        {choice.tag !== undefined ? <span className="target-selection-choice-tag">{choice.tag}</span> : null}
+                      </label>
+                    );
+                  })}
+                </fieldset>
+              ))
+            )}
+          </div>
+          {extraItem !== undefined ? <div className="target-selection-extra">{extraItem}</div> : null}
+          <div className="target-selection-foot">
+            {mode === 'multiple' ? (
+              <>
+                <span className="target-selection-count" role="status">
+                  <b>{selected.length}</b>件を選択中
+                </span>
+                <button type="button" onClick={selectAllVisible} disabled={unselectedVisible.length === 0}>
+                  表示中を全部選ぶ
+                </button>
+                <button type="button" onClick={() => onChange([])} disabled={selected.length === 0}>
+                  すべて外す
+                </button>
+              </>
+            ) : (
+              <span className="target-selection-count">配列かSetupを1つ選んでください</span>
+            )}
+          </div>
+        </FloatingWindow>
+      ) : null}
     </div>
   );
 }

@@ -1,5 +1,14 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 import { WindowTitle } from './window-title.ts';
 
@@ -33,7 +42,9 @@ export interface FloatingWindowProps {
    */
   readonly titleHeading?: boolean;
   /** 小窓の種類。画面の部品を見分ける印になる。省略は解析設定。 */
-  readonly kind?: 'settings' | 'key-detail' | 'figure-settings';
+  readonly kind?: 'settings' | 'key-detail' | 'figure-settings' | 'target-selection';
+  /** 小窓のid（開く側のボタンの`aria-controls`が指す）。 */
+  readonly id?: string;
   /** Workspaceのペイン名（読み上げ用の名前と同じもの）。個別画面ではページに1枚なので出さない。 */
   readonly paneName?: string;
   /** 開いた時に小窓を寄せる基準（見出しの「解析設定」ボタン、選んだキー、図の表示のボタン）。開いている間に基準が替わっても、小窓の位置は動かさない。 */
@@ -42,9 +53,18 @@ export interface FloatingWindowProps {
    * 基準に対する初期位置。`below`は基準のすぐ下に右端をそろえる（解析設定。ボタンが見出しの右端にある）。
    * `below-start`は基準のすぐ下に左端をそろえる（図の表示。ボタンが見出しの文字の隣にある）。
    * `edge`は基準の高さで画面の右端に寄せ、基準に重なる時だけ左端に寄せる（キーの詳細。押したキーを隠さず、図を覆う範囲を小さくする）。
+   * `popover`は`below-start`に加えて、下が狭ければ高さを詰め、それでも足りず上の方が広い時だけ上に出す（対象の選択。高さは`--settings-window-max-height`で渡す）。
+   * ドラッグする前は、画面の大きさやスクロールが変わると基準の近くへ置き直す。ドラッグした後は置き直さず、画面からはみ出す時だけ中へ寄せる。
    * どれも、開いた後はドラッグで動かせる。
    */
-  readonly placement?: 'below' | 'below-start' | 'edge';
+  readonly placement?: 'below' | 'below-start' | 'edge' | 'popover';
+  /**
+   * 開いた時のフォーカスの行き先を返す。要素を返せばそこへ、`null`なら小窓自体へ、`false`なら移さない（自動で開いた時など）。
+   * 省略は小窓自体。
+   */
+  readonly initialFocus?: () => HTMLElement | null | false;
+  /** 小窓の中のキー操作。Escapeで閉じる処理より先に呼ぶ。 */
+  readonly onKeyDown?: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   /** 解析設定をすべて初期値へ戻す。あればヘッダー行（タイトルと閉じるボタンの間）に文字ボタンを出す。 */
   readonly onReset?: () => void;
   /** 「すべて初期値に戻す」のtitle。省略は「対象と条件は変わらない」。 */
@@ -55,6 +75,8 @@ export interface FloatingWindowProps {
 interface Position {
   readonly x: number;
   readonly y: number;
+  /** 置いた位置から画面の端までの高さ（`popover`だけ）。ドラッグすると外れ、小窓は置いた位置から画面の下端までに収まる。 */
+  readonly maxHeight?: number;
 }
 
 /** シートにする幅。縦積み・見出し1行と同じスマホ幅の境目（`ui/theme/breakpoints.ts`）。 */
@@ -93,7 +115,10 @@ function clamp(position: Position, element: HTMLElement | null): Position {
   };
 }
 
-function initialPosition(anchor: Element | null, element: HTMLElement | null, placement: 'below' | 'below-start' | 'edge'): Position {
+/** 下に置いて一覧が見られる最低限の高さ。これより狭く、上の方が広い時だけ上に出す。 */
+const MIN_BELOW = 280;
+
+function initialPosition(anchor: Element | null, element: HTMLElement | null, placement: 'below' | 'below-start' | 'edge' | 'popover'): Position {
   const width = element?.offsetWidth ?? 320;
   if (anchor === null) return clamp({ x: window.innerWidth - width - 24, y: 80 }, element);
   const rect = anchor.getBoundingClientRect();
@@ -102,6 +127,15 @@ function initialPosition(anchor: Element | null, element: HTMLElement | null, pl
     const rightX = window.innerWidth - width - 24;
     const covers = rect.right > rightX && rect.left < rightX + width;
     return clamp({ x: covers ? 24 : rightX, y: rect.top }, element);
+  }
+  if (placement === 'popover') {
+    const x = clamp({ x: rect.left, y: 0 }, element).x;
+    const below = rect.bottom + 6;
+    const spaceBelow = window.innerHeight - below - EDGE;
+    const spaceAbove = rect.top - 6 - EDGE;
+    // 上に出すと見出しより上（テキスト等）を隠すため、下を優先する。
+    if (spaceBelow >= MIN_BELOW || spaceBelow >= spaceAbove) return { x, y: below, maxHeight: spaceBelow };
+    return { x, y: EDGE, maxHeight: spaceAbove };
   }
   if (placement === 'below-start') return clamp({ x: rect.left, y: rect.bottom + 6 }, element);
   // ボタンの右端に小窓の右端を揃え、ボタンのすぐ下に出す。
@@ -118,6 +152,9 @@ export function FloatingWindow({
   paneName,
   anchor,
   placement = 'below',
+  initialFocus,
+  onKeyDown,
+  id,
   onReset,
   resetTitle = '対象と条件は変わりません',
   children,
@@ -126,6 +163,8 @@ export function FloatingWindow({
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const focusPendingRef = useRef(false);
   const dragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number } | undefined>(undefined);
+  // ドラッグで動かしたか。動かすまでは、画面の大きさやスクロールが変わると基準の近くへ置き直す（`popover`）。
+  const draggedRef = useRef(false);
   const isSheet = useMediaQuery(SHEET_QUERY);
   // シートを引き下ろしている量（px）。undefinedは触っていない状態。
   const [sheetY, setSheetY] = useState<number | undefined>(undefined);
@@ -149,6 +188,7 @@ export function FloatingWindow({
       closingRef.current = false;
       return;
     }
+    draggedRef.current = false;
     placeInitially();
     focusPendingRef.current = true;
   }, [open]);
@@ -158,16 +198,30 @@ export function FloatingWindow({
   useEffect(() => {
     if (position === undefined || !focusPendingRef.current) return;
     focusPendingRef.current = false;
-    windowRef.current?.focus();
-  }, [position]);
+    const target = initialFocus?.() ?? null;
+    if (target === false) return;
+    (target ?? windowRef.current)?.focus({ preventScroll: true });
+  }, [position, initialFocus]);
 
   // 画面の大きさが変わっても見出しを掴める範囲に留める。
   useEffect(() => {
     if (!open) return undefined;
     const onResize = () => setPosition((current) => (current === undefined ? current : clamp(current, windowRef.current)));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [open]);
+    const follows = () => placement === 'popover' && !draggedRef.current;
+    const onViewportChange = () => (follows() ? placeInitially() : onResize());
+    // 小窓の中のスクロール（一覧）では置き直さない。
+    const onScroll = (event: Event) => {
+      if (!follows()) return;
+      if (event.target instanceof Node && windowRef.current?.contains(event.target)) return;
+      placeInitially();
+    };
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onScroll, { capture: true });
+    };
+  }, [open, placement]);
 
   if (!open) return null;
 
@@ -227,6 +281,7 @@ export function FloatingWindow({
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (drag === undefined || drag.pointerId !== event.pointerId) return;
+    draggedRef.current = true;
     setPosition(clamp({ x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY }, windowRef.current));
   };
   const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -242,6 +297,7 @@ export function FloatingWindow({
   return createPortal(
     <div
       ref={windowRef}
+      id={id}
       className="settings-window"
       role="dialog"
       aria-modal="false"
@@ -250,6 +306,7 @@ export function FloatingWindow({
       data-settings-window={kind === 'settings' || undefined}
       data-key-detail-window={kind === 'key-detail' || undefined}
       data-figure-settings-window={kind === 'figure-settings' || undefined}
+      data-target-selection={kind === 'target-selection' || undefined}
       data-sheet={isSheet || undefined}
       data-sheet-dragging={sheetDragging || undefined}
       style={
@@ -258,10 +315,13 @@ export function FloatingWindow({
           : {
               ['--settings-window-x' as string]: `${position.x}px`,
               ['--settings-window-y' as string]: `${position.y}px`,
+              ...(position.maxHeight === undefined ? {} : { ['--settings-window-max-height' as string]: `${position.maxHeight}px` }),
               ...(isSheet && sheetY !== undefined ? { ['--settings-sheet-y' as string]: `${sheetY}px` } : {}),
             }
       }
       onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (event.defaultPrevented) return;
         if (event.key === 'Escape') {
           event.stopPropagation();
           onClose();
