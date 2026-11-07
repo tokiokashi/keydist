@@ -1,5 +1,5 @@
 import type { TextLanguage } from '#input/text/language.ts';
-import { type KanaScript, kanaUnitOf, oneKanaUnitOf } from './unit-words.ts';
+import { type KanaScript, kanaUnitOf } from './unit-words.ts';
 
 /**
  * 複数のAnalyzerが縦軸に描く指標のうち、名前と単位が同じ指標の表示の文字。
@@ -22,12 +22,11 @@ export interface SharedMetricTexts {
 
 export function sharedMetricText(language: TextLanguage, script: KanaScript = 'hiragana'): SharedMetricTexts {
   const k = kanaUnitOf(language, script);
-  const one = oneKanaUnitOf(language, script);
   return {
-    perCharUnits: { label: `${one}で動く距離`, unit: `u/${k}` },
-    perCharSteps: { label: `${one}を打つアクション数`, unit: `アクション/${k}` },
-    meanPerStroke: { label: '1アクションで動く距離', unit: 'u/アクション' },
-    perPressUnits: { label: 'キー1つで動く距離', unit: 'u/キー' },
+    perCharUnits: { label: `1${k}換算の移動距離`, unit: `u/${k}` },
+    perCharSteps: { label: `1${k}換算のアクション数`, unit: `アクション/${k}` },
+    meanPerStroke: { label: '1アクションの移動距離', unit: 'u/アクション' },
+    perPressUnits: { label: '押下1回の移動距離', unit: 'u/キー' },
     sameFingerRate: { label: '同指率', unit: '%' },
   };
 }

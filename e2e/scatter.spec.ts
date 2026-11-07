@@ -56,7 +56,7 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/アクション');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数/カナ');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
-    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('カナ1つで押すキー数');
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1カナ換算の押下数');
     await expect.poll(() => qwerty.evaluate((element) => getComputedStyle(element).transform)).not.toBe(before);
   });
 });

@@ -32,10 +32,10 @@ export function inputUnitNoteOf(language: TextLanguage, script: KanaScript = 'hi
 }
 
 /**
- * 量の名前で、単位の語の1つ分を指す句（「かな1つで動く距離」の「かな1つ」）。
- * 「かな」は数える語でなく字の種類の名前なので、「1かな」と数詞を前に付けず「かな1つ」と書く。英語のテキストの「字」は数える語なので「1字」と書く。
+ * 量の名前で、文字数 `W`（仕様 §11.5）が数える字に付ける語。
+ * 日本語のテキストでは漢字を読みに直す前の表記で数えるので「変換後の」を付け、入力かな数 `C` と区別する。
+ * 英語のテキストは読みに直さず `W` と `C` が同じ数になるので何も付けない。
  */
-export function oneKanaUnitOf(language: TextLanguage, script: KanaScript = 'hiragana'): string {
-  const unit = kanaUnitOf(language, script);
-  return language === 'ja' ? `${unit}1つ` : `1${unit}`;
+export function textCharPrefixOf(language: TextLanguage): string {
+  return language === 'ja' ? '変換後の' : '';
 }
