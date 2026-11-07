@@ -14,11 +14,11 @@
 
 ### 1行目（必須）
 
-- `type` と `scope` は**英小文字**。`subject` は**日本語**でよい
+- `type` と `scope` は英小文字。`subject` は日本語でよい
 - `subject` は命令形・現在形（「追加する」「直す」）。過去形にしない
 - 末尾に句点（`。`）を付けない
-- 1行目は72文字以内に収める（バイト数ではなく**文字数**）
-- 本文を書く場合は、1行目との間に**空行**を入れる
+- 1行目は72文字以内に収める（バイト数ではなく文字数）
+- 本文を書く場合は、1行目との間に空行を入れる
 
 ### type
 
@@ -36,7 +36,7 @@
 | `chore` | 上記に当てはまらない雑務 |
 | `revert` | 取り消し。bodyに `This reverts commit <hash>.` を書く |
 
-**測定値が変わる変更は `fix` か `feat`。** `refactor` は数値が1桁も動かない時だけ使う。
+測定値が変わる変更は `fix` か `feat`。`refactor` は数値が1桁も動かない時だけ使う。
 
 ### scope
 
@@ -55,9 +55,9 @@
 
 ### body / footer
 
-- `body` は**なぜ**その変更をしたかを書く。何をしたかはdiffが語る
+- `body` はなぜその変更をしたかを書く。何をしたかはdiffが語る
 - 数値が変わる変更なら、変更前後の値を `body` に書く
-- issueとの紐づけは `footer` に `Closes #XX` / `Refs #XX`
+- issueとの紐づけは `footer` に書く。実装して検証済みなら `Closes #XX`、未検証なら `Refs #XX`
 - 破壊的変更は `footer` に `BREAKING CHANGE: <説明>`
 
 ### 例
@@ -90,10 +90,9 @@ clone直後に、本体のチェックアウトで1度だけ有効化する。
 git config core.hooksPath .githooks
 ```
 
-設定は `.git/config` に入り、worktreeと共有される。worktreeの中では打たない。
-サブエージェント用のworktreeを作る時に、値が絶対パス（本体の `.githooks`）へ書き換わる。値は直さない。
-その結果、hooksは本体のチェックアウトにある版が使われる。本体が古いコミットにいると古いhooksで検査するので、
-リードは単位を始める前に本体を `origin/main` に保つ。
+設定はworktreeと共有されるので、worktreeの中では打たない。
+サブエージェント用のworktreeを作る時に、値が絶対パス（本体の `.githooks`）へ書き換わるが、値は直さない。
+hooksは本体のチェックアウトにある版が使われるので、リードは単位を始める前に本体を `origin/main` に保つ。
 
 検査するのは次の4点。`Merge` / `Revert` / `fixup!` / `squash!` で始まるメッセージは
 gitが形を決めるので素通しする。
@@ -105,12 +104,9 @@ gitが形を決めるので素通しする。
 | 句点 | 件名が `。` で終わっていないか |
 | 空行 | 2行目が空行か（本文を書く場合） |
 
-検査より前に、メッセージ中のセッションURLの行（行頭の `Claude-Session:`）を書き換えて消す。公開リポジトリの履歴に残さないため。
-また、Claude の共作者の行（`Co-Authored-By: Claude … <noreply@anthropic.com>`）から、メールアドレスだけを外す。行は `Co-Authored-By: Claude …` のまま残る。GitHub は共作者の行のメールをアカウントに紐づけてアイコンを出すので、外せばアイコンは付かず、使ったモデルの記録だけが文字で残る。人間の共作者の行は触らない。
-CIは同じスクリプトを一時ファイルに掛けるので、この行は弾かず落とすだけにしている（push済みのブランチは書き換えない運用のため）。
+検査より前に、メッセージ中のセッションURLの行（行頭の `Claude-Session:`）を消し、Claudeの共作者の行（`Co-Authored-By: Claude … <noreply@anthropic.com>`）からメールアドレスだけを外す。人間の共作者の行は触らない。
 
-フック自身の挙動は `test/commit-msg.test.ts` で検証している（`npm test` に含まれる）。
-CIもPRの各コミットに同じスクリプトを掛けるため、フックを有効化し忘れてもPRで落ちる。
+フック自身の挙動は `test/commit-msg.test.ts` が検証する。CIもPRの各コミットに同じスクリプトを掛ける。
 
 ## 書式とlint
 
@@ -129,68 +125,51 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 `npm test` は辞書を取得せず、ネットワークに頼らない。置き場に zip がある時に、実際の辞書で解析する検査が走る。手元で zip が無ければ飛ばす。
 CI（`CI` が設定されている環境）では飛ばさず、zip が無ければ失敗する。`ci.yml` と `pages.yml` は Test の前に `scripts/dictionary-fetch.ts` を回して zip をそろえるので、この検査は必ず走る。
 公開物には zip と告知文（`lindera-ipadic-NOTICE.txt`）が入る。CIは zip を `dictionary-spec.ts` のハッシュをキーにキャッシュする（`ci.yml`・`e2e.yml`・`pages.yml`・`update-screenshots.yml`）。
-取得元のリリースから zip が消えると、過去のタグのビルドは取得で失敗する。この危険は受け入れてある。
-同じ zip を別の場所へ置いて `upstreamUrl` を差し替えれば、同じ公開物を作り直せる。
+取得元のリリースから zip が消えて過去のタグのビルドが失敗した時は、同じ zip を別の場所へ置いて `upstreamUrl` を差し替えれば、同じ公開物を作り直せる。
 
 ## ブランチとPR
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）
 - push前に `npm run lint`・`npm run typecheck`・`npm test`・`npm run build` を通す。ブラウザe2eは手元で全件を回さず、CIの結果を読む（「ブラウザe2e」）
-- 開発に使う npm は `package.json` の `packageManager` に書いた版（npm 11）。Node 22 付属の npm 10 は `package-lock.json` のフラグの行（`dev`・`devOptional`）の書き方が違い、更新のたびに行が行き来する。
-  npm 10 で `npm install`・`npm ci` を打つと `devEngines` の検査で失敗する。`npm install --global npm@11` で入れ替える。CIの `npm ci` を回すジョブも同じ版に入れ替えてから回す
+- 開発に使う npm は `package.json` の `packageManager` に書いた版（npm 11）。Node 22 付属の npm 10 で `npm install`・`npm ci` を打つと `devEngines` の検査で失敗するので、`npm install --global npm@11` で入れ替える。CIの `npm ci` を回すジョブも同じ版に入れ替えてから回す
 - `main` へのマージは、リリースPRを除いて公開しない（「公開」）。CI（test / typecheck / build / browser-e2e）は通る状態を保つ
 
 ### 作業単位の切り方
 
-- 原則は浅く積む。各単位を `main` から切り、PRのbaseも `main` にする
-- 積む（スタックPR）のは、未マージの単位に本当に依存する時だけ。深く積むほど、下の修正やマージのたびに上の追従が要る
-- push済みのブランチはrebase・強制pushしない。`main` や下のブランチの変更は、それを**マージして**取り込む
-- 並行作業はgit worktreeを分けてよい。同じファイルに触る単位は並行にせず直列にする。衝突を後で解く手間の方が大きい。
-  サブエージェント（`.claude/agents/`）は自分のworktreeを `.claude/worktrees/` に持つ（`AGENTS.md`「エージェントの役割」）。`node_modules` は `.worktreeinclude` で本体から複製される（`.bin` のリンクは複製されないので `npm rebuild --ignore-scripts` で戻す）
+- 各単位を `main` から切り、PRのbaseも `main` にする
+- 積む（スタックPR）のは、未マージの単位に依存する時だけ
+- push済みのブランチはrebase・強制pushしない。`main` や下のブランチの変更は、それをマージして取り込む
+- 並行作業はgit worktreeを分けてよい。同じファイルに触る単位は並行にせず直列にする
+- worktreeの `node_modules` は `.worktreeinclude` で本体から複製されるが、`.bin` のリンクは複製されない。差分が `package.json`・`package-lock.json`・`patches/` のどれかを含むなら `npm ci`、含まなければ `npm rebuild --ignore-scripts` を1回流してから使う
 
 ### マージ
 
-オーナーはいつでもマージしてよい。エージェントがマージするのは、baseが `main` のPRで、次を**全部**満たす時だけ。
+オーナーはいつでもマージしてよい。エージェントがマージするのは、baseが `main` のPRで、次を全部満たす時だけ。
+
+- 実装者と別のレビュアー（区分で決まるレビュー役のエージェント）が、現在のheadを承認している。スタックなら全PRのheadについて。レビュー後に修正コミットを足したら、再レビューを受ける
+- headのCIが緑。CIはマージの必須条件にしていないので、`gh api repos/tokiokashi/keydist/commits/<sha>/check-runs` で自分で確かめる
+- PRのheadが今の `origin/main` を祖先に含まない時は、`main` をマージした状態で `npm run lint`・`npm run typecheck`・`npm test`・`npm run build` が通る。リードがマージの直前に確かめ、e2eは見ない
+  - `git fetch origin main <ブランチ>` の後に `git merge-base --is-ancestor origin/main origin/<ブランチ>` が0で終われば、この検査は要らない
+  - 一時の作業ツリーは `origin/<ブランチ>` から作る。`FETCH_HEAD` は使わない。直前の `git fetch` が複数のrefを取ると、`FETCH_HEAD` の先頭が `main` を指す
+  - 一時の作業ツリーには `node_modules` が無い。差分に `package.json`・`package-lock.json`・`patches/` が含まれる時は `npm ci` し、含まれない時は本体の `node_modules` をsymlinkする。symlinkは `git worktree remove` の前に外す
+  - 衝突した時か検査が落ちた時は、実装役に `main` をマージさせ、新しいheadで再レビューを受ける
+- 推奨案で決めた選択があれば、PR本文の「決めきれなかった点」に挙げてある
+- PRで直さずに残すもの（後続）は、マージ前にissueにしてマイルストーンを決め、PR本文にはその番号だけを書く
+
 スタックに入っていないPRは直接マージし、スタックは一番上のPRに `merge-stack` ラベルを付けて入れる（「スタックPR」）。
-リリースPRは、オーナーにリリースを頼まれている時だけマージしてよい（「公開」）。
-リリースPRは独立したレビュアーの承認を条件にしない（下の「リリースPRの条件」）。
+リリースPRは、オーナーにリリースを頼まれている時だけマージしてよく、条件は下の「リリースPRの条件」に置き換わる。
 
-- 実装者と別のレビュアー（レビュー役のエージェント）が、**現在のhead**を承認している。スタックなら全PRのheadについて。
-  レビュー後に修正コミットを足したら、その修正も含めて再レビューを受けてからマージする
-- headのCIが緑。このリポジトリはCIをマージの必須条件にしていないので、赤くてもマージ自体はできてしまう。`gh pr checks` で自分で確かめる（クラウドのセッションではGraphQLが使えず失敗するので、`gh api repos/tokiokashi/keydist/commits/<sha>/check-runs` を使う）
-- PRのheadが今の `origin/main` を祖先に含まない時は、今の `main` と合わせた状態で `npm run lint`・`npm run typecheck`・`npm test`・`npm run build` が通る。
-  headのCIは、PRを開いた・pushした時点の `main` と合わせて走るので、その後に `main` が進むと結果が古くなる。
-  GitHubの衝突の判定は同じ行の書き換えしか見ないため、先に入ったPRが変えた関数を後のPRが古い形で使っていても、衝突は出ずに `main` で型検査とビルドが落ちる。
-  リードがマージの直前に次の手順で確かめる。e2eは見ない（CIを回し直さない）。待ち時間とCIの使用量が増えるわりに、型とビルドの食い違いは3つで見つかるため
-  - 要否の判定: `git fetch origin main <ブランチ>` の後に `git merge-base --is-ancestor origin/main origin/<ブランチ>` を打つ。終了コードが0なら、headが今の `main` を含むので検査は要らない
-  - 一時の作業ツリーを作る: `git worktree add --detach .claude/worktrees/<名前> origin/<ブランチ>`。PRのブランチは `origin/<ブランチ>` と明示し、`FETCH_HEAD` は使わない（直前の `git fetch` が複数のrefを取ると、`FETCH_HEAD` の先頭が `main` を指して `main` だけを検査してしまう）
-  - 一時の作業ツリーの中で `git merge --no-edit origin/main` を打ち、3つの検査を回す。コミットもpushもしない
-  - `node_modules` は、本体の `node_modules` を一時の作業ツリーにsymlinkする（`ln -s <本体>/node_modules node_modules`）。差分に `package.json`・`package-lock.json`・`patches/` が含まれる時はsymlinkせず、一時の作業ツリーで `npm ci` する
-  - 終わったらsymlinkを外してから `git worktree remove` で消す
-  - マージが衝突した時、または3つのどれかが落ちた時は、実装役に `main` をマージさせて追従させる（rebaseはしない）。実装役に戻した後は、新しいheadで再レビューを受けてからマージする
-- オーナーが決めていない選択を含まない。含むなら、PR本文に「決めきれなかった点」として選択肢とそれぞれで何が変わるかを書き、マージせずに残す
-- PRで直さずに残すもの（後続）は、マージ前に**issueにして**、PR本文にはその番号だけを書く。
-  issueにしないものは「後続」に書かない。後から見る仕組みの無いメモは残らない。
-  作ったissueはどのマイルストーンに入れるかも決める（「issueとマイルストーン」）
-
-**リリースPRの条件。** 次を**全部**満たせばマージしてよい。レビュー役の承認は要らない。
-`release-plan.sh` をスタブで再現するような検証もしない。
-`release-plan.sh` が、`main` から分かれた後が1コミットであること・変更ファイルが `package.json` と `package-lock.json` だけであること・
-変更が両ファイルの `version` だけであること・PRのタイトル・`version`・同じ版のタグが別のコミットに無いことの6つを機械で確かめ、外れていれば公開しない。
-人が同じ6つを二重に確かめても得るものが無い。次の条件は、リードがマージの前に確かめる。
-`release-plan.sh` が走るのはマージの後で、外れたPRがマージされると、公開はされなくても `main` には入る。マージ後の検査では入るのを止められないので、マージ前に確かめる。
+リリースPRの条件。次を全部満たせばマージしてよい。
 
 - `git diff --stat origin/main...<head>` が `package.json` と `package-lock.json` だけで、`main` から分かれた後が1コミットである
-- 変更が `package.json` の `version` と、`package-lock.json` の `version`（ルートと `packages[""]`）だけである
-  （`npm version` の差分は `package.json` に1行、`package-lock.json` に2行）。
-  `release-plan.sh` と同じ `.github/scripts/release-version-only.cjs` を、PRの分岐点とheadに対して手元で実行する。
+- 変更が `package.json` の `version` と、`package-lock.json` の `version`（ルートと `packages[""]`）だけである。
   `node .github/scripts/release-version-only.cjs "$(git merge-base origin/main <head>)" <head> <新しい版番号>` が0で終われば通り、非0なら標準出力に外れた箇所が出る
-- headのCIが緑である（`verify` はpushとpull_requestの両方のrun、`browser-e2e` はpull_requestのrun。`.md` だけの変更ではshardが飛ばされる）
+- headのCIが緑である（`verify` はpushとpull_requestの両方のrun、`browser-e2e` はpull_requestのrun）
 - その版のマイルストーンの開いたissueが0件である
 
-方式は**merge commit**（`gh pr merge <番号> --merge`。クラウドのセッションでは `gh api -X PUT repos/tokiokashi/keydist/pulls/<番号>/merge -f merge_method=merge -f sha=<承認したhead>`）。`sha` を付けると、承認の後にheadが動いていた時にGitHubがマージを拒むので、「承認は現在のheadに対して」を機械で守れる。squash・rebaseマージは使わない。
-上にブランチが積まれたPRをsquashすると、上のブランチが持つ元のコミットと `main` のsquashコミットが別物になり、
-上のブランチを `main` へ入れる時にadd/addの衝突が出た。
+`release-plan.sh` がマージ後に機械で確かめる項目を、スタブで再現して確かめ直さない。
+
+方式はmerge commit（クラウドのセッションでは `gh api -X PUT repos/tokiokashi/keydist/pulls/<番号>/merge -f merge_method=merge -f sha=<承認したhead>`）。`sha` を付け、承認の後にheadが動いていたらGitHubに拒ませる。squash・rebaseマージは使わない。
 
 ### スタックPR
 
@@ -199,27 +178,27 @@ CI（`CI` が設定されている環境）では飛ばさず、zip が無けれ
 
 - 作る: `gh stack init` → `gh stack add` → `gh stack submit`。baseを連鎖させて作った既存PRは `gh stack link` でスタックにまとめる
 - スタックは線形（上のブランチが下のブランチを含む）でないとスタック機能でマージできない。下の変更は下のブランチを上へマージして取り込む。下の変更をcherry-pickで上に写す「sync」コミットは作らない（線形でなくなる）
-- **上のPRを単独で下のブランチへマージしない。** 下のPRに混ざり、`main` の履歴で見分けられなくなる
+- 上のPRを単独で下のブランチへマージしない。下のPRに混ざり、`main` の履歴で見分けられなくなる
 - スタックのPRは、GitHubの非同期マージAPI（`merge-async`）でしかマージできない。一番上のPRで行うと下のPRも一緒に `main` へ入る。途中のPRで行うと一番下からそこまでが入り、上のPRは自動で `main` へ付け替わる。auto-mergeは使えない
 - オーナーはPR画面か `gh stack merge` でマージする
-- エージェントは、「マージ」の条件を満たした時に**一番上のPRへ `merge-stack` ラベルを付ける**。スタックのPRを通常のマージAPIやスタック外の手段でマージしない。
+- エージェントは、「マージ」の条件を満たした時に一番上のPRへ `merge-stack` ラベルを付ける。スタックのPRを通常のマージAPIやスタック外の手段でマージしない。
   ラベルを受けて `.github/workflows/merge-stack.yml` が次を行い、結果をPRにコメントしてラベルを外す（失敗しても外れるので、直してから付け直す）
   - 付けた人が書き込み権限を持つか、PRが `main` 向けの開いたスタックの一番上か、draft・未マージで閉じたPRが無いかを確かめる
   - スタックが `package.json` の `version` を変えていないかを確かめる（変えていたら断る。リリースPRはスタックに入れない）
   - 全PRのheadで `verify` / `browser-e2e` / `commit-messages` が成功し、他のチェックに失敗・実行中が無いかを確かめる。
     同じheadに、`verify` にはpush由来とpull_request由来が付き、`browser-e2e`（`e2e.yml`）にはpull_request由来だけが付く。
-    **(名前, event)ごとに最新の実行を取り、付いているものがどれも失敗・実行中でないこと**と、必須の各ジョブが少なくとも1つのeventで成功していることを求める（片方の成功でもう片方の失敗を隠さない）。
+    (名前, event)ごとに最新の実行を取り、付いているものがどれも失敗・実行中でないことと、必須の各ジョブが少なくとも1つのeventで成功していることを求める（片方の成功でもう片方の失敗を隠さない）。
     判定のロジックは `.github/scripts/merge-stack-checks.cjs`（`test/merge-stack-checks.test.ts` で検証）
   - 判定してからマージ要求までの間に、どれかのPRのheadが動いていないかを取り直して照合する（動いていたら断る。付け直す）。
     `merge-async` のshaで固定できるのは一番上のPRだけなので、下のPRは照合で守る。照合とマージ要求の間の一瞬は固定できない
   - 一番上のPRを `merge-async`（merge commit）でマージし、終わるまで待つ
-  - 「マージ」の条件のうち、レビュー・未決の選択・後続のissue化など上に挙げた以外のものは機械では確かめない。ラベルを付けることが、それらを全部満たしたという宣言になる
+  - 「マージ」の条件のうち、レビュー・「決めきれなかった点」の記載・後続のissue化など上に挙げた以外のものは機械では確かめない。ラベルを付けることが、それらを全部満たしたという宣言になる
 - `merge-stack` はsecret `STACK_MERGE_TOKEN`（Contents・Pull requestsにwriteを持つfine-grained PAT）でマージする。
   このリポジトリには設定してあるので、マージはオーナーとして行われ、`main` へのpushでCIと `release.yml` が走る
   （`version` を変えないので `release.yml` は何も公開せずに終わる）。
   未設定なら `GITHUB_TOKEN` に落ち、そのpushは別のワークフローを起動しないので `main` のCIも `release.yml` も走らない
 - `STACK_MERGE_TOKEN` は有効期限が切れる。切れると `merge-stack` は認証エラーで失敗する。
-  症状は、**PRに何も書かれず、ラベルも残ったまま**、Actionsの実行だけが赤くなること（スタックの中身の問題ではない）。
+  症状は、PRに何も書かれず、ラベルも残ったまま、Actionsの実行だけが赤くなること（スタックの中身の問題ではない）。
   ラベルを付けたのに反応が無ければ、Actionsの `Merge stack` の実行ログを見る。更新はオーナーだけが行う
   - GitHubの Settings → Developer settings → Fine-grained personal access tokens で、このリポジトリに Contents・Pull requests の write を持つトークンを再生成する
   - リポジトリの Settings → Secrets and variables → Actions で `STACK_MERGE_TOKEN` の値を差し替える
@@ -227,13 +206,10 @@ CI（`CI` が設定されている環境）では飛ばさず、zip が無けれ
 - 下のPRが入ると、GitHubは上のブランチをサーバー側で書き換える（rebase）。rebase・強制pushの禁止はエージェント自身の操作の話で、
   これは対象外。書き換えられたブランチで作業を続ける前に、fetchしてローカルのworktreeをリモートのブランチに合わせる。
   古いローカルの履歴をpushしない
-- 誤りを見つけたら、**スタックの一番上に修正を積む**。下のPRへコミットしない。まとめて入るのは一番上の状態なので、一番上が検証済みなら足りる。既存のコミットは書き換えない
+- 誤りを見つけたら、スタックの一番上に修正を積む。下のPRへコミットしない。まとめて入るのは一番上の状態なので、一番上が検証済みなら足りる。既存のコミットは書き換えない
 - 同じリポジトリ内のブランチだけで組む（forkをまたげない）
 
 ## issueとマイルストーン
-
-後続をissueにする規則（「マージ」）でissueは増え続ける。マイルストーンで版に振り分け、
-リリースの前に片付けることで、処理するタイミングを仕組みにする。
 
 ### 振り分け
 
@@ -256,7 +232,7 @@ CI（`CI` が設定されている環境）では飛ばさず、zip が無けれ
 
 ### リリースの前に片付ける
 
-リリースPRを作る前に、その版のマイルストーンの開いたissueを**0件**にする。1件ずつ、次のどちらかにする。
+リリースPRを作る前に、その版のマイルストーンの開いたissueを0件にする。1件ずつ、次のどちらかにする。
 
 - 直す（PRで `Closes #XX`）
 - 次の版のマイルストーンへ移す。移す時は、なぜ今の版で直さないかを一言issueにコメントする
@@ -266,7 +242,7 @@ CI（`CI` が設定されている環境）では飛ばさず、zip が無けれ
 
 ### 待ち時間の作業
 
-本線の作業単位がレビュー待ち・CI待ち等で止まっている間は、別の作業単位で今の版のマイルストーンの**小さいissue**を片付ける。
+本線の作業単位がレビュー待ち・CI待ち等で止まっている間は、別の作業単位で今の版のマイルストーンの小さいissueを片付ける。
 
 - 開いている他の作業単位（本線を含む）が触っているファイルを触るissueは取らない（「作業単位の切り方」の、同じファイルは直列にする規則）
 - 本線と同じく `main` から切り、別のworktreeで作る。本線のブランチに積まない
@@ -312,27 +288,27 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 
 | 起点 | 誰が | 何が公開されるか |
 |---|---|---|
-| リリースPRのマージ（`.github/workflows/release.yml`） | オーナー、または頼まれたエージェント | リリースPRの**head**のコミット |
+| リリースPRのマージ（`.github/workflows/release.yml`） | オーナー、または頼まれたエージェント | リリースPRのheadのコミット |
 | 手動実行（`pages.yml` の Run workflow、入力は既存のタグ名） | オーナー | 指定したタグのコミット |
 
 それ以外の `main` へのマージは公開しない。`main` を開発の合流点として動かしても公開物は変わらない。
-タグをpushしても公開されない。タグのpushで走るワークフローはタグのコミットにある定義を使うので、公開の検査ごと書き換えられるため。
+タグをpushしても公開されない。
 手動実行もブランチに `main` を選んだ時だけ受け付ける。
 
 ### リリースPR
 
-- **エージェントはオーナーに頼まれた時だけリリースPRを作る。** 自分の判断でリリースを始めない。
+- エージェントはオーナーに頼まれた時だけリリースPRを作る。自分の判断でリリースを始めない。
   頼まれていれば、「マージ」の「リリースPRの条件」を満たした時に自分でマージしてよい
 - リリースPRはリード（エージェント本人）が `npm version` で作ってよい。実装役（implementer）に出さない
 - 作る前に、その版のマイルストーンの開いたissueを0件にする（「リリースの前に片付ける」）
 - 作り方: 最新の `main` から `chore/release-X.Y.Z` を切り、`npm version <minor|patch> --no-git-tag-version` で
   `package.json` と `package-lock.json` の `version` だけを上げ、`chore(release): X.Y.Z` でコミットする。
   PRのタイトルも `chore(release): X.Y.Z` にする（`release.yml` はこのタイトルでリリースPRを見分ける）
-- リリースPRは `main` から分かれた後の**1コミットだけ**で、`package.json` と `package-lock.json` しか変えない。
+- リリースPRは `main` から分かれた後の1コミットだけで、`package.json` と `package-lock.json` しか変えない。
   `release.yml` が機械的に確かめ、外れていれば公開しない
-- 公開されるのは**PRのheadのコミット**で、マージコミットではない。PRを作った時点の `main` に固定され、
+- 公開されるのはPRのheadのコミットで、マージコミットではない。PRを作った時点の `main` に固定され、
   マージまでの間に `main` へ入った別の作業は含まれない。だから `main` はリリースを待たずに進めてよい
-- 開いておくリリースPRは**1つだけ**。後から入った作業も含めたくなったら、今のリリースPRを閉じ、新しい `main` から作り直す。
+- 開いておくリリースPRは1つだけ。後から入った作業も含めたくなったら、今のリリースPRを閉じ、新しい `main` から作り直す。
   リリースPRのブランチに `main` をマージして更新しない（何を公開するのかがPRの差分から読めなくなる）
 - merge commitでマージする。`release.yml` は、マージコミットを作ったPRがリリースPRで、そのheadの `version` が
   `X.Y.Z` であることを確かめてから、headに注釈付きタグ `vX.Y.Z` を打ち、同じ実行の中で配信する
@@ -417,7 +393,7 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 
 - `node --test` は型を除去するだけでJSXを変換できない。`.tsx` をimportするテストは書けないので、描画に依らない計算は `.ts` に分けてunit testで検査し、描画は可視化とページのe2eで見る
 - 図の数値が合っていることは、unit testとfixtureで固定する。スクリーンショットは、数値が合っていても起きる崩れだけを見る。数値の検査をスクリーンショットに寄せない
-- スクリーンショットは、図の本体だけを撮る。ペインの枠・条件の表示・見出しは含めない（文言や並びの変更で全部の画像が動き、撮る範囲の端で見出しが切れるとフォントの描画の差を拾うため）。
+- スクリーンショットは、図の本体だけを撮る。ペインの枠・条件の表示・見出しは含めない。
   対象はBigram FlowとHeatmapから始め、図を足す時は `e2e/visual-figures.spec.ts` に1件ずつ足す
 
 ### 合計件数は環境によって変わる
@@ -425,8 +401,7 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 `npm test` が報告する件数は実行環境で変わる。`test/commit-msg.test.ts` の17件は
 bashの無い環境では丸ごとスキップされるため、その分だけ少なく出る。
 
-そのため、**件数が17ずれている時は食い違いではなくこの差である可能性が高い**。
-PR本文に件数を書く時は `# pass` だけでなく `# skipped` も併記すると、読む側が区別できる。
+件数が17ずれている時は、まずこの差を疑う。PR本文に件数を書く時は `# pass` と `# skipped` を併記する。
 CI（ubuntu）では必ず全件走るので、判断に迷ったらCIの数字を正とする。
 
 ### ブラウザe2e
@@ -434,10 +409,8 @@ CI（ubuntu）では必ず全件走るので、判断に迷ったらCIの数字�
 `e2e/*.spec.ts` はPlaywright（`npm run test:browser`）で動かす。CIの `browser-e2e`（`.github/workflows/e2e.yml`）が全件を回す。
 全件で約20分かかるので、4つのshard（`browser-e2e-shard (1/4)`〜`(4/4)`）へ分けて並列に回す。
 `browser-e2e` というジョブがshardの結果を1つにまとめる。必須チェックの名前はこの `browser-e2e`。
-公開リポジトリなのでGitHub-hostedの実行時間は無料で、手元の機械を全件の実行で塞ぐ理由が無い。
 
-**走るのは `pull_request`（draftを含む）・`main` へのpush・`workflow_dispatch` だけ。** `main` 以外のブランチへのpushでは走らない。
-PRを開いているブランチへのpushで、push由来とpull_request由来が同じheadで2本ずつ走り、同じ処理を二重に回していたため。
+走るのは `pull_request`（draftを含む）・`main` へのpush・`workflow_dispatch` だけ。`main` 以外のブランチへのpushでは走らない。
 PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を `workflow_dispatch` で回す。
 
 `pull_request` で、baseとの差分のファイルが全部 `*.md` なら、shardを走らせず `browser-e2e` だけがsuccessになる。
@@ -475,12 +448,12 @@ PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を
 
 `e2e/visual-figures.spec.ts` は、`e2e/screenshots/` の基準の画像と図を比べる。
 
-- **比べるのはCIだけ。** 基準の画像は、CIの `browser-e2e` と同じ環境（`ubuntu-latest`・Node 22・`npx playwright install` で入れるChromium・`CI=1`・本番ビルドとpreviewの配信）で作る。
+- 比べるのはCIだけ。基準の画像は、CIの `browser-e2e` と同じ環境（`ubuntu-latest`・Node 22・`npx playwright install` で入れるChromium・`CI=1`・本番ビルドとpreviewの配信）で作る。
   手元は環境が違い、描画が1画素ずれるので、手元ではこのspecを飛ばす（`CI` が空の時）。`npx playwright test e2e/<spec> --workers=1` の手順のまま、落ちずに飛ばされる
-- **固定するもの。** `e2e/screenshot-helper.ts` が、画面の大きさ（1280×900）・テーマ（ライト）・動き（`prefers-reduced-motion: reduce` と `animations: 'disabled'`）・フォントを固定する。
+- 固定するもの。`e2e/screenshot-helper.ts` が、画面の大きさ（1280×900）・テーマ（ライト）・動き（`prefers-reduced-motion: reduce` と `animations: 'disabled'`）・フォントを固定する。
   フォントはrunnerに入っているものに頼らず、`package-lock.json` で版を固定したnpmのパッケージ `@fontsource-variable/noto-sans-jp` を、アプリのサーバーを通さずに配って全要素へ当てる。
   runnerのイメージが更新されても、字形と幅が動かない。比較の許容は `playwright.config.ts` の `expect.toHaveScreenshot` に置く（文字の縁の揺れだけを許す小ささ）
-- **図の見た目を変えるPRは、基準の画像を作り直して同じPRに入れる。** 行うのはPRを作った人（エージェントなら実装役）。
+- 図の見た目を変えるPRは、基準の画像を作り直して同じPRに入れる。行うのはPRを作った人（エージェントなら実装役）。
   1. PRにラベル `update-screenshots` を付ける。付けると `Update Screenshots`（`.github/workflows/update-screenshots.yml`）が走る。
      同じPRで作り直しをもう一度したい時は、ラベルを外して付け直す。Actions画面から `workflow_dispatch` で起動する方法は、workflowのファイルが `main` にある時だけ使える
   2. 実行が終わったら、artifact `screenshots` を取る。`gh run list --workflow update-screenshots.yml --branch <ブランチ>` で実行を探し、`gh run download <run-id> -n screenshots -D <空のディレクトリ>` で取る
@@ -488,9 +461,9 @@ PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を
   4. 置いた画像を目で確かめ、意図した変化だけであることをPR本文に書く
 - 画像が無い、または図が変わっていると、`browser-e2e` のこのspecが落ちる。差分の画像は、失敗時のartifact（`browser-e2e-trace-<N>`）に入る
 
-**e2eの本文。** 既定のテキストは検査用の短い本文より計算が長く、並行して回る検査の待ちが既定の長さに引きずられて揺れる。字数に依存しない検査は、短い本文（`e2e/short-text-helper.ts` の `SHORT_TEXT_REF`）を使う。個別画面は `e2e/fixtures.ts` の `test` が既定で短い本文から始め、保存値でWorkspaceを作る検査は保存値の `text` に `SHORT_TEXT_REF` を書いて `useShortText(page)` を呼ぶ。既定のサンプルのWorkspaceと、既定の本文の数値を見る検査だけが、既定のテキストを使う。
+e2eの本文: 字数に依存しない検査は、短い本文（`e2e/short-text-helper.ts` の `SHORT_TEXT_REF`）を使う。個別画面は `e2e/fixtures.ts` の `test` が既定で短い本文から始め、保存値でWorkspaceを作る検査は保存値の `text` に `SHORT_TEXT_REF` を書いて `useShortText(page)` を呼ぶ。既定のサンプルのWorkspaceと、既定の本文の数値を見る検査だけが、既定のテキストを使う。
 
-**e2eに書く範囲。** 計算で判定できる検査はunit testに書き、e2eは画面の配線と主要な操作の流れだけにする。
+e2eに書く範囲: 計算で判定できる検査はunit testに書き、e2eは画面の配線と主要な操作の流れだけにする。
 
 - e2eに残す: 画面の配線（状態遷移をunit testへ移した後も、配線のe2eは1本ずつ残す）、ブラウザでしか起きない配置やスクロール、主要な操作の流れ
 - unit testへ移す: 状態遷移（store・reducerの動き）、値の計算、組合せの網羅
