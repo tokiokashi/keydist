@@ -220,6 +220,7 @@ headのSHAのcheck run（`https://api.github.com/repos/tokiokashi/keydist/commit
 `browser-e2e` の結果を確かめる。手元では触ったspecだけを `npx playwright test e2e/<spec> --workers=1` で回す。
 手順の詳細と、e2eに書く範囲（計算で判定できる検査はunit testへ）は `CONTRIBUTING.md` の「ブラウザe2e」。
 マージしてよい条件と方式は `CONTRIBUTING.md` の「マージ」が正。受け入れ条件を満たしていることも前提にする。
+テストを足す前に、`CONTRIBUTING.md` の「書くテストと書かないテスト」で、そのテストが守る性質を確かめる物かを確かめる。節が挙げる書かないテストは足さない。
 
 ## 実装の方針
 
