@@ -94,15 +94,15 @@ for (const width of [360, 390]) {
   });
 }
 
-// 失敗の文字（「失敗」）は360pxでだけ点になる（390pxでは文字で出る）。点の形を見るので360pxだけ見る
-test('スマホ幅（360px）: 失敗の点は赤の塗りつぶしで、動かない', async ({ page }) => {
-  await openReady(page, 360);
+// 失敗の文字（「失敗」）は、名前の長い新JIS（逐次シフト）を選ぶと340pxで点になる（390pxでは文字で出る）。点の形を見るので340pxだけ見る
+test('スマホ幅（340px）: 失敗の点は赤の塗りつぶしで、動かない', async ({ page }) => {
+  await openReady(page, 340);
   const panel = await openTextChip(page);
   await panel.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: '英文（既定）' });
   await expect(page.locator('.context-bar button.text-chip')).toContainText('英文');
   await page.keyboard.press('Escape');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
-  await toggleTarget(page, 'layout:nicola');
+  await toggleTarget(page, 'layout:shin-jis-prefix');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'failed', { timeout: 10_000 });
 
   const failed = await dotState(page);
