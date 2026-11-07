@@ -1170,7 +1170,7 @@ function yieldNames(placed: PlotName[], slots: readonly (NameSlot | undefined)[]
     if (slotA === undefined || current === undefined || moved.has(a)) continue;
     const withoutA = placed.filter((_, index) => index !== a);
     for (const candidateA of slotA.leaderCandidates()) {
-      if (lengthOf(candidateA.leader) >= lengthOf(current) - MIN_LEADER) continue;
+      if (lengthOf(candidateA.leader) > lengthOf(current) - MIN_LEADER) continue;
       const crossed = withoutA.filter((other) => other.boxes.some((box) => segmentHits(candidateA.leader!, box)));
       if (crossed.length !== 1) continue;
       const b = placed.indexOf(crossed[0]!);
