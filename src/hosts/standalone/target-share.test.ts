@@ -65,7 +65,7 @@ test('Multiは並び順ごと往復し、基準は集合に含まれる時だけ
   const decoded = decodeMultiTargetsFromUrl(new URLSearchParams(params.toString()), other, []);
   assert.deepEqual(decoded.targets, [DVORAK, QWERTY, { kind: 'setup', setupId: 'other-uuid' }, MINE]);
   assert.deepEqual(decoded.baseline, QWERTY);
-  assert.deepEqual(decoded.notice, { notFound: [], unreadable: 0 });
+  assert.deepEqual(decoded.notice, { notFound: [], unreadable: 0, missingBuiltin: 0, overLimit: 0 });
 
   // 集合に含まれない基準は効かないので捨てる。
   const outside = new URLSearchParams([
@@ -89,11 +89,8 @@ test('受け取った側に無い自作の配列・Setupは、名前を添えて
     { kind: 'setup', name: 'どこにも無い' },
     { kind: 'user-layout', name: '消した配列' },
   ]);
-  assert.equal(decoded.notice.unreadable, 1);
-  assert.deepEqual(describeSharedTargetsNotice(decoded.notice), [
-    '共有されたSetup「どこにも無い」・自作の配列「消した配列」は、この端末に見つかりませんでした',
-    '共有リンクの対象のうち、読み取れないものがありました（1件）',
-  ]);
+  assert.equal(decoded.notice.unreadable, 0);
+  assert.equal(decoded.notice.missingBuiltin, 1);
 });
 
 test('自作の名前でも組み込みのidに化けさせない（user-layoutは自作の配列だけ、layoutは組み込みだけを引く）', () => {
@@ -126,7 +123,8 @@ test('壊れた参照・長すぎる参照・件数超過は捨てて診断を�
   const many = new URLSearchParams();
   for (let i = 0; i < SHARE_MAX_TARGETS + 5; i++) many.append('targets', i % 2 === 0 ? 'layout:qwerty' : 'layout:dvorak');
   const capped = decodeMultiTargetsFromUrl(many, source(), []);
-  assert.equal(capped.notice.unreadable, 5);
+  assert.equal(capped.notice.overLimit, 5);
+  assert.equal(capped.notice.unreadable, 0);
   // 重複は先に出たものだけ。
   assert.deepEqual(capped.targets, [QWERTY, DVORAK]);
 });
@@ -143,6 +141,8 @@ test('見つからない名前が多い時は先頭の数件だけ名前を出�
   const lines = describeSharedTargetsNotice({
     notFound: ['a', 'b', 'c', 'd', 'e'].map((name) => ({ kind: 'setup' as const, name })),
     unreadable: 0,
+    missingBuiltin: 0,
+    overLimit: 0,
   });
   assert.deepEqual(lines, ['共有されたSetup「a」・Setup「b」・Setup「c」ほか2件は、この端末に見つかりませんでした']);
 });
@@ -307,7 +307,8 @@ test('テキストは組み込みのidだけ読み、この版に無いid・長�
   }
 });
 
-test('describeConditionShareNotice: 変更した条件がある時だけ、条件がリンクに載らないことを示す', () => {
-  assert.deepEqual(describeConditionShareNotice(false), []);
-  assert.deepEqual(describeConditionShareNotice(true), ['条件はリンクに載らないので、開いた側では数値が変わることがあります。']);
+test('describeConditionShareNotice: 既定と違う項目がある時だけ出し、多い時は先頭3件と残りの件数にする', () => {
+  assert.deepEqual(describeConditionShareNotice([]), []);
+  assert.equal(describeConditionShareNotice(['a', 'b', 'c']).length, 1);
+  assert.ok(describeConditionShareNotice(['a', 'b', 'c', 'd', 'e'])[0]!.startsWith('a・b・cほか2件の変更'));
 });

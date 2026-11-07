@@ -25,7 +25,7 @@ import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
-import { anyTargetHasChangedCondition, setPaneConditionScope } from '#hosts/shared/changed-condition.ts';
+import { changedConditionLabels, setPaneConditionScope } from '#hosts/shared/changed-condition.ts';
 import { settingsItemIds } from '#hosts/shared/condition-summary.ts';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
 import {
@@ -197,7 +197,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
             for (const [key, value] of encoded.params) params.append(key, value);
             const text = encodeTextToUrl(assets.standaloneTextSelection);
             for (const [key, value] of text.params) params.append(key, value);
-            const conditionChanged = anyTargetHasChangedCondition({
+            const changedConditions = changedConditionLabels({
               targets: selection.targets,
               setups: new Map(assets.setupLibrary.setups.map((setup) => [setup.id, setup] as const)),
               catalog,
@@ -211,7 +211,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
               notices: [
                 ...describeShareEncodeNotice(encoded.notice),
                 ...describeTextShareNotice(text.userText),
-                ...describeConditionShareNotice(conditionChanged),
+                ...describeConditionShareNotice(changedConditions),
               ],
             };
           },

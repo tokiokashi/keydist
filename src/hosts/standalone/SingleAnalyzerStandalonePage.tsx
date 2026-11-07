@@ -25,7 +25,7 @@ import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
-import { anyTargetHasChangedCondition, singlePaneConditionScope } from '#hosts/shared/changed-condition.ts';
+import { changedConditionLabels, singlePaneConditionScope } from '#hosts/shared/changed-condition.ts';
 import { arrivalPositionFor, usePlaybackArrival } from './use-playback-arrival.ts';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
 import {
@@ -200,7 +200,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
             for (const [key, value] of encoded.params) params.append(key, value);
             const text = encodeTextToUrl(assets.standaloneTextSelection);
             for (const [key, value] of text.params) params.append(key, value);
-            const conditionChanged = anyTargetHasChangedCondition({
+            const changedConditions = changedConditionLabels({
               targets: [target],
               setups: new Map(assets.setupLibrary.setups.map((setup) => [setup.id, setup] as const)),
               catalog,
@@ -213,7 +213,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
               notices: [
                 ...describeShareEncodeNotice(encoded.notice),
                 ...describeTextShareNotice(text.userText),
-                ...describeConditionShareNotice(conditionChanged),
+                ...describeConditionShareNotice(changedConditions),
               ],
             };
           },
