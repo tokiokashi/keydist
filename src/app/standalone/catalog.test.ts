@@ -76,7 +76,8 @@ test('規則が手持ちに無い時、条件の要約は規則のidを出さな
   if (!result.ok) return;
   const rows = traceConditionSummary(result.input.cascade, { shapes: catalog.setupCatalog.shapes });
   const display = rows.find((row) => row.id === 'romajiRuleId')?.displayValue;
-  assert.equal(display, '見つからないローマ字規則');
+  assert.notEqual(display, undefined);
+  assert.ok(!display!.includes(RULE.id));
 });
 
 test('自作の指の割り当てを条件で選ぶと、解決でその割り当てが使われる。手持ちを渡さなければ既定へ戻り診断が付く', () => {

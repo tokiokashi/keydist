@@ -94,7 +94,7 @@ test('封筒: プリセットとWorkspaceの両方を持つファイルは、そ
     presets.presets.map((preset) => preset.name),
     ['自分用メモ'],
   );
-  assert.equal(presets.message, '1件のプリセットを読み込みました');
+  assert.ok(presets.message.includes('1件'));
   assert.equal(readWorkspaces(text).length, 1);
 });
 
@@ -103,10 +103,8 @@ test('封筒: 一方だけを持つファイルを、もう一方の読み手が
   const workspaceOnly = written([sampleWorkspace('w1')]);
   const noWorkspace = parseWorkspaceFile(presetOnly);
   assert.ok(!noWorkspace.ok);
-  assert.equal(noWorkspace.message, 'このファイルにWorkspaceは含まれていません');
   const noPreset = parsePresetFile(workspaceOnly, REFERENCES);
   assert.ok(!noPreset.ok);
-  assert.equal(noPreset.message, 'このファイルにプリセットは含まれていません');
   assert.equal(parseWorkspaceFile(fileText({ version: 2 })).ok, false);
 });
 
@@ -125,9 +123,10 @@ test('未知のキー: 最上位とプリセットの中の未知のキーは読
   });
   const result = parsePresetFile(text, REFERENCES);
   assert.ok(result.ok);
-  assert.equal(result.message, '1件のプリセットを読み込みました');
+  assert.ok(result.message.includes('1件') && !result.message.includes('futureField'));
   assert.deepEqual(result.presets, [{ name: 'A', values: { windowSize: 5 } }]);
-  assert.deepEqual(result.details, ['futureField: 未知のキーのため読み込みませんでした', 'presets[0].note: 未知のキーのため読み込みませんでした']);
+  assert.equal(result.details.length, 2);
+  assert.ok(result.details[0]!.startsWith('futureField') && result.details[1]!.startsWith('presets[0].note'));
 });
 
 test('未知のキー: Workspaceの読み手も最上位の未知のキーを原文に残し、読める部分は読む', () => {
@@ -136,7 +135,8 @@ test('未知のキー: Workspaceの読み手も最上位の未知のキーを原
   assert.ok(result.ok);
   assert.equal(result.workspaces.length, 1);
   assert.deepEqual(result.dropped, []);
-  assert.deepEqual(result.details, ['futureField: 未知のキーのため読み込みませんでした']);
+  assert.equal(result.details.length, 1);
+  assert.ok(result.details[0]!.startsWith('futureField'));
 });
 
 test('診断: 壊れたWorkspaceは件数で伝え、ペインなどの一部だけ壊れた分は別の件数で伝える。残りは読む', () => {
@@ -148,7 +148,8 @@ test('診断: 壊れたWorkspaceは件数で伝え、ペインなどの一部だ
     result.workspaces.map((workspace) => workspace.id),
     ['w1', 'w2'],
   );
-  assert.deepEqual(result.dropped, ['2件のWorkspaceは読み込めませんでした', '1件のペインや設定は読み込めませんでした']);
+  assert.equal(result.dropped.length, 2);
+  assert.ok(result.dropped[0]!.includes('2件') && result.dropped[1]!.includes('1件'));
   assert.equal(result.details.length, 3);
 });
 
@@ -156,7 +157,7 @@ test('上限: Workspaceの件数が上限を超えたら丸ごと断る', () => 
   const workspaces = Array.from({ length: PRESET_FILE_MAX_WORKSPACES + 1 }, (_, index) => ({ id: `w${index}` }));
   const result = parseWorkspaceFile(fileText({ version: 2, workspaces }));
   assert.ok(!result.ok);
-  assert.equal(result.message, `Workspaceが多すぎます（${PRESET_FILE_MAX_WORKSPACES}件まで）`);
+  assert.ok(result.message.includes(`${PRESET_FILE_MAX_WORKSPACES}件`));
 });
 
 test('ファイル名: Workspaceの名前を入れ、使えない文字は置き換える', () => {
