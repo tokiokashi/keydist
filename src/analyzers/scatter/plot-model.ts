@@ -655,8 +655,6 @@ const NAME_MAX_ROWS = 12;
 const NAME_COLUMN_GAP = 14;
 /** 名前の長方形と点の箱の隙間の段。1pxは点のすぐ横。隙間を細かい刻みで上限まで広げる。 */
 const GAP_LEVELS = [1, 2, 3, 4, 6, 8, 11, 15, 20, 26, 34, 44, 58, 76, 98, 124] as const;
-/** 印が重なる2点の名前を分けて置く時に見る、隙間の段。`MIN_LEADER`未満の隙間を1pxずつ見る。 */
-const SEPARATE_GAP_LEVELS = [1, 2, 3, 4, 5] as const;
 /** 名前を点の箱に沿ってずらす刻み。隙間が`SLIDE_FINE_GAP`以下の段は細かく、それより離れた段は粗くする。 */
 const SLIDE_STEP_NEAR = 2;
 const SLIDE_STEP_FAR = 4;
@@ -750,8 +748,8 @@ interface NameSlot {
  * 点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。
  * 2行以上の名前は、点の左右に置く候補を、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り（図の中へ寄せた後で判定する）、角の候補を使わない。
  * 点の高さから遠い行だけが点のそばに残る置き方を避けるため。上下の候補と1行の名前の候補は変えない。
- * 印が重なる2点の組は、まず点ごとに1行の名前を分けて置けるか試す。各点を1点だけの組とみなした時の、引き出し線が付かない候補（隙間が`MIN_LEADER`未満。隙間5pxの段も見る）のうち、
- * もう1つの点との隙間が`MIN_LEADER`以上で、重なりが無いものに限る。線の付く距離にもう1つの点の名前が来ないので、線の無い名前は自分の点のものと読める。
+ * 印が重なる2点の組は、まず点ごとに1行の名前を分けて置けるか試す。各点を1点だけの組とみなした時の、引き出し線が付かない候補（隙間が`MIN_LEADER`未満）のうち、
+ * 組の2点以外の全ての点との隙間が`MIN_LEADER`以上（他の点の名前を線無しで置ける範囲を取らない）、もう1つの点との隙間も`MIN_LEADER`以上で、重なりが無いものに限る。線の付く距離にもう1つの点の名前が来ないので、線の無い名前は自分の点のものと読める。
  * 縦軸の値が大きい点の候補を先に、候補の順（隙間の小さい順、同じ隙間では右・左・下・上の辺、続けて角）に試し、もう1つの点の名前が置ける最初の組み合わせを採る。2点の横の位置の差は問わない。
  * 分けて置けない組は、まとめた名前を置く。まとめた名前を引き出し線無しで重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
  * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
@@ -918,12 +916,6 @@ export function placeNames(
         .sort((a, b) => rankOf(a) - rankOf(b));
       return nearCache;
     };
-    // 2点の名前を分けて置く時の候補。隙間が5pxの段を足す。もう1つの点の余白の正方形の縁が、この点の縁より1pxほど外にある時、
-    // 自分の点との隙間が6px未満で、もう1つの点との隙間が6px以上になる置き方が、5pxの隙間にしか無いため
-    const separateCandidates = (): readonly NameCandidate[] =>
-      SEPARATE_GAP_LEVELS.flatMap((d) => candidatesAt(d, true))
-        .filter((candidate) => candidate.leader === undefined)
-        .sort((a, b) => rankOf(a) - rankOf(b));
     const toName = (candidate: NameCandidate): PlotName => ({
       lines: lines.map((line, index) => {
         const column = Math.floor(index / rows);
@@ -959,7 +951,7 @@ export function placeNames(
       }
       return { chosen: best!, cost: bestCost };
     };
-    return { lines, nearNames, costOf, blockersOf, nearCandidates, separateCandidates, toName, search };
+    return { lines, nearNames, costOf, blockersOf, nearCandidates, toName, search };
   };
   const clearance = (rect: Rect, index: number): number => {
     const square = marks[index]!;
@@ -969,14 +961,17 @@ export function placeNames(
   const separate = (upper: number, lower: number): PlotName[] | undefined => {
     const upperGroup = prepare({ members: [upper], cx: points[upper]!.px, cy: points[upper]!.py });
     const lowerGroup = prepare({ members: [lower], cx: points[lower]!.px, cy: points[lower]!.py });
-    // 自分の点の名前と読める置き方。自分の点との隙間が`MIN_LEADER`未満、もう1つの点との隙間が`MIN_LEADER`以上で、重なりが無い
-    const upperRoom = upperGroup
-      .separateCandidates()
-      .filter((c) => clearance(c.rect, lower) >= MIN_LEADER && upperGroup.costOf(c, upperGroup.nearNames, 0) === 0);
+    // 自分の点の名前と読める置き方。自分の点との隙間が`MIN_LEADER`未満、組の2点以外の全ての点との隙間が`MIN_LEADER`以上
+    // （他の点の名前を線無しで置ける範囲を、まだ置いていない名前の分まで先に取らない）で、重なりが無い
+    const apart = (rect: Rect, other: number): boolean => {
+      for (let index = 0; index < marks.length; index++) {
+        if (index !== upper && index !== lower && clearance(rect, index) < MIN_LEADER) return false;
+      }
+      return clearance(rect, other) >= MIN_LEADER;
+    };
+    const upperRoom = upperGroup.nearCandidates().filter((c) => apart(c.rect, lower) && upperGroup.costOf(c, upperGroup.nearNames, 0) === 0);
     if (upperRoom.length === 0) return undefined;
-    const lowerRoom = lowerGroup
-      .separateCandidates()
-      .filter((c) => clearance(c.rect, upper) >= MIN_LEADER && lowerGroup.costOf(c, lowerGroup.nearNames, 0) === 0);
+    const lowerRoom = lowerGroup.nearCandidates().filter((c) => apart(c.rect, upper) && lowerGroup.costOf(c, lowerGroup.nearNames, 0) === 0);
     for (const u of upperRoom) {
       const l = lowerRoom.find((candidate) => !overlaps(u.rect, candidate.rect));
       if (l !== undefined) return [upperGroup.toName(u), lowerGroup.toName(l)];
