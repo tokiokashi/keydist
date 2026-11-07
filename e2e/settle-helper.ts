@@ -72,30 +72,6 @@ export async function settleBy(page: Page, read: () => Promise<string>, stableCh
   }
 }
 
-/**
- * 浮かせたパネル（入力コンバータのカンペ等）のspring（ドラッグ解除後の拡大の戻りと配置の動き）が収まるまで待つ。
- * ドラッグ中の印と、描かれた矩形・transformが続けて変わらなくなったことを見る。
- */
-export function settlePanels(page: Page): Promise<void> {
-  return settleBy(page, () =>
-    page.locator('section[data-floating="true"]').evaluateAll((els) =>
-      els
-        .map((el) => {
-          const r = el.getBoundingClientRect();
-          return [
-            el.getAttribute('data-dragging') ?? '',
-            getComputedStyle(el).transform,
-            r.x.toFixed(2),
-            r.y.toFixed(2),
-            r.width.toFixed(2),
-            r.height.toFixed(2),
-          ].join(',');
-        })
-        .join('|'),
-    ),
-  );
-}
-
 /** Workspaceの全ペインの位置・大きさが落ち着くまで待つ（格子の配置の動き200msの後）。 */
 export function settleGrid(page: Page): Promise<void> {
   return settleBy(page, () =>

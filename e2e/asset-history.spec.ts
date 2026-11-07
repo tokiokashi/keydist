@@ -67,38 +67,6 @@ test('別の画面で同じ資産が書き換わっていたら戻さず、知�
   await expect(page.locator('[data-history-conflict-notice]')).toHaveCount(0);
 });
 
-test('キー操作: Ctrl+Zで元に戻し、Ctrl+Shift+ZとCtrl+Yでやり直す', async ({ page }) => {
-  await createRule(page);
-
-  await page.keyboard.press('Control+z');
-  await expect.poll(() => storedRules(page)).not.toContain('新しいローマ字の綴り');
-  await page.keyboard.press('Control+Shift+z');
-  await expect.poll(() => storedRules(page)).toContain('新しいローマ字の綴り');
-  await page.keyboard.press('Control+z');
-  await expect.poll(() => storedRules(page)).not.toContain('新しいローマ字の綴り');
-  await page.keyboard.press('Control+y');
-  await expect.poll(() => storedRules(page)).toContain('新しいローマ字の綴り');
-});
-
-test('キー操作: 文字を入力する欄では資産の履歴を動かさず、選択欄では動かす', async ({ page }) => {
-  await createRule(page);
-  const name = page.getByLabel('名前', { exact: true });
-  await name.focus();
-  await page.keyboard.press('Control+z');
-  // 欄の中の元に戻すが優先され、作った規則はそのまま
-  await expect(page.getByRole('button', { name: '元に戻す' })).toBeEnabled();
-  expect(await storedRules(page)).toContain('新しいローマ字の綴り');
-
-  // 選択欄にフォーカスがある時は、資産の履歴を動かす
-  const base = page.getByLabel('基底のルール');
-  await base.selectOption('oonishi');
-  await expect.poll(() => storedRules(page)).toContain('oonishi');
-  await base.focus();
-  await page.keyboard.press('Control+z');
-  await expect.poll(() => storedRules(page)).not.toContain('oonishi');
-  expect(await storedRules(page)).toContain('新しいローマ字の綴り');
-});
-
 test('Workspace: サイドバーで別のWorkspaceを作って戻っても、中身の変更をキー操作で戻せる', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);

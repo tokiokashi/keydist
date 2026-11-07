@@ -239,6 +239,30 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
                 </g>
               )}
 
+              {/* 名前の文字を押せるようにする透明な層。点の印より下に置き、名前の文字が別の点の印と重なる所では、点の印が操作を受ける。見える名前は、この層の上に点の印より手前で描く */}
+              {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
+              <g className="scatter-name-hits" aria-hidden="true">
+                {model.names.map((name) => (
+                  <g key={name.lines.map((line) => line.targetKey).join('\n')} textAnchor={name.anchor}>
+                    {name.lines.map((line) => (
+                      // biome-ignore lint/a11y/noStaticElementInteractions: ポインターだけの補助で、キーボードの操作と読み上げは点の要素が受け持つ
+                      <text
+                        key={line.targetKey}
+                        className="scatter-name-hit"
+                        data-scatter-name-hit-of={line.targetKey}
+                        x={line.x}
+                        y={line.y}
+                        onPointerEnter={() => onHover(line.targetKey)}
+                        onPointerLeave={() => onLeave(line.targetKey)}
+                        onClick={() => onTogglePin(line.targetKey)}
+                      >
+                        {line.text}
+                      </text>
+                    ))}
+                  </g>
+                ))}
+              </g>
+
               {model.points.map((point) => {
                 const row = plottedByKey.get(point.targetKey)!;
                 const isPinned = pinned === point.targetKey;
@@ -273,7 +297,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
                 );
               })}
 
-              {/* 点の名前。印が重なる点の組は複数の点に属するので、点ごとの要素の外に描く。読み上げは点ごとの値の読み取りが担う */}
+              {/* 点の名前。印が重なる点の組は複数の点に属するので、点ごとの要素の外に描く。読み上げは点ごとの値の読み取りが担う。ポインターの操作は下の透明な層が受ける */}
               {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
               <g className="scatter-names" aria-hidden="true">
                 {model.names.map((name) => (
