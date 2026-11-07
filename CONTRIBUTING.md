@@ -417,7 +417,7 @@ CI（ubuntu）では必ず全件走るので、判断に迷ったらCIの数字�
 ### ブラウザe2e
 
 `e2e/*.spec.ts` はPlaywright（`npm run test:browser`）で動かす。CIの `browser-e2e`（`.github/workflows/e2e.yml`）が全件を回す。
-全件で約20分かかるので、4つのshard（`browser-e2e-shard (1/4)`〜`(4/4)`）へ分けて並列に回す。
+4つのshard（`browser-e2e-shard (1/4)`〜`(4/4)`）へ分けて並列に回す。shardごとのビルドを含めて、1つのshardは約1分で終わる。
 `browser-e2e` というジョブがshardの結果を1つにまとめる。必須チェックの名前はこの `browser-e2e`。
 
 走るのは `pull_request`（draftを含む）・`main` へのpush・`workflow_dispatch` だけ。`main` 以外のブランチへのpushでは走らない。
@@ -469,7 +469,7 @@ PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を
   4. 置いた画像を目で確かめ、意図した変化だけであることをPR本文に書く
 - 画像が無い、または図が変わっていると、`browser-e2e` のこのspecが落ちる。差分の画像は、失敗時のartifact（`browser-e2e-trace-<N>`）に入る
 
-e2eの本文: 字数に依存しない検査は、短い本文（`e2e/short-text-helper.ts` の `SHORT_TEXT_REF`）を使う。個別画面は `e2e/fixtures.ts` の `test` が既定で短い本文から始め、保存値でWorkspaceを作る検査は保存値の `text` に `SHORT_TEXT_REF` を書いて `useShortText(page)` を呼ぶ。既定のサンプルのWorkspaceと、既定の本文の数値を見る検査だけが、既定のテキストを使う。
+e2eの本文: 字数に依存しない検査は、短い本文（`e2e/short-text-helper.ts` の `SHORT_TEXT_REF`）を使う。個別画面は `e2e/fixtures.ts` の `test` が既定で短い本文から始め、保存値でWorkspaceを作る検査は保存値の `text` に `SHORT_TEXT_REF` を書いて `useShortText(page)` を呼ぶ。組み込みのテキストを書き換える場面を見る検査だけが、既定のテキストを使う。
 
 e2eに書く範囲: ページのe2eは、次の2種類だけにする。図のスクリーンショットは、上の「スクリーンショットの基準の画像」に従う。e2eで確かめたくなった計算は、unit testに移す。
 
