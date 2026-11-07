@@ -151,7 +151,7 @@ CI（`CI` が設定されている環境）では飛ばさず、zip が無けれ
 - PRのheadが今の `origin/main` を祖先に含まない時は、`main` をマージした状態で `npm run lint`・`npm run typecheck`・`npm test`・`npm run build` が通る。リードがマージの直前に確かめ、e2eは見ない
   - `git fetch origin main <ブランチ>` の後に `git merge-base --is-ancestor origin/main origin/<ブランチ>` が0で終われば、この検査は要らない
   - 一時の作業ツリーは `origin/<ブランチ>` から作る。`FETCH_HEAD` は使わない。直前の `git fetch` が複数のrefを取ると、`FETCH_HEAD` の先頭が `main` を指す
-  - 差分に `package.json`・`package-lock.json`・`patches/` が含まれる時は、一時の作業ツリーで `npm ci` する
+  - 一時の作業ツリーには `node_modules` が無い。差分に `package.json`・`package-lock.json`・`patches/` が含まれる時は `npm ci` し、含まれない時は本体の `node_modules` をsymlinkする。symlinkは `git worktree remove` の前に外す
   - 衝突した時か検査が落ちた時は、実装役に `main` をマージさせ、新しいheadで再レビューを受ける
 - 推奨案で決めた選択があれば、PR本文の「決めきれなかった点」に挙げてある
 - PRで直さずに残すもの（後続）は、マージ前にissueにしてマイルストーンを決め、PR本文にはその番号だけを書く
@@ -192,7 +192,7 @@ CI（`CI` が設定されている環境）では飛ばさず、zip が無けれ
   - 判定してからマージ要求までの間に、どれかのPRのheadが動いていないかを取り直して照合する（動いていたら断る。付け直す）。
     `merge-async` のshaで固定できるのは一番上のPRだけなので、下のPRは照合で守る。照合とマージ要求の間の一瞬は固定できない
   - 一番上のPRを `merge-async`（merge commit）でマージし、終わるまで待つ
-  - 「マージ」の条件のうち、レビュー・未決の選択・後続のissue化など上に挙げた以外のものは機械では確かめない。ラベルを付けることが、それらを全部満たしたという宣言になる
+  - 「マージ」の条件のうち、レビュー・「決めきれなかった点」の記載・後続のissue化など上に挙げた以外のものは機械では確かめない。ラベルを付けることが、それらを全部満たしたという宣言になる
 - `merge-stack` はsecret `STACK_MERGE_TOKEN`（Contents・Pull requestsにwriteを持つfine-grained PAT）でマージする。
   このリポジトリには設定してあるので、マージはオーナーとして行われ、`main` へのpushでCIと `release.yml` が走る
   （`version` を変えないので `release.yml` は何も公開せずに終わる）。

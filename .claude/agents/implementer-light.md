@@ -27,11 +27,12 @@ keydistの作業単位を1つ実装し、PRを作る。自分の変更を自分�
 - 作業ブランチは `<type>/<短い説明>` で切り直す。worktreeが用意した `worktree-*` ブランチのままpushしない
 - `git config core.hooksPath` は打たない
 - プロセスを止める時は、自分が起動したもの（PID・ジョブ）だけを止める。`pkill -f` のようなパターン指定で止めない
-- 変更前の挙動を試す時は、一時worktreeを使う。作業中のworktreeで `git checkout <sha> -- src` と `git stash` を使わない。`git stash` の退避の一覧は本体と全worktreeで共有される
+- 変更前の挙動を試す時は、一時worktreeを使い、`npm ci` してから試す。作業中のworktreeで `git checkout <sha> -- src` と `git stash` を使わない。`git stash` の退避の一覧は本体と全worktreeで共有される
 
 ## 実装
 
 - 新しい検査は、変更前の挙動で落ちることを確かめる
+- 「残る穴は〜だけ」「影響が無い」と書く時は、条件を広げて試す。広げて試していないなら、確かめた条件を書く
 - PRで直さない後続はissueにする（`CONTRIBUTING.md`「マージ」）
 
 pushの前に `npm run lint && npm run typecheck && npm test && npm run build` を通す。ブラウザe2eは触ったspecだけを手元で回す（`CONTRIBUTING.md`「ブラウザe2e」）。
