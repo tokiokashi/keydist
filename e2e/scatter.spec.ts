@@ -212,14 +212,12 @@ test.describe('個別画面', () => {
     await expect(vertical.locator('option', { hasText: /^文字\/u$/ })).toHaveCount(0);
   });
 
-  test('点にフォーカスすると、完全な名前・横軸・縦軸・細い線の量の値を出す', async ({ page }) => {
+  test('点にフォーカスすると、完全な名前と「(横, 縦)」と細い線の量の短い名前と値を出す', async ({ page }) => {
     const readout = feature(page).locator('[data-scatter-readout]');
     await expect(readout).toHaveCount(0);
     await pointOf(feature(page), 'layout:qwerty').focus();
     await expect(readout).toContainText('QWERTY');
-    await expect(readout).toContainText(/1カナあたりのアクション数 \d+\.\d{3}/);
-    await expect(readout).toContainText(/1アクションあたりの距離 \d+\.\d{3}/);
-    await expect(readout).toContainText(/1カナあたりの距離 \d+\.\d{3}/);
+    await expect(readout).toHaveText(/^QWERTY\S*　\(\d+\.\d{3}, \d+\.\d{3}\)　距離\/カナ \d+\.\d{3}$/);
     await page.locator('body').click({ position: { x: 1, y: 1 } });
     await expect(readout).toHaveCount(0);
   });
@@ -320,8 +318,8 @@ test.describe('個別画面', () => {
       await expect(figure.locator('[data-scatter-readout]')).toContainText('JISかな配列');
     }
     // 図ごとの値を出す
-    await expect(distance.locator('[data-scatter-readout]')).toContainText(/1アクションあたりの距離 \d+\.\d{3}/);
-    await expect(hand.locator('[data-scatter-readout]')).toContainText(/手の切り替えの回数 \d+/);
+    await expect(distance.locator('[data-scatter-readout]')).toContainText(/\(\d+\.\d{3}, \d+\.\d{3}\)　距離\/カナ \d+\.\d{3}/);
+    await expect(hand.locator('[data-scatter-readout]')).toContainText(/\(\d+(\.\d+)?, \d+(\.\d+)?\)　同じ手の続きの割合 [\d.]+%/);
     await page.mouse.move(0, 0);
     await expect(feature(page).locator('[data-scatter-point][data-active]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-readout]')).toHaveCount(0);

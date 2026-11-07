@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, comparisonColumnText } from '../comparison-column-text.ts';
-import { axisName, axisTitle, KEY_COUNT_NAME, SCATTER_KANA_SCRIPT } from './axis-names.ts';
+import { axisName, axisPlotTitle, axisShortName, axisTitle, KEY_COUNT_NAME, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 import {
   IDENTITIES,
   identityRelation,
@@ -13,7 +13,7 @@ import {
   scatterContour,
 } from './axes.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { mentionsUnit, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
+import { mentionsUnit, readoutAriaLabel, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 
 const INPUT_CHARS = 100;
 const PRESETS = SCATTER_PRESET_IDS.filter((id) => id !== 'free');
@@ -267,30 +267,49 @@ test('固定の説明は、線を引かない図があることと食い違わ�
   assert.match(notes, /線は、同じテキストを打つ時の距離と取り違えやすいので引きません/u);
 });
 
-test('点の読み取り: 線を引く組は線の量の値を出し、線を引かない組は線の量の名前も値も出さない', () => {
+test('点の読み取り: 名前と「(横, 縦)」に続けて、線を引く組だけ線の量の短い名前と値を出す', () => {
   const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((column) => [column, 7])) as Parameters<typeof readoutText>[0]['values'];
-  const readout = (axes: { x: Column; y: Column }, x: number, y: number, rowValues = values) =>
-    readoutText({ label: 'A', fullName: 'QWERTY', x, y, values: rowValues }, axes, scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'), 'ja');
-  // 線を引く既定の組: u/かな = アクション数/かな × u/アクション
-  assert.equal(
-    readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }),
-    'QWERTY　1カナあたりのアクション数 1.500　1アクションあたりの距離 2.000　1カナあたりの距離 3.000',
-  );
+  const readout = (axes: { x: Column; y: Column }, x: number, y: number, rowValues = values, language: 'ja' | 'en' = 'ja') =>
+    readoutText({ label: 'A', fullName: 'QWERTY', x, y, values: rowValues }, axes, scatterContour(axes.x, axes.y, INPUT_CHARS, language), language);
+  // 線を引く既定の組: u/かな = アクション数/かな × u/アクション。線の量は軸の名前と同じ縮めた名前で、単位は付けない
+  assert.equal(readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }), 'QWERTY　(1.500, 2.000)　距離/カナ 3.000');
   // 線を引かない組: 線の量（u/キー・u/アクション・アクション/u）の名前と値を出さない
-  assert.equal(
-    readout(SCATTER_PRESET_AXES.movedPress, 50, 4, { ...values, perPressUnits: 2 }),
-    'QWERTY　移動ありキー率 50.0%　移動ありキー1つあたりの距離 4.000',
-  );
+  assert.equal(readout(SCATTER_PRESET_AXES.movedPress, 50, 4, { ...values, perPressUnits: 2 }), 'QWERTY　(50.0%, 4.000)');
   assert.equal(
     readout(SCATTER_PRESET_AXES.hand, 520.5, 702.5, { ...values, sameHandContinuationRate: 57.4 }),
-    'QWERTY　手の切り替えの回数 520.5　同じ手の続きの回数 702.5　同じ手の続きの割合 57.4%',
+    'QWERTY　(520.5, 702.5)　同じ手の続きの割合 57.4%',
   );
-  assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　1アクションあたりのキー数 2.000　1キーあたりの距離 1.500');
-  assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　1アクションあたりの文字数 2.000　1uあたりの文字数 6.000');
+  assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　(2.000, 1.500)');
+  assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　(2.000, 6.000)');
+  // 割合の軸の値には%が付く
+  assert.equal(readout(SCATTER_PRESET_AXES.handShare, 52, 48), 'QWERTY　(52.0%, 48.0%)');
+  // 縮めた名前を持たない線の量は、長い名前のまま
+  assert.equal(readout({ x: 'actions', y: 'meanPerStroke' }, 10, 2), 'QWERTY　(10, 2.000)　総移動距離 20');
   // 線の量の列が値を持たない対象には、線を引く組でも出さない
+  assert.equal(readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: Number.NaN }), 'QWERTY　(1.500, 2.000)');
+  // 英語のテキストでは、何あたりの語が「字」になる
+  assert.equal(readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }, 'en'), 'QWERTY　(1.500, 2.000)　距離/字 3.000');
+});
+
+test('点の読み取り: 軸の名前に添える単位と「対数」の印は、線の量の名前に付けない', () => {
+  const column = SCATTER_PRESET_AXES.distance;
+  const contour = scatterContour(column.x, column.y, INPUT_CHARS, 'ja');
+  assert.ok(contour !== undefined);
+  assert.equal(axisPlotTitle(contour.column, 'ja', true), '距離/カナ（u、対数）');
+  assert.equal(axisShortName(contour.column, 'ja'), '距離/カナ');
+});
+
+test('点の読み上げ用の名前は、量の名前を長い形で全て添える', () => {
+  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((c) => [c, 7])) as Parameters<typeof readoutText>[0]['values'];
+  const axes = SCATTER_PRESET_AXES.distance;
   assert.equal(
-    readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: Number.NaN }),
-    'QWERTY　1カナあたりのアクション数 1.500　1アクションあたりの距離 2.000',
+    readoutAriaLabel(
+      { label: 'A', fullName: 'QWERTY', x: 1.5, y: 2, values: { ...values, perCharUnits: 3 } },
+      axes,
+      scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'),
+      'ja',
+    ),
+    'QWERTY　1カナあたりのアクション数 1.500　1アクションあたりの距離 2.000　1カナあたりの距離 3.000',
   );
 });
 

@@ -16,7 +16,7 @@ import { scatterFigureModels, type ScatterFigureModel } from './figure-model.ts'
 import { SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { READING_NOTE, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
+import { READING_NOTE, readoutAriaLabel, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 import { MARK_RADIUS, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH } from './plot-model.ts';
 import { readingTargets, stillPinned, togglePinned } from './reading.ts';
 import './scatter-view.css';
@@ -254,7 +254,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
                     data-active={hovered === point.targetKey || undefined}
                     data-pinned={isPinned || undefined}
                     tabIndex={0}
-                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
+                    aria-label={readoutAriaLabel({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
                     style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
                     onPointerEnter={() => onHover(point.targetKey)}
                     onPointerLeave={() => onLeave(point.targetKey)}
