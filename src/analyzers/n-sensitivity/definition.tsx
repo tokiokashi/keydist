@@ -10,7 +10,7 @@ import {
 import { DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
-import { computeYRange, formatYTicks, yValuesRange } from './y-range.ts';
+import { computeYRange, formatYTicks, nSensitivityScaleKey, yValuesRange } from './y-range.ts';
 import {
   axisKindOf,
   deltaUnit,
@@ -228,7 +228,7 @@ function NSensitivityChart({
   // 並んだ同じ指標・同じ見せ方・同じ決め方のペイン全部の値を含む範囲で決める（配るものが無ければ自分の値だけ）。
   // 指標が違えば単位も値の大きさも違うので、指標ごとに分ける
   const ys = series.flatMap((s) => s.points.map((p) => p.y));
-  const sharedRange = useSharedScale(`n-sensitivity:${metric}:${kind}:${yRangeMode}`, yValuesRange(ys));
+  const sharedRange = useSharedScale(nSensitivityScaleKey(metric, kind, yRangeMode), yValuesRange(ys));
   const yRange = computeYRange(yRangeMode, kind, sharedRange === undefined ? [] : [sharedRange.min, sharedRange.max]);
   const ySpan = yRange.hi - yRange.lo || 1;
   const yTickValues = yRange.ticks;

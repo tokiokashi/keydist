@@ -5,8 +5,10 @@ import type { ResolvedText } from '#input/text/resolve.ts';
 import {
   analyzeForEvaluation,
   evaluationText,
+  isWaitingForReading,
   outcomeFor,
   readingProvenance,
+  type ReadingOutcome,
   type ReadingSource,
   type StoredReadingOutcome,
 } from './reading-evaluation.ts';
@@ -186,4 +188,17 @@ test('直した読みで測った数値には、読みを直したことと表�
     { label: '読みの辞書', value: 'IPADIC（6.2.0）' },
     { label: '読みの直し', value: '1表記の読みを直して測定' },
   ]);
+});
+
+test('ペインが数値を出すのを待つのは、読みの結果が出るまでの漢字を含む日本語のテキストだけ', () => {
+  const reading = source(async () => []);
+  const waiting = (text: string, language: ResolvedText['language'], outcome: ReadingOutcome | undefined) =>
+    isWaitingForReading(evaluationText(resolved(text, language), reading, outcome).state);
+  assert.equal(waiting('今日は', 'ja', undefined), true);
+  assert.equal(waiting('今日は', 'ja', { kind: 'failed' }), false);
+  assert.equal(waiting('今日は', 'ja', { kind: 'analyzed', sourceText: '今日は', tokens: [kyou] }), false);
+  assert.equal(waiting('あいう', 'ja', undefined), false);
+  assert.equal(waiting('hello', 'en', undefined), false);
+  // 読みの状態を持たない画面は待たない
+  assert.equal(isWaitingForReading(undefined), false);
 });

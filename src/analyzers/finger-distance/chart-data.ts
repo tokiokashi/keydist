@@ -2,6 +2,11 @@ import { FINGER_LABEL, SHORT_FINGER } from '#input/shapes/finger-names.ts';
 import type { FingerDistanceExtracted, FingerDistanceHand } from './extract.ts';
 import type { FingerDistanceChartMetric } from './options.ts';
 
+/** 縦軸の範囲を揃えるペインの組。見る量が違うと単位も値の大きさも違うので、見る量ごとに分ける。 */
+export function fingerDistanceScaleKey(metric: FingerDistanceChartMetric): string {
+  return `finger-distance:${metric}`;
+}
+
 /**
  * 縦棒グラフに渡す棒の並びを、抽出結果と見る量から作る。値は抽出結果をそのまま写すだけで、
  * 再計算しない。並びは物理的な並び（左手の小指から右手の小指）で、抽出結果の並びのまま。

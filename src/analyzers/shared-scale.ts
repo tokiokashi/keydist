@@ -19,6 +19,17 @@ export function mergeScaleRanges(ranges: Iterable<ScaleRange>): ScaleRange | und
   return merged;
 }
 
+/**
+ * ペインが描く範囲。他のペインの全体の範囲（`shared`）があれば、自分の範囲（`own`）を必ず含めて広げる。
+ * 報告が済む前の描画でも、自分の値が範囲の外に出ない。
+ * 描く値が無いペイン（`own`が`undefined`）は、他のペインの範囲をそのまま使う。
+ */
+export function rangeForPane(shared: ScaleRange | undefined, own: ScaleRange | undefined): ScaleRange | undefined {
+  if (shared === undefined) return own;
+  if (own === undefined) return shared;
+  return { min: Math.min(shared.min, own.min), max: Math.max(shared.max, own.max) };
+}
+
 /** 値の並びを含む範囲。0は常に含める（棒グラフの底）。 */
 export function scaleRangeWithZero(values: Iterable<number>): ScaleRange {
   let min = 0;

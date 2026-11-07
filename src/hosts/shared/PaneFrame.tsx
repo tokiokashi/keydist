@@ -3,7 +3,7 @@ import type { EngineRequestState } from '#engine/request.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
 import type { ConditionHeaderInfo, ConditionSummaryRow, ConditionTargetDiff } from './condition-summary.ts';
 import { ConditionSummary } from './ConditionSummary.tsx';
-import type { ConditionProvenanceItem, PaneReadingState } from './reading-evaluation.ts';
+import { isWaitingForReading, type ConditionProvenanceItem, type PaneReadingState } from './reading-evaluation.ts';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
@@ -202,7 +202,7 @@ export function PaneFrame({
   // 前の結果が無い計算中は、本文が「計算中…」を出している。見出しにも出すと重複し、
   // バッジの幅の分だけ対象ボタンが動いて、計算が済むと戻る。前の結果を表示している間と失敗は見出しで伝える
   const bodyShowsBusy = engineState.status === 'computing' && children === undefined;
-  const readingLoading = reading?.kind === 'loading';
+  const readingLoading = isWaitingForReading(reading);
   const statusLabel = emptyContent === undefined && assetsReady && !bodyShowsBusy && !readingLoading ? paneStatusLabel(engineState.status) : '';
   const errorMessage = emptyContent === undefined && engineState.status === 'failed' ? describeEngineRequestError(engineState.error) : undefined;
   const paneName = targetName === undefined ? name : `${name} — ${targetName}`;
