@@ -783,6 +783,7 @@ interface NameSlot {
  * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
  *
  * 全ての名前を置いた後、`yieldToNeighbors`が真なら、引き出し線の付いた名前を置いた順に1つずつ見直す。
+ * 先に見直した名前が動いて、その名前の組の線が付かない候補がどの名前とも重ならなくなっていれば（点の印・図の外・引き出し線との重なりも無ければ）、他の名前を動かさずに、そのうち最初の候補へ置き直す。
  * その名前の組の、線が付かない候補の行の長方形が、ちょうど1つの名前の行の長方形とだけ重なる（点の印・図の外・引き出し線との重なりが無い）時、重なる名前を別の位置へ動かせるか調べる。
  * 動かす名前は、組の名前をまとめて置いたものに限る（分けて置いた名前は動かさない）。
  * 動かす名前の線が付かない候補のうち、2つの名前を外した状態で（行の長方形で測って）重なりが無く、動かした状態で線の付いていた名前の候補にも行の長方形の重なりが無いものがあれば、
@@ -1114,6 +1115,13 @@ function yieldNames(placed: PlotName[], slots: readonly (NameSlot | undefined)[]
     const slotA = slots[a];
     if (slotA === undefined || placed[a]!.leader === undefined || moved.has(a)) continue;
     const withoutA = placed.filter((_, index) => index !== a);
+    // 置いた時はふさがっていた候補が、先に見直した名前が動いて空いていれば、他の名前を動かさずにそこへ置き直す
+    const free = slotA.nearCandidates().find((candidateA) => slotA.blockersOf(candidateA, withoutA)?.length === 0);
+    if (free !== undefined) {
+      placed[a] = slotA.toName(free);
+      moved.add(a);
+      continue;
+    }
     // 動かす名前ごとの、2つの名前を外した状態で重なりが無い移り先。線の付いていた名前の候補が変わっても同じなので、1度だけ求める
     const roomFor = new Map<number, readonly NameCandidate[]>();
     for (const candidateA of slotA.nearCandidates()) {
