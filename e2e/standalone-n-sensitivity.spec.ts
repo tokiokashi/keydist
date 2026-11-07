@@ -19,6 +19,7 @@ async function addTarget(page: import('@playwright/test').Page, key: string) {
 test.beforeEach(async ({ page }) => {
   await useShortText(page);
 });
+
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに2本の折れ線が出る', { tag: PAGE_TAG }, async ({ page }) => {
   await page.goto('/analyzer/n-sensitivity');
   // ページの見出し(h1)とAnalyzer自身の見出し(h2)は同じ文字列。h2は計算が済むと現れるので、
