@@ -8,6 +8,7 @@ import {
   sortTargetsByChoices,
   targetChoiceGroups,
   targetSummaryText,
+  unselectedVisibleTargets,
   type TargetChoiceSource,
 } from './target-choices.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
@@ -220,4 +221,40 @@ test('種類の切り替えは名前の絞り込みと同時に使え、自作�
   assert.deepEqual(keys('会社', 'alpha'), []);
   // 「すべて」は種類を問わない。
   assert.equal(filterTargetChoiceGroups(groups, '', 'all'), groups);
+});
+
+test('表示中を全部選ぶで足す対象は、一覧に出ている未選択の候補だけを一覧の順に返す', () => {
+  const groups = targetChoiceGroups(
+    source({
+      setups: SETUPS,
+      selected: [
+        { kind: 'layout', layoutId: 'qwerty' },
+        { kind: 'setup', setupId: 'gone' },
+      ],
+    }),
+  );
+  const keys = (visible: ReturnType<typeof filterTargetChoiceGroups>, selected: readonly string[]) =>
+    unselectedVisibleTargets(visible, new Set(selected)).map((target) => analysisTargetKey(target));
+  const selected = ['layout:qwerty', 'setup:gone'];
+
+  // かな配列に絞る: かな配列の候補だけが一覧の順に出て、選んでいる英字の配列（QWERTY）は含まれない
+  const kana = filterTargetChoiceGroups(groups, '', 'kana');
+  const kanaKeys = kana.flatMap((group) => group.choices.map((choice) => choice.key));
+  assert.ok(kanaKeys.length > 0);
+  assert.deepEqual(
+    keys(kana, selected),
+    kanaKeys.filter((key) => !selected.includes(key)),
+  );
+  assert.ok(!keys(kana, selected).includes('layout:qwerty'));
+
+  // 絞り込み欄で絞る: 一覧に出ている未選択だけ。見つからない対象（setup:gone）は一覧に残っていても選んでいるので含まれない
+  const colemak = filterTargetChoiceGroups(groups, 'colemak');
+  assert.deepEqual(
+    keys(colemak, selected),
+    colemak.flatMap((group) => group.choices.map((choice) => choice.key)),
+  );
+
+  // 出ている候補が全て選ばれている時と、候補が0件の時は空
+  assert.deepEqual(keys(colemak, [...selected, ...keys(colemak, selected)]), []);
+  assert.deepEqual(keys(filterTargetChoiceGroups(groups, '該当しない名前'), selected), []);
 });

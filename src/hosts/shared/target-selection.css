@@ -78,37 +78,28 @@
 }
 
 /*
- * パソコン幅: ボタンの下に重ねるポップオーバー。位置はボタンから計算した値（--target-selection-x/y）。
- * 背後を暗くせず、選んだ瞬間に反映する（決定ボタンは置かない）。
+ * 対象の選択の小窓。器（位置・見出し・×・シート）は解析設定と同じ.settings-window（pane-frame.css）で、
+ * ここは対象の選択に固有の幅・高さ・中身の並べ方だけを決める。位置は小窓が決める（--settings-window-x/y）。
+ * 解析設定の小窓より上に出す（パソコン幅。どちらも動かせるので、重なったらずらせる）。
  */
-.target-selection-panel {
-  position: fixed;
-  top: var(--target-selection-y, 5rem);
-  left: var(--target-selection-x, 1rem);
+.settings-window[data-target-selection] {
   z-index: 45;
+  width: 24rem;
+  /* 置いた位置から画面の端までに収める。ドラッグ後は置いた位置から画面の下端まで。 */
+  max-height: min(30rem, var(--settings-window-max-height, max(12rem, calc(100dvh - var(--settings-window-y, 5rem) - 8px))));
+}
+
+/* 中は、絞り込み欄・一覧（ここだけスクロール）・差し込み項目・下のボタン列を縦に並べる。 */
+.settings-window[data-target-selection] .settings-window-body {
   display: grid;
   /*
-   * 列の幅はパネルの幅に固定する。既定の列（auto）は中身の最小幅まで広がるので、差し込まれた項目の
-   * selectが長い候補名を持つと、パネルの背景を残して中身だけが横へはみ出す。
+   * 列の幅は小窓の幅に固定する。既定の列（auto）は中身の最小幅まで広がるので、差し込まれた項目の
+   * selectが長い候補名を持つと、小窓の背景を残して中身だけが横へはみ出す。
    */
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto auto;
-  width: 24rem;
-  max-width: calc(100% - 16px);
-  max-height: min(30rem, var(--target-selection-max-height, 72dvh));
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  background: var(--surface-raised);
-  color: var(--text);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 20%);
-}
-
-.target-selection-panel:focus {
-  outline: none;
-}
-
-.target-selection-scrim {
-  display: none;
+  overflow: hidden;
+  padding: 0;
 }
 
 .target-selection-filter {
@@ -264,6 +255,7 @@
 .target-selection-foot {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.4rem;
   padding: 0.55rem 0.6rem;
   border-top: 1px solid var(--border);
@@ -280,27 +272,15 @@
 }
 
 /*
- * スマホ幅: 画面下からのシート。背後を暗くし、暗い所を押すと閉じる。
+ * スマホ幅: 解析設定と同じ下からのシート（pane-frame.css）。背後は暗くしない。高さの上限も解析設定のシートと同じで、
+ * その中で一覧だけがスクロールする。解析設定のシートと重なった時は、後から開いた方（文書の後ろ）を上に出す。
  * ここは器の置き方なので、Analyzerの中身と違い画面の幅で切り替える（解析設定の小窓と同じ境目）。
  */
 @media (max-width: 760px) {
-  .target-selection-scrim {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 44;
-    background: rgb(0 0 0 / 38%);
-  }
-
-  .target-selection-panel {
-    top: auto;
-    right: 0;
-    bottom: 0;
-    left: 0;
+  .settings-window[data-target-selection] {
+    z-index: 40;
     width: auto;
-    max-width: none;
-    max-height: 78dvh;
-    border-radius: 12px 12px 0 0;
+    max-height: 55dvh;
   }
 
   .target-selection-choice {
