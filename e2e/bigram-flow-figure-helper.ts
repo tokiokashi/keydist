@@ -20,6 +20,6 @@ export async function openFigureSettings(page: Page, figure: 'Keyboard Flow' | '
 }
 
 /** 図の表示の小窓。開いていなければ何も指さない。 */
-export function figureSettingsWindow(page: Page, figure: string): Locator {
+function figureSettingsWindow(page: Page, figure: string): Locator {
   return page.getByRole('dialog', { name: `${figure}の表示` });
 }
