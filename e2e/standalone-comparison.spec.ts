@@ -370,7 +370,7 @@ test('解決に失敗したメンバーにも意味のある名前が付く（L2
   await expect(failedRow).not.toContainText(/deleted-setup|解決できない/);
 });
 
-test('絞り込み欄で候補を絞り、キーボードだけで選んで、Escapeで閉じるとボタンへ戻る', async ({ page }) => {
+test('絞り込み欄で候補を絞り、キーボードだけで選んで、Escapeで閉じるとボタンへ戻り、開き直しても絞り込みが残る', async ({ page }) => {
   await page.goto('/analyzer/comparison');
   const button = page.getByRole('button', { name: /^対象: / });
   await dismissAutoOpenedSelection(page);
@@ -398,12 +398,12 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
   await page.keyboard.press('Escape');
   await expect(selection).toHaveCount(0);
   await expect(button).toBeFocused();
-  // 閉じて開き直すと絞り込みは空に戻る。
+  // 閉じて開き直しても絞り込みの語は残る。
   await button.click();
-  await expect(filter).toHaveValue('');
+  await expect(filter).toHaveValue('colemak');
 });
 
-test('種類の切り替えで、かな配列だけ・英字の配列だけに絞れ、開き直すと「すべて」に戻る', async ({ page }) => {
+test('種類の切り替えで、かな配列だけ・英字の配列だけに絞れ、開き直しても残る', async ({ page }) => {
   await page.goto('/analyzer/comparison');
   await dismissAutoOpenedSelection(page);
   const button = page.getByRole('button', { name: /^対象: / });
@@ -420,7 +420,8 @@ test('種類の切り替えで、かな配列だけ・英字の配列だけに�
   await expect(selection.locator('input[type="checkbox"]')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await button.click();
-  await expect(selection.getByRole('radio', { name: 'すべて' })).toBeChecked();
+  await expect(selection.getByRole('radio', { name: '英字の配列' })).toBeChecked();
+  await expect(selection.getByRole('searchbox')).toHaveValue('なぎなた');
 });
 
 test('絞り込み欄は読みでも探せ、カタカナで打っても同じ候補が出る', async ({ page }) => {

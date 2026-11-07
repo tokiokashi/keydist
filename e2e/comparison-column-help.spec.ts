@@ -234,7 +234,8 @@ test('他のAnalyzerのⓘは今の小窓のまま（モーダルを開かない
     await expect(info).not.toHaveAttribute('aria-haspopup', /.+/);
     await info.click();
     await expect(page.getByRole('tooltip')).toBeVisible();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    // 対象が空のページで自動で開いた対象の選択（小窓）は、ⓘのモーダルではないので数えない
+    await expect(page.getByRole('dialog').and(page.locator(':not([data-target-selection])'))).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(page.getByRole('tooltip')).toHaveCount(0);
   }

@@ -167,6 +167,43 @@ test.describe('パソコン幅の個別画面（散布図）', () => {
     await expect(SELECTION(page)).toHaveCount(0);
   });
 
+  test('閉じて開き直すと、一覧のスクロールの位置・絞り込みの語・種類の切り替えが残る。読み込み直すと初期の状態に戻る', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 520 });
+    await targetButton(page).click();
+    const selection = SELECTION(page);
+    const list = selection.locator('.target-selection-list');
+    await selection.getByRole('radio', { name: '英字の配列' }).check({ force: true });
+    await expect.poll(async () => list.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    await list.evaluate((element) => {
+      element.scrollTop = 60;
+    });
+    const before = await list.evaluate((element) => element.scrollTop);
+    expect(before).toBeGreaterThan(0);
+    await closeButton(page).click();
+    await expect(selection).toHaveCount(0);
+
+    await targetButton(page).click();
+    await expect(selection.getByRole('radio', { name: '英字の配列' })).toBeChecked();
+    await expect.poll(async () => list.evaluate((element) => element.scrollTop)).toBe(before);
+
+    // 絞り込みの語も残る
+    await selection.getByRole('radio', { name: 'すべて' }).check({ force: true });
+    await selection.getByRole('searchbox').fill('colemak');
+    await page.keyboard.press('Escape');
+    await expect(selection).toHaveCount(0);
+    await targetButton(page).click();
+    await expect(selection.getByRole('searchbox')).toHaveValue('colemak');
+    await expect(selection.getByRole('radio', { name: 'すべて' })).toBeChecked();
+    await closeButton(page).click();
+
+    // 読み込み直すと初期の状態に戻る
+    await page.reload();
+    await expect(scatterPoints(page)).toHaveCount(3, { timeout: 15_000 });
+    await targetButton(page).click();
+    await expect(selection.getByRole('searchbox')).toHaveValue('');
+    await expect(selection.getByRole('radio', { name: 'すべて' })).toBeChecked();
+  });
+
   test('「表示中を全部選ぶ」は、出ている候補のうち選んでいないものを一覧の順に足し、既に選んだ対象は残す', async ({ page }) => {
     await targetButton(page).click();
     const selection = SELECTION(page);

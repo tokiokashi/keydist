@@ -35,6 +35,7 @@ import { claimTargetSelection, openTargetSelectionId, releaseTargetSelection, su
  * 選んだ結果の図を見ながら対象を足し引きできる。外を押しても、フォーカスが外へ移っても閉じない。閉じるのは×・Escape・
  * 対象ボタンをもう一度押す時。Escapeはフォーカスが小窓の外にあっても閉じる（別の小窓の中にフォーカスがあれば、その小窓が先に受ける）。
  * パソコン幅は対象ボタンの近くに出し、スマホ幅は解析設定と同じ下からのシートにする。
+ * 閉じても、絞り込み欄の語・種類の切り替え・一覧のスクロールの位置は覚えていて、開き直すと同じ状態で開く（保存はしない）。
  * 開いている選択は画面全体で1つ（`target-selection-open.ts`）。別の選択を開くと、開いていた方は閉じる。
  * 小窓は`document.body`へ出る。ペインの枠はcontainer（レイアウト封じ込め）なので、中に置くと`position: fixed`が
  * 画面ではなくペインを基準にしてしまう。
@@ -153,6 +154,8 @@ export function TargetSelection({
   const moreRef = useRef<HTMLSpanElement>(null);
   // 直前の操作がポインタか。ラジオを矢印キーで送っている間は閉じない（見比べながら送れるように）。
   const pointerRef = useRef(false);
+  // 閉じた時の一覧のスクロールの位置。保存はせず、ページを読み込み直すと初期の状態に戻る。
+  const scrollTopRef = useRef(0);
 
   const names = summary.map((item) => item.label);
   const fullText = names.join('、');
@@ -206,9 +209,10 @@ export function TargetSelection({
   }, [autoOpen]);
 
   const close = (focusButton: boolean) => {
+    // 開き直した時に同じ場所から見られるよう、一覧のスクロールの位置を覚える（絞り込みの語と種類は状態に残す）。
+    const list = document.getElementById(panelId)?.querySelector('.target-selection-list');
+    if (list !== null && list !== undefined) scrollTopRef.current = list.scrollTop;
     setOpen(false);
-    setQuery('');
-    setKindFilter('all');
     if (focusButton) buttonRef.current?.focus({ preventScroll: true });
   };
 
@@ -248,6 +252,9 @@ export function TargetSelection({
   // 開いた時のフォーカス。パソコン幅は絞り込み欄へ（すぐ打てるように）。スマホ幅は小窓自体へ（絞り込み欄へ移すと
   // ソフトキーボードが開き、一覧が隠れる）。自動で開いた時は移さない。
   const initialFocus = () => {
+    // 置き場が決まって一覧の高さが定まってから、前に閉じた時のスクロールの位置へ戻す。
+    const list = document.getElementById(panelId)?.querySelector('.target-selection-list');
+    if (list !== null && list !== undefined) list.scrollTop = scrollTopRef.current;
     if (!focusOnOpenRef.current) {
       focusOnOpenRef.current = true;
       return false;
