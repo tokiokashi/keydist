@@ -3,7 +3,7 @@ import type { LayoutKind } from '#input/layouts/kind.ts';
 import { bindOption, CheckboxGroupOptionField, SegmentedOptionField, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
-import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
+import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_IDS, comparisonColumnText } from '../comparison-column-text.ts';
 import { useTextLanguage } from '../text-language-context.tsx';
@@ -67,6 +67,59 @@ function KindMark({ kind, size = MARK_SIZE }: { readonly kind: LayoutKind; reado
   return <path className="scatter-mark" data-kind={kind} data-mark={style.shape} d={targetMarkPath(style.shape, size)} style={{ fill: style.color }} />;
 }
 
+/** 画像の書き出しの結果を、ボタンのそばにしばらく出す時間 [ms]。 */
+const COPY_STATUS_MS = 1800;
+const COPY_IMAGE_LABEL = '図を画像でコピー';
+
+/** 図を画像にして書き出すボタンと、結果の知らせ。 */
+function CopyImageControl({
+  copyFigureImage,
+  source,
+}: {
+  readonly copyFigureImage: (source: FigureImageSource) => Promise<boolean>;
+  readonly source: () => FigureImageSource | undefined;
+}) {
+  const [result, setResult] = useState<'copied' | 'failed' | undefined>(undefined);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const show = (next: 'copied' | 'failed') => {
+    setResult(next);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setResult(undefined), COPY_STATUS_MS);
+  };
+  const copy = () => {
+    const target = source();
+    if (target === undefined) {
+      show('failed');
+      return;
+    }
+    copyFigureImage(target).then(
+      (copied) => show(copied ? 'copied' : 'failed'),
+      () => show('failed'),
+    );
+  };
+  return (
+    <span className="scatter-copy">
+      <button type="button" className="scatter-copy-button" aria-label={COPY_IMAGE_LABEL} title={COPY_IMAGE_LABEL} onClick={copy}>
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <rect x="5.25" y="5.25" width="8.25" height="8.25" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path
+            d="M10.75 3.5V3.1c0-.9-.7-1.6-1.6-1.6H3.1c-.9 0-1.6.7-1.6 1.6v6.05c0 .9.7 1.6 1.6 1.6h.4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+      <span className="scatter-copy-status" role="status">
+        {result === 'copied' ? '画像をコピーしました' : result === 'failed' ? '画像をコピーできませんでした' : ''}
+      </span>
+    </span>
+  );
+}
+
 /** 要素の幅 [px]。まだ測っていない間は`undefined`。 */
 function useElementWidth(ref: RefObject<HTMLElement | null>): number | undefined {
   const [width, setWidth] = useState<number | undefined>(undefined);
@@ -93,10 +146,27 @@ interface FigureViewProps {
   readonly onHover: (targetKey: string) => void;
   readonly onLeave: (targetKey: string) => void;
   readonly onTogglePin: (targetKey: string) => void;
+  /** 図を画像にして書き出す手段（ホストが渡す）。無い画面ではボタンを出さない。 */
+  readonly copyFigureImage: ((source: FigureImageSource) => Promise<boolean>) | undefined;
 }
 
 /** 組み合わせ1つぶんの図（見出し・知らせ・図・読み取り・描けない対象の一覧）。 */
-function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTogglePin }: FigureViewProps) {
+function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTogglePin, copyFigureImage }: FigureViewProps) {
+  const figureRef = useRef<HTMLElement>(null);
+  const readoutsRef = useRef<HTMLDivElement>(null);
+  // 画像に含めるのは、留めた点の読み取りだけ（ポインターを重ねた点の読み取りは含めない）
+  const imageSource = (): FigureImageSource | undefined => {
+    const svg = figureRef.current?.querySelector('svg');
+    const caption = figureRef.current?.querySelector('figcaption');
+    if (svg == null || caption == null) return undefined;
+    const row = pinned === undefined ? null : readoutsRef.current?.querySelector('[data-scatter-readout="pinned"]');
+    const text = row?.querySelector('.scatter-readout-text');
+    return {
+      svg,
+      caption,
+      readout: row == null || text == null ? undefined : { row, mark: row.querySelector('.scatter-readout-mark'), text },
+    };
+  };
   const { axes, problem, plotted, excluded, contour, logScale, logReasons, usedKinds, model } = figure;
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const quantityHelp = scatterQuantityHelp(axes, contour, language, logScale);
@@ -125,13 +195,14 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
               description={quantityHelp.description}
               help={{ ...quantityHelp.help, notes: [...quantityHelp.help.notes, READING_NOTE] }}
             />
+            {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
           </div>
           {logReasons.map((reason) => (
             <p key={reason} className="scatter-notice" data-scatter-log-notice={reason}>
               {LOG_BLOCKER_TEXTS[reason]}
             </p>
           ))}
-          <figure className="scatter-figure">
+          <figure ref={figureRef} className="scatter-figure">
             <svg
               viewBox={`${model.viewBoxX} 0 ${PLOT_WIDTH - model.viewBoxX} ${PLOT_HEIGHT}`}
               aria-label={`${axisName(axes.x, language)}と${axisName(axes.y, language)}の散布図`}
@@ -331,7 +402,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
               {scatterCaption(axes, language)}
             </figcaption>
           </figure>
-          <div className="scatter-readouts" data-scatter-readouts="" data-pinned={pinned !== undefined || undefined} aria-live="off">
+          <div ref={readoutsRef} className="scatter-readouts" data-scatter-readouts="" data-pinned={pinned !== undefined || undefined} aria-live="off">
             {shownReadouts.map(({ role, key, parts }) => (
               <p key={role} className="scatter-readout" data-scatter-readout={role} data-scatter-readout-of={key}>
                 {pinned === undefined ? null : <span className="scatter-readout-mark" aria-hidden="true" />}
@@ -377,7 +448,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
  * 選んだ組み合わせごとの図を、並べる領域の幅で決めた列の数で並べる。
  * 計算中・失敗・値なしの対象は、図ごとに図の外へ名前と状態を出す。
  */
-export function ScatterBody({ extracted, order, rowContext, options }: ScatterBodyProps) {
+export function ScatterBody({ extracted, order, rowContext, options, copyFigureImage }: ScatterBodyProps) {
   const language = useTextLanguage();
   const gridRef = useRef<HTMLDivElement>(null);
   const width = useElementWidth(gridRef);
@@ -426,6 +497,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
             key={figure.preset}
             figure={figure}
             language={language}
+            copyFigureImage={copyFigureImage}
             pinned={reading.pinned}
             hovered={reading.hovered}
             onHover={setHoveredKey}
