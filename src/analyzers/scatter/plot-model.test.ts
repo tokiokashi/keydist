@@ -12,6 +12,7 @@ import {
   logScaleBlockers,
   MARK_RADIUS,
   niceTicks,
+  placeNames,
   PLOT_HEIGHT,
   PLOT_MARGIN,
   PLOT_WIDTH,
@@ -276,7 +277,9 @@ const CROWDED = [
 ];
 
 test('scatterPlotModel: 引き出し線は、他の引き出し線と交差せず、他の名前の長方形と他の点の印を通らない', () => {
-  const model = scatterPlotModel({ points: CROWDED, ...NO_LINES });
+  // 全ての名前を置いた後の見直し（名前を動かして線を無くす段）を通さない置き方で見る
+  const { points } = scatterPlotModel({ points: CROWDED, ...NO_LINES });
+  const model = { points, names: placeNames(points, false) };
   const leaders = model.names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
   assert.ok(leaders.length >= 2, '線を付ける名前が複数ある');
   for (let i = 0; i < leaders.length; i++) for (let j = i + 1; j < leaders.length; j++) assert.equal(leadersCross(leaders[i]!, leaders[j]!), false);
@@ -943,4 +946,46 @@ test('割合の細い線: 同指率・同じ手の続きの割合・移動あり
   }
   // 割合でない量は単位が%にならない
   for (const column of ['sameFinger', 'handSwitches', 'perPressUnits'] as const) assert.notEqual(axisUnit(column), '%', column);
+});
+
+/** 乱数の種から決まる点の並び。印が重なる組を含む。 */
+function randomNameScene(seed: number) {
+  let state = seed;
+  const next = () => {
+    state = (state * 1103515245 + 12345) & 0x7fffffff;
+    return state / 0x7fffffff;
+  };
+  const rows: { px: number; py: number; label: string }[] = [];
+  const count = 6 + Math.floor(next() * 9);
+  for (let i = 0; i < count; i++) {
+    const base = i > 0 && next() < 0.3 ? rows[Math.floor(next() * rows.length)] : undefined;
+    rows.push({
+      px: base === undefined ? Math.round(100 + next() * 110) : base.px + Math.round(next() * 8 - 4),
+      py: base === undefined ? Math.round(60 + next() * 70) : base.py + Math.round(next() * 8 - 4),
+      label: ['ab', 'abcd', 'abcdefg'][Math.floor(next() * 3)]! + i,
+    });
+  }
+  return rows.map((row, index) => ({ targetKey: `k${index}`, y: -row.py + index * 0.001, ...row }));
+}
+
+test('placeNames: 名前を動かして線を無くす段は、名前どうし・名前と点の印の重なりと、引き出し線どうしの交差を増やさず、線の数を減らすだけである', () => {
+  for (let seed = 1; seed <= 300; seed++) {
+    const points = randomNameScene(seed);
+    const count = (names: readonly PlotName[]) => {
+      const leaders = names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
+      let crossings = 0;
+      for (let i = 0; i < leaders.length; i++) for (let j = i + 1; j < leaders.length; j++) if (leadersCross(leaders[i]!, leaders[j]!)) crossings++;
+      const marks = points.flatMap((point) => names.filter((name) => overlapsRect(name.rect, markRect(point))));
+      return { nameNames: nameOverlapCount(names), nameMarks: marks.length, crossings, leaders: leaders.length };
+    };
+    const before = count(placeNames(points, false));
+    const after = count(placeNames(points));
+    assert.ok(
+      after.nameNames <= before.nameNames &&
+        after.nameMarks <= before.nameMarks &&
+        after.crossings <= before.crossings &&
+        after.leaders <= before.leaders,
+      `seed ${seed}`,
+    );
+  }
 });
