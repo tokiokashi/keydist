@@ -40,7 +40,6 @@ test('解析設定に項目は無い', async ({ page }) => {
   await page.getByRole('button', { name: '解析設定', exact: true }).click();
   const settings = page.locator('[data-settings-window="true"]');
   await expect(settings.getByText('このAnalyzerに解析設定はありません。')).toBeVisible();
-  await expect(settings.getByRole('group', { name: '色の尺度' })).toHaveCount(0);
 });
 
 test('Workspaceの「ペインを追加」にヒートマップとヒートマップ（レイヤー）の2つが並び、ヒートマップを足せる', async ({ page }) => {

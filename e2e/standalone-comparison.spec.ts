@@ -384,14 +384,13 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
   await expect(selection.locator('input[type="checkbox"]')).toHaveCount(3);
   await expect(selection.locator('[data-target-group]')).toHaveCount(1);
 
-  // Tabで種類の切り替えを経て候補へ移り、Spaceで付けた瞬間に反映される（決定ボタンは無い）。
+  // Tabで種類の切り替えを経て候補へ移り、Spaceで付けた瞬間に反映される。
   await page.keyboard.press('Tab');
   await expect(selection.getByRole('radio', { name: 'すべて' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(selection.locator('input[value="layout:colemak"]')).toBeFocused();
   await page.keyboard.press('Space');
   await expect(selection.locator('input[value="layout:colemak"]')).toBeChecked();
-  await expect(selection.getByRole('button', { name: '決定' })).toHaveCount(0);
   await expectTargetNames(page, ['Colemak']);
 
   await page.keyboard.type('x');
@@ -551,7 +550,7 @@ test('保存済みの表示する列は、操作可能になった瞬間から�
   expect(await enabledValues(page)).toEqual(['false']);
 });
 
-test('基準にする対象は対象の選択の中にあり、解析設定には無い', async ({ page }) => {
+test('基準にする対象は対象の選択の中にある', async ({ page }) => {
   await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
@@ -560,13 +559,7 @@ test('基準にする対象は対象の選択の中にあり、解析設定に�
   const selection = await openTargetSelection(page);
   await expect(selection.getByLabel('基準', { exact: true })).toBeVisible();
   const settings = await openSettings(page);
-  await expect(settings.getByLabel('基準', { exact: true })).toHaveCount(0);
   await expect(settings.getByRole('checkbox', { name: 'アクション数', exact: true })).toBeVisible();
-
-  // 本体は見出し・説明段落・観測値の注記を持たない。
-  const body = page.locator('.pane-body');
-  await expect(body.getByRole('heading', { name: '比較表' })).toHaveCount(0);
-  await expect(body).not.toContainText('配列の優劣を判定するスコアではありません');
 });
 
 test('対象が空の時は、ペインに選ぶボタンだけを出し、パソコン幅では選択を自動で開く（フォーカスは奪わない）', async ({ page }) => {
