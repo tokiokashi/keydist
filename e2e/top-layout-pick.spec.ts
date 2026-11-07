@@ -5,7 +5,7 @@ import { expectTargetNames } from './pane-helper.ts';
 /**
  * トップで気になる配列を1つ選ぶと、Single（Bigram Flow）の対象になる。
  */
-test('トップで選んだ配列が、Bigram Flow に出る', { tag: PAGE_TAG }, async ({ page }) => {
+test('トップで選んだ配列が、Bigram Flowに出る', { tag: PAGE_TAG }, async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
 
