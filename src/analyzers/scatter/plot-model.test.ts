@@ -193,6 +193,31 @@ test('scatterPlotModel: 印が重ならない近い点の名前は、互いに�
   }
 });
 
+/** 2点の組（A=左、B=右）。点の周りを名前が入らない隙間で敷き詰め、まとめた名前を点のすぐ横のどこにも置けなくする。点の横の位置は2点の中央からdx、縦は同じ。 */
+function blockedPair(half: number, extra: readonly { readonly key: string; readonly label: string; readonly dx: number; readonly dy: number }[] = []) {
+  return sceneAt([{ key: 'a', label: 'AAAA', dx: -half, dy: 0 }, { key: 'b', label: 'BBBB', dx: half, dy: 0 }, ...lattice(0), ...extra]);
+}
+
+function assertNamesClear(model: ReturnType<typeof scatterPlotModel>) {
+  assert.equal(nameOverlapCount(model.names), 0);
+  for (const name of model.names) {
+    for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false, `${name.lines[0]!.text}と${point.label}の印`);
+    assert.ok(name.rect.x0 >= PLOT_MARGIN.left && name.rect.x1 <= PLOT_WIDTH - PLOT_MARGIN.right, `${name.lines[0]!.text}の左右`);
+    assert.ok(name.rect.y0 >= PLOT_MARGIN.top && name.rect.y1 <= PLOT_HEIGHT - PLOT_MARGIN.bottom, `${name.lines[0]!.text}の上下`);
+  }
+}
+
+test('scatterPlotModel: 印が重なる2点の名前を点のすぐ横に置けない図でも、名前は名前どうし・点の印と重ならず、枠の外へ出ない', () => {
+  // 左右が空いている図、左の点の左に別の点の印がある図、右端に寄せた図
+  const shift = 215;
+  const scenes = [
+    blockedPair(4),
+    blockedPair(4, [{ key: 'w', label: 'W', dx: -24, dy: 0 }]),
+    sceneAt([{ key: 'a', label: 'AAAA', dx: shift - 4, dy: 0 }, { key: 'b', label: 'BBBBBBBBBB', dx: shift + 4, dy: 0 }, ...lattice(shift)]),
+  ];
+  for (const model of scenes) assertNamesClear(model);
+});
+
 test('scatterPlotModel: 点のすぐ横のどこにも置けない名前は、点から離して置き、点の印と名前を細い線で結ぶ', () => {
   // 中央の点を除き、点の周りを名前が入らない隙間で敷き詰める
   const model = sceneAt([
@@ -209,6 +234,63 @@ test('scatterPlotModel: 点のすぐ横のどこにも置けない名前は、�
   const inRect = (x: number, y: number) => x >= name.rect.x0 - 1e-6 && x <= name.rect.x1 + 1e-6 && y >= name.rect.y0 - 1e-6 && y <= name.rect.y1 + 1e-6;
   assert.ok(inRect(leader.x2, leader.y2));
   assert.equal(inRect(leader.x1, leader.y1), false);
+});
+
+/** 2本の線分が互いの内側で交わる。 */
+function leadersCross(a: NonNullable<PlotName['leader']>, b: NonNullable<PlotName['leader']>): boolean {
+  const side = (s: NonNullable<PlotName['leader']>, x: number, y: number) => (s.x2 - s.x1) * (y - s.y1) - (s.y2 - s.y1) * (x - s.x1);
+  return side(a, b.x1, b.y1) * side(a, b.x2, b.y2) < 0 && side(b, a.x1, a.y1) * side(b, a.x2, a.y2) < 0;
+}
+
+/** 引き出し線が長方形を通るか（線上を細かく標本にして見る）。 */
+function leaderTouches(leader: { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number }, rect: PlotRect): boolean {
+  for (let i = 0; i <= 200; i++) {
+    const x = leader.x1 + ((leader.x2 - leader.x1) * i) / 200;
+    const y = leader.y1 + ((leader.y2 - leader.y1) * i) / 200;
+    if (x >= rect.x0 && x <= rect.x1 && y >= rect.y0 && y <= rect.y1) return true;
+  }
+  return false;
+}
+
+/** 点が混み合い、引き出し線を付ける名前が2つ出る図。 */
+const CROWDED = [
+  { targetKey: 'p0', label: 'PXYZWXYZW', x: 2.4, y: 2.6 },
+  { targetKey: 'p1', label: 'PXYZW', x: 1.9, y: 2.7 },
+  { targetKey: 'p2', label: 'PXYZWXYZW', x: 3, y: 2.1 },
+  { targetKey: 'p3', label: 'PXYZWXYZW', x: 2, y: 1.2 },
+  { targetKey: 'p4', label: 'PXYZW', x: 2, y: 2.7 },
+  { targetKey: 'p5', label: 'PXYZWXYZW', x: 2.4, y: 2.8 },
+  { targetKey: 'p6', label: 'PXYZWXYZW', x: 2.9, y: 2.7 },
+  { targetKey: 'p7', label: 'PXYZW', x: 1.3, y: 2.8 },
+  { targetKey: 'p8', label: 'PXYZWXYZW', x: 2.3, y: 1.4 },
+  { targetKey: 'p9', label: 'PXYZW', x: 2.9, y: 2.3 },
+  { targetKey: 'p10', label: 'PXYZW', x: 1.1, y: 2.6 },
+  { targetKey: 'p11', label: 'PXYZWXYZW', x: 3, y: 2.2 },
+  { targetKey: 'p12', label: 'PXYZWXYZW', x: 2.2, y: 2.2 },
+  { targetKey: 'p13', label: 'PXYZWXYZW', x: 2.6, y: 2.3 },
+  { targetKey: 'p14', label: 'PXYZW', x: 2.7, y: 3 },
+  { targetKey: 'p15', label: 'PXYZWXYZW', x: 1.1, y: 3 },
+  { targetKey: 'p16', label: 'PXYZWXYZW', x: 1.8, y: 2.4 },
+  { targetKey: 'p17', label: 'PXYZWXYZW', x: 1.4, y: 2.4 },
+  { targetKey: 'p18', label: 'PXYZWXYZW', x: 1.9, y: 2.6 },
+];
+
+test('scatterPlotModel: 引き出し線は、他の引き出し線と交差せず、他の名前の長方形と他の点の印を通らない', () => {
+  const model = scatterPlotModel({ points: CROWDED, ...NO_LINES });
+  const leaders = model.names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
+  assert.ok(leaders.length >= 2, '線を付ける名前が複数ある');
+  for (let i = 0; i < leaders.length; i++) for (let j = i + 1; j < leaders.length; j++) assert.equal(leadersCross(leaders[i]!, leaders[j]!), false);
+  for (const name of model.names) {
+    if (name.leader === undefined) continue;
+    for (const other of model.names)
+      if (other !== name) assert.equal(leaderTouches(name.leader, other.rect), false, `${name.lines[0]!.text}の線が他の名前を通る`);
+    const own = new Set(name.lines.map((line) => line.targetKey));
+    for (const point of model.points) {
+      if (!own.has(point.targetKey))
+        assert.equal(leaderTouches(name.leader, markRect(point)), false, `${name.lines[0]!.text}の線が${point.label}の印を通る`);
+    }
+  }
+  assert.equal(nameOverlapCount(model.names), 0);
 });
 
 test('scatterPlotModel: 点を隙間なく敷き詰めて名前を重ならずに置けなくても、名前は枠の外へ出さない', () => {
@@ -574,7 +656,7 @@ test('logAxisRange: 余白は対数の上で両側に同じだけ足し、値が
   assert.deepEqual(logAxisRange([]), { lo: 1, hi: 10 });
 });
 
-/** 4つの段の目盛りの値になれる値か。1つ目は1の冪、2つ目は1・2・5の冪、3つ目は1〜9の冪。4つ目は一定の刻みなので別に確かめる。 */
+/** 軸の両端が目盛りで、余白を足した範囲と全ての点を、目盛りが両側から挟む事を確かめる。 */
 function assertEnclosing(values: readonly number[], target: number, horizontal: boolean) {
   const axis = logAxis(values, target, horizontal);
   const padded = logAxisRange(values);
