@@ -235,7 +235,7 @@ export interface PlotName {
   readonly anchor: 'start' | 'end';
   /** 名前の占める長方形。周りに余白を足してある。名前どうしの重なりはこの長方形の交差で数える。 */
   readonly rect: PlotRect;
-  /** 点から離れた場所に置いた名前と、点の印を結ぶ細い線。近くに置いた名前には無い。 */
+  /** 点のすぐ横より離れた場所に置いた名前と、点の印を結ぶ細い線。点のすぐ横に置いた名前には無い。 */
   readonly leader: { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number } | undefined;
 }
 
@@ -674,6 +674,10 @@ const SLIDE_FINE_GAP = 8;
 const OVERLAP_WEIGHT = 1000;
 /** 引き出し線を引く最小の隙間。これより近い置き方には線を付けない。 */
 const MIN_LEADER = 6;
+/** 短い線を付ける隙間の下限。隙間1pxは点のすぐ横（候補の段の最小）なので、それより離れた名前に付ける */
+const SHORT_LEADER = 2;
+/** 短い線の先を、名前の長方形からこれだけ内側に寄せる。長方形は字の周りに余白を持つので、線の先を字の縁に近づける */
+const SHORT_LEADER_INSET = 2.5;
 /** 印が重なる2点の名前を分けて置く条件。2点の横の位置の差がこれ以上（これ未満は描画の丸めで同じ位置に見える）。 */
 const SPLIT_MIN_DX = 0.5;
 /** 点の中心から、その点の横に置く名前までの間隔。 */
@@ -752,16 +756,19 @@ interface NameSlot {
  * 候補は、隙間が1px（点のすぐ横）から124pxまでの段ごとに、点の箱に沿って名前を一周ずらした位置と、箱の4つの角の斜め外側。
  * 重なりの数（他の名前・点の印・引き出し線と名前・引き出し線どうし・図の外）が少ない候補を選び、同じなら隙間が小さい候補を選ぶ。
  * 名前の長方形が他の名前・点の印と重なる1か所は、線の交差1か所より重く数える。線が名前の字を通る置き方の方が、名前どうしが重なる置き方より読める。
- * 同じ隙間（1px未満は1pxとみなす）の候補は、右・左の辺では縦の中央からのずれが、上・下の辺では名前の左端を点の箱の左端にそろえた位置（名前が点から右へ伸びる）からのずれが小さい順に、右・左・下・上の辺、続けて角の順に比べ、最初の候補を選ぶ。
- * 隙間が`MIN_LEADER`以上の名前には、一番近い点の印の縁から名前の長方形へ細い引き出し線を付ける。
+ * 同じ隙間（1px未満は1pxとみなす）の候補は、辺の候補を名前の縦の中央が組の中心の高さに近い順に、続けて角の順に比べ、最初の候補を選ぶ。点の高さの近くに置いた名前の方が、どの点の名前か読み取りやすいため。
+ * 高さの近さが同じ辺の候補は、右・左の辺では縦の中央からのずれが、上・下の辺では名前の左端を点の箱の左端にそろえた位置（名前が点から右へ伸びる）からのずれが小さい順に、右・左・下・上の辺の順に比べる。
+ * 隙間が`MIN_LEADER`以上の名前には、一番近い点の印の縁から名前の長方形へ細い引き出し線を付ける。この説明の「引き出し線」は、この線だけを指す（下の短い線を含まない）。
  * 名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
  * 行は、点の左の名前は右端、点の右の名前は左端、点の上下の名前は点の箱の横の中央が名前の長方形の横の中央より左なら左端、そうでなければ右端でそろえる（列に分けた名前は列ごとに同じ）。上下の名前は、名前の長方形の左端を点の箱の左端にそろえた位置から試す。
  * 点の左右の名前では、点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。
  * 2行以上の名前は、点の左右に置く候補を、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り（図の中へ寄せた後で判定する）、角の候補を使わない。
  * 点の高さから遠い行だけが点のそばに残る置き方を避けるため。上下の候補と1行の名前の候補は変えない。
  * 印が重なる2点の組は、まず点ごとに1行の名前を分けて置けるか試す。各点を1点だけの組とみなした時の、引き出し線が付かない候補（隙間が`MIN_LEADER`未満）のうち、
- * 組の2点以外の全ての点との隙間が`MIN_LEADER`以上（他の点の名前を線無しで置ける範囲を取らない）、もう1つの点との隙間も`MIN_LEADER`以上で、重なりが無いものに限る。線の付く距離にもう1つの点の名前が来ないので、線の無い名前は自分の点のものと読める。
- * 縦軸の値が大きい点の候補を先に、候補の順（隙間の小さい順、同じ隙間では右・左・下・上の辺、続けて角）に試し、もう1つの点の名前が置ける最初の組み合わせを採る。2点の横の位置の差は問わない。
+ * 組の2点以外の全ての点との隙間が`MIN_LEADER`以上（他の点の名前を線無しで置ける範囲を取らない）、自分の点との隙間がもう1つの点との隙間より小さく、重なりが無いものに限る。
+ * さらに2つの名前の並びは2点の並びと同じにする。2点の縦の差の大きさが横の差の大きさ以上なら縦で比べ、画面の上の点の名前の長方形の縦の中央が、下の点の名前のそれより上にある。そうでなければ横で比べ、左の点の名前の長方形の横の中央が、右の点の名前のそれより左にある。
+ * 自分の点の方が近く、並びが点と同じなので、引き出し線が無くても名前は自分の点のものと読める（自分の点との隙間が`SHORT_LEADER`以上なら、最後に短い線も付く）。
+ * 縦軸の値が大きい点の候補を先に、候補の順（隙間の小さい順、同じ隙間では名前の高さが点に近い辺の候補、続けて角）に試し、もう1つの点の名前が置ける（重ならず、並びが点と同じになる）最初の組み合わせを採る。2点の横の位置の差は問わない。
  * 分けて置けない組は、まとめた名前を置く。まとめた名前を引き出し線無しで重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
  * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
  *
@@ -771,6 +778,9 @@ interface NameSlot {
  * 動かす名前の線が付かない候補のうち、2つの名前を外した状態で重なりが無く、動かした状態で線の付いていた名前の候補にも重なりが無いものがあれば、
  * 動かして、線の付いていた名前をその候補に置き直す（線は付かなくなる）。探す順は、線の付いていた名前の候補、重なる名前、重なる名前の移り先の順で、最初に見つかった組み合わせを採る。
  * 動かした名前と、線を無くした名前は、別の名前のために動かさない。
+ *
+ * 最後に（見直しの後）、隙間が`SHORT_LEADER`以上`MIN_LEADER`未満の名前に、引き出し線と同じ形の短い線を付ける。置き場所を選ぶ時の重なりにも、見直しにも使わない。
+ * 点のすぐ横に置けなかった名前の、どの点のものかを示す最後の手段なので、他の名前の字を通ってもよい。
  */
 export function placeNames(
   points: readonly { readonly targetKey: string; readonly px: number; readonly py: number; readonly y: number; readonly label: string }[],
@@ -836,7 +846,8 @@ export function placeNames(
         leader: nearest.gap >= MIN_LEADER ? leaderTo(points[nearest.index]!, rect) : undefined,
       };
     };
-    // 隙間`d`の段の候補。右・左の辺は縦の中央からのずれが、上・下の辺は名前の左端を点の箱の左端にそろえた位置からのずれが小さい順に、右・左・下・上の辺を並べ、最後に4つの角を置く
+    // 隙間`d`の段の候補。辺の候補を名前の縦の中央が組の中心の高さに近い順に並べ、最後に4つの角を置く。
+    // 近さが同じ辺の候補は、右・左の辺は縦の中央からのずれが、上・下の辺は名前の左端を点の箱の左端にそろえた位置からのずれが小さい順に、右・左・下・上の辺の順
     const candidatesAt = (d: number, nearOnly = false): NameCandidate[] => {
       const found: NameCandidate[] = [];
       const add = (x0: number, y0: number, kind: 'side' | 'edge' | 'corner'): void => {
@@ -859,6 +870,8 @@ export function placeNames(
           }
         }
       }
+      // 近さが同じなら、上で並べた順のまま（`sort`は安定）
+      found.sort((a, b) => Math.abs((a.rect.y0 + a.rect.y1) / 2 - cluster.cy) - Math.abs((b.rect.y0 + b.rect.y1) / 2 - cluster.cy));
       add(box.x1 + d, box.y1 + d, 'corner');
       add(box.x0 - d - rectWidth, box.y1 + d, 'corner');
       add(box.x1 + d, box.y0 - d - rectHeight, 'corner');
@@ -972,19 +985,30 @@ export function placeNames(
   const separate = (upper: number, lower: number): PlotName[] | undefined => {
     const upperGroup = prepare({ members: [upper], cx: points[upper]!.px, cy: points[upper]!.py });
     const lowerGroup = prepare({ members: [lower], cx: points[lower]!.px, cy: points[lower]!.py });
-    // 自分の点の名前と読める置き方。自分の点との隙間が`MIN_LEADER`未満、組の2点以外の全ての点との隙間が`MIN_LEADER`以上
-    // （他の点の名前を線無しで置ける範囲を、まだ置いていない名前の分まで先に取らない）で、重なりが無い
-    const apart = (rect: Rect, other: number): boolean => {
+    // 自分の点の名前と読める置き方。自分の点との隙間が`MIN_LEADER`未満（候補の側で満たす）で、もう1つの点との隙間より小さく、
+    // 組の2点以外の全ての点との隙間が`MIN_LEADER`以上（他の点の名前を線無しで置ける範囲を、まだ置いていない名前の分まで先に取らない）で、重なりが無い
+    const apart = (rect: Rect, own: number, other: number): boolean => {
       for (let index = 0; index < marks.length; index++) {
         if (index !== upper && index !== lower && clearance(rect, index) < MIN_LEADER) return false;
       }
-      return clearance(rect, other) >= MIN_LEADER;
+      return clearance(rect, own) < clearance(rect, other);
     };
-    const upperRoom = upperGroup.nearCandidates().filter((c) => apart(c.rect, lower) && upperGroup.costOf(c, upperGroup.nearNames, 0) === 0);
+    const upperRoom = upperGroup.nearCandidates().filter((c) => apart(c.rect, upper, lower) && upperGroup.costOf(c, upperGroup.nearNames, 0) === 0);
     if (upperRoom.length === 0) return undefined;
-    const lowerRoom = lowerGroup.nearCandidates().filter((c) => apart(c.rect, upper) && lowerGroup.costOf(c, lowerGroup.nearNames, 0) === 0);
+    const lowerRoom = lowerGroup.nearCandidates().filter((c) => apart(c.rect, lower, upper) && lowerGroup.costOf(c, lowerGroup.nearNames, 0) === 0);
+    // 2つの名前の並びが2点の並びと同じ。縦の差が横の差以上なら縦（画面の上の点の名前が上）、そうでなければ横（左の点の名前が左）で、名前の長方形の中央を比べる
+    const dx = points[upper]!.px - points[lower]!.px;
+    const dy = points[upper]!.py - points[lower]!.py;
+    const sameOrder = (u: Rect, l: Rect): boolean => {
+      if (Math.abs(dy) >= Math.abs(dx)) {
+        const [top, bottom] = dy < 0 ? [u, l] : [l, u];
+        return top.y0 + top.y1 < bottom.y0 + bottom.y1;
+      }
+      const [left, right] = dx < 0 ? [u, l] : [l, u];
+      return left.x0 + left.x1 < right.x0 + right.x1;
+    };
     for (const u of upperRoom) {
-      const l = lowerRoom.find((candidate) => !overlaps(u.rect, candidate.rect));
+      const l = lowerRoom.find((candidate) => !overlaps(u.rect, candidate.rect) && sameOrder(u.rect, candidate.rect));
       if (l !== undefined) return [upperGroup.toName(u), lowerGroup.toName(l)];
     }
     return undefined;
@@ -1038,7 +1062,17 @@ export function placeNames(
     slots.push({ nearCandidates, costOf, blockersOf, toName });
   }
   if (yieldToNeighbors) yieldNames(placed, slots);
-  return placed;
+  // 点のすぐ横より離れた名前に、短い線を付けて、どの点の名前かを示す
+  const byKey = new Map(points.map((p, i) => [p.targetKey, i]));
+  return placed.map((name) => {
+    if (name.leader !== undefined) return name;
+    const members = name.lines.map((line) => byKey.get(line.targetKey)!);
+    const nearest = nearestMember(members, marks, points, name.rect);
+    if (nearest.gap < SHORT_LEADER) return name;
+    const r = name.rect;
+    const inner = { x0: r.x0 + SHORT_LEADER_INSET, x1: r.x1 - SHORT_LEADER_INSET, y0: r.y0 + SHORT_LEADER_INSET, y1: r.y1 - SHORT_LEADER_INSET };
+    return { ...name, leader: leaderTo(points[nearest.index]!, inner) };
+  });
 }
 
 /** 引き出し線の付いた名前のために、線無しの候補をふさぐ名前を1つ動かす。詳しくは`placeNames`。 */
