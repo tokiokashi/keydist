@@ -651,22 +651,15 @@ const NAME_LINE_HEIGHT = 13;
 const NAME_MAX_ROWS = 12;
 /** 名前の列と列の間の幅。 */
 const NAME_COLUMN_GAP = 14;
-/** 点の近くに置けなかった時に試す、点から名前までの距離。 */
-const FAR_DISTANCES = [24, 42, 64, 92, 124] as const;
-/** 点から名前への向き（右・左・上・下と、斜め4方向）。 */
-const FAR_DIRECTIONS = [
-  [1, 0],
-  [-1, 0],
-  [0, -1],
-  [0, 1],
-  [Math.SQRT1_2, -Math.SQRT1_2],
-  [-Math.SQRT1_2, -Math.SQRT1_2],
-  [Math.SQRT1_2, Math.SQRT1_2],
-  [-Math.SQRT1_2, Math.SQRT1_2],
-] as const;
-/** 候補のうち点の近く（右・左・上・下）の数。この後に点から離れた候補が続く。 */
-const NEAR_CANDIDATES = 4;
-/** 引き出し線を引く最小の長さ。これより短い置き方には線を付けない。 */
+/** 名前の長方形と点の箱の隙間の段。1pxは点のすぐ横。隙間を細かい刻みで上限まで広げる。 */
+const GAP_LEVELS = [1, 2, 3, 4, 6, 8, 11, 15, 20, 26, 34, 44, 58, 76, 98, 124] as const;
+/** 名前を点の箱に沿ってずらす刻み。隙間が`SLIDE_FINE_GAP`以下の段は細かく、それより離れた段は粗くする。 */
+const SLIDE_STEP_NEAR = 2;
+const SLIDE_STEP_FAR = 4;
+const SLIDE_FINE_GAP = 8;
+/** 名前の長方形が他の名前・点の印と重なる1か所を、引き出し線の交差1か所より重く数える重み。線が名前の字を通る置き方より、名前どうしが重なる置き方を後にする。 */
+const OVERLAP_WEIGHT = 1000;
+/** 引き出し線を引く最小の隙間。これより近い置き方には線を付けない。 */
 const MIN_LEADER = 6;
 /** 印が重なる2点の名前を分けて置く条件。2点の横の位置の差がこれ以上（これ未満は描画の丸めで同じ位置に見える）。 */
 const SPLIT_MIN_DX = 0.5;
@@ -678,31 +671,66 @@ interface NameCandidate {
   readonly x: number;
   readonly firstBaseline: number;
   readonly rect: Rect;
+  /** 名前の長方形と、組の点のうち一番近い点の余白の正方形との間の距離（上下左右のうち一番大きい差。重なれば0未満）。 */
+  readonly gap: number;
   readonly leader: PlotName['leader'];
 }
 
-/** 名前の長方形に最も近い組の点の印の縁から、長方形の最も近い場所へ引く線。短い時は引かない。 */
-function leaderOf(cluster: Cluster, points: readonly { readonly px: number; readonly py: number }[], rect: Rect): PlotName['leader'] {
-  let best: { px: number; py: number; qx: number; qy: number; distance: number } | undefined;
-  for (const index of cluster.members) {
-    const p = points[index]!;
-    const qx = Math.min(Math.max(p.px, rect.x0), rect.x1);
-    const qy = Math.min(Math.max(p.py, rect.y0), rect.y1);
-    const distance = Math.hypot(qx - p.px, qy - p.py);
-    if (best === undefined || distance < best.distance) best = { px: p.px, py: p.py, qx, qy, distance };
+/**
+ * 候補を比べる時の隙間。点のすぐ横（`GAP_LEVELS`の最小）より近い置き方は、図の中へ寄せた結果として生じるので、すぐ横と同じ順位にする。
+ * 寄せた結果の隙間が1pxを下回る上や下の候補が、右や左の候補より先に選ばれないようにするため。
+ */
+function rankOf(candidate: { readonly gap: number }): number {
+  return Math.max(candidate.gap, GAP_LEVELS[0]);
+}
+
+/** 長方形と、組の点のうち一番近い点（隙間が同じなら中心が近い点）。隙間は点の余白の正方形から測る。 */
+function nearestMember(
+  members: readonly number[],
+  squares: readonly Rect[],
+  centers: readonly { readonly px: number; readonly py: number }[],
+  rect: Rect,
+): { readonly gap: number; readonly index: number } {
+  let best = { gap: Number.POSITIVE_INFINITY, index: members[0]!, distance: Number.POSITIVE_INFINITY };
+  for (const index of members) {
+    const square = squares[index]!;
+    const gap = Math.max(rect.x0 - square.x1, square.x0 - rect.x1, rect.y0 - square.y1, square.y0 - rect.y1);
+    const c = centers[index]!;
+    const distance = Math.hypot(Math.min(Math.max(c.px, rect.x0), rect.x1) - c.px, Math.min(Math.max(c.py, rect.y0), rect.y1) - c.py);
+    if (gap < best.gap || (gap === best.gap && distance < best.distance)) best = { gap, index, distance };
   }
-  if (best === undefined || best.distance - MARK_RADIUS < MIN_LEADER) return undefined;
-  const ux = (best.qx - best.px) / best.distance;
-  const uy = (best.qy - best.py) / best.distance;
-  return { x1: best.px + ux * (MARK_RADIUS + 1), y1: best.py + uy * (MARK_RADIUS + 1), x2: best.qx, y2: best.qy };
+  return best;
+}
+
+/** 点の印の縁から、名前の長方形の一番近い場所へ引く線。 */
+function leaderTo(point: { readonly px: number; readonly py: number }, rect: Rect): NonNullable<PlotName['leader']> {
+  const qx = Math.min(Math.max(point.px, rect.x0), rect.x1);
+  const qy = Math.min(Math.max(point.py, rect.y0), rect.y1);
+  const distance = Math.hypot(qx - point.px, qy - point.py);
+  const ux = (qx - point.px) / distance;
+  const uy = (qy - point.py) / distance;
+  return { x1: point.px + ux * (MARK_RADIUS + 1), y1: point.py + uy * (MARK_RADIUS + 1), x2: qx, y2: qy };
+}
+
+type Segment = { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number };
+
+/** 2本の線分が互いの内側で交わる。端が触れるだけ・重なって並ぶ場合は交わらないとみなす。 */
+function segmentsCross(a: Segment, b: Segment): boolean {
+  const side = (s: Segment, x: number, y: number): number => (s.x2 - s.x1) * (y - s.y1) - (s.y2 - s.y1) * (x - s.x1);
+  return side(a, b.x1, b.y1) * side(a, b.x2, b.y2) < 0 && side(b, a.x1, a.y1) * side(b, a.x2, a.y2) < 0;
 }
 
 /**
- * 点の名前の置き場所。印が重なる点の組は1つの名前（行を縦軸の値の大きい順に積む）にして、組の点の中心を1つの点とみなして置く。
- * 候補は、点の右・左・上・下（近く）、続けて点から離れた40か所（引き出し線を付ける）の順。他の名前・点の印・引き出し線・図の外と重ならない最初の場所を選ぶ。
- * どこも重なる時は、重なりが最も少ない場所にする。名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
- * 印が重なる2点の組は、まとめた名前を近くの4か所のどこにも重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
- * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
+ * 点の名前の置き場所。印が重なる点の組は1つの名前（行を縦軸の値の大きい順に積む）にして、組の点の余白の正方形を全て囲む長方形（点の箱）の周りに置く。
+ * 名前と点の距離（隙間）は、組の点のうち名前に一番近い点の余白の正方形と名前の長方形の間で測る。図の中へ寄せた後の位置で測る。
+ * 候補は、隙間が1px（点のすぐ横）から124pxまでの段ごとに、点の箱に沿って名前を一周ずらした位置と、箱の4つの角の斜め外側。
+ * 重なりの数（他の名前・点の印・引き出し線と名前・引き出し線どうし・図の外）が少ない候補を選び、同じなら隙間が小さい候補を選ぶ。
+ * 名前の長方形が他の名前・点の印と重なる1か所は、線の交差1か所より重く数える。線が名前の字を通る置き方の方が、名前どうしが重なる置き方より読める。
+ * 同じ隙間（1px未満は1pxとみなす）の候補は、箱の辺の中央からのずれが小さい順に、右・左・下・上の辺、続けて角の順に比べ、最初の候補を選ぶ。
+ * 隙間が`MIN_LEADER`以上の名前には、一番近い点の印の縁から名前の長方形へ細い引き出し線を付ける。
+ * 名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
+ * 印が重なる2点の組は、まとめた名前を引き出し線無しで重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
+ * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
  */
 function placeNames(
   points: readonly { readonly targetKey: string; readonly px: number; readonly py: number; readonly y: number; readonly label: string }[],
@@ -729,35 +757,69 @@ function placeNames(
     const own = new Set(cluster.members);
     const span = NAME_LINE_HEIGHT * (rows - 1);
     // 文字の高さは基準線の上10.5・下3.5。周りに1ずつ余白を足す
-    const build = (x: number, firstBaseline: number, withLeader: boolean): NameCandidate => {
-      const rect = { x0: x - 1, x1: x + width + 1, y0: firstBaseline - 11.5, y1: firstBaseline + span + 4.5 };
-      return { x, firstBaseline, rect, leader: withLeader ? leaderOf(cluster, points, rect) : undefined };
+    const rectWidth = width + 2;
+    const rectHeight = span + 16;
+    const box = cluster.members.reduce<Rect>(
+      (acc, index) => {
+        const mark = marks[index]!;
+        return { x0: Math.min(acc.x0, mark.x0), x1: Math.max(acc.x1, mark.x1), y0: Math.min(acc.y0, mark.y0), y1: Math.max(acc.y1, mark.y1) };
+      },
+      { x0: Number.POSITIVE_INFINITY, x1: Number.NEGATIVE_INFINITY, y0: Number.POSITIVE_INFINITY, y1: Number.NEGATIVE_INFINITY },
+    );
+    // 辺の中央にそろえた時の長方形の左上。右・左は名前の縦の中央を点の高さに、上・下は名前の横の中央を点にそろえる
+    const centeredX0 = cluster.cx - rectWidth / 2;
+    const centeredY0 = cluster.cy + 4 - span / 2 - 11.5;
+    // 候補の長方形を図の中へ寄せ、その位置で隙間を測り直す。名前が長い・高い時は寄せきれず、枠から出る分が費用に入る
+    const make = (x0: number, y0: number): NameCandidate => {
+      const shiftX = Math.max(0, PLOT_LEFT + FRAME_MARGIN - x0) - Math.max(0, x0 + rectWidth - (PLOT_RIGHT - FRAME_MARGIN));
+      const shiftY = Math.max(0, PLOT_TOP + FRAME_MARGIN - y0) - Math.max(0, y0 + rectHeight - (PLOT_BOTTOM - FRAME_MARGIN));
+      const rect = { x0: x0 + shiftX, x1: x0 + shiftX + rectWidth, y0: y0 + shiftY, y1: y0 + shiftY + rectHeight };
+      const nearest = nearestMember(cluster.members, marks, points, rect);
+      return {
+        x: rect.x0 + 1,
+        firstBaseline: rect.y0 + 11.5,
+        rect,
+        gap: nearest.gap,
+        leader: nearest.gap >= MIN_LEADER ? leaderTo(points[nearest.index]!, rect) : undefined,
+      };
     };
-    // 上下の候補は、点の真上・真下に置き、横に枠から出る時は枠の中へ寄せる
-    const centered = (baseline: number): NameCandidate => {
-      const left = Math.min(Math.max(cluster.cx - width / 2, PLOT_LEFT + FRAME_MARGIN + 1), PLOT_RIGHT - FRAME_MARGIN - 1 - width);
-      return build(left, baseline, false);
-    };
-    const candidates: NameCandidate[] = [
-      build(cluster.cx + 9, cluster.cy + 4 - span / 2, false),
-      build(cluster.cx - 9 - width, cluster.cy + 4 - span / 2, false),
-      centered(cluster.cy - 10 - span),
-      centered(cluster.cy + 19),
-    ];
-    for (const distance of FAR_DISTANCES) {
-      for (const [ux, uy] of FAR_DIRECTIONS) {
-        const tx = cluster.cx + ux * distance;
-        const ty = cluster.cy + uy * distance;
-        const x = ux > 0.3 ? tx : ux < -0.3 ? tx - width : tx - width / 2;
-        const baseline = uy < -0.3 ? ty - span : uy > 0.3 ? ty + 10 : ty + 4 - span / 2;
-        // 枠の中へ寄せる。名前が長い・高い時は寄せきれず、枠から出る分が費用に入る
-        const probe = build(x, baseline, false).rect;
-        const shiftX = Math.max(0, PLOT_LEFT + FRAME_MARGIN - probe.x0) - Math.max(0, probe.x1 - (PLOT_RIGHT - FRAME_MARGIN));
-        const shiftY = Math.max(0, PLOT_TOP + FRAME_MARGIN - probe.y0) - Math.max(0, probe.y1 - (PLOT_BOTTOM - FRAME_MARGIN));
-        candidates.push(build(x + shiftX, baseline + shiftY, true));
+    // 隙間`d`の段の候補。辺の中央からのずれが小さい順に、右・左・下・上の辺を並べ、最後に4つの角を置く
+    const candidatesAt = (d: number): NameCandidate[] => {
+      const step = d <= SLIDE_FINE_GAP ? SLIDE_STEP_NEAR : SLIDE_STEP_FAR;
+      const found: NameCandidate[] = [];
+      const reach = Math.ceil((Math.max(rectWidth, rectHeight) + Math.max(box.x1 - box.x0, box.y1 - box.y0) + 2 * d) / step);
+      for (let k = 0; k <= reach; k++) {
+        for (const sign of k === 0 ? [1] : [1, -1]) {
+          const dy = centeredY0 + sign * k * step;
+          if (dy + rectHeight > box.y0 - d && dy < box.y1 + d) {
+            found.push(make(box.x1 + d, dy), make(box.x0 - d - rectWidth, dy));
+          }
+          const dx = centeredX0 + sign * k * step;
+          if (dx + rectWidth > box.x0 - d && dx < box.x1 + d) {
+            found.push(make(dx, box.y1 + d), make(dx, box.y0 - d - rectHeight));
+          }
+        }
       }
-    }
-    const costOf = (candidate: NameCandidate, others: readonly PlotName[]): number => {
+      found.push(
+        make(box.x1 + d, box.y1 + d),
+        make(box.x0 - d - rectWidth, box.y1 + d),
+        make(box.x1 + d, box.y0 - d - rectHeight),
+        make(box.x0 - d - rectWidth, box.y0 - d - rectHeight),
+      );
+      return found;
+    };
+    // 候補の周り（段の上限まで離れた範囲）に掛かるものだけを、費用の計算に使う
+    const region = {
+      x0: box.x0 - GAP_LEVELS[GAP_LEVELS.length - 1]! - rectWidth,
+      x1: box.x1 + GAP_LEVELS[GAP_LEVELS.length - 1]! + rectWidth,
+      y0: box.y0 - GAP_LEVELS[GAP_LEVELS.length - 1]! - rectHeight,
+      y1: box.y1 + GAP_LEVELS[GAP_LEVELS.length - 1]! + rectHeight,
+    };
+    const nearMarks = marks.filter((mark) => overlaps(mark, region));
+    const nearHitMarks = hitMarks.filter((mark, index) => !own.has(index) && overlaps(mark, region));
+    const nearNames = placed.filter((other) => overlaps(other.rect, region) || (other.leader !== undefined && segmentHits(other.leader, region)));
+    // 重なりの数。`limit`を超えると数えるのをやめて無限大を返す
+    const costOf = (candidate: NameCandidate, others: readonly PlotName[], limit: number): number => {
       const { rect, leader } = candidate;
       // 枠の外へ出る置き方は、他の名前・点と重なる置き方より必ず後にする。どれも出る時は、出る量が少ない方
       const overshoot =
@@ -765,40 +827,56 @@ function placeNames(
         Math.max(0, rect.x1 - (PLOT_RIGHT - FRAME_MARGIN)) +
         Math.max(0, PLOT_TOP + FRAME_MARGIN - rect.y0) +
         Math.max(0, rect.y1 - (PLOT_BOTTOM - FRAME_MARGIN));
-      const leaderHits =
-        leader === undefined
-          ? 0
-          : others.filter((other) => segmentHits(leader, other.rect)).length +
-            hitMarks.filter((mark, index) => !own.has(index) && segmentHits(leader, mark)).length;
-      return (
-        (overshoot > 0 ? 1e6 + overshoot * 1000 : 0) +
-        others.filter((other) => overlaps(rect, other.rect)).length +
-        marks.filter((mark) => overlaps(rect, mark)).length +
-        others.filter((other) => other.leader !== undefined && segmentHits(other.leader, rect)).length +
-        leaderHits
-      );
-    };
-    let best = candidates[0]!;
-    let bestCost = Number.POSITIVE_INFINITY;
-    let bestIndex = 0;
-    for (const [index, candidate] of candidates.entries()) {
-      const cost = costOf(candidate, placed);
-      if (cost < bestCost) {
-        best = candidate;
-        bestCost = cost;
-        bestIndex = index;
+      let cost = overshoot > 0 ? 1e6 + overshoot * 1000 : 0;
+      if (cost > limit) return Number.POSITIVE_INFINITY;
+      // 重なりを1か所数えるごとに上限と比べ、超えたら数えるのをやめる
+      const count = (weight: number): boolean => {
+        cost += weight;
+        return cost > limit;
+      };
+      for (const mark of nearMarks) {
+        if (overlaps(rect, mark) && count(OVERLAP_WEIGHT)) return Number.POSITIVE_INFINITY;
       }
-      if (cost === 0) break;
+      for (const other of others) {
+        if (overlaps(rect, other.rect) && count(OVERLAP_WEIGHT)) return Number.POSITIVE_INFINITY;
+        if (other.leader !== undefined && segmentHits(other.leader, rect) && count(1)) return Number.POSITIVE_INFINITY;
+        if (leader === undefined) continue;
+        if (segmentHits(leader, other.rect) && count(1)) return Number.POSITIVE_INFINITY;
+        if (other.leader !== undefined && segmentsCross(leader, other.leader) && count(1)) return Number.POSITIVE_INFINITY;
+      }
+      if (leader !== undefined) {
+        for (const mark of nearHitMarks) {
+          if (segmentHits(leader, mark) && count(1)) return Number.POSITIVE_INFINITY;
+        }
+      }
+      return cost;
+    };
+    // 段を隙間の小さい方から試す。重なりが無い候補が見つかった後は、次の段の隙間がその候補の隙間より大きければ打ち切る
+    let best: NameCandidate | undefined;
+    let bestCost = Number.POSITIVE_INFINITY;
+    for (const d of GAP_LEVELS) {
+      if (best !== undefined && bestCost === 0 && d > rankOf(best)) break;
+      for (const candidate of candidatesAt(d)) {
+        // 重なりが少ない候補、同じなら隙間が小さい候補が勝つ。同じ順位なら先に並べた候補のまま
+        const limit = best === undefined || rankOf(candidate) < rankOf(best) ? bestCost : bestCost - 1;
+        const cost = costOf(candidate, nearNames, limit);
+        if (cost <= limit) {
+          best = candidate;
+          bestCost = cost;
+        }
+      }
     }
-    // 近くの4か所のどこにも重ならずに置けない2点の組は、点ごとに横へ分けて置けるか試す
+    const chosen = best!;
+    // 引き出し線無しで重ならずに置けない2点の組は、点ごとに横へ分けて置けるか試す
     const [first, second] = lines;
-    if (lines.length === 2 && !(bestIndex < NEAR_CANDIDATES && bestCost === 0) && Math.abs(first!.px - second!.px) >= SPLIT_MIN_DX) {
+    if (lines.length === 2 && !(bestCost === 0 && chosen.leader === undefined) && Math.abs(first!.px - second!.px) >= SPLIT_MIN_DX) {
       const [leftPoint, rightPoint] = first!.px < second!.px ? [first!, second!] : [second!, first!];
       const oneLine = (point: (typeof lines)[number], side: 'left' | 'right'): NameCandidate => {
         const w = estimateTextWidth(point.label);
         const x = side === 'left' ? point.px - NAME_GAP - w : point.px + NAME_GAP;
         const baseline = point.py + 4;
-        return { x, firstBaseline: baseline, rect: { x0: x - 1, x1: x + w + 1, y0: baseline - 11.5, y1: baseline + 4.5 }, leader: undefined };
+        const rect = { x0: x - 1, x1: x + w + 1, y0: baseline - 11.5, y1: baseline + 4.5 };
+        return { x, firstBaseline: baseline, rect, gap: NAME_GAP - POINT_CLEARANCE - 1, leader: undefined };
       };
       const leftName = oneLine(leftPoint, 'left');
       const rightName = oneLine(rightPoint, 'right');
@@ -808,7 +886,7 @@ function placeNames(
         leader: undefined,
       });
       const leftPlaced = asName(leftPoint, leftName);
-      if (costOf(leftName, placed) === 0 && costOf(rightName, [...placed, leftPlaced]) === 0) {
+      if (costOf(leftName, nearNames, 0) === 0 && costOf(rightName, [...nearNames, leftPlaced], 0) === 0) {
         placed.push(leftPlaced, asName(rightPoint, rightName));
         continue;
       }
@@ -817,11 +895,11 @@ function placeNames(
       lines: lines.map((line, index) => ({
         targetKey: line.targetKey,
         text: line.label,
-        x: best.x + columnOffsets[Math.floor(index / rows)]!,
-        y: best.firstBaseline + NAME_LINE_HEIGHT * (index % rows),
+        x: chosen.x + columnOffsets[Math.floor(index / rows)]!,
+        y: chosen.firstBaseline + NAME_LINE_HEIGHT * (index % rows),
       })),
-      rect: best.rect,
-      leader: best.leader,
+      rect: chosen.rect,
+      leader: chosen.leader,
     });
   }
   return placed;
