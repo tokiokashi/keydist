@@ -58,9 +58,16 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
+    // 全てのspecをPCの幅で回す
     {
-      name: 'chromium',
+      name: 'pc',
       use: { ...devices['Desktop Chrome'] },
+    },
+    // ページの本（タグ `@page`）だけをスマホの幅でも回す。データの場面と図のスクリーンショットはPCの幅だけで回す
+    {
+      name: 'mobile',
+      use: { ...devices['Pixel 5'], viewport: { width: 390, height: 844 } },
+      grep: /@page\b/,
     },
   ],
   webServer: {

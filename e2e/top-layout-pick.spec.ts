@@ -1,11 +1,11 @@
-import { expect, test } from './fixtures.ts';
+import { expect, PAGE_TAG, test } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { expectTargetNames, targetButton, targetChoice, targetNames } from './pane-helper.ts';
 
 /**
  * トップで気になる配列を1つ選ぶと、Single（Bigram Flow）の対象になり、Multi（比較表）の組にも入る。
  */
-test('トップで選んだ配列が、Bigram Flow と比較表の両方に出る', async ({ page }) => {
+test('トップで選んだ配列が、Bigram Flow と比較表の両方に出る', { tag: PAGE_TAG }, async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
 
@@ -17,14 +17,14 @@ test('トップで選んだ配列が、Bigram Flow と比較表の両方に出�
   await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:colemak-dh"]').click();
   await expect(hero.locator('.top-pick-links')).toBeVisible();
 
-  await hero.getByRole('link', { name: 'Bigram Flow', exact: true }).click();
+  await hero.locator('.top-pick-links').getByRole('link', { name: 'Bigram Flow', exact: true }).click();
   await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
   await expect(page.getByRole('heading', { name: 'Bigram Flow', level: 1, exact: true })).toBeVisible();
   await expectTargetNames(page, ['Colemak-DH']);
 
   await page.goto('/');
   await waitForHydration(page);
-  await hero.getByRole('link', { name: '比較表', exact: true }).click();
+  await hero.locator('.top-pick-links').getByRole('link', { name: '比較表', exact: true }).click();
   await expect(page).toHaveURL(/\/analyzer\/comparison$/);
   await expect(page.getByRole('heading', { name: '比較表', level: 1, exact: true })).toBeVisible();
   await expectTargetNames(page, ['Colemak-DH']);
@@ -79,7 +79,7 @@ test('Setup を選んだ時の名前は、Bigram Flow の見出しと同じ（�
   await expect(hero.locator('.top-pick-links')).toBeVisible();
   const topLabel = await hero.getByRole('button', { name: /^対象: / }).getAttribute('aria-label');
 
-  await hero.getByRole('link', { name: 'Bigram Flow', exact: true }).click();
+  await hero.locator('.top-pick-links').getByRole('link', { name: 'Bigram Flow', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Bigram Flow', level: 1, exact: true })).toBeVisible();
   await expect.poll(async () => targetButton(page).getAttribute('aria-label')).toBe(topLabel);
   expect(topLabel).not.toContain('/');
@@ -110,7 +110,7 @@ test('資産の自作の配列が対象の選択に並び、選んだ配列が�
   const hero = page.locator('.hero');
   await hero.getByRole('button', { name: /^対象: / }).click();
   await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:user-e2e"]').click();
-  await hero.getByRole('link', { name: '比較表', exact: true }).click();
+  await hero.locator('.top-pick-links').getByRole('link', { name: '比較表', exact: true }).click();
   await expect(page.getByRole('heading', { name: '比較表', level: 1, exact: true })).toBeVisible();
   await expectTargetNames(page, ['自作のテスト配列']);
 });

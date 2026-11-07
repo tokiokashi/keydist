@@ -426,6 +426,10 @@ PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を
 `pull_request` で、baseとの差分のファイルが全部 `*.md` なら、shardを走らせず `browser-e2e` だけがsuccessになる。
 判定は拡張子で行う（`main` へのpushと `workflow_dispatch` は常に全件）。
 
+- 2つのproject（`playwright.config.ts`）で回す。`pc` は全てのspecをPCの幅（Desktop Chrome）で回し、`mobile` は幅390×844で、タグ `@page` を付けた本だけを回す。
+  ページの本には `import { PAGE_TAG } from './fixtures.ts'` で取った印を `test('名前', { tag: PAGE_TAG }, async ({ page }) => { ... })` の形で付ける。
+  印を付けた本は、`e2e/fixtures.ts` の自動fixtureがブラウザのエラー・警告を集め、本の最後に空である事を確かめる。
+  データの場面と `visual-figures.spec.ts` には印を付けず、`pc` だけで回す。`mobile` で通らない本は、ページの本の範囲で操作を直す（幅に依存する検査は書かない）
 - 手元では、触ったspecだけを1ワーカーで回す: `npx playwright test e2e/<触ったspec>.spec.ts --workers=1`
 - `@playwright/test`（`package.json`）が要求するブラウザの版が実行環境に無いと、「Executable doesn't exist」で1件も起動しない。
   版が合わないエラーが出たら `npx playwright install chromium-headless-shell` で入れてよい（入るのは追跡しないファイルだけ）。
