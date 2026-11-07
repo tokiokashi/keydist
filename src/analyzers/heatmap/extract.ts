@@ -80,3 +80,21 @@ export function sharedMaxCount(maxCounts: readonly number[]): number {
 export function sharedMaxFlowWeight(maxWeights: readonly number[]): number {
   return Math.max(1, ...maxWeights);
 }
+
+/**
+ * 一番上の図と格子の図の全部で共通にする、色の尺度と線の太さの尺度の最大値。
+ * 格子の図は計算できたものだけを数え、計算中・失敗の図は尺度に入れない。
+ * 格子の図の状態は、画面が持つ形（`SetTargetFigure`の`state`）をそのまま渡せる。
+ * 格子の図の最大の方が大きい時も、その値を一番上の図を含む全部の図に使う。
+ */
+export function sharedHeatmapScales(
+  top: HeatmapExtracted,
+  flowSource: BigramSource,
+  setStates: readonly ({ readonly status: 'ready'; readonly extracted: HeatmapExtracted } | { readonly status: 'computing' | 'failed' })[],
+): { readonly maxCount: number; readonly flowMaxWeight: number } {
+  const ready = setStates.flatMap((state) => (state.status === 'ready' ? [state.extracted] : []));
+  return {
+    maxCount: sharedMaxCount([top.maxCount, ...ready.map((extracted) => extracted.maxCount)]),
+    flowMaxWeight: sharedMaxFlowWeight([top.flowLines[flowSource].maxWeight, ...ready.map((extracted) => extracted.flowLines[flowSource].maxWeight)]),
+  };
+}

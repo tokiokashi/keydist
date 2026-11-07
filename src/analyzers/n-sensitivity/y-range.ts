@@ -1,6 +1,11 @@
 import type { TextLanguage } from '#input/text/language.ts';
 import { deltaUnit, nSensitivityMetrics, withUnit, type NSensitivityAxisKind, type NSensitivityMetricId } from './metric-catalog.ts';
 
+/** 縦軸の範囲を揃えるペインの組。指標・縦軸の見せ方・範囲の決め方が同じペインだけが揃う。 */
+export function nSensitivityScaleKey(metric: NSensitivityMetricId, kind: NSensitivityAxisKind, yRangeMode: YRangeMode): string {
+  return `n-sensitivity:${metric}:${kind}:${yRangeMode}`;
+}
+
 /**
  * N感度の縦軸の範囲の決め方。
  *

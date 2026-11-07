@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useId, useSyncExternalStore } from 'react';
-import type { ScaleRange, ScaleRegistry } from './shared-scale.ts';
+import { rangeForPane, type ScaleRange, type ScaleRegistry } from './shared-scale.ts';
 
 /**
  * ペインどうしで揃える目盛りの、Reactとの結び目（docs/architecture.md「ペインどうしで揃える目盛り」）。
@@ -37,11 +37,5 @@ export function useSharedScale(key: string, own: ScaleRange | undefined): ScaleR
     return () => registry.report(key, owner, undefined);
   }, [registry, key, owner, min, max]);
   const shared = useSyncExternalStore(registry?.subscribe ?? NO_SUBSCRIBE, () => registry?.rangeOf(key), NONE);
-  if (shared === undefined) return own;
-  if (min === undefined || max === undefined) return shared;
-  // 報告が済む前の描画でも、自分の範囲は必ず含める
-  return {
-    min: Math.min(shared.min, min),
-    max: Math.max(shared.max, max),
-  };
+  return rangeForPane(shared, own);
 }

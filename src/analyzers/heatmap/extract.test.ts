@@ -10,7 +10,7 @@ import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { nonStationaryVectors } from '../keyboard-flow-lines.ts';
 import { computeBigramFlowExtraction } from '../bigram-flow/extract.ts';
 import { DEFAULT_BIGRAM_FLOW_OPTIONS } from '../bigram-flow/options.ts';
-import { computeHeatmapExtraction, sharedMaxCount, sharedMaxFlowWeight } from './extract.ts';
+import { computeHeatmapExtraction, sharedHeatmapScales, sharedMaxCount, sharedMaxFlowWeight } from './extract.ts';
 
 /**
  * ヒートマップの抽出（キーごとの押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
@@ -115,6 +115,42 @@ test('色の尺度と同じく、線の太さの尺度の最大値は並べた�
   assert.equal(sharedMaxFlowWeight([3, 10, 7]), 10);
   assert.equal(sharedMaxFlowWeight([1, 1]), 1);
   assert.equal(sharedMaxFlowWeight([]), 1);
+});
+
+test('格子の図の最大の方が大きい時も、その値を一番上の図を含む全部の図の色の尺度と線の太さの尺度に使う', () => {
+  const text = 'the quick brown fox jumps over the lazy dog aaaaaaaaaa';
+  const small = extractFor('qwerty', 'the');
+  const large = extractFor('qwerty', text);
+  assert.ok(large.maxCount > small.maxCount);
+  assert.ok(large.flowLines.actual.maxWeight > small.flowLines.actual.maxWeight);
+  const qwerty = LAYOUT_BY_ID.get('qwerty')!;
+  const ready = (extracted: typeof large) => {
+    const state = { status: 'ready' as const, layout: qwerty, geometry, extracted };
+    return state;
+  };
+  const scales = sharedHeatmapScales(small, 'actual', [ready(large)]);
+  assert.equal(scales.maxCount, large.maxCount);
+  assert.equal(scales.flowMaxWeight, large.flowLines.actual.maxWeight);
+  // 一番上の図の方が大きい時は、一番上の図の値
+  const top = sharedHeatmapScales(large, 'actual', [ready(small)]);
+  assert.equal(top.maxCount, large.maxCount);
+  assert.equal(top.flowMaxWeight, large.flowLines.actual.maxWeight);
+});
+
+test('図の尺度は、計算できていない格子の図の値を使わず、線の組の種類ごとの最大を使う', () => {
+  const top = extractFor('qwerty', 'the');
+  // 左右の手を交互に打つので、手をまたぐ組を数える種類と数えない種類で線の最大が違う
+  const large = extractFor('qwerty', 'ajajajajajajaj');
+  assert.notEqual(large.flowLines.actual.maxWeight, large.flowLines['within-hand'].maxWeight);
+  const computing = { status: 'computing' as const };
+  const failed = { status: 'failed' as const, message: '失敗' };
+  const scales = sharedHeatmapScales(top, 'within-hand', [computing, failed]);
+  assert.equal(scales.maxCount, top.maxCount);
+  assert.equal(scales.flowMaxWeight, Math.max(1, top.flowLines['within-hand'].maxWeight));
+  const qwerty = LAYOUT_BY_ID.get('qwerty')!;
+  const readyLarge = { status: 'ready' as const, layout: qwerty, geometry, extracted: large };
+  const withinHand = sharedHeatmapScales(top, 'within-hand', [readyLarge]);
+  assert.equal(withinHand.flowMaxWeight, Math.max(top.flowLines['within-hand'].maxWeight, large.flowLines['within-hand'].maxWeight));
 });
 
 test('線の組は、指を絞らない時のBigram FlowのKeyboard Flowと、組の個数も各組の回数も一致する', () => {

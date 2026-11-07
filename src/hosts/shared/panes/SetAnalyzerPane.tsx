@@ -27,7 +27,7 @@ import { useAnalyzerSetPane } from '../use-analyzer-set-pane.ts';
 import { usePaneOnScreen } from '../use-pane-on-screen.ts';
 import { usePlaybackSeekReceivers } from '../playback-seek-store.tsx';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
-import { readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
+import { isWaitingForReading, readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
 import { useSegmentation } from '../segmentation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 
@@ -68,7 +68,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
 }: SetAnalyzerPaneProps<Options, Extracted, RowContext>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   // 辞書の読み込み中は、評価に渡すテキストがまだ無いので依頼を出さない（漢字を打てない文字に数えた暫定の数値を出さない）
-  const readingLoading = env.reading?.kind === 'loading';
+  const readingLoading = isWaitingForReading(env.reading);
   // 文節の区切りを求める設定の間だけ、分割器を呼ぶ。日本語以外のテキストは材料が無く、区切りを使わずに計算する
   const wantsSegmentation = analyzer.usesSegmentation?.(options) === true;
   const segmentationBasis = useMemo(() => segmentationBasisOf(resolvedText), [resolvedText]);

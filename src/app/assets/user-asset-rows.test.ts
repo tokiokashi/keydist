@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
-import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows } from './user-asset-rows.ts';
+import { deleteConfirmText, type DeleteConfirmKind, userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows } from './user-asset-rows.ts';
 
 const ROWS: UserLayout['rows'] = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
 const RULE: UserRomajiRule = { id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: {}, generateSokuon: true };
@@ -79,4 +79,28 @@ test('配列の行: 計算に使えない配列は理由を出し、推奨の規
 test('配列の行: 組み立てで例外が出る配列は、固定の理由を出し、例外の文を漏らさない', () => {
   const rows = userLayoutRows([{ kind: 'alpha', id: 'seq', name: '空の打鍵列', rows: ROWS, sequences: [['a', []]] }], [RULE]);
   assert.ok(rows[0]!.detail!.includes('使えません'));
+});
+
+const KINDS_WITH_UNDO: readonly DeleteConfirmKind[] = ['layout', 'romaji-rule', 'finger-assignment', 'setup'];
+
+test('削除の確認: 種類ごとに、削除が及ぶ先を伝える文を持つ', () => {
+  const impacts = [...KINDS_WITH_UNDO, 'missing-setup-override' as const].map((kind) => deleteConfirmText(kind)[0]);
+  for (const impact of impacts) assert.ok(impact !== undefined && impact !== '');
+  assert.equal(new Set(impacts).size, impacts.length);
+});
+
+test('削除の確認: 手持ちに無いSetupへの上書きだけは、元に戻すで戻せないと伝え、戻せる範囲の文を足さない', () => {
+  const lines = deleteConfirmText('missing-setup-override');
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0]!.includes('戻せません'));
+  assert.ok(!lines[0]!.includes('戻せます'));
+});
+
+test('削除の確認: 他の種類は、元に戻すで戻せる事と、再読み込みやタブを閉じた後は戻せない事を伝える', () => {
+  for (const kind of KINDS_WITH_UNDO) {
+    const lines = deleteConfirmText(kind);
+    assert.equal(lines.length, 2, kind);
+    assert.ok(!lines[0]!.includes('戻せません'), kind);
+    assert.ok(lines[1]!.includes('戻せます') && lines[1]!.includes('戻せません'), kind);
+  }
 });

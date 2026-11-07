@@ -2,7 +2,7 @@ import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx'
 import { fingerDistanceDefinition, type FingerDistanceExtracted } from './extract.ts';
 import { DEFAULT_FINGER_DISTANCE_OPTIONS, fingerDistanceOptions, type FingerDistanceOptions } from './options.ts';
 import { FINGER_DISTANCE_PANE_META } from './pane-meta.ts';
-import { chartSpecOf, distributionSpecsOf } from './chart-data.ts';
+import { chartSpecOf, distributionSpecsOf, fingerDistanceScaleKey } from './chart-data.ts';
 import { FingerDistanceDistribution } from './finger-distance-distribution.tsx';
 import { FingerDistanceChart } from './finger-distance-chart.tsx';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
@@ -28,7 +28,7 @@ export function FingerDistanceBody({ extracted, options }: FingerDistanceBodyPro
   return (
     <section className="finger-distance-feature" data-react-feature="finger-distance">
       <h3 className="finger-distance-heading">{spec.title}</h3>
-      <FingerDistanceChart spec={spec} scaleKey={`finger-distance:${options.chartMetric}`} />
+      <FingerDistanceChart spec={spec} scaleKey={fingerDistanceScaleKey(options.chartMetric)} />
       {isAdjacent ? <p className="finger-distance-note">間隔は、2本の指がホームに並んだ時の間隔からの超過。</p> : null}
       {isAdjacent ? (
         <>

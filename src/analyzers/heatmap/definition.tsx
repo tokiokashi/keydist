@@ -9,7 +9,7 @@ import { HeatmapDiagram, type HeatmapDiagramFlow, type HeatmapShiftStyle } from 
 import { baseLayerLegends, type HeatmapDrawStyle, type HeatmapPalette } from '../heatmap-figure.ts';
 import { heatmapBounds, heatmapDrawnKeys, sharedHeatmapBounds } from '../heatmap-keys.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
-import { heatmapDefinition, sharedMaxCount, sharedMaxFlowWeight, type HeatmapExtracted } from './extract.ts';
+import { heatmapDefinition, sharedHeatmapScales, type HeatmapExtracted } from './extract.ts';
 import { HeatmapFlowLegend } from './flow-legend.tsx';
 import { HeatmapPaletteLegend } from './palette-legend.tsx';
 import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
@@ -102,16 +102,13 @@ export function HeatmapBody({
   const figureSettings = useFigureSettings('打鍵頻度');
   const flowSource = options.flowLineSource;
   // 線の太さの尺度は、色の尺度と同じく、一番上の図と計算できた格子の図の全部で共通にする
-  const flowMaxWeight = sharedMaxFlowWeight([
-    extracted.flowLines[flowSource].maxWeight,
-    ...(setTargets ?? []).flatMap((figure) => (figure.state.status === 'ready' ? [figure.state.extracted.flowLines[flowSource].maxWeight] : [])),
-  ]);
+  const { maxCount, flowMaxWeight } = sharedHeatmapScales(
+    extracted,
+    flowSource,
+    (setTargets ?? []).map((figure) => figure.state),
+  );
   const flowOf = (figureExtracted: HeatmapExtracted): HeatmapDiagramFlow | undefined =>
     options.flowLines ? { vectors: figureExtracted.flowLines[flowSource].vectors, maxWeight: flowMaxWeight } : undefined;
-  const maxCount = sharedMaxCount([
-    extracted.maxCount,
-    ...(setTargets ?? []).flatMap((figure) => (figure.state.status === 'ready' ? [figure.state.extracted.maxCount] : [])),
-  ]);
   // 格子の図は、描く範囲を全部で共通にする。キーの大きさと位置が図ごとに変わらない
   const setBounds = sharedHeatmapBounds(
     (setTargets ?? []).flatMap((figure) =>

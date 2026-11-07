@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createScaleRegistry, mergeScaleRanges, scaleRangeWithZero } from './shared-scale.ts';
+import { createScaleRegistry, mergeScaleRanges, rangeForPane, scaleRangeWithZero } from './shared-scale.ts';
 
 test('mergeScaleRangesは全部の範囲を含む最小と最大を返す', () => {
   assert.deepEqual(
@@ -75,4 +75,17 @@ test('レジストリは購読を外すと通知しない', () => {
   off();
   registry.report('k', 'a', { min: 0, max: 1 });
   assert.equal(calls, 0);
+});
+
+test('rangeForPaneは、他のペインの範囲があっても自分の範囲を必ず含める', () => {
+  assert.deepEqual(rangeForPane({ min: 0, max: 70 }, { min: 0, max: 110 }), { min: 0, max: 110 });
+  assert.deepEqual(rangeForPane({ min: 0, max: 110 }, { min: -3, max: 70 }), { min: -3, max: 110 });
+});
+
+test('rangeForPaneは、他のペインが無ければ自分の範囲、描く値が無ければ他のペインの範囲を返す', () => {
+  const own = { min: 0, max: 5 };
+  assert.equal(rangeForPane(undefined, own), own);
+  const shared = { min: 0, max: 9 };
+  assert.equal(rangeForPane(shared, undefined), shared);
+  assert.equal(rangeForPane(undefined, undefined), undefined);
 });

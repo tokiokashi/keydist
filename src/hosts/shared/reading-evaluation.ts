@@ -94,6 +94,15 @@ export interface SegmentationBasis {
  */
 export type PaneReadingState = { readonly kind: 'none' } | { readonly kind: 'loading' } | { readonly kind: 'failed' } | { readonly kind: 'converted' };
 
+/**
+ * 辞書の読み込みが済むまで、ペインは計算を依頼せず、数値も出さない。
+ * 評価に渡すテキストは原文のままなので、漢字を打てない文字に数えた暫定の数値になってしまうため。
+ * 読みの状態を持たない画面（`undefined`）と、読みを要さないテキスト・読み込みに失敗したテキストは待たない。
+ */
+export function isWaitingForReading(reading: PaneReadingState | undefined): boolean {
+  return reading?.kind === 'loading';
+}
+
 export interface ReadingEvaluation {
   readonly text: PaneText;
   readonly state: PaneReadingState;
