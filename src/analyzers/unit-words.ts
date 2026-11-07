@@ -30,3 +30,12 @@ export function inputUnitNoteOf(language: TextLanguage, script: KanaScript = 'hi
     ? `${unit}数は、漢字を読みに直し、評価しない記号を取り除いた後のテキストの字の数です。大半はかなですが、「、」「。」「ー」・英数字・空白・改行なども数えます。`
     : `${unit}数は、テキストの字の数です。空白と句読点も数えます。`;
 }
+
+/**
+ * 量の名前で、単位の語の1つ分を指す句（「かな1つで動く距離」の「かな1つ」）。
+ * 「かな」は数える語でなく字の種類の名前なので、「1かな」と数詞を前に付けず「かな1つ」と書く。英語のテキストの「字」は数える語なので「1字」と書く。
+ */
+export function oneKanaUnitOf(language: TextLanguage, script: KanaScript = 'hiragana'): string {
+  const unit = kanaUnitOf(language, script);
+  return language === 'ja' ? `${unit}1つ` : `1${unit}`;
+}

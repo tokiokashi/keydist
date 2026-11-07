@@ -1,7 +1,7 @@
 import type { TextLanguage } from '#input/text/language.ts';
 import { comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { sharedMetricText } from '../metric-labels.ts';
-import { type KanaScript, kanaUnitOf, type KanaUnit } from '../unit-words.ts';
+import { type KanaScript, kanaUnitOf, type KanaUnit, oneKanaUnitOf } from '../unit-words.ts';
 
 /**
  * 散布図の軸の名前と単位。軸に取れる比較表の列ごとに、量を言葉で言った名前と単位を宣言する。
@@ -16,7 +16,7 @@ import { type KanaScript, kanaUnitOf, type KanaUnit } from '../unit-words.ts';
 export type AxisUnit = 'u' | '%' | '1/u';
 
 /**
- * 散布図の画面で、日本語のテキストの単位の語を書く字の種類。散布図の量の名前は「1カナあたりの〜」のように単位の語がひらがなの文に入るので、
+ * 散布図の画面で、日本語のテキストの単位の語を書く字の種類。散布図の量の名前は「カナ1つで動く距離」のように単位の語がひらがなの文に入るので、
  * 前後のひらがなと区別できるようカタカナで書く。比較表の列名・説明を読む時も、この書き方で読む。
  */
 export const SCATTER_KANA_SCRIPT: KanaScript = 'katakana';
@@ -51,7 +51,7 @@ const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
     name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perCharSteps.label,
     axisLabel: (_k, language) => comparisonColumnText(language, SCATTER_KANA_SCRIPT).perCharSteps.label,
   },
-  perCharPresses: { name: (k) => `1${k}で押す${KEY_COUNT_NAME}`, axisLabel: (k) => `${KEY_COUNT_NAME}/${k}` },
+  perCharPresses: { name: (_k, language) => `${oneKanaUnitOf(language, SCATTER_KANA_SCRIPT)}で押す${KEY_COUNT_NAME}`, axisLabel: (k) => `${KEY_COUNT_NAME}/${k}` },
   perActionPresses: { name: () => `1アクションで押す${KEY_COUNT_NAME}`, axisLabel: () => `${KEY_COUNT_NAME}/アクション` },
   perPressUnits: { name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perPressUnits.label, unit: 'u', axisLabel: () => '距離/キー' },
   singleTapLayerRate: { unit: '%' },

@@ -30,7 +30,7 @@ test.describe('個別画面', () => {
 
   test('指標を切り替えると縦軸の見出しが替わる', { tag: PAGE_TAG }, async ({ page }) => {
     const title = feature(page).locator('[data-run-chart-y-title]');
-    await expect(title).toContainText('1かなで動く距離');
+    await expect(title).toContainText('かな1つで動く距離');
     const settings = await openSettings(page);
     await settings.getByLabel('指標').selectOption('sameFingerRate');
     await expect(title).toContainText('同指率');

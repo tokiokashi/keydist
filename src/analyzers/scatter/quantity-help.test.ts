@@ -133,11 +133,11 @@ test('距離の単位の説明は、単位がuか1/uの量がある時だけ出�
 
 test('1かなあたりの列が入る組は、総数を入力かな数で割った値だという換算を関係の文に足す', () => {
   const perPress = scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS, 'ja')!;
-  assert.equal(perPress.relation, '総移動距離 = キー数 × 1キーで動く距離');
-  assert.equal(perPress.conversion, '1カナで押すキー数はキー数を入力カナ数で割った値、1カナで動く距離は総移動距離を入力カナ数で割った値');
+  assert.equal(perPress.relation, '総移動距離 = キー数 × キー1つで動く距離');
+  assert.equal(perPress.conversion, 'カナ1つで押すキー数はキー数を入力カナ数で割った値、カナ1つで動く距離は総移動距離を入力カナ数で割った値');
   const distance = scatterContour('perCharSteps', 'meanPerStroke', INPUT_CHARS, 'ja')!;
   assert.equal(distance.relation, '総移動距離 = アクション数 × 1アクションで動く距離');
-  assert.equal(distance.conversion, '1カナを打つアクション数はアクション数を入力カナ数で割った値、1カナで動く距離は総移動距離を入力カナ数で割った値');
+  assert.equal(distance.conversion, 'カナ1つを打つアクション数はアクション数を入力カナ数で割った値、カナ1つで動く距離は総移動距離を入力カナ数で割った値');
   // 総数の形の軸だけの組には換算を足さない
   const hand = scatterContour('handSwitches', 'handContinuations', INPUT_CHARS, 'ja')!;
   assert.equal(hand.relation, identityRelation(IDENTITIES[5]!, 'ja'));
@@ -179,7 +179,7 @@ test('移動ありキーの割合と移動ありキー1つで動く距離: 線�
   assert.equal(contour?.drawsLines, false);
   const { help } = scatterQuantityHelp(axes, contour, 'ja');
   assert.deepEqual(help.notes, [
-    '1キーで動く距離を含む3つの量の関係は、1キーで動く距離 = 移動ありキー率 ÷ 100 × 移動ありキー1つで動く距離です。',
+    'キー1つで動く距離を含む3つの量の関係は、キー1つで動く距離 = 移動ありキー率 ÷ 100 × 移動ありキー1つで動く距離です。',
     COMPARISON_UNIT_NOTE,
   ]);
   assert.deepEqual(
@@ -252,7 +252,7 @@ test('50%の線の説明: 軸の片方だけが右手の割合の時は、その
 });
 
 test('図の下のキャプション: 縦軸の量と横軸の量の関係を、軸の名前から単位を除いた言葉で言い切る', () => {
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションで動く距離と1カナを打つアクション数の関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションで動く距離とカナ1つを打つアクション数の関係');
   assert.equal(scatterCaption(SCATTER_PRESET_AXES.handShare, 'ja'), '右手距離率と右手キー率の関係');
   assert.equal(scatterCaption({ x: 'totalUnits', y: 'sameFinger' }, 'ja'), '同指の回数と総移動距離の関係');
   // 英語のテキストでは、名前の「かな」が「字」になる
@@ -318,7 +318,7 @@ test('点の読み上げ用の名前は、量の名前を長い形で全て添�
       scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'),
       'ja',
     ),
-    'QWERTY　1カナを打つアクション数 1.500　1アクションで動く距離 2.000　1カナで動く距離 3.000',
+    'QWERTY　カナ1つを打つアクション数 1.500　1アクションで動く距離 2.000　カナ1つで動く距離 3.000',
   );
 });
 

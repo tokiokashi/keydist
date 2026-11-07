@@ -29,11 +29,14 @@ import { inputUnitNoteOf, kanaUnitOf } from './unit-words.ts';
  * 単位としての「かな」。「続かない」のようにひらがなの語の一部になった「かな」は単位でないので、前後がひらがなでないか、直後が「あたり」「数」「で」「を」の時だけ数える。「かな漢字変換」の「かな」も単位でない。
  */
 const KANA_UNIT = /(?<![ぁ-ゟ])かな(?![ぁ-ゟ]|漢字変換)|かな(?=あたり|数|で|を)/gu;
-const toEnglishWord = (text: string): string => text.replaceAll(KANA_UNIT, '字');
+const toEnglishWord = (text: string): string => text.replaceAll('かな1つ', '1字').replaceAll(KANA_UNIT, '字');
 const hasKanaUnit = (text: string): boolean => text.search(KANA_UNIT) >= 0;
 const LANGUAGES: readonly TextLanguage[] = ['ja', 'en'];
 
-/** 英語の文字列に「かな」が出ない。日本語の文字列に「かな」が出る時は、英語の文字列が日本語の文字列の「かな」を「字」にしたものと一致する。 */
+/**
+ * 英語の文字列に「かな」が出ない。日本語の文字列に「かな」が出る時は、英語の文字列が日本語の文字列の「かな」を「字」にしたものと一致する。
+ * 「かな1つ」は数える語の順が違うので「1字」に置き換える。
+ */
 function assertUnitWord(ja: string, en: string, where: string): void {
   assert.ok(!hasKanaUnit(en), `${where}: 英語のテキストに「かな」が出ている: ${en}`);
   if (hasKanaUnit(ja)) assert.equal(en, toEnglishWord(ja), where);
@@ -41,20 +44,20 @@ function assertUnitWord(ja: string, en: string, where: string): void {
 
 /**
  * 散布図の単位の語「カナ」。カタカナの語の一部になった「カナ」は単位でないので、前後がカタカナでない時だけ数える。
- * 散布図でひらがなの単位の語として残してはいけないのは、数詞＋「かなあたり」「かなで」「かなを」・「/かな」・「かな数」の形。
+ * 散布図でひらがなの単位の語として残してはいけないのは、数詞＋「かなあたり」「かなで」「かなを」・「かな1つ」・「/かな」・「かな数」の形。
  */
 const KATAKANA_UNIT = /(?<![ァ-ヿ])カナ(?![ァ-ヿ])/gu;
-const HIRAGANA_UNIT_FORMS = /\dかな(?:あたり|で|を)|\/かな|かな数/u;
+const HIRAGANA_UNIT_FORMS = /\dかな(?:あたり|で|を)|かな1つ|\/かな|かな数/u;
 const hasKatakanaUnit = (text: string): boolean => text.search(KATAKANA_UNIT) >= 0;
 
 /**
  * 散布図の文字列の単位の語。日本語の文字列は上の形の「かな」を含まない。英語の文字列は「かな」も「カナ」も含まない。
- * 日本語の文字列に「カナ」が出る時は、英語の文字列が日本語の文字列の「カナ」を「字」にしたものと一致する。
+ * 日本語の文字列に「カナ」が出る時は、英語の文字列が日本語の文字列の「カナ」を「字」に、「カナ1つ」を「1字」にしたものと一致する。
  */
 function assertScatterUnitWord(ja: string, en: string, where: string): void {
   assert.doesNotMatch(ja, HIRAGANA_UNIT_FORMS, `${where}: 日本語のテキストに単位の「かな」が残っている`);
   assert.ok(!hasKanaUnit(en) && !hasKatakanaUnit(en), `${where}: 英語のテキストに「かな」か「カナ」が出ている: ${en}`);
-  if (hasKatakanaUnit(ja)) assert.equal(en, ja.replaceAll(KATAKANA_UNIT, '字'), where);
+  if (hasKatakanaUnit(ja)) assert.equal(en, ja.replaceAll('カナ1つ', '1字').replaceAll(KATAKANA_UNIT, '字'), where);
 }
 
 test('数える単位の呼び名は日本語で「かな」、英語で「字」', () => {
@@ -152,7 +155,7 @@ test('散布図の組み合わせの名前と説明は、英語のテキスト�
     assertScatterUnitWord(labels.ja[preset], labels.en[preset], `${preset} label`);
     assertScatterUnitWord(descriptions.ja[preset], descriptions.en[preset], `${preset} description`);
   }
-  assert.equal(labels.ja.press, '1アクションで押すキー数と1カナを打つアクション数');
+  assert.equal(labels.ja.press, '1アクションで押すキー数とカナ1つを打つアクション数');
 });
 
 test('散布図の軸の名前は、日本語のテキストで単位の語を「カナ」と書き、英語のテキストで「字」になる', () => {
@@ -175,7 +178,7 @@ test('複数のAnalyzerが縦軸に描く指標の名前と単位は、英語の
     assertUnitWord(ja[key].label, en[key].label, `${key} label`);
     assertUnitWord(ja[key].unit, en[key].unit, `${key} unit`);
   }
-  assert.deepEqual(ja.perCharUnits, { label: '1かなで動く距離', unit: 'u/かな' });
+  assert.deepEqual(ja.perCharUnits, { label: 'かな1つで動く距離', unit: 'u/かな' });
   assert.deepEqual(en.perCharUnits, { label: '1字で動く距離', unit: 'u/字' });
   assert.deepEqual(en.perCharSteps, { label: '1字を打つアクション数', unit: 'アクション/字' });
 });
@@ -204,7 +207,7 @@ test('推移の指標名と縦軸の見出しは、英語のテキストで「�
     assertUnitWord(ja[metric].unit, en[metric].unit, `${metric} unit`);
     assertUnitWord(runChartAxisTitle(metric, 50, 'ja'), runChartAxisTitle(metric, 50, 'en'), `${metric} axisTitle`);
   }
-  assert.equal(runChartAxisTitle('perCharUnits', 50, 'ja'), '1かなで動く距離 [u/かな]（直近50かな）');
+  assert.equal(runChartAxisTitle('perCharUnits', 50, 'ja'), 'かな1つで動く距離 [u/かな]（直近50かな）');
   assert.equal(runChartAxisTitle('perCharUnits', 50, 'en'), '1字で動く距離 [u/字]（直近50字）');
 });
 
