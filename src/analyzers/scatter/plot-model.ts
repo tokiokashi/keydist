@@ -216,7 +216,7 @@ export interface PlotRect {
   readonly y1: number;
 }
 
-/** 点の名前の1行。`x`は名前の`anchor`が指す位置（行の右端・左端・中央）、`y`は基準線。 */
+/** 点の名前の1行。`x`は名前の`anchor`が指す位置（行の右端・左端）、`y`は基準線。 */
 export interface PlotNameLine {
   readonly targetKey: string;
   readonly text: string;
@@ -231,8 +231,8 @@ export interface PlotNameLine {
  */
 export interface PlotName {
   readonly lines: readonly PlotNameLine[];
-  /** 行をそろえる向き。点の左に置いた名前は右端（`end`）、点の右は左端（`start`）、点の上下は中央（`middle`）。列に分けた名前は列ごとに同じ向き。描画の`text-anchor`にそのまま使う。 */
-  readonly anchor: 'start' | 'middle' | 'end';
+  /** 行をそろえる向き。名前の長方形の右端が点の箱の左端以下なら右端（`end`）、それ以外は左端（`start`）。点の左に置いた名前は右端、点の右と上下は左端。列に分けた名前は列ごとに同じ向き。描画の`text-anchor`にそのまま使う。 */
+  readonly anchor: 'start' | 'end';
   /** 名前の占める長方形。周りに余白を足してある。名前どうしの重なりはこの長方形の交差で数える。 */
   readonly rect: PlotRect;
   /** 点から離れた場所に置いた名前と、点の印を結ぶ細い線。近くに置いた名前には無い。 */
@@ -741,10 +741,10 @@ interface NameSlot {
  * 候補は、隙間が1px（点のすぐ横）から124pxまでの段ごとに、点の箱に沿って名前を一周ずらした位置と、箱の4つの角の斜め外側。
  * 重なりの数（他の名前・点の印・引き出し線と名前・引き出し線どうし・図の外）が少ない候補を選び、同じなら隙間が小さい候補を選ぶ。
  * 名前の長方形が他の名前・点の印と重なる1か所は、線の交差1か所より重く数える。線が名前の字を通る置き方の方が、名前どうしが重なる置き方より読める。
- * 同じ隙間（1px未満は1pxとみなす）の候補は、箱の辺の中央からのずれが小さい順に、右・左・下・上の辺、続けて角の順に比べ、最初の候補を選ぶ。
+ * 同じ隙間（1px未満は1pxとみなす）の候補は、右・左の辺では縦の中央からのずれが、上・下の辺では名前の左端を点の箱の左端にそろえた位置（名前が点から右へ伸びる）からのずれが小さい順に、右・左・下・上の辺、続けて角の順に比べ、最初の候補を選ぶ。
  * 隙間が`MIN_LEADER`以上の名前には、一番近い点の印の縁から名前の長方形へ細い引き出し線を付ける。
  * 名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
- * 行は、名前の長方形が点の箱の左に離れていれば右端、右に離れていれば左端、横の範囲が重なれば中央でそろえる（列に分けた名前は列ごとに同じ）。
+ * 行は、名前の長方形の右端が点の箱の左端以下なら右端、それ以外は左端でそろえる（列に分けた名前は列ごとに同じ）。上下の名前の全ての行が、点の箱の左端の近くから読み始められる。
  * 点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。
  * 2行以上の名前は、点の左右に置く候補を、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り（図の中へ寄せた後で判定する）、角の候補を使わない。
  * 点の高さから遠い行だけが点のそばに残る置き方を避けるため。上下の候補と1行の名前の候補は変えない。
@@ -799,8 +799,8 @@ export function placeNames(
       },
       { x0: Number.POSITIVE_INFINITY, x1: Number.NEGATIVE_INFINITY, y0: Number.POSITIVE_INFINITY, y1: Number.NEGATIVE_INFINITY },
     );
-    // 辺の中央にそろえた時の長方形の左上。右・左は名前の縦の中央を点の高さに、上・下は名前の横の中央を点にそろえる
-    const centeredX0 = cluster.cx - rectWidth / 2;
+    // 右・左の辺では名前の縦の中央を点の高さにそろえた時の長方形の上端。上・下の辺では名前の左端を点の箱の左端にそろえた時の左端（名前が点から右へ伸びる）
+    const alignedX0 = box.x0;
     const centeredY0 = cluster.cy + 4 - span / 2 - 11.5;
     // 候補の長方形を図の中へ寄せ、その位置で隙間を測り直す。名前が長い・高い時は寄せきれず、枠から出る分が費用に入る
     // `nearOnly`の時は、寄せた後も隙間が`MIN_LEADER`未満にならない候補（段`d`から寄せた量だけ隙間が縮んでも届かない候補）を作らない
@@ -818,14 +818,14 @@ export function placeNames(
       const nearest = nearestMember(cluster.members, marks, points, rect);
       return {
         x: rect.x0 + 1,
-        anchor: rect.x1 <= box.x0 ? 'end' : rect.x0 >= box.x1 ? 'start' : 'middle',
+        anchor: rect.x1 <= box.x0 ? 'end' : 'start',
         firstBaseline: rect.y0 + 11.5,
         rect,
         gap: nearest.gap,
         leader: nearest.gap >= MIN_LEADER ? leaderTo(points[nearest.index]!, rect) : undefined,
       };
     };
-    // 隙間`d`の段の候補。辺の中央からのずれが小さい順に、右・左・下・上の辺を並べ、最後に4つの角を置く
+    // 隙間`d`の段の候補。右・左の辺は縦の中央からのずれが、上・下の辺は名前の左端を点の箱の左端にそろえた位置からのずれが小さい順に、右・左・下・上の辺を並べ、最後に4つの角を置く
     const candidatesAt = (d: number, nearOnly = false): NameCandidate[] => {
       const found: NameCandidate[] = [];
       const add = (x0: number, y0: number, kind: 'side' | 'edge' | 'corner'): void => {
@@ -841,7 +841,7 @@ export function placeNames(
             add(box.x1 + d, dy, 'side');
             add(box.x0 - d - rectWidth, dy, 'side');
           }
-          const dx = centeredX0 + sign * k * step;
+          const dx = alignedX0 + sign * k * step;
           if (dx + rectWidth > box.x0 - d && dx < box.x1 + d) {
             add(dx, box.y1 + d, 'edge');
             add(dx, box.y0 - d - rectHeight, 'edge');
@@ -919,7 +919,7 @@ export function placeNames(
     const toName = (candidate: NameCandidate): PlotName => ({
       lines: lines.map((line, index) => {
         const column = Math.floor(index / rows);
-        const shift = candidate.anchor === 'end' ? columnWidths[column]! : candidate.anchor === 'middle' ? columnWidths[column]! / 2 : 0;
+        const shift = candidate.anchor === 'end' ? columnWidths[column]! : 0;
         return {
           targetKey: line.targetKey,
           text: line.label,
