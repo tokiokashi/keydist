@@ -1,6 +1,5 @@
 import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useContext, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { LAYOUT_MISSING_REASON, MISSING_SETUP_NAME } from '#input/setup/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import {
   USER_ASSETS_FILE_FORMAT,
@@ -15,7 +14,7 @@ import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_TOO_LARGE_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE } from '#hosts/shared/preset-file.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
-import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
+import { deleteConfirmText, userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
 import type { OverrideEntry, OverrideGroup } from './cascade-override-groups.ts';
 
@@ -103,20 +102,6 @@ interface PendingDelete {
   readonly confirm?: () => void;
 }
 
-const CONFIRM_IMPACT: Readonly<Record<UserAssetKind | 'missing-setup-override', string>> = {
-  'missing-setup-override': 'このSetupが手持ちに無いため、変更を戻した後は「元に戻す」で戻せません。',
-  layout: `この配列を対象にしているペインは、「${LAYOUT_MISSING_REASON}」の表示になります。`,
-  'romaji-rule': 'この規則を推奨にしている配列は、全体の値の規則で打つようになります。',
-  'finger-assignment': 'この割り当てを選んでいる場所は、既定の割り当てで測るようになります。',
-  setup: `このSetupを対象にしているペインは、「${MISSING_SETUP_NAME}」の表示になります。`,
-};
-
-/** 削除の確認の文。元に戻すが使える範囲と、削除が他へ及ぼす影響を書く。 */
-function confirmText(pending: PendingDelete): readonly string[] {
-  if (pending.kind === 'missing-setup-override') return [CONFIRM_IMPACT[pending.kind]];
-  return [CONFIRM_IMPACT[pending.kind], '「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。'];
-}
-
 /** 削除の確認。キャンセルにフォーカスを置き、Escでもキャンセルになる。 */
 function ConfirmDelete({
   pending,
@@ -145,7 +130,7 @@ function ConfirmDelete({
       <h2 id="user-assets-confirm-title">
         {pending.kind === 'missing-setup-override' ? `「${pending.row.name}」の変更を戻しますか` : `「${pending.row.name}」を削除しますか`}
       </h2>
-      {confirmText(pending).map((line) => (
+      {deleteConfirmText(pending.kind).map((line) => (
         <p key={line}>{line}</p>
       ))}
       <div className="user-assets-confirm-actions">

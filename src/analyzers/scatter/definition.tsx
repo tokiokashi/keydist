@@ -277,7 +277,12 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
               {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
               <g className="scatter-names" aria-hidden="true">
                 {model.names.map((name) => (
-                  <g key={name.lines.map((line) => line.targetKey).join('\n')} className="scatter-name" data-scatter-name={name.lines.length}>
+                  <g
+                    key={name.lines.map((line) => line.targetKey).join('\n')}
+                    className="scatter-name"
+                    data-scatter-name={name.lines.length}
+                    textAnchor={name.anchor}
+                  >
                     {name.leader === undefined ? null : (
                       <line className="scatter-leader" x1={name.leader.x1} y1={name.leader.y1} x2={name.leader.x2} y2={name.leader.y2} />
                     )}

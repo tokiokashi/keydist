@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computeYRange, formatYTicks, yValuesRange } from './y-range.ts';
+import { createScaleRegistry } from '../shared-scale.ts';
+import { computeYRange, formatYTicks, nSensitivityScaleKey, yValuesRange } from './y-range.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS } from './options.ts';
 
 const relative = [100, 100, 90, 77, 65, 97, 85, 82];
@@ -157,4 +158,18 @@ test('差の目盛りは指標の単位を付ける（指間平均はu）', () =
     const labels = formatYTicks('delta', range.ticks, 'adjacentMean', 'ja');
     assert.equal(new Set(labels).size, labels.length, labels.join(' '));
   }
+});
+
+test('並んだペインの縦軸は、指標・縦軸の見せ方・範囲の決め方が同じペインどうしでだけ揃う', () => {
+  const registry = createScaleRegistry();
+  const same = nSensitivityScaleKey('totalUnits', 'value', 'fit');
+  registry.report(same, 'a', { min: 0, max: 100 });
+  registry.report(same, 'b', { min: 0, max: 60 });
+  registry.report(nSensitivityScaleKey('totalUnits', 'value', 'full'), 'c', { min: 0, max: 500 });
+  registry.report(nSensitivityScaleKey('totalUnits', 'delta', 'fit'), 'd', { min: -1, max: 1 });
+  registry.report(nSensitivityScaleKey('sameFinger', 'value', 'fit'), 'e', { min: 0, max: 900 });
+  assert.deepEqual(registry.rangeOf(same), { min: 0, max: 100 });
+  assert.deepEqual(registry.rangeOf(nSensitivityScaleKey('totalUnits', 'value', 'full')), { min: 0, max: 500 });
+  assert.deepEqual(registry.rangeOf(nSensitivityScaleKey('totalUnits', 'delta', 'fit')), { min: -1, max: 1 });
+  assert.deepEqual(registry.rangeOf(nSensitivityScaleKey('sameFinger', 'value', 'fit')), { min: 0, max: 900 });
 });

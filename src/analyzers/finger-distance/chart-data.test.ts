@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { FingerDistanceExtracted } from './extract.ts';
-import { chartSpecOf } from './chart-data.ts';
+import { createScaleRegistry } from '../shared-scale.ts';
+import { chartSpecOf, fingerDistanceScaleKey } from './chart-data.ts';
 
 /** 棒の値の文字だけを見るための最小の抽出結果。 */
 const extractedWith = (value: number): FingerDistanceExtracted =>
@@ -44,4 +45,16 @@ test('表示を丸めて桁が上がる境目は、上の単位に寄せる', ()
 test('ツールチップには縮めない正確な値が出る', () => {
   const bar = chartSpecOf(extractedWith(1_234_567), 'presses').bars[0]!;
   assert.ok(bar.tip.includes('1234567'), bar.tip);
+});
+
+test('並んだペインの縦軸は、見る量が同じペインどうしでだけ揃い、見る量が違うペインとは揃わない', () => {
+  const registry = createScaleRegistry();
+  registry.report(fingerDistanceScaleKey('distance'), 'a', { min: 0, max: 110 });
+  registry.report(fingerDistanceScaleKey('distance'), 'b', { min: 0, max: 70 });
+  registry.report(fingerDistanceScaleKey('presses'), 'c', { min: 0, max: 900 });
+  assert.deepEqual(registry.rangeOf(fingerDistanceScaleKey('distance')), { min: 0, max: 110 });
+  assert.deepEqual(registry.rangeOf(fingerDistanceScaleKey('presses')), { min: 0, max: 900 });
+  // 片方を閉じると、残りは自分の範囲に戻る
+  registry.report(fingerDistanceScaleKey('distance'), 'a', undefined);
+  assert.deepEqual(registry.rangeOf(fingerDistanceScaleKey('distance')), { min: 0, max: 70 });
 });

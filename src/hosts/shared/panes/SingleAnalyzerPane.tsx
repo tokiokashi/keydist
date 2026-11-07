@@ -24,7 +24,7 @@ import { useTargetExtractions } from '../use-target-extractions.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { setTargetFigureState, setTargetsBesideSingle } from '../set-target-figures.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
-import { readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
+import { isWaitingForReading, readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
 import { useSegmentation } from '../segmentation.ts';
 import { PersonalSpeedSavedContext } from '#ui/primitives/personal-speed-link.tsx';
 
@@ -80,7 +80,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
 }: SingleAnalyzerPaneProps<Options, Extracted>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   // 辞書の読み込み中は、評価に渡すテキストがまだ無いので依頼を出さない（漢字を打てない文字に数えた暫定の数値を出さない）
-  const readingLoading = env.reading?.kind === 'loading';
+  const readingLoading = isWaitingForReading(env.reading);
   const conditionProvenance = useMemo(() => readingProvenance(resolvedText.reading), [resolvedText.reading]);
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
