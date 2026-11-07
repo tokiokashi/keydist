@@ -50,7 +50,6 @@ export function StandaloneSetAnalyzerApp<Options, Extracted, RowContext>({
   const openPlayback = (params: URLSearchParams) => {
     commitTextContent.flush();
     commitOptions.flush();
-    // 文字位置は数値のまま渡す（文字列にすると、routerが数字の文字列を引用符で包んでURLに書く）
     void navigate({ to: '/analyzer/playback', search: { target: params.get('target'), position: Number(params.get('position')) } });
   };
 
