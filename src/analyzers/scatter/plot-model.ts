@@ -720,6 +720,17 @@ function segmentsCross(a: Segment, b: Segment): boolean {
   return side(a, b.x1, b.y1) * side(a, b.x2, b.y2) < 0 && side(b, a.x1, a.y1) * side(b, a.x2, a.y2) < 0;
 }
 
+/** 置いた名前を、後から別の位置へ動かすために残す、その名前の組の候補と費用の計算。 */
+interface NameSlot {
+  /** 引き出し線が付かない（隙間が`MIN_LEADER`未満の）候補。点に近い順、同じ隙間では最初に置く時と同じ順。 */
+  readonly nearCandidates: () => readonly NameCandidate[];
+  /** `candidate`の重なりの数。`limit`を超えると無限大。 */
+  readonly costOf: (candidate: NameCandidate, others: readonly PlotName[], limit: number) => number;
+  /** 重なりが、`others`のうち名前の長方形との重なりだけの時、重なる名前。他の重なり（点の印・図の外・引き出し線）がある時は`undefined`。 */
+  readonly blockersOf: (candidate: NameCandidate, others: readonly PlotName[]) => readonly PlotName[] | undefined;
+  readonly toName: (candidate: NameCandidate) => PlotName;
+}
+
 /**
  * 点の名前の置き場所。印が重なる点の組は1つの名前（行を縦軸の値の大きい順に積む）にして、組の点の余白の正方形を全て囲む長方形（点の箱）の周りに置く。
  * 名前と点の距離（隙間）は、組の点のうち名前に一番近い点の余白の正方形と名前の長方形の間で測る。図の中へ寄せた後の位置で測る。
@@ -731,9 +742,17 @@ function segmentsCross(a: Segment, b: Segment): boolean {
  * 名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
  * 印が重なる2点の組は、まとめた名前を引き出し線無しで重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
  * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
+ *
+ * 全ての名前を置いた後、`yieldToNeighbors`が真なら、引き出し線の付いた名前を置いた順に1つずつ見直す。
+ * その名前の組の、線が付かない候補が、ちょうど1つの名前の長方形とだけ重なる（点の印・図の外・引き出し線との重なりが無い）時、重なる名前を別の位置へ動かせるか調べる。
+ * 動かす名前は、組の名前をまとめて置いたものに限る（左右に分けて置いた名前は動かさない）。
+ * 動かす名前の線が付かない候補のうち、2つの名前を外した状態で重なりが無く、動かした状態で線の付いていた名前の候補にも重なりが無いものがあれば、
+ * 動かして、線の付いていた名前をその候補に置き直す（線は付かなくなる）。探す順は、線の付いていた名前の候補、重なる名前、重なる名前の移り先の順で、最初に見つかった組み合わせを採る。
+ * 動かした名前と、線を無くした名前は、別の名前のために動かさない。
  */
-function placeNames(
+export function placeNames(
   points: readonly { readonly targetKey: string; readonly px: number; readonly py: number; readonly y: number; readonly label: string }[],
+  yieldToNeighbors = true,
 ): PlotName[] {
   const marks: Rect[] = points.map((p) => ({
     x0: p.px - POINT_CLEARANCE,
@@ -745,6 +764,8 @@ function placeNames(
   // 大きい組が先。同じ大きさなら入力の順（組の中で最も小さい添字）
   const order = clusterPoints(points).sort((a, b) => b.members.length - a.members.length || Math.min(...a.members) - Math.min(...b.members));
   const placed: PlotName[] = [];
+  // placedと添字をそろえる。左右に分けて置いた名前は動かさないので`undefined`
+  const slots: (NameSlot | undefined)[] = [];
   for (const cluster of order) {
     const lines = cluster.members.map((index) => points[index]!);
     const rows = lines.length <= NAME_MAX_ROWS ? lines.length : Math.ceil(lines.length / Math.ceil(lines.length / NAME_MAX_ROWS));
@@ -770,9 +791,11 @@ function placeNames(
     const centeredX0 = cluster.cx - rectWidth / 2;
     const centeredY0 = cluster.cy + 4 - span / 2 - 11.5;
     // 候補の長方形を図の中へ寄せ、その位置で隙間を測り直す。名前が長い・高い時は寄せきれず、枠から出る分が費用に入る
-    const make = (x0: number, y0: number): NameCandidate => {
+    // `nearOnly`の時は、寄せた後も隙間が`MIN_LEADER`未満にならない候補（段`d`から寄せた量だけ隙間が縮んでも届かない候補）を作らない
+    const make = (x0: number, y0: number, d: number, nearOnly: boolean): NameCandidate | undefined => {
       const shiftX = Math.max(0, PLOT_LEFT + FRAME_MARGIN - x0) - Math.max(0, x0 + rectWidth - (PLOT_RIGHT - FRAME_MARGIN));
       const shiftY = Math.max(0, PLOT_TOP + FRAME_MARGIN - y0) - Math.max(0, y0 + rectHeight - (PLOT_BOTTOM - FRAME_MARGIN));
+      if (nearOnly && d - Math.max(Math.abs(shiftX), Math.abs(shiftY)) >= MIN_LEADER) return undefined;
       const rect = { x0: x0 + shiftX, x1: x0 + shiftX + rectWidth, y0: y0 + shiftY, y1: y0 + shiftY + rectHeight };
       const nearest = nearestMember(cluster.members, marks, points, rect);
       return {
@@ -784,28 +807,32 @@ function placeNames(
       };
     };
     // 隙間`d`の段の候補。辺の中央からのずれが小さい順に、右・左・下・上の辺を並べ、最後に4つの角を置く
-    const candidatesAt = (d: number): NameCandidate[] => {
-      const step = d <= SLIDE_FINE_GAP ? SLIDE_STEP_NEAR : SLIDE_STEP_FAR;
+    const candidatesAt = (d: number, nearOnly = false): NameCandidate[] => {
       const found: NameCandidate[] = [];
+      const add = (x0: number, y0: number): void => {
+        const candidate = make(x0, y0, d, nearOnly);
+        if (candidate !== undefined) found.push(candidate);
+      };
+      const step = d <= SLIDE_FINE_GAP ? SLIDE_STEP_NEAR : SLIDE_STEP_FAR;
       const reach = Math.ceil((Math.max(rectWidth, rectHeight) + Math.max(box.x1 - box.x0, box.y1 - box.y0) + 2 * d) / step);
       for (let k = 0; k <= reach; k++) {
         for (const sign of k === 0 ? [1] : [1, -1]) {
           const dy = centeredY0 + sign * k * step;
           if (dy + rectHeight > box.y0 - d && dy < box.y1 + d) {
-            found.push(make(box.x1 + d, dy), make(box.x0 - d - rectWidth, dy));
+            add(box.x1 + d, dy);
+            add(box.x0 - d - rectWidth, dy);
           }
           const dx = centeredX0 + sign * k * step;
           if (dx + rectWidth > box.x0 - d && dx < box.x1 + d) {
-            found.push(make(dx, box.y1 + d), make(dx, box.y0 - d - rectHeight));
+            add(dx, box.y1 + d);
+            add(dx, box.y0 - d - rectHeight);
           }
         }
       }
-      found.push(
-        make(box.x1 + d, box.y1 + d),
-        make(box.x0 - d - rectWidth, box.y1 + d),
-        make(box.x1 + d, box.y0 - d - rectHeight),
-        make(box.x0 - d - rectWidth, box.y0 - d - rectHeight),
-      );
+      add(box.x1 + d, box.y1 + d);
+      add(box.x0 - d - rectWidth, box.y1 + d);
+      add(box.x1 + d, box.y0 - d - rectHeight);
+      add(box.x0 - d - rectWidth, box.y0 - d - rectHeight);
       return found;
     };
     // 候補の周り（段の上限まで離れた範囲）に掛かるものだけを、費用の計算に使う
@@ -851,12 +878,43 @@ function placeNames(
       }
       return cost;
     };
+    const blockersOf = (candidate: NameCandidate, others: readonly PlotName[]): readonly PlotName[] | undefined => {
+      const { rect } = candidate;
+      if (leavesPlot(rect) || nearMarks.some((mark) => overlaps(rect, mark))) return undefined;
+      const found: PlotName[] = [];
+      for (const other of others) {
+        if (overlaps(rect, other.rect)) found.push(other);
+        if (other.leader !== undefined && segmentHits(other.leader, rect)) return undefined;
+      }
+      return found;
+    };
+    // 置く時に作った段ごとの候補。見直す時に作り直さない
+    const levelCache = new Map<number, NameCandidate[]>();
+    let nearCache: NameCandidate[] | undefined;
+    const nearCandidates = (): readonly NameCandidate[] => {
+      nearCache ??= GAP_LEVELS.flatMap((d) => levelCache.get(d) ?? candidatesAt(d, true))
+        .filter((candidate) => candidate.leader === undefined)
+        .sort((a, b) => rankOf(a) - rankOf(b));
+      return nearCache;
+    };
+    const toName = (candidate: NameCandidate): PlotName => ({
+      lines: lines.map((line, index) => ({
+        targetKey: line.targetKey,
+        text: line.label,
+        x: candidate.x + columnOffsets[Math.floor(index / rows)]!,
+        y: candidate.firstBaseline + NAME_LINE_HEIGHT * (index % rows),
+      })),
+      rect: candidate.rect,
+      leader: candidate.leader,
+    });
     // 段を隙間の小さい方から試す。重なりが無い候補が見つかった後は、次の段の隙間がその候補の隙間より大きければ打ち切る
     let best: NameCandidate | undefined;
     let bestCost = Number.POSITIVE_INFINITY;
     for (const d of GAP_LEVELS) {
       if (best !== undefined && bestCost === 0 && d > rankOf(best)) break;
-      for (const candidate of candidatesAt(d)) {
+      const level = candidatesAt(d);
+      levelCache.set(d, level);
+      for (const candidate of level) {
         // 重なりが少ない候補、同じなら隙間が小さい候補が勝つ。同じ順位なら先に並べた候補のまま
         const limit = best === undefined || rankOf(candidate) < rankOf(best) ? bestCost : bestCost - 1;
         const cost = costOf(candidate, nearNames, limit);
@@ -888,21 +946,48 @@ function placeNames(
       const leftPlaced = asName(leftPoint, leftName);
       if (costOf(leftName, nearNames, 0) === 0 && costOf(rightName, [...nearNames, leftPlaced], 0) === 0) {
         placed.push(leftPlaced, asName(rightPoint, rightName));
+        slots.push(undefined, undefined);
         continue;
       }
     }
-    placed.push({
-      lines: lines.map((line, index) => ({
-        targetKey: line.targetKey,
-        text: line.label,
-        x: chosen.x + columnOffsets[Math.floor(index / rows)]!,
-        y: chosen.firstBaseline + NAME_LINE_HEIGHT * (index % rows),
-      })),
-      rect: chosen.rect,
-      leader: chosen.leader,
-    });
+    placed.push(toName(chosen));
+    slots.push({ nearCandidates, costOf, blockersOf, toName });
   }
+  if (yieldToNeighbors) yieldNames(placed, slots);
   return placed;
+}
+
+/** 引き出し線の付いた名前のために、線無しの候補をふさぐ名前を1つ動かす。詳しくは`placeNames`。 */
+function yieldNames(placed: PlotName[], slots: readonly (NameSlot | undefined)[]): void {
+  const moved = new Set<number>();
+  for (let a = 0; a < placed.length; a++) {
+    const slotA = slots[a];
+    if (slotA === undefined || placed[a]!.leader === undefined || moved.has(a)) continue;
+    const withoutA = placed.filter((_, index) => index !== a);
+    // 動かす名前ごとの、2つの名前を外した状態で重なりが無い移り先。線の付いていた名前の候補が変わっても同じなので、1度だけ求める
+    const roomFor = new Map<number, readonly NameCandidate[]>();
+    for (const candidateA of slotA.nearCandidates()) {
+      const blockers = slotA.blockersOf(candidateA, withoutA);
+      if (blockers?.length !== 1) continue;
+      const b = placed.indexOf(blockers[0]!);
+      const slotB = slots[b];
+      if (slotB === undefined || moved.has(b)) continue;
+      let room = roomFor.get(b);
+      if (room === undefined) {
+        const others = placed.filter((_, index) => index !== a && index !== b);
+        room = slotB.nearCandidates().filter((candidateB) => slotB.costOf(candidateB, others, 0) === 0);
+        roomFor.set(b, room);
+      }
+      // 線の付いていた名前の候補は、動かす名前以外とは重ならない。移り先の長方形と重ならなければ、重なりは0
+      const target = room.find((candidateB) => !overlaps(candidateA.rect, candidateB.rect));
+      if (target === undefined) continue;
+      placed[a] = slotA.toName(candidateA);
+      placed[b] = slotB.toName(target);
+      moved.add(a);
+      moved.add(b);
+      break;
+    }
+  }
 }
 
 /** 散布図の座標。点が無い時も軸の目盛りは返す。 */

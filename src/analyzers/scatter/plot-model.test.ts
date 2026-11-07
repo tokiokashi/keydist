@@ -14,6 +14,7 @@ import {
   logScaleBlockers,
   MARK_RADIUS,
   niceTicks,
+  placeNames,
   PLOT_HEIGHT,
   PLOT_MARGIN,
   PLOT_WIDTH,
@@ -496,11 +497,13 @@ const CROWDED = [
 ];
 
 test('scatterPlotModel: 引き出し線どうしが交差する置き方は、交差しない候補がある時に選ばない', () => {
-  const model = scatterPlotModel({ points: CROWDED, ...NO_LINES });
-  const leaders = model.names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
+  // 全ての名前を置いた後の見直し（名前を動かして線を無くす段）を通さない置き方で見る
+  const { points } = scatterPlotModel({ points: CROWDED, ...NO_LINES });
+  const names = placeNames(points, false);
+  const leaders = names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
   assert.ok(leaders.length >= 2, '線を付ける名前が複数ある');
   for (let i = 0; i < leaders.length; i++) for (let j = i + 1; j < leaders.length; j++) assert.equal(leadersCross(leaders[i]!, leaders[j]!), false);
-  assert.equal(nameOverlapCount(model.names), 0);
+  assert.equal(nameOverlapCount(names), 0);
 });
 
 test('scatterPlotModel: どこにも重ならずに置けない時は、重なりが最も少ない場所に置き、枠の外へは出さない', () => {
@@ -1476,4 +1479,138 @@ test('割合でない細い線は、範囲が広くても6本以内に絞る（�
     const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '', logScale });
     assert.ok(model.contours.length >= 4 && model.contours.length <= 6, `${logScale} ${model.contours.length}本`);
   }
+});
+
+/** 点の位置（図の座標）と名前の並びから、`placeNames`の入力を作る。縦軸の値は上ほど大きいとして`y`を決める。 */
+function nameScene(rows: readonly (readonly [number, number, string])[]) {
+  return rows.map(([px, py, label], index) => ({ targetKey: `k${index}`, px, py, y: -py + index * 0.001, label }));
+}
+
+type NameScene = ReturnType<typeof nameScene>;
+
+function hasLeader(name: PlotName): boolean {
+  return name.leader !== undefined;
+}
+
+/** 名前どうし・名前と点の印の重なりの数と、引き出し線どうしの交差の数。 */
+function overlapCounts(names: readonly PlotName[], points: NameScene) {
+  const leaders = names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
+  let leaderCrossings = 0;
+  for (let i = 0; i < leaders.length; i++) for (let j = i + 1; j < leaders.length; j++) if (leadersCross(leaders[i]!, leaders[j]!)) leaderCrossings++;
+  const marks = points.flatMap((point) => names.filter((name) => overlapsRect(name.rect, markRect(point))));
+  return { nameNames: nameOverlapCount(names), nameMarks: marks.length, leaderCrossings };
+}
+
+function movedNames(before: readonly PlotName[], after: readonly PlotName[]): number[] {
+  return before.flatMap((name, index) => (JSON.stringify(name.rect) === JSON.stringify(after[index]!.rect) ? [] : [index]));
+}
+
+/** 先に置いた名前（添字3）が自分の点の横の別の位置へ移ると、後の名前（添字6）が点のすぐ横に入る。 */
+const YIELD_SCENE = nameScene([
+  [214, 99, 'abcdefg0'],
+  [167, 129, 'ab1'],
+  [204, 91, 'ab2'],
+  [178, 121, 'abcdefg3'],
+  [122, 97, 'abcdefg4'],
+  [179, 102, 'abcdefg5'],
+  [199, 107, 'abcd6'],
+  [126, 75, 'ab7'],
+]);
+
+test('placeNames: 先に置いた名前が別の位置へ移れる時、後の名前は線無しで点のすぐ横に置かれ、先の名前も線無しになる', () => {
+  const without = placeNames(YIELD_SCENE, false);
+  assert.deepEqual(
+    without.flatMap((name, index) => (hasLeader(name) ? [index] : [])),
+    [6],
+    '場所を譲らない置き方では、添字6の名前に線が付く',
+  );
+  const names = placeNames(YIELD_SCENE);
+  assert.equal(names.filter(hasLeader).length, 0);
+  assert.deepEqual(movedNames(without, names), [3, 6]);
+  assert.ok(nameGap(names[6]!, YIELD_SCENE) < 6);
+  assert.ok(nameGap(names[3]!, YIELD_SCENE) < 6);
+  assert.deepEqual(overlapCounts(names, YIELD_SCENE), { nameNames: 0, nameMarks: 0, leaderCrossings: 0 });
+});
+
+/** 20配列の図（既定の組み合わせ）の点。月見草配列v2に線が付き、周りの名前はどれも動かしても入らない。 */
+const BLOCKED_SCENE = nameScene([
+  [540.0, 315.2, 'せおと配列'],
+  [567.0, 324.0, '大西配列'],
+  [392.2, 292.8, 'TK音直入力法'],
+  [195.0, 207.1, '薙刀式v18'],
+  [203.6, 234.9, '親指シフト'],
+  [195.0, 239.5, 'シン蜂蜜小梅'],
+  [203.6, 280.8, '飛鳥'],
+  [346.9, 262.5, '新JIS（逐次シフト）'],
+  [258.8, 232.6, '新JIS（通常シフト）'],
+  [195.0, 212.5, '新下駄'],
+  [362.2, 248.2, '月配列2-263式'],
+  [365.3, 229.2, '中指シフト月光'],
+  [371.2, 236.1, '月配列U9'],
+  [330.7, 252.7, '月見草配列v2'],
+  [352.9, 213.8, '月見草エキス配列'],
+  [352.1, 260.8, '月配列E-X'],
+  [354.0, 207.5, '月林檎配列'],
+  [393.8, 269.1, '弓配列'],
+  [117.0, 138.2, 'かわせみ配列+'],
+  [258.8, 44.0, 'JISかな配列'],
+]);
+
+test('placeNames: 線無しの候補をふさぐ名前の移り先が全て重なる時は、場所を譲らない置き方と同じになる', () => {
+  const without = placeNames(BLOCKED_SCENE, false);
+  assert.equal(without.filter(hasLeader).length, 1);
+  assert.deepEqual(placeNames(BLOCKED_SCENE), without);
+});
+
+/** 乱数の種から決まる点の並び。印が重なる組を含む。 */
+function randomScene(seed: number): NameScene {
+  let state = seed;
+  const next = () => {
+    state = (state * 1103515245 + 12345) & 0x7fffffff;
+    return state / 0x7fffffff;
+  };
+  const count = 6 + Math.floor(next() * 9);
+  const rows: [number, number, string][] = [];
+  for (let i = 0; i < count; i++) {
+    const base = i > 0 && next() < 0.3 ? rows[Math.floor(next() * rows.length)] : undefined;
+    const px = base === undefined ? Math.round(100 + next() * 110) : base[0] + Math.round(next() * 8 - 4);
+    const py = base === undefined ? Math.round(60 + next() * 70) : base[1] + Math.round(next() * 8 - 4);
+    rows.push([px, py, ['ab', 'abcd', 'abcdefg'][Math.floor(next() * 3)]! + i]);
+  }
+  return nameScene(rows);
+}
+
+test('placeNames: 1つの離れた名前のために動く名前は1つまでで、動いた名前は線が無く、重なりは増えない。左右に分けて置いた名前は動かない', () => {
+  let resolved = 0;
+  let splitSeen = 0;
+  for (let seed = 1; seed <= 600; seed++) {
+    const scene = randomScene(seed);
+    const without = placeNames(scene, false);
+    const names = placeNames(scene);
+    const moved = movedNames(without, names);
+    const leadersBefore = without.filter(hasLeader).length;
+    assert.ok(moved.length % 2 === 0 && moved.length <= 2 * leadersBefore, `seed ${seed}`);
+    for (const index of moved) {
+      assert.equal(names[index]!.leader, undefined, `seed ${seed}`);
+      assert.ok(nameGap(names[index]!, scene) < 6, `seed ${seed}`);
+    }
+    assert.ok(names.filter(hasLeader).length <= leadersBefore, `seed ${seed}`);
+    const before = overlapCounts(without, scene);
+    const after = overlapCounts(names, scene);
+    assert.ok(
+      after.nameNames <= before.nameNames && after.nameMarks <= before.nameMarks && after.leaderCrossings <= before.leaderCrossings,
+      `seed ${seed}`,
+    );
+    if (moved.length > 0) resolved++;
+    // 印が重なる組を左右に分けた名前は、1点の名前なのに、同じ組のもう1点が近くにある
+    names.forEach((name, index) => {
+      if (name.lines.length !== 1) return;
+      const own = scene.find((point) => point.targetKey === name.lines[0]!.targetKey)!;
+      const partner = scene.some((point) => point !== own && Math.hypot(point.px - own.px, point.py - own.py) < 2 * MARK_RADIUS);
+      if (!partner) return;
+      splitSeen++;
+      assert.ok(!moved.includes(index), `seed ${seed}`);
+    });
+  }
+  assert.ok(resolved > 0 && splitSeen > 0, `${resolved} ${splitSeen}`);
 });
