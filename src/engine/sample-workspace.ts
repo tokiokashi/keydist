@@ -123,7 +123,7 @@ export const LAYOUT_DETAIL_LAYOUT_ID = 'tsuki-2-263';
  * 高さは升目（1升は行28pxと間8pxで36px）単位。ペインは上の順に置き、空いている最初の場所とペインを詰める設定で、上の位置になる。
  * ヒートマップ（レイヤー）は色の尺度を線形、層の並びをタブ、層の詳細をコンパクト、見る層を単一にして、図を小さく収める。
  * 縦は1画面に収めず、下のペインを見るにはページを縦にスクロールする。
- * どのペインも中でスクロールせずに収まることは、1920x930と1440x900で`e2e/sample-workspace.spec.ts`が確かめる。
+ * 高さは、各ペインが中でスクロールせずに収まる最小の値にしてある。
  */
 export const LAYOUT_DETAIL_HEATMAP_SIZE: GridSize = { w: 8, h: 10 };
 export const LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE: GridSize = { w: 8, h: 10 };
