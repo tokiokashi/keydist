@@ -7,7 +7,7 @@ import type { FigureImageReadout, FigureImageSource } from '#analyzers/pane-part
  * 複製を文書に置いて計算済みの値を読み、複製の各要素のstyleへ写す。
  */
 
-/** 画像の1ピクセルあたりのSVG座標の細かさ。画面の大きさに依らず、SVGの座標の2倍のピクセルにする。 */
+/** SVGの座標1あたりの画像のピクセル数。画面の大きさに依らず、SVGの座標の2倍のピクセルにする。 */
 const PIXEL_RATIO = 2;
 /**
  * 画面の1pxがSVG座標のいくつにあたるか。軸の名前（SVGの座標で11）が1280pxの画面で約13pxになる比。
@@ -25,7 +25,7 @@ const READOUT_INSET = 6;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/** どの要素でも写す、描画に効く性質。 */
+/** どの要素でも写す、見た目を決める性質。 */
 const GRAPHIC_PROPERTIES = [
   'fill',
   'fill-opacity',
