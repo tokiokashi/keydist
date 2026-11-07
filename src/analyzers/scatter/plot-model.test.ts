@@ -75,7 +75,8 @@ function overlapsRect(a: PlotRect, b: PlotRect): boolean {
 /** 名前の長方形どうしの交差の組の数。 */
 function nameOverlapCount(names: readonly PlotName[]): number {
   let count = 0;
-  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) if (overlapsRect(names[i]!.rect, names[j]!.rect)) count++;
+  for (let i = 0; i < names.length; i++)
+    for (let j = i + 1; j < names.length; j++) if (names[i]!.boxes.some((a) => names[j]!.boxes.some((b) => overlapsRect(a, b)))) count++;
   return count;
 }
 
@@ -190,7 +191,12 @@ test('scatterPlotModel: 印が重ならない近い点の名前は、互いに�
   assert.equal(model.names.length, 5);
   assert.equal(nameOverlapCount(model.names), 0);
   for (const name of model.names) {
-    for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false, `${name.lines[0]!.text}と${point.label}の印`);
+    for (const point of model.points)
+      assert.equal(
+        name.boxes.some((box) => overlapsRect(box, markRect(point))),
+        false,
+        `${name.lines[0]!.text}と${point.label}の印`,
+      );
   }
 });
 
@@ -202,7 +208,12 @@ function blockedPair(half: number, extra: readonly { readonly key: string; reado
 function assertNamesClear(model: ReturnType<typeof scatterPlotModel>) {
   assert.equal(nameOverlapCount(model.names), 0);
   for (const name of model.names) {
-    for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false, `${name.lines[0]!.text}と${point.label}の印`);
+    for (const point of model.points)
+      assert.equal(
+        name.boxes.some((box) => overlapsRect(box, markRect(point))),
+        false,
+        `${name.lines[0]!.text}と${point.label}の印`,
+      );
     assert.ok(name.rect.x0 >= PLOT_MARGIN.left && name.rect.x1 <= PLOT_WIDTH - PLOT_MARGIN.right, `${name.lines[0]!.text}の左右`);
     assert.ok(name.rect.y0 >= PLOT_MARGIN.top && name.rect.y1 <= PLOT_HEIGHT - PLOT_MARGIN.bottom, `${name.lines[0]!.text}の上下`);
   }
@@ -286,7 +297,12 @@ test('scatterPlotModel: 引き出し線は、他の引き出し線と交差せ�
   for (const name of model.names) {
     if (name.leader === undefined) continue;
     for (const other of model.names)
-      if (other !== name) assert.equal(leaderTouches(name.leader, other.rect), false, `${name.lines[0]!.text}の線が他の名前を通る`);
+      if (other !== name)
+        assert.equal(
+          other.boxes.some((box) => leaderTouches(name.leader!, box)),
+          false,
+          `${name.lines[0]!.text}の線が他の名前を通る`,
+        );
     const own = new Set(name.lines.map((line) => line.targetKey));
     for (const point of model.points) {
       if (!own.has(point.targetKey))
@@ -318,7 +334,12 @@ test('scatterPlotModel: 例の15配列で、名前は名前どうし・点の印
     const model = scatterPlotModel({ points, ...NO_LINES });
     assert.equal(model.points.length, 15);
     assert.equal(nameOverlapCount(model.names), 0);
-    for (const name of model.names) for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false);
+    for (const name of model.names)
+      for (const point of model.points)
+        assert.equal(
+          name.boxes.some((box) => overlapsRect(box, markRect(point))),
+          false,
+        );
   }
 });
 
@@ -748,10 +769,10 @@ test('scatterPlotModel: 通常の目盛りの描画（点・線・名前・目�
       .update(JSON.stringify(scatterPlotModel(input)))
       .digest('hex')
       .slice(0, 16);
-  assert.equal(digest({ points: POINTS, contour, legendRows: ['かな配列'], contourName: '総移動距離', contourSuffix: '' }), 'f07dbc93c6f4f9c3');
+  assert.equal(digest({ points: POINTS, contour, legendRows: ['かな配列'], contourName: '総移動距離', contourSuffix: '' }), '8ee06aa0749edb71');
   assert.equal(
     digest({ points: LOG_POINTS, contour: undefined, legendRows: [], contourName: '', contourSuffix: '', logScale: false }),
-    'fcac97a1e85fba77',
+    '27eeb6e2379ef9f7',
   );
   const shares = [
     { targetKey: 'a', label: 'QWERTY', x: 48, y: 52 },
@@ -759,7 +780,7 @@ test('scatterPlotModel: 通常の目盛りの描画（点・線・名前・目�
   ];
   assert.equal(
     digest({ points: shares, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '', centerAxes: { x: true, y: true } }),
-    'd573aaa336dee2db',
+    '3b1948a5521a4f7d',
   );
 });
 
@@ -971,11 +992,20 @@ function randomNameScene(seed: number) {
 test('placeNames: 名前を動かして線を無くす段は、名前どうし・名前と点の印の重なりと、引き出し線どうしの交差を増やさず、線の数を減らすだけである', () => {
   for (let seed = 1; seed <= 300; seed++) {
     const points = randomNameScene(seed);
+    // 短い線（隙間6px未満の名前の線）は見直しの後に付くので、隙間6px以上の名前の線だけを数える
+    const gapOf = (name: PlotName) =>
+      Math.min(
+        ...name.lines.map((line) => {
+          const point = points.find((p) => p.targetKey === line.targetKey)!;
+          const r = name.rect;
+          return Math.max(r.x0 - (point.px + 7), point.px - 7 - r.x1, r.y0 - (point.py + 7), point.py - 7 - r.y1);
+        }),
+      );
     const count = (names: readonly PlotName[]) => {
-      const leaders = names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
+      const leaders = names.flatMap((name) => (name.leader === undefined || gapOf(name) < 6 ? [] : [name.leader]));
       let crossings = 0;
       for (let i = 0; i < leaders.length; i++) for (let j = i + 1; j < leaders.length; j++) if (leadersCross(leaders[i]!, leaders[j]!)) crossings++;
-      const marks = points.flatMap((point) => names.filter((name) => overlapsRect(name.rect, markRect(point))));
+      const marks = points.flatMap((point) => names.filter((name) => name.boxes.some((box) => overlapsRect(box, markRect(point)))));
       return { nameNames: nameOverlapCount(names), nameMarks: marks.length, crossings, leaders: leaders.length };
     };
     const before = count(placeNames(points, false));
