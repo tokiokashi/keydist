@@ -16,6 +16,7 @@ import {
 } from '../condition-summary.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
+import { copyFigureImage } from '../figure-image.ts';
 import { resolvePaneHelp } from '#analyzers/pane-help.tsx';
 import { TextLanguageProvider } from '#analyzers/text-language-context.tsx';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
@@ -298,6 +299,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
             baselineTargetKey={baselineTargetKey}
             options={options}
             onOptionsChange={onOptionsChange}
+            copyFigureImage={copyFigureImage}
             {...(playbackJump === undefined ? {} : { playbackJump })}
             {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
           />

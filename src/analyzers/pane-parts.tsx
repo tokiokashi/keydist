@@ -200,6 +200,29 @@ export interface SetBodyProps<Extracted, Options, RowContext> {
   readonly playbackJump?: PlaybackJump;
   /** 文節の区切りを使う設定の時の、区切りの用意の状態。`SetAnalyzerPaneParts.usesSegmentation` を宣言したAnalyzerにだけ渡す。 */
   readonly segmentation?: SegmentationStatus;
+  /**
+   * 図を画像にして書き出す手段（ホストが渡す）。結果は、できたら`true`、できなかったら`false`。
+   * 書き出し先と、要素を画像にする処理はホストが持つ。
+   */
+  readonly copyFigureImage?: (source: FigureImageSource) => Promise<boolean>;
+}
+
+/**
+ * 画像にする図。キャプションは`svg`の下に、`svg`の外の文字として描く。
+ * 操作中の印（ポインターを重ねた・フォーカスした要素に付く`data-active`属性）は画像に含めない。
+ */
+export interface FigureImageSource {
+  readonly svg: SVGSVGElement;
+  readonly caption: Element;
+  /** 画像に含める点の読み取りの行。無ければ`undefined`。 */
+  readonly readout?: FigureImageReadout | undefined;
+}
+
+/** 読み取りの行の、頭の印と文。画面の見た目（色・大きさ・間隔）はこれらの要素から読む。 */
+export interface FigureImageReadout {
+  readonly row: Element;
+  readonly mark: Element | null;
+  readonly text: Element;
 }
 
 /**
