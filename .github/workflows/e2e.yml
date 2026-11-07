@@ -1,6 +1,6 @@
 name: Browser E2E
 
-# ブラウザe2eは全件で約20分かかるので、4つのshardに分けて並列に回す。
+# ブラウザe2eは4つのshardに分けて並列に回す。shardごとのビルドを含めて、1つのshardは約1分で終わる。
 # 走らせるのはpull_request（draftを含む）・mainへのpush・手動実行だけ。
 # PRを開いているブランチへのpushでは、push由来とpull_request由来が同じheadで2本ずつ走り、同じ処理が二重に回るため。
 # mainは外さない。公開（release.yml / pages.yml）はtypecheck・test・buildだけで、ブラウザe2eは回さないため。
