@@ -148,7 +148,7 @@ export interface Metrics {
    */
   movedPressShare: number;
   /**
-   * 移動ありキー1つで動く距離 [u/移動ありキー]（仕様 §11.5）。総移動距離 / 移動距離が0より大きいキーの数。
+   * 移動ありキー1つあたりの距離 [u/移動ありキー]（仕様 §11.5）。総移動距離 / 移動距離が0より大きいキーの数。
    * その数が0なら0。`perPressUnits` = `movedPressShare` / 100 × この値。
    */
   perMovedPressUnits: number;
@@ -480,7 +480,7 @@ export function rightHandShare(byFinger: Readonly<Record<Finger, number>>): numb
 }
 
 /**
- * 移動ありキーの割合 [%] と、移動ありキー1つで動く距離 [u/移動ありキー]（仕様 §11.5）。
+ * 移動ありキーの割合 [%] と、移動ありキー1つあたりの距離 [u/移動ありキー]（仕様 §11.5）。
  * 移動ありキーは移動距離が0より大きいキーで、数えるのは押したキーの数。分母が0の時はどちらも0。
  */
 export function movedPressMetrics(
