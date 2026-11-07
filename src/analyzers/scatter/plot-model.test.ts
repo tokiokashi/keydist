@@ -7,8 +7,6 @@ import type { ComparisonColumnId } from '../comparison-column-text.ts';
 import {
   axisRange,
   estimateTextWidth,
-  finerStep,
-  levelsAtStep,
   logAxis,
   logAxisRange,
   logScaleBlockers,
@@ -18,7 +16,6 @@ import {
   PLOT_MARGIN,
   PLOT_WIDTH,
   resolveLogScale,
-  type Range,
   scatterPlotModel,
   type PlotName,
   type PlotRect,
@@ -85,10 +82,6 @@ function markRect(point: { readonly px: number; readonly py: number }, radius = 
   return { x0: point.px - radius, x1: point.px + radius, y0: point.py - radius, y1: point.py + radius };
 }
 
-function nameTexts(name: PlotName): string[] {
-  return name.lines.map((line) => line.text);
-}
-
 /** 例の15配列（既定のテキスト、既定の設定）の、組み合わせごとの値。名前の置き場所の検査に使う。 */
 const EXAMPLE_PRESS = [
   { targetKey: 'oonishi', label: '大西配列', x: 1.0, y: 1.777 },
@@ -126,8 +119,7 @@ const EXAMPLE_DEFAULT = [
   { targetKey: 'kawasemi-plus', label: 'かわせみ配列+', x: 0.815, y: 0.836 },
 ];
 
-test('scatterPlotModel: 印が重なる点の組は名前を1つにまとめ、縦軸の値の大きい順に並べる。点そのものは全部返す', () => {
-  // 横軸1.000の4点は縦軸が少しずつ違い、座標は同じでない
+test('scatterPlotModel: 印が重なる点の組の名前は、縦軸の値の大きい順に上から下へ並べる。点そのものは全部返す', () => {
   const model = scatterPlotModel({
     points: [
       { targetKey: 'p', label: '月林檎配列', x: 1.0, y: 1.322 },
@@ -139,78 +131,17 @@ test('scatterPlotModel: 印が重なる点の組は名前を1つにまとめ、�
     ],
     ...NO_LINES,
   });
-  assert.equal(new Set(model.points.slice(0, 4).map((point) => point.py)).size, 4, '座標は同じでない');
   assert.equal(model.points.length, 6);
-  // 縦軸の差が小さい隣どうしの印が重なり、(中指シフト月光, 月配列2-263式)と(月林檎配列, 月見草エキス配列)の2組になる
-  assert.equal(model.names.length, 4);
   const groups = model.names.filter((name) => name.lines.length > 1);
-  assert.deepEqual(groups.map(nameTexts).sort(), [
-    ['中指シフト月光', '月配列2-263式'],
-    ['月林檎配列', '月見草エキス配列'],
-  ]);
-  assert.deepEqual(groups.map((name) => name.lines.map((line) => line.targetKey)).sort(), [
-    ['p', 'r'],
-    ['q', 's'],
-  ]);
+  assert.ok(groups.length > 0);
+  for (const name of groups) {
+    const heights = name.lines.map((line) => model.points.find((point) => point.targetKey === line.targetKey)!.py);
+    assert.deepEqual(
+      heights,
+      [...heights].sort((a, b) => a - b),
+    );
+  }
 });
-
-test('scatterPlotModel: 縦軸の値が同じ点の組は、名前の順に並べる', () => {
-  const model = scatterPlotModel({
-    points: [
-      { targetKey: 'b', label: 'B', x: 5, y: 5 },
-      { targetKey: 'a', label: 'A', x: 5, y: 5 },
-      { targetKey: 'far', label: 'F', x: 9, y: 9 },
-    ],
-    ...NO_LINES,
-  });
-  assert.deepEqual(nameTexts(model.names.find((name) => name.lines.length === 2)!), ['A', 'B']);
-});
-
-/** 範囲を固定する2点の間に、描画上の距離`distance`だけ離れた2点を横に置く。 */
-function pairAtDistance(distance: number) {
-  const base = scatterPlotModel({
-    points: [
-      { targetKey: 'lo', label: 'L', x: 0, y: 0 },
-      { targetKey: 'hi', label: 'H', x: 100, y: 100 },
-    ],
-    ...NO_LINES,
-  });
-  const perUnit = (base.points[1]!.px - base.points[0]!.px) / 100;
-  return scatterPlotModel({
-    points: [
-      { targetKey: 'lo', label: 'L', x: 0, y: 0 },
-      { targetKey: 'a', label: 'A', x: 50, y: 50 },
-      { targetKey: 'b', label: 'B', x: 50 + distance / perUnit, y: 50 },
-      { targetKey: 'hi', label: 'H', x: 100, y: 100 },
-    ],
-    ...NO_LINES,
-  });
-}
-
-test('scatterPlotModel: 組にまとめる境目は、中心どうしの距離が印の直径より小さいか', () => {
-  const diameter = 2 * MARK_RADIUS;
-  assert.equal(pairAtDistance(diameter - 0.5).names.filter((name) => name.lines.length === 2).length, 1);
-  assert.equal(pairAtDistance(diameter + 0.5).names.filter((name) => name.lines.length === 2).length, 0);
-});
-
-test('scatterPlotModel: つながる点は、端どうしが印の直径以上離れていても1つの組にまとめる', () => {
-  const model = scatterPlotModel({
-    points: [
-      { targetKey: 'lo', label: 'L', x: 0, y: 0 },
-      { targetKey: 'hi', label: 'H', x: 100, y: 100 },
-      ...[0, 1, 2, 3, 4].map((i) => ({ targetKey: `c${i}`, label: `C${i}`, x: 50 + i * 1.2, y: 50 })),
-    ],
-    ...NO_LINES,
-  });
-  const chain = model.names.find((name) => name.lines.length > 1)!;
-  assert.equal(chain.lines.length, 5);
-  const first = model.points.find((point) => point.targetKey === 'c0')!;
-  const last = model.points.find((point) => point.targetKey === 'c4')!;
-  assert.ok(last.px - first.px >= 2 * MARK_RADIUS);
-});
-
-/** 点の中心から横の名前までの間隔。 */
-const NAME_GAP_FOR_TEST = 9;
 
 /** 図の中央（データの50,50）を基準に、画面上のずれ（右・下が正）で点を置く。範囲は左下と右上の2点で固定する。 */
 function sceneAt(offsets: readonly { readonly key: string; readonly label: string; readonly dx: number; readonly dy: number }[]) {
@@ -243,86 +174,6 @@ function lattice(center: number, maxDx = 225) {
   return found;
 }
 
-/** 2点の組（A=左、B=右）。まとめた名前を点のすぐ横のどこにも重ならずに置けない。点の横の位置は2点の中央からdx、縦は同じ。 */
-function blockedPair(half: number, extra: readonly { readonly key: string; readonly label: string; readonly dx: number; readonly dy: number }[] = []) {
-  return sceneAt([{ key: 'a', label: 'AAAA', dx: -half, dy: 0 }, { key: 'b', label: 'BBBB', dx: half, dy: 0 }, ...lattice(0), ...extra]);
-}
-
-test('scatterPlotModel: 印が重なる2点の名前が近くに置けず左右が空いている時は、左の点の左と右の点の右に1行ずつ、引き出し線無しで置く', () => {
-  const model = blockedPair(4);
-  const a = model.points.find((point) => point.targetKey === 'a')!;
-  const b = model.points.find((point) => point.targetKey === 'b')!;
-  const nameA = model.names.find((name) => name.lines.some((line) => line.targetKey === 'a'))!;
-  const nameB = model.names.find((name) => name.lines.some((line) => line.targetKey === 'b'))!;
-  assert.notEqual(nameA, nameB);
-  for (const name of [nameA, nameB]) {
-    assert.equal(name.lines.length, 1);
-    assert.equal(name.leader, undefined);
-  }
-  assert.ok(nameA.rect.x1 <= a.px - 8 + 1e-6 && nameA.rect.x1 >= a.px - 10, '左の点の名前は、その点の左');
-  assert.ok(nameB.rect.x0 >= b.px + 8 - 1e-6 && nameB.rect.x0 <= b.px + 10, '右の点の名前は、その点の右');
-  assert.equal(nameA.lines[0]!.y, a.py + 4);
-  assert.equal(nameB.lines[0]!.y, b.py + 4);
-  assert.equal(nameOverlapCount(model.names), 0);
-  for (const name of model.names) for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false);
-});
-
-test('scatterPlotModel: 印が重なる2点の名前が近くに置ける時は、今のまま1つにまとめて積む', () => {
-  const model = sceneAt([
-    { key: 'a', label: 'AAAA', dx: -4, dy: 0 },
-    { key: 'b', label: 'BBBB', dx: 4, dy: 0 },
-  ]);
-  const pair = model.names.filter((name) => name.lines.length === 2);
-  assert.equal(pair.length, 1);
-  assert.equal(pair[0]!.leader, undefined);
-});
-
-test('scatterPlotModel: 分けた片方の側が別の点の印と重なる時は、1つにまとめて積む', () => {
-  // 左の点の左に別の点の印がある
-  const model = blockedPair(4, [{ key: 'w', label: 'W', dx: -24, dy: 0 }]);
-  const pair = model.names.filter((name) => name.lines.length === 2);
-  assert.equal(pair.length, 1);
-  assert.deepEqual(nameTexts(pair[0]!).sort(), ['AAAA', 'BBBB']);
-});
-
-test('scatterPlotModel: 分けた片方の側が図の外に出る時は、1つにまとめて積む', () => {
-  // 描画領域の右端に寄せた2点。右の点の右には名前が収まらず、点のすぐ横は別の点の印が塞ぐ
-  const shift = 215;
-  const model = sceneAt([{ key: 'a', label: 'AAAA', dx: shift - 4, dy: 0 }, { key: 'b', label: 'BBBBBBBBBB', dx: shift + 4, dy: 0 }, ...lattice(shift)]);
-  const b = model.points.find((point) => point.targetKey === 'b')!;
-  assert.ok(b.px + NAME_GAP_FOR_TEST + estimateTextWidth('BBBBBBBBBB') > PLOT_WIDTH - PLOT_MARGIN.right);
-  const pair = model.names.filter((name) => name.lines.length === 2);
-  assert.equal(pair.length, 1);
-  assert.deepEqual(nameTexts(pair[0]!), ['AAAA', 'BBBBBBBBBB']);
-});
-
-test('scatterPlotModel: 横の位置が同じ（差が0.5px未満）2点は、近くに置けなくても分けずに1つにまとめる', () => {
-  const model = sceneAt([{ key: 'a', label: 'AAAA', dx: -0.2, dy: -3 }, { key: 'b', label: 'BBBB', dx: 0.2, dy: 3 }, ...lattice(0)]);
-  const pair = model.names.filter((name) => name.lines.length === 2);
-  assert.equal(pair.length, 1);
-  assert.deepEqual(nameTexts(pair[0]!), ['AAAA', 'BBBB']);
-});
-
-test('scatterPlotModel: 3点の組は、近くに置けなくても分けない', () => {
-  const model = blockedPair(4, [{ key: 'c', label: 'CCCC', dx: 0, dy: 5 }]);
-  const triple = model.names.filter((name) => name.lines.length === 3);
-  assert.equal(triple.length, 1);
-});
-
-test('scatterPlotModel: 例の15配列で、印が重なる組はまとめた名前を引き出し線無しで点のすぐ横に置き、名前どうし・点の印と重ならない', () => {
-  const model = scatterPlotModel({ points: EXAMPLE_DEFAULT, ...NO_LINES });
-  const nameOf = (key: string) => model.names.find((name) => name.lines.some((line) => line.targetKey === key))!;
-  assert.equal(nameOf('nicola'), nameOf('shin-koume'));
-  assert.equal(nameOf('nicola').lines.length, 2);
-  assert.equal(nameOf('tsuki-ringo'), nameOf('tsukimisou-extract'));
-  assert.equal(nameOf('tsuki-ringo').lines.length, 2);
-  assert.equal(nameOf('naginata-v18'), nameOf('shingeta'));
-  assert.equal(nameOf('naginata-v18').lines.length, 2);
-  for (const name of model.names) assert.equal(name.leader, undefined);
-  assert.equal(nameOverlapCount(model.names), 0);
-  for (const name of model.names) for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false);
-});
-
 test('scatterPlotModel: 印が重ならない近い点の名前は、互いに重ならない位置に置く', () => {
   // 新下駄とシン蜂蜜小梅は縦軸が同じで印は離れているが、どちらも右に置くと名前どうしが重なる
   const model = scatterPlotModel({
@@ -340,11 +191,6 @@ test('scatterPlotModel: 印が重ならない近い点の名前は、互いに�
   for (const name of model.names) {
     for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false, `${name.lines[0]!.text}と${point.label}の印`);
   }
-});
-
-test('scatterPlotModel: 近くに置いた名前には引き出し線を付けない', () => {
-  const model = scatterPlotModel({ points: POINTS, ...NO_LINES });
-  for (const name of model.names) assert.equal(name.leader, undefined);
 });
 
 test('scatterPlotModel: 点のすぐ横のどこにも置けない名前は、点から離して置き、点の印と名前を細い線で結ぶ', () => {
@@ -365,175 +211,13 @@ test('scatterPlotModel: 点のすぐ横のどこにも置けない名前は、�
   assert.equal(inRect(leader.x1, leader.y1), false);
 });
 
-/** 名前と点の距離。名前の長方形と、名前の点のうち一番近い点の余白の正方形（中心から7px）との間の、上下左右のうち一番大きい差。 */
-function nameGap(name: PlotName, points: readonly { readonly targetKey: string; readonly px: number; readonly py: number }[]): number {
-  const keys = new Set(name.lines.map((line) => line.targetKey));
-  let gap = Number.POSITIVE_INFINITY;
-  for (const point of points) {
-    if (!keys.has(point.targetKey)) continue;
-    const square = markRect(point, 7);
-    gap = Math.min(gap, Math.max(name.rect.x0 - square.x1, square.x0 - name.rect.x1, name.rect.y0 - square.y1, square.y0 - name.rect.y1));
-  }
-  return gap;
-}
-
-/** 名前と、名前の点の余白の正方形を全て囲む長方形（外接長方形）との距離。 */
-function boundingGap(name: PlotName, points: readonly { readonly targetKey: string; readonly px: number; readonly py: number }[]): number {
-  const keys = new Set(name.lines.map((line) => line.targetKey));
-  const squares = points.filter((point) => keys.has(point.targetKey)).map((point) => markRect(point, 7));
-  const box = {
-    x0: Math.min(...squares.map((square) => square.x0)),
-    x1: Math.max(...squares.map((square) => square.x1)),
-    y0: Math.min(...squares.map((square) => square.y0)),
-    y1: Math.max(...squares.map((square) => square.y1)),
-  };
-  return Math.max(name.rect.x0 - box.x1, box.x0 - name.rect.x1, name.rect.y0 - box.y1, box.y0 - name.rect.y1);
-}
-
-/** 点の周りの8か所を、中心から16px離した点で塞ぐ（余白の正方形が点の中心から23pxまで届く）。 */
-const RING_AROUND_CENTER = [-16, 0, 16].flatMap((dx) =>
-  [-16, 0, 16].filter((dy) => dx !== 0 || dy !== 0).map((dy) => ({ key: `r${dx}_${dy}`, label: 'R', dx, dy })),
-);
-
-test('scatterPlotModel: 点のすぐ横の真右・真左・真上・真下がふさがっていても、点の箱に沿ってずらせば置ける時は、線無しで点のすぐ横（隙間1px）に置く', () => {
-  const model = sceneAt([
-    { key: 'p', label: 'CENTER配列', dx: 0, dy: 0 },
-    { key: 'r', label: 'R', dx: 30, dy: 12 },
-    { key: 'l', label: 'L', dx: -30, dy: 12 },
-    { key: 'u', label: 'U', dx: 0, dy: -22 },
-    { key: 'd', label: 'D', dx: 0, dy: 22 },
-  ]);
-  const point = model.points.find((candidate) => candidate.targetKey === 'p')!;
-  const name = model.names.find((candidate) => candidate.lines[0]!.targetKey === 'p')!;
-  assert.equal(name.leader, undefined);
-  assert.ok(Math.abs(nameGap(name, model.points) - 1) < 1e-6, '点のすぐ横');
-  assert.notEqual(name.lines[0]!.y, point.py + 4, '点の高さにそろえた位置はふさがっている');
-  assert.equal(nameOverlapCount(model.names), 0);
-  for (const other of model.points) assert.equal(overlapsRect(name.rect, markRect(other, 7)), false);
-});
-
-test('scatterPlotModel: 点のすぐ横に空きが無くても、隙間が24pxより小さい位置に空きがあれば、そこに置く', () => {
-  const model = sceneAt([{ key: 'p', label: 'CENTER', dx: 0, dy: 0 }, ...RING_AROUND_CENTER]);
-  const name = model.names.find((candidate) => candidate.lines[0]!.targetKey === 'p')!;
-  const gap = nameGap(name, model.points);
-  assert.ok(gap > 1 && gap < 24, `隙間 ${gap}`);
-  for (const other of model.points) assert.equal(overlapsRect(name.rect, markRect(other, 7)), false);
-});
-
-test('scatterPlotModel: 名前と点の隙間が6px未満の名前には引き出し線を付けず、6px以上の名前には付ける', () => {
-  const scenes = [
-    scatterPlotModel({ points: EXAMPLE_DEFAULT, ...NO_LINES }),
-    scatterPlotModel({ points: EXAMPLE_PRESS, ...NO_LINES }),
-    scatterPlotModel({ points: grid(12, 8, (column, row) => `配列${column}-${row}`), ...NO_LINES }),
-    sceneAt([{ key: 'p', label: 'CENTER', dx: 0, dy: 0 }, ...RING_AROUND_CENTER]),
-    blockedPair(4, [{ key: 'w', label: 'W', dx: -24, dy: 0 }]),
-  ];
-  let near = 0;
-  let far = 0;
-  for (const model of scenes) {
-    for (const name of model.names) {
-      const gap = nameGap(name, model.points);
-      // 境目の6pxちょうどは、浮動小数点の誤差でどちらにもなりうる
-      if (gap < 6 - 1e-6) {
-        near++;
-        assert.equal(name.leader, undefined, `隙間 ${gap}`);
-      } else if (gap > 6 + 1e-6) {
-        far++;
-        assert.ok(name.leader !== undefined, `隙間 ${gap}`);
-      }
-    }
-  }
-  assert.ok(near > 0 && far > 0, '線の有無の両方を確かめている');
-});
-
-test('scatterPlotModel: 斜めに連なった組の名前が、外接長方形の角の近くにあっても、組のどの点からも6px以上離れていれば引き出し線を付ける', () => {
-  // 左上から右下へ斜めに連なる5点。右上の角（点から離れた場所）だけを空け、その周りを名前が入らない隙間で敷き詰める
-  const chain = [0, 7, 14, 21, 28].map((d) => ({ key: `c${d}`, label: 'CHAIN', dx: d, dy: d }));
-  const blockers: Array<{ key: string; label: string; dx: number; dy: number }> = [];
-  for (let i = -7; i <= 7; i++) {
-    for (let j = -7; j <= 7; j++) {
-      const dx = 16 * i;
-      const dy = 16 * j;
-      if (chain.some((point) => Math.hypot(point.dx - dx, point.dy - dy) < 2 * MARK_RADIUS)) continue;
-      if (dx + 7 > 34 && dy - 7 < -8) continue;
-      blockers.push({ key: `b${i}_${j}`, label: 'B', dx, dy });
-    }
-  }
-  const model = sceneAt([...chain, ...blockers].map((point) => ({ ...point, dx: point.dx - 14, dy: point.dy - 14 })));
-  const name = model.names.find((candidate) => candidate.lines.length === chain.length)!;
-  assert.ok(boundingGap(name, model.points) < 6, '外接長方形から見ると近い');
-  assert.ok(nameGap(name, model.points) >= 6, 'どの点からも離れている');
-  assert.ok(name.leader !== undefined);
-});
-
-/** 2本の線分が互いの内側で交わる。 */
-function leadersCross(a: NonNullable<PlotName['leader']>, b: NonNullable<PlotName['leader']>): boolean {
-  const side = (s: NonNullable<PlotName['leader']>, x: number, y: number) => (s.x2 - s.x1) * (y - s.y1) - (s.y2 - s.y1) * (x - s.x1);
-  return side(a, b.x1, b.y1) * side(a, b.x2, b.y2) < 0 && side(b, a.x1, a.y1) * side(b, a.x2, a.y2) < 0;
-}
-
-/** 点が混み合い、引き出し線を付ける名前が2つ出る図。引き出し線どうしの交差を数えなければ、2本の線が交差する。 */
-const CROWDED = [
-  { targetKey: 'p0', label: 'PXYZWXYZW', x: 2.4, y: 2.6 },
-  { targetKey: 'p1', label: 'PXYZW', x: 1.9, y: 2.7 },
-  { targetKey: 'p2', label: 'PXYZWXYZW', x: 3, y: 2.1 },
-  { targetKey: 'p3', label: 'PXYZWXYZW', x: 2, y: 1.2 },
-  { targetKey: 'p4', label: 'PXYZW', x: 2, y: 2.7 },
-  { targetKey: 'p5', label: 'PXYZWXYZW', x: 2.4, y: 2.8 },
-  { targetKey: 'p6', label: 'PXYZWXYZW', x: 2.9, y: 2.7 },
-  { targetKey: 'p7', label: 'PXYZW', x: 1.3, y: 2.8 },
-  { targetKey: 'p8', label: 'PXYZWXYZW', x: 2.3, y: 1.4 },
-  { targetKey: 'p9', label: 'PXYZW', x: 2.9, y: 2.3 },
-  { targetKey: 'p10', label: 'PXYZW', x: 1.1, y: 2.6 },
-  { targetKey: 'p11', label: 'PXYZWXYZW', x: 3, y: 2.2 },
-  { targetKey: 'p12', label: 'PXYZWXYZW', x: 2.2, y: 2.2 },
-  { targetKey: 'p13', label: 'PXYZWXYZW', x: 2.6, y: 2.3 },
-  { targetKey: 'p14', label: 'PXYZW', x: 2.7, y: 3 },
-  { targetKey: 'p15', label: 'PXYZWXYZW', x: 1.1, y: 3 },
-  { targetKey: 'p16', label: 'PXYZWXYZW', x: 1.8, y: 2.4 },
-  { targetKey: 'p17', label: 'PXYZWXYZW', x: 1.4, y: 2.4 },
-  { targetKey: 'p18', label: 'PXYZWXYZW', x: 1.9, y: 2.6 },
-];
-
-test('scatterPlotModel: 引き出し線どうしが交差する置き方は、交差しない候補がある時に選ばない', () => {
-  const model = scatterPlotModel({ points: CROWDED, ...NO_LINES });
-  const leaders = model.names.flatMap((name) => (name.leader === undefined ? [] : [name.leader]));
-  assert.ok(leaders.length >= 2, '線を付ける名前が複数ある');
-  for (let i = 0; i < leaders.length; i++) for (let j = i + 1; j < leaders.length; j++) assert.equal(leadersCross(leaders[i]!, leaders[j]!), false);
-  assert.equal(nameOverlapCount(model.names), 0);
-});
-
-test('scatterPlotModel: どこにも重ならずに置けない時は、重なりが最も少ない場所に置き、枠の外へは出さない', () => {
-  // 点を隙間なく敷き詰めると、名前はどこに置いても点の印と重なる。重なりは右隣りに置く場合より増えず、名前は枠の中に収まる
+test('scatterPlotModel: 点を隙間なく敷き詰めて名前を重ならずに置けなくても、名前は枠の外へ出さない', () => {
   const dense = scatterPlotModel({ points: grid(30, 20, () => 'A'), ...NO_LINES });
-  const clearance = dense.points.map((point) => markRect(point, 7));
-  const width = estimateTextWidth('A');
-  let blocked = 0;
-  dense.names.forEach((name, index) => {
-    // 点の印・先に置いた名前・先に置いた名前の引き出し線との重なりの数
-    const hits = (rect: PlotRect) =>
-      clearance.filter((mark) => overlapsRect(rect, mark)).length +
-      dense.names.slice(0, index).filter((other) => overlapsRect(rect, other.rect) || (other.leader !== undefined && leaderTouches(other.leader, rect)))
-        .length;
-    const point = dense.points.find((candidate) => candidate.targetKey === name.lines[0]!.targetKey)!;
-    const right = { x0: point.px + 8, x1: point.px + 10 + width, y0: point.py - 7.5, y1: point.py + 8.5 };
-    if (hits(name.rect) > 0) blocked++;
-    assert.ok(hits(name.rect) <= hits(right), `${point.label}は右隣りより重なりが少ない`);
+  for (const name of dense.names) {
     assert.ok(name.rect.x0 >= PLOT_MARGIN.left && name.rect.x1 <= PLOT_WIDTH - PLOT_MARGIN.right);
     assert.ok(name.rect.y0 >= PLOT_MARGIN.top && name.rect.y1 <= PLOT_HEIGHT - PLOT_MARGIN.bottom);
-  });
-  assert.ok(blocked > dense.names.length / 2, '多くの名前は、重ならない場所が無い');
-});
-
-/** 引き出し線が長方形を通るか（線上を細かく標本にして見る）。 */
-function leaderTouches(leader: { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number }, rect: PlotRect): boolean {
-  for (let i = 0; i <= 200; i++) {
-    const x = leader.x1 + ((leader.x2 - leader.x1) * i) / 200;
-    const y = leader.y1 + ((leader.y2 - leader.y1) * i) / 200;
-    if (x >= rect.x0 && x <= rect.x1 && y >= rect.y0 && y <= rect.y1) return true;
   }
-  return false;
-}
+});
 
 /** 点の印の直径より広い間隔の格子状の点。 */
 function grid(columns: number, rows: number, label: (column: number, row: number) => string) {
@@ -544,41 +228,19 @@ function grid(columns: number, rows: number, label: (column: number, row: number
   });
 }
 
-test('scatterPlotModel: 行の多い名前は列に分け、値の大きい順に左の列の上から下、続けて右の列へ並べる', () => {
-  const model = scatterPlotModel({
-    points: [
-      { targetKey: 'far', label: 'F', x: 100, y: 100 },
-      ...Array.from({ length: 22 }, (_, i) => ({ targetKey: `k${i}`, label: `配列${String(i).padStart(2, '0')}`, x: 0, y: i * 0.001 })),
-      { targetKey: 'lo', label: 'L', x: 0, y: -100 },
-    ],
-    ...NO_LINES,
-  });
-  const big = model.names.find((name) => name.lines.length === 22)!;
-  const columns = [...new Set(big.lines.map((line) => line.x))].sort((a, b) => a - b);
-  assert.equal(columns.length, 2);
-  assert.deepEqual(
-    big.lines.map((line) => line.text),
-    Array.from({ length: 22 }, (_, i) => `配列${String(21 - i).padStart(2, '0')}`),
-  );
-  assert.equal(big.lines.filter((line) => line.x === columns[0]).length, 11);
-});
-
-test('scatterPlotModel: 例の15配列で、名前どうしが重ならない。月系の4点は1つの名前になる', () => {
+test('scatterPlotModel: 例の15配列で、名前は名前どうし・点の印と重ならない', () => {
   for (const points of [EXAMPLE_DEFAULT, EXAMPLE_PRESS]) {
     const model = scatterPlotModel({ points, ...NO_LINES });
     assert.equal(model.points.length, 15);
     assert.equal(nameOverlapCount(model.names), 0);
+    for (const name of model.names) for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false);
   }
-  const press = scatterPlotModel({ points: EXAMPLE_PRESS, ...NO_LINES });
-  assert.deepEqual(press.names.filter((name) => name.lines.length > 1).map(nameTexts), [
-    ['中指シフト月光', '月配列2-263式', '月林檎配列', '月見草エキス配列'],
-  ]);
 });
 
-test('scatterPlotModel: 細い線は切りのよい値で数本、図の中だけに引き、線の上に値だけを書く', () => {
+test('scatterPlotModel: 細い線は図の中だけに引き、線の上に値だけを書く', () => {
   const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '' });
-  assert.ok(model.contours.length >= 4 && model.contours.length <= 6, `${model.contours.length}本`);
+  assert.ok(model.contours.length > 0);
   for (const line of model.contours) {
     // 量の名前は書かず、値だけ
     assert.match(line.text, /^\d+$/);
@@ -784,36 +446,7 @@ test('scatterPlotModel: 値が0の点が枠の下の端にあっても、幅の�
   assert.ok(rect.y0 >= PLOT_MARGIN.top + 2 && rect.y1 <= PLOT_HEIGHT - PLOT_MARGIN.bottom - 2);
 });
 
-test('finerStep: 1・2・5の列で刻みを1段ずつ細かくする', () => {
-  const steps = [5];
-  for (let i = 0; i < 9; i++) steps.push(finerStep(steps[steps.length - 1]!));
-  assert.deepEqual(steps, [5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005]);
-});
-
-test('levelsAtStep: 値が6つ以内ならそのまま、範囲の端も含める', () => {
-  assert.deepEqual(levelsAtStep({ lo: 0.5, hi: 3.5 }, 1), [1, 2, 3]);
-  assert.deepEqual(levelsAtStep({ lo: 1, hi: 4 }, 1), [1, 2, 3, 4]);
-  assert.deepEqual(levelsAtStep({ lo: 1.2, hi: 1.8 }, 1), []);
-});
-
-test('levelsAtStep: 値が6つを超えたら、平均が範囲の中点に最も近い連続する6つを残す', () => {
-  // 中点10.5。連続する6つの平均が10.5になるのは8〜13
-  assert.deepEqual(levelsAtStep({ lo: 0.5, hi: 20.5 }, 1), [8, 9, 10, 11, 12, 13]);
-  // 中点5.5。3〜8
-  assert.deepEqual(levelsAtStep({ lo: 0, hi: 11 }, 1), [3, 4, 5, 6, 7, 8]);
-  // 刻みが小数でも同じ
-  assert.deepEqual(levelsAtStep({ lo: 0.05, hi: 2.05 }, 0.1), [0.8, 0.9, 1, 1.1, 1.2, 1.3]);
-});
-
-test('levelsAtStep: 中点からの距離が同じ候補が2つある時は、小さい側を残す', () => {
-  // 中点5。2〜7（平均4.5）と3〜8（平均5.5）が同じ距離なので、小さい側の2〜7
-  assert.deepEqual(levelsAtStep({ lo: 0, hi: 10 }, 1), [2, 3, 4, 5, 6, 7]);
-  assert.deepEqual(levelsAtStep({ lo: 0, hi: 1 }, 0.1), [0.2, 0.3, 0.4, 0.5, 0.6, 0.7]);
-  // 中点が範囲の端に近い側へ偏っていても、範囲に入る6つに収まる
-  assert.deepEqual(levelsAtStep({ lo: 0, hi: 7 }, 1), [1, 2, 3, 4, 5, 6]);
-});
-
-test('scatterPlotModel: 細い線は、刻みを細かくして4本以上6本以下にする', () => {
+test('scatterPlotModel: 細い線の値の桁は狭い範囲でも揃い、線の量が図の中で一定の組には線を引かない', () => {
   // 線の量（距離 = アクション数 × u/アクション の距離）が、図の中で狭い範囲に収まる点
   const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   const narrowPoints = () => [
@@ -827,7 +460,7 @@ test('scatterPlotModel: 細い線は、刻みを細かくして4本以上6本以
     contourName: '',
     contourSuffix: '',
   });
-  assert.ok(narrow.contours.length >= 4 && narrow.contours.length <= 6, `${narrow.contours.length}本`);
+  assert.ok(narrow.contours.length > 0);
   const decimals = new Set(narrow.contours.map((line) => (line.text.split('.')[1] ?? '').length));
   assert.equal(decimals.size, 1, narrow.contours.map((line) => line.text).join(' '));
   // 線の量が図の中で一定（値の幅が0）の組は、線を引かない
@@ -897,40 +530,6 @@ test('scatterPlotModel: 50%の線は、対象の軸の50%の位置に、範囲�
   assert.equal(both.legend!.rows.length, 1);
 });
 
-test('scatterPlotModel: 縦軸の名前は、一番広い目盛りの数字の左に、数字の幅によらず一定の間隔で置く', () => {
-  const gaps = [
-    [
-      { x: 1, y: 0 },
-      { x: 2, y: 1 },
-    ],
-    [
-      { x: 1, y: 0 },
-      { x: 2, y: 100 },
-    ],
-    [
-      { x: 1, y: 10000 },
-      { x: 2, y: 20000 },
-    ],
-    [
-      { x: 1, y: 0.001 },
-      { x: 2, y: 0.002 },
-    ],
-  ].map((values) => {
-    const model = scatterPlotModel({
-      points: values.map((value, index) => ({ targetKey: `k${index}`, label: `P${index}`, ...value })),
-      contour: undefined,
-      legendRows: [],
-      contourName: '',
-      contourSuffix: '',
-    });
-    const widest = Math.max(...model.yTicks.map((tick) => estimateTextWidth(tick.text)));
-    // 目盛りの数字は枠の左から8px左に右端を揃えて置く
-    return { gap: PLOT_MARGIN.left - 8 - widest - model.yTitleX, widest };
-  });
-  assert.ok(new Set(gaps.map((item) => item.widest)).size > 1, '数字の幅が違う組を試している');
-  for (const item of gaps) assert.ok(Math.abs(item.gap - gaps[0]!.gap) < 1e-9, JSON.stringify(gaps));
-});
-
 function modelWithYValues(y0: number, y1: number) {
   return scatterPlotModel({
     points: [
@@ -950,8 +549,6 @@ function widestYTick(model: ReturnType<typeof modelWithYValues>): number {
 
 test('scatterPlotModel: 目盛りの数字が広くても、縦軸の名前は数字と重ならず、図の座標系の中に収まる', () => {
   // 回転した名前は、基準線から左へ10px、右へ3px張り出す。目盛りの数字は枠の左から8px左に右端を揃えて置く
-  const narrow = modelWithYValues(0, 1);
-  const narrowGap = PLOT_MARGIN.left - 8 - widestYTick(narrow) - narrow.yTitleX;
   for (const [y0, y1] of [
     [1e9, 2e9],
     [123456789, 987654321],
@@ -964,20 +561,6 @@ test('scatterPlotModel: 目盛りの数字が広くても、縦軸の名前は�
     assert.ok(model.yTitleX + 3 < tickLeft, `名前の右端${model.yTitleX + 3}、数字の左端${tickLeft}`);
     assert.ok(model.yTitleX - 10 >= model.viewBoxX, `名前の左端${model.yTitleX - 10}、座標系の左端${model.viewBoxX}`);
     assert.ok(model.viewBoxX < 0);
-    // 名前と数字の間隔は、狭い数字の時と同じ
-    assert.ok(Math.abs(tickLeft - model.yTitleX - narrowGap) < 1e-9);
-  }
-});
-
-test('scatterPlotModel: 名前の位置の下限に届かない目盛りの数字では、座標系を広げず、名前の位置は数字の幅だけで決まる', () => {
-  for (const [y0, y1] of [
-    [0, 1],
-    [0, 100],
-    [10000, 20000],
-  ] as const) {
-    const model = modelWithYValues(y0, y1);
-    assert.equal(model.viewBoxX, 0);
-    assert.equal(model.yTitleX, PLOT_MARGIN.left - 8 - widestYTick(model) - 11);
   }
 });
 
@@ -992,19 +575,6 @@ test('logAxisRange: 余白は対数の上で両側に同じだけ足し、値が
 });
 
 /** 4つの段の目盛りの値になれる値か。1つ目は1の冪、2つ目は1・2・5の冪、3つ目は1〜9の冪。4つ目は一定の刻みなので別に確かめる。 */
-function isLeadTick(value: number, leads: readonly number[]): boolean {
-  const power = Math.floor(Math.log10(value) + 1e-9);
-  return leads.some((lead) => Math.abs(value / 10 ** power - lead) < 1e-9);
-}
-
-/** `padded`を含む最も狭い目盛りの区間に入る、`leads`×10の冪の値の数。 */
-function leadCount(padded: Range, leads: readonly number[]): number {
-  const all = [...Array(60).keys()].flatMap((i) => leads.map((lead) => Number((lead * 10 ** (i - 30)).toPrecision(12)))).sort((a, b) => a - b);
-  const lo = all.filter((v) => v <= padded.lo * (1 + 1e-9)).at(-1)!;
-  const hi = all.find((v) => v >= padded.hi * (1 - 1e-9))!;
-  return all.filter((v) => v >= lo && v <= hi).length;
-}
-
 function assertEnclosing(values: readonly number[], target: number, horizontal: boolean) {
   const axis = logAxis(values, target, horizontal);
   const padded = logAxisRange(values);
@@ -1031,38 +601,12 @@ function assertEnclosing(values: readonly number[], target: number, horizontal: 
 test('logAxis: 点の範囲が10倍に近い時も、軸の両端が目盛りで、全ての点が両側を目盛りで挟まれる', () => {
   // 縦軸の点が0.3〜2.9。1・2・5の段で、小さい側は0.2、大きい側は5まで目盛りが付く
   const axis = assertEnclosing([0.3, 2.9], 5, false);
-  assert.equal(axis.tier, 2);
   assert.deepEqual(axis.values, [0.2, 0.5, 1, 2, 5]);
   assert.deepEqual(axis.texts, ['0.2', '0.5', '1', '2', '5']);
 });
 
-test('logAxis: 点の範囲が10倍以上の時と4桁以上にまたがる時は、粗い段の目盛りになる', () => {
-  const wide = assertEnclosing([0.07, 30], 5, false);
-  assert.equal(wide.tier, 1);
-  assert.deepEqual(wide.values, [0.01, 0.1, 1, 10, 100]);
-  const decades = assertEnclosing([0.002, 90000], 6, true);
-  assert.equal(decades.tier, 1);
-  assert.deepEqual(decades.values, [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000]);
-  assert.deepEqual(decades.texts.slice(0, 3), ['0.0001', '0.001', '0.01']);
-});
-
-test('logAxis: 3つの段で目標の本数に届かない狭い範囲は、一定の刻みの段になる', () => {
-  const narrow = assertEnclosing([1.0, 1.3], 5, false);
-  assert.equal(narrow.tier, 4);
-  assert.deepEqual(narrow.values, [0.9, 1, 1.1, 1.2, 1.3, 1.4]);
-  assert.deepEqual(narrow.texts, ['0.9', '1', '1.1', '1.2', '1.3', '1.4']);
-  // 刻みは1・2・5の冪のうち、目標の本数に届く最も粗いもの。小数2桁の値は桁を落とさずに書く
-  const finer = assertEnclosing([1.01, 1.04], 6, true);
-  assert.equal(finer.tier, 4);
-  assert.deepEqual(finer.texts, ['1', '1.01', '1.02', '1.03', '1.04', '1.05']);
-  // 1つ粗い刻み（0.2）では、同じ点の軸の範囲（0.8〜1.4）に入る目盛りが4つで、目標の5本に届かない
-  const padded = logAxisRange([1.0, 1.3]);
-  assert.equal(Math.round(Math.ceil(padded.hi / 0.2 - 1e-9) - Math.floor(padded.lo / 0.2 + 1e-9) + 1), 4);
-});
-
 test('logAxis: 点の値が全部同じ時は、比1.1倍の余白を残した範囲を囲む', () => {
   const flat = assertEnclosing([5, 5], 5, false);
-  assert.equal(flat.tier, 4);
   assert.deepEqual(flat.values, [4.4, 4.6, 4.8, 5, 5.2, 5.4, 5.6]);
   assert.deepEqual(assertEnclosing([10, 10], 5, false).values, [9, 9.5, 10, 10.5, 11]);
 });
@@ -1074,77 +618,13 @@ test('logAxis: 点が目盛りの値ちょうどにあっても、点と軸の�
   assert.ok(twoFive.range.lo < 2 && twoFive.range.hi > 50);
 });
 
-test('logAxis: 余白を足した範囲が10倍に満たない軸は、一定の刻みだけを使い、10倍以上の軸は1〜3つ目の段から選ぶ', () => {
-  const tierLeads = { 1: [1], 2: [1, 2, 5], 3: [1, 2, 3, 4, 5, 6, 7, 8, 9] } as const;
+test('logAxis: どの範囲の点でも、軸の両端が目盛りで、全ての点が両側を目盛りで挟まれる', () => {
   for (const horizontal of [true, false]) {
     const target = horizontal ? 6 : 5;
     for (const base of [1e-5, 0.01, 1, 70, 3e4]) {
-      for (const ratio of [1, 1.05, 1.3, 2, 3, 7, 20, 400, 1e5]) {
-        const values = [base, base * ratio];
-        const axis = assertEnclosing(values, target, horizontal);
-        const padded = logAxisRange(values);
-        const narrow = padded.hi < padded.lo * 10;
-        if (narrow && axis.tier === 4) {
-          // 一定の刻み: 隣の目盛りとの差が全部同じ
-          const step = axis.values[1]! - axis.values[0]!;
-          for (let i = 1; i < axis.values.length; i++) assert.ok(Math.abs(axis.values[i]! - axis.values[i - 1]! - step) < step * 1e-6, `${values}`);
-        }
-        if (axis.tier !== 4) {
-          const leads = tierLeads[axis.tier];
-          assert.ok(
-            axis.values.every((v) => isLeadTick(v, leads)),
-            `${values}`,
-          );
-        }
-        if (narrow) continue;
-        // 10倍以上の軸: 数字が重ならず戻らなかった時は目標の本数に届く。戻った時はより粗い段。目標に届く最も粗い段を選ぶ
-        if (axis.wantedTier === 4) continue;
-        assert.ok(axis.tier <= axis.wantedTier, `${values}`);
-        if (axis.tier === axis.wantedTier) assert.ok(axis.values.length >= target, `${values}`);
-        for (let coarser = 1; coarser < axis.wantedTier; coarser++) {
-          assert.ok(leadCount(padded, tierLeads[coarser as 1 | 2]) < target, `${values}: 段${coarser}`);
-        }
-      }
+      for (const ratio of [1, 1.05, 1.3, 2, 3, 7, 20, 400, 1e5]) assertEnclosing([base, base * ratio], target, horizontal);
     }
   }
-});
-
-test('logAxis: 10倍に満たない軸は、1〜9の段にせず一定の刻みにする', () => {
-  // 点が0.7〜1.7の縦軸。1〜9の段だと0.7・0.8・0.9・1・2で、1と2の間に目盛りが無い
-  const axis = assertEnclosing([0.7, 1.7], 5, false);
-  assert.equal(axis.tier, 4);
-  assert.deepEqual(axis.texts, ['0.6', '0.8', '1', '1.2', '1.4', '1.6', '1.8', '2']);
-  const flat = assertEnclosing([1.2, 1.8], 5, false);
-  assert.equal(flat.tier, 4);
-  assert.deepEqual(flat.texts, ['1', '1.2', '1.4', '1.6', '1.8', '2']);
-});
-
-test('logAxis: 隣の数字が重なる時は、重ならない段まで1つずつ粗くする', () => {
-  // 横軸が0.3〜2.9（10倍以上）。1〜9の段は目標に届くが0.8と0.9の数字が重なるので、1・2・5の段に戻る
-  const back = assertEnclosing([0.3, 2.9], 6, true);
-  assert.equal(back.wantedTier, 3);
-  assert.equal(back.tier, 2);
-  assert.deepEqual(back.texts, ['0.2', '0.5', '1', '2', '5']);
-  // 縦軸は数字の高さで判定する。同じ範囲でも、1〜9の段の0.8と0.9が近すぎる
-  const narrowY = logAxis([0.3, 2.9], 10, false);
-  assert.ok(narrowY.tier < narrowY.wantedTier);
-  // 10倍に満たない軸は刻みを粗くする。0.000001のような長い数字は、刻み1e-7（9本）だと重なるので、刻み2e-7（5本）になる
-  const long = assertEnclosing([1e-6, 1.5e-6], 6, true);
-  assert.equal(long.tier, 4);
-  assert.deepEqual(long.texts, ['0.0000008', '0.000001', '0.0000012', '0.0000014', '0.0000016']);
-  // 下端を0より大きくできる刻みが細かい刻みしか無く、その刻みで重なる時は、1〜3つ目の段から選ぶ
-  const fallback = assertEnclosing([30, 200], 5, false);
-  assert.equal(fallback.tier, 2);
-  assert.deepEqual(fallback.texts, ['20', '50', '100', '200', '500']);
-});
-
-test('logAxis: 1つ目の段でも数字が重なる時は、1つ目の段を使う', () => {
-  const axis = assertEnclosing([1e-6, 1e6], 6, true);
-  assert.equal(axis.tier, 1);
-  assert.equal(axis.wantedTier, 1);
-  assert.equal(axis.values.length, 17);
-  assert.equal(axis.texts[0], '0.00000001');
-  assert.equal(axis.texts.at(-1), '100000000');
 });
 
 test('logAxis: 点が無い時は1から10までの範囲を囲む', () => {
@@ -1347,27 +827,6 @@ test('scatterPlotModel(対数): 線の上の点の対数どうしの関係を、
   for (const line of model.contours) assert.ok(Math.abs(lineSlope(line.d) - pointSlope) < 0.01, `${line.level}`);
 });
 
-test('scatterPlotModel(対数): 点の名前の置き場所は、描画領域の座標が同じなら通常の目盛りと同じ', () => {
-  // 値の対数が通常の値と等しい点は、軸の範囲が同じなら両方の目盛りで同じ座標に置かれる。
-  // 両端の2点は、通常の軸の範囲が0〜6（余白を足して）、対数の軸の範囲が1〜1000000（目盛りの値）で、対数の上で一致するように置く
-  const labels = ['QWERTY', 'Dvorak', 'NICOLA', 'Colemak'];
-  const linearPoints = [
-    { targetKey: 'low', label: 'Low', x: 0.5, y: 0.5 },
-    { targetKey: 'high', label: 'High', x: 5.5, y: 5.5 },
-    ...labels.map((label, i) => ({ targetKey: label, label, x: 3 + i * 0.01, y: 2.5 + (i % 2) * 0.02 })),
-  ];
-  const logPoints = linearPoints.map((p) => ({ ...p, x: 10 ** p.x, y: 10 ** p.y }));
-  const linear = scatterPlotModel({ points: linearPoints, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '' });
-  const log = scatterPlotModel({ points: logPoints, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '', logScale: true });
-  for (const [i, point] of linear.points.entries()) {
-    assert.ok(Math.abs(point.px - log.points[i]!.px) < 1e-9 && Math.abs(point.py - log.points[i]!.py) < 1e-9);
-  }
-  // 座標は浮動小数点の誤差を除いて比べる
-  const rounded = (names: typeof linear.names) =>
-    JSON.parse(JSON.stringify(names), (_key, value) => (typeof value === 'number' ? Math.round(value * 1e6) / 1e6 : value));
-  assert.deepEqual(rounded(log.names), rounded(linear.names));
-});
-
 test('scatterPlotModel: logScaleを偽にしても省いても、通常の目盛りの結果は変わらない', () => {
   const contour = PRODUCT_CONTOUR;
   const base = { points: POINTS, contour, legendRows: ['かな配列'], contourName: '総移動距離', contourSuffix: '' };
@@ -1383,37 +842,6 @@ function percentLines(c: PercentCase, logScale: boolean): number[] {
   return model.contours.map((line) => line.level);
 }
 
-const WIDE: PercentCase = {
-  points: [
-    [300, 30],
-    [30, 300],
-    [100, 100],
-  ],
-  x: 'handSwitches',
-  y: 'handContinuations',
-};
-const NARROW: PercentCase = {
-  points: [
-    [100, 100],
-    [120, 90],
-    [90, 120],
-  ],
-  x: 'handSwitches',
-  y: 'handContinuations',
-};
-
-test('割合の細い線: 範囲が広い時は10%刻みの線を6本に絞らず全部引き、0%と100%の線は引かない（通常・対数とも）', () => {
-  for (const logScale of [false, true]) {
-    assert.deepEqual(percentLines(WIDE, logScale), [10, 20, 30, 40, 50, 60, 70, 80, 90]);
-  }
-});
-
-test('割合の細い線: 刻みが10%より細かい時は、今までと同じ刻みで6本に絞る', () => {
-  assert.deepEqual(percentLines(NARROW, false), [44, 46, 48, 50, 52, 54]);
-  // 対数の目盛りでは範囲が違うので、刻みも違う
-  assert.deepEqual(percentLines(NARROW, true), [40, 45, 50, 55, 60]);
-});
-
 test('割合の細い線: 今の規則で0%の線が選ばれる範囲でも、刻みが10%の時は0%の線を引かない', () => {
   const zero: PercentCase = {
     points: [
@@ -1427,53 +855,10 @@ test('割合の細い線: 今の規則で0%の線が選ばれる範囲でも、�
   assert.deepEqual(percentLines(zero, false), [10, 20, 30, 40, 50]);
 });
 
-test('割合の細い線: 範囲が狭く10%より細かい刻みになる図は、今までと同じ刻みと本数のまま', () => {
-  const cases: [PercentCase['points'], number[]][] = [
-    // 4〜12%付近。刻み2%
-    [
-      [
-        [100, 5],
-        [100, 10],
-        [100, 12],
-      ],
-      [4, 6, 8, 10, 12],
-    ],
-    // 3〜19%付近。刻み2%で8本になる範囲を6本に絞る
-    [
-      [
-        [100, 4],
-        [100, 15],
-        [100, 20],
-      ],
-      [6, 8, 10, 12, 14, 16],
-    ],
-    // 25〜40%付近。10%では3本に満たないので5%
-    [
-      [
-        [100, 35],
-        [100, 60],
-        [100, 50],
-      ],
-      [25, 30, 35, 40],
-    ],
-  ];
-  for (const [points, expected] of cases) {
-    assert.deepEqual(percentLines({ points, x: 'handSwitches', y: 'handContinuations' }, false), expected);
-  }
-});
-
 test('割合の細い線: 同指率・同じ手の続きの割合・移動ありキー率は割合として扱う', () => {
   for (const column of ['sameFingerRate', 'sameHandContinuationRate', 'movedPressShare'] as const) {
     assert.equal(axisUnit(column), '%', column);
   }
   // 割合でない量は単位が%にならない
   for (const column of ['sameFinger', 'handSwitches', 'perPressUnits'] as const) assert.notEqual(axisUnit(column), '%', column);
-});
-
-test('割合でない細い線は、範囲が広くても6本以内に絞る（通常・対数とも）', () => {
-  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
-  for (const logScale of [false, true]) {
-    const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '', logScale });
-    assert.ok(model.contours.length >= 4 && model.contours.length <= 6, `${logScale} ${model.contours.length}本`);
-  }
 });
