@@ -748,12 +748,15 @@ interface NameSlot {
  * 点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。
  * 2行以上の名前は、点の左右に置く候補を、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り（図の中へ寄せた後で判定する）、角の候補を使わない。
  * 点の高さから遠い行だけが点のそばに残る置き方を避けるため。上下の候補と1行の名前の候補は変えない。
- * 印が重なる2点の組は、まとめた名前を引き出し線無しで重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
+ * 印が重なる2点の組は、まず点ごとに1行の名前を分けて置けるか試す。各点を1点だけの組とみなした時の、引き出し線が付かない候補（隙間が`MIN_LEADER`未満）のうち、
+ * 組の2点以外の全ての点との隙間が`MIN_LEADER`以上（他の点の名前を線無しで置ける範囲を取らない）、もう1つの点との隙間も`MIN_LEADER`以上で、重なりが無いものに限る。線の付く距離にもう1つの点の名前が来ないので、線の無い名前は自分の点のものと読める。
+ * 縦軸の値が大きい点の候補を先に、候補の順（隙間の小さい順、同じ隙間では右・左・下・上の辺、続けて角）に試し、もう1つの点の名前が置ける最初の組み合わせを採る。2点の横の位置の差は問わない。
+ * 分けて置けない組は、まとめた名前を置く。まとめた名前を引き出し線無しで重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
  * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
  *
  * 全ての名前を置いた後、`yieldToNeighbors`が真なら、引き出し線の付いた名前を置いた順に1つずつ見直す。
  * その名前の組の、線が付かない候補が、ちょうど1つの名前の長方形とだけ重なる（点の印・図の外・引き出し線との重なりが無い）時、重なる名前を別の位置へ動かせるか調べる。
- * 動かす名前は、組の名前をまとめて置いたものに限る（左右に分けて置いた名前は動かさない）。
+ * 動かす名前は、組の名前をまとめて置いたものに限る（分けて置いた名前は動かさない）。
  * 動かす名前の線が付かない候補のうち、2つの名前を外した状態で重なりが無く、動かした状態で線の付いていた名前の候補にも重なりが無いものがあれば、
  * 動かして、線の付いていた名前をその候補に置き直す（線は付かなくなる）。探す順は、線の付いていた名前の候補、重なる名前、重なる名前の移り先の順で、最初に見つかった組み合わせを採る。
  * 動かした名前と、線を無くした名前は、別の名前のために動かさない。
@@ -772,9 +775,10 @@ export function placeNames(
   // 大きい組が先。同じ大きさなら入力の順（組の中で最も小さい添字）
   const order = clusterPoints(points).sort((a, b) => b.members.length - a.members.length || Math.min(...a.members) - Math.min(...b.members));
   const placed: PlotName[] = [];
-  // placedと添字をそろえる。左右に分けて置いた名前は動かさないので`undefined`
+  // placedと添字をそろえる。分けて置いた名前は動かさないので`undefined`
   const slots: (NameSlot | undefined)[] = [];
-  for (const cluster of order) {
+  // 名前を置く単位（組）ごとに、候補の作り方と重なりの数え方を用意する。1点だけの組は、印が重なる2点の名前を分けて置く時にも使う
+  const prepare = (cluster: Cluster) => {
     const lines = cluster.members.map((index) => points[index]!);
     const rows = lines.length <= NAME_MAX_ROWS ? lines.length : Math.ceil(lines.length / Math.ceil(lines.length / NAME_MAX_ROWS));
     const columnCount = Math.ceil(lines.length / rows);
@@ -927,24 +931,65 @@ export function placeNames(
       rect: candidate.rect,
       leader: candidate.leader,
     });
-    // 段を隙間の小さい方から試す。重なりが無い候補が見つかった後は、次の段の隙間がその候補の隙間より大きければ打ち切る
-    let best: NameCandidate | undefined;
-    let bestCost = Number.POSITIVE_INFINITY;
-    for (const d of GAP_LEVELS) {
-      if (best !== undefined && bestCost === 0 && d > rankOf(best)) break;
-      const level = candidatesAt(d);
-      levelCache.set(d, level);
-      for (const candidate of level) {
-        // 重なりが少ない候補、同じなら隙間が小さい候補が勝つ。同じ順位なら先に並べた候補のまま
-        const limit = best === undefined || rankOf(candidate) < rankOf(best) ? bestCost : bestCost - 1;
-        const cost = costOf(candidate, nearNames, limit);
-        if (cost <= limit) {
-          best = candidate;
-          bestCost = cost;
+    const search = (): { readonly chosen: NameCandidate; readonly cost: number } => {
+      // 段を隙間の小さい方から試す。重なりが無い候補が見つかった後は、次の段の隙間がその候補の隙間より大きければ打ち切る
+      let best: NameCandidate | undefined;
+      let bestCost = Number.POSITIVE_INFINITY;
+      for (const d of GAP_LEVELS) {
+        if (best !== undefined && bestCost === 0 && d > rankOf(best)) break;
+        const level = candidatesAt(d);
+        levelCache.set(d, level);
+        for (const candidate of level) {
+          // 重なりが少ない候補、同じなら隙間が小さい候補が勝つ。同じ順位なら先に並べた候補のまま
+          const limit = best === undefined || rankOf(candidate) < rankOf(best) ? bestCost : bestCost - 1;
+          const cost = costOf(candidate, nearNames, limit);
+          if (cost <= limit) {
+            best = candidate;
+            bestCost = cost;
+          }
         }
       }
+      return { chosen: best!, cost: bestCost };
+    };
+    return { lines, nearNames, costOf, blockersOf, nearCandidates, toName, search };
+  };
+  const clearance = (rect: Rect, index: number): number => {
+    const square = marks[index]!;
+    return Math.max(rect.x0 - square.x1, square.x0 - rect.x1, rect.y0 - square.y1, square.y0 - rect.y1);
+  };
+  // 印が重なる2点（`upper`は縦軸の値が大きい方）の名前を、点ごとに1行で分けて置く。置けなければ`undefined`
+  const separate = (upper: number, lower: number): PlotName[] | undefined => {
+    const upperGroup = prepare({ members: [upper], cx: points[upper]!.px, cy: points[upper]!.py });
+    const lowerGroup = prepare({ members: [lower], cx: points[lower]!.px, cy: points[lower]!.py });
+    // 自分の点の名前と読める置き方。自分の点との隙間が`MIN_LEADER`未満、組の2点以外の全ての点との隙間が`MIN_LEADER`以上
+    // （他の点の名前を線無しで置ける範囲を、まだ置いていない名前の分まで先に取らない）で、重なりが無い
+    const apart = (rect: Rect, other: number): boolean => {
+      for (let index = 0; index < marks.length; index++) {
+        if (index !== upper && index !== lower && clearance(rect, index) < MIN_LEADER) return false;
+      }
+      return clearance(rect, other) >= MIN_LEADER;
+    };
+    const upperRoom = upperGroup.nearCandidates().filter((c) => apart(c.rect, lower) && upperGroup.costOf(c, upperGroup.nearNames, 0) === 0);
+    if (upperRoom.length === 0) return undefined;
+    const lowerRoom = lowerGroup.nearCandidates().filter((c) => apart(c.rect, upper) && lowerGroup.costOf(c, lowerGroup.nearNames, 0) === 0);
+    for (const u of upperRoom) {
+      const l = lowerRoom.find((candidate) => !overlaps(u.rect, candidate.rect));
+      if (l !== undefined) return [upperGroup.toName(u), lowerGroup.toName(l)];
     }
-    const chosen = best!;
+    return undefined;
+  };
+  for (const cluster of order) {
+    const group = prepare(cluster);
+    const { lines, nearNames, costOf, blockersOf, nearCandidates, toName } = group;
+    if (lines.length === 2) {
+      const separated = separate(cluster.members[0]!, cluster.members[1]!);
+      if (separated !== undefined) {
+        placed.push(...separated);
+        slots.push(undefined, undefined);
+        continue;
+      }
+    }
+    const { chosen, cost: bestCost } = group.search();
     // 引き出し線無しで重ならずに置けない2点の組は、点ごとに横へ分けて置けるか試す
     const [first, second] = lines;
     if (lines.length === 2 && !(bestCost === 0 && chosen.leader === undefined) && Math.abs(first!.px - second!.px) >= SPLIT_MIN_DX) {
