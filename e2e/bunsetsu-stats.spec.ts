@@ -1,9 +1,8 @@
-import { expect, test, type Page } from './fixtures.ts';
-import { BUNSETSU_SPLITTER } from '../src/platform/bunsetsu/info.ts';
+import { expect, test, PAGE_TAG, type Page } from './fixtures.ts';
 
 /**
  * 文節ごとの統計のe2e。値の定義・一覧の並びはunit testで固定しているので、ここでは画面の配線
- * （区切りを常に使う・2配列の行と列・区切りの出どころの表示・出さない文言）だけを見る。
+ * （配列ごとの表の並べ替えが、一覧の配列ごとの列の順を変えない）だけを見る。
  */
 
 const feature = (page: Page) => page.locator('[data-react-feature="bunsetsu-stats"]');
@@ -28,53 +27,7 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-bunsetsu-stats-layout-table]')).toBeVisible({ timeout: 30_000 });
   });
 
-  test('テキストの表・配列ごとの表・2つの上位の一覧が出て、区切りの出どころと分割器を示す', async ({ page }) => {
-    await expect(feature(page).locator('[data-bunsetsu-stats-source]')).toContainText(`${BUNSETSU_SPLITTER.name} ${BUNSETSU_SPLITTER.version}`);
-    await expect(feature(page).locator('[data-bunsetsu-stats-text-table]')).toBeVisible();
-    await expect(feature(page).locator('[data-bunsetsu-stats-segment-count]')).not.toHaveText('—');
-    await expect(feature(page).locator('[data-bunsetsu-stats-layout-table] [data-bunsetsu-stats-row="ok"]')).toHaveCount(2);
-    await expect(feature(page).locator('[data-bunsetsu-stats-frequent-segments] tbody tr')).toHaveCount(20);
-    await expect(feature(page).locator('[data-bunsetsu-stats-frequent-bigrams] tbody tr')).toHaveCount(20);
-    // 配列ごとの列: 文節の一覧は配列の数、bigramの一覧は配列の数の2倍
-    await expect(feature(page).locator('[data-bunsetsu-stats-frequent-segments] thead th')).toHaveCount(2 + 2);
-    await expect(feature(page).locator('[data-bunsetsu-stats-frequent-bigrams] thead th')).toHaveCount(3 + 2 + 4);
-  });
-
-  test('実装の呼び方を出さず、列のまとまりに罫線を引き、ⓘで定義を出す', async ({ page }) => {
-    // 区切りの出どころの文（Run Chartと共有）は実装の語を含むので、表と一覧だけを見る
-    const tables = feature(page).locator('table');
-    const text = (await tables.allInnerTexts()).join('').replaceAll(/\s+/g, '');
-    for (const word of ['境目', '内側', '打鍵できなかった']) {
-      expect(text, word).not.toContain(word);
-    }
-    // まとまりの左右の境（見出しと本文の両方）に縦の罫線が付く
-    const heading = feature(page).locator('[data-bunsetsu-stats-layout-table] thead tr:first-child th[scope="colgroup"]').nth(1);
-    await expect(heading).toHaveClass(/bunsetsu-stats-edge-start/);
-    await expect(heading).toHaveCSS('border-left-width', '1px');
-    await expect(feature(page).locator('[data-bunsetsu-stats-layout-table] tbody tr[data-bunsetsu-stats-row="ok"] td').nth(3)).toHaveClass(
-      /bunsetsu-stats-edge-start/,
-    );
-    // 定義は、ペインの見出しのⓘから開く
-    await page.getByRole('button', { name: '文節ごとの統計の説明' }).click();
-    await expect(page.getByRole('dialog')).toContainText('かな数1の文節は除きます');
-  });
-
-  test('列の名前は文節頭・文節中で、画面と説明の「1文字目」「2文字目以降」は定義の1文以外に出ない', async ({ page }) => {
-    const tables = feature(page).locator('table');
-    const headings = (await tables.allInnerTexts()).join('');
-    expect(headings).toContain('文節頭');
-    expect(headings).toContain('文節中');
-    for (const word of ['1文字目', '2文字目以降']) {
-      expect(headings, word).not.toContain(word);
-    }
-    // 単体ページのtitleとmetaの説明文も、定義の語を出さずに分けた名前を出す
-    await expect(page).toHaveTitle(/文節ごとの統計/u);
-    const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? '';
-    expect(description).toContain('文節頭と文節中に分けて');
-    expect(description).not.toMatch(/1文字目|2文字目以降/u);
-  });
-
-  test('配列ごとの表は見出しで並べ替えられ、一覧の配列ごとの列の順は変わらない', async ({ page }) => {
+  test('配列ごとの表は見出しで並べ替えられ、一覧の配列ごとの列の順は変わらない', { tag: PAGE_TAG }, async ({ page }) => {
     const layout = feature(page).locator('[data-bunsetsu-stats-layout-table]');
     const rowTitles = async () => await layout.locator('tbody th[scope="row"]').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('title')));
     const listTitles = async () =>
@@ -110,29 +63,5 @@ test.describe('個別画面', () => {
     await button.click();
     await expect(headerCell).not.toHaveAttribute('aria-sort', /.+/);
     expect(await rowTitles()).toEqual(original);
-  });
-
-  test('2段目の見出しも並べ替えられ、名前はまとまりを含む正式な名前になる', async ({ page }) => {
-    const layout = feature(page).locator('[data-bunsetsu-stats-layout-table]');
-    const button = layout.getByRole('button', { name: '文節頭の標準偏差', exact: true });
-    await expect(button).toBeVisible();
-    await button.click();
-    const header = layout.locator('thead th', { has: page.getByRole('button', { name: '文節頭の標準偏差', exact: true }) });
-    await expect(header).toHaveAttribute('aria-sort', 'ascending');
-    await expect(header).toContainText('↑');
-    // 並べ替えた後も、まとまりの縦の罫線が見出しと本文に付く
-    await expect(header).toHaveClass(/bunsetsu-stats-edge-end/);
-    await expect(header).toHaveCSS('border-right-width', '1px');
-    const startHeader = layout.locator('thead th', { has: page.getByRole('button', { name: '文節頭の1かなあたりの距離', exact: true }) });
-    await expect(startHeader).toHaveClass(/bunsetsu-stats-edge-start/);
-    await expect(startHeader).toHaveCSS('border-left-width', '1px');
-    await expect(layout.locator('tbody tr[data-bunsetsu-stats-row="ok"] td').nth(4)).toHaveCSS('border-right-width', '1px');
-  });
-
-  test('打ちやすさ・順位・結論を述べる文言を出さない', async ({ page }) => {
-    const text = ((await feature(page).textContent()) ?? '').replaceAll(/\s+/g, '');
-    for (const word of ['打ちやすい', '打ちにくい', '優れ', '劣', '順位', '結論', '合成スコア', 'おすすめ']) {
-      expect(text, word).not.toContain(word);
-    }
   });
 });

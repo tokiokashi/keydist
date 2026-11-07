@@ -71,9 +71,3 @@ export async function dismissAutoOpenedSelection(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
   await expect(panel).toHaveCount(0);
 }
-
-/** 対象の選択を×で閉じる（外を押しても閉じない。フォーカスは対象ボタンへ戻る）。 */
-export async function closeTargetSelection(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /の選択を閉じる$/ }).click();
-  await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
-}
