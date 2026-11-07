@@ -216,7 +216,7 @@ export interface PlotRect {
   readonly y1: number;
 }
 
-/** 点の名前の1行。`x`は行頭、`y`は基準線。 */
+/** 点の名前の1行。`x`は名前の`anchor`が指す位置（行の右端・左端・中央）、`y`は基準線。 */
 export interface PlotNameLine {
   readonly targetKey: string;
   readonly text: string;
@@ -231,6 +231,8 @@ export interface PlotNameLine {
  */
 export interface PlotName {
   readonly lines: readonly PlotNameLine[];
+  /** 行をそろえる向き。点の左に置いた名前は右端（`end`）、点の右は左端（`start`）、点の上下は中央（`middle`）。列に分けた名前は列ごとに同じ向き。描画の`text-anchor`にそのまま使う。 */
+  readonly anchor: 'start' | 'middle' | 'end';
   /** 名前の占める長方形。周りに余白を足してある。名前どうしの重なりはこの長方形の交差で数える。 */
   readonly rect: PlotRect;
   /** 点から離れた場所に置いた名前と、点の印を結ぶ細い線。近くに置いた名前には無い。 */
@@ -669,6 +671,8 @@ const NAME_GAP = 9;
 interface NameCandidate {
   /** 名前の左端。 */
   readonly x: number;
+  /** 行をそろえる向き。名前の長方形と点の箱の横の位置関係で決まる。 */
+  readonly anchor: PlotName['anchor'];
   readonly firstBaseline: number;
   readonly rect: Rect;
   /** 名前の長方形と、組の点のうち一番近い点の余白の正方形との間の距離（上下左右のうち一番大きい差。重なれば0未満）。 */
@@ -740,6 +744,10 @@ interface NameSlot {
  * 同じ隙間（1px未満は1pxとみなす）の候補は、箱の辺の中央からのずれが小さい順に、右・左・下・上の辺、続けて角の順に比べ、最初の候補を選ぶ。
  * 隙間が`MIN_LEADER`以上の名前には、一番近い点の印の縁から名前の長方形へ細い引き出し線を付ける。
  * 名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
+ * 行は、名前の長方形が点の箱の左に離れていれば右端、右に離れていれば左端、横の範囲が重なれば中央でそろえる（列に分けた名前は列ごとに同じ）。
+ * 点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。
+ * 2行以上の名前は、点の左右に置く候補を、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り（図の中へ寄せた後で判定する）、角の候補を使わない。
+ * 点の高さから遠い行だけが点のそばに残る置き方を避けるため。上下の候補と1行の名前の候補は変えない。
  * 印が重なる2点の組は、まとめた名前を引き出し線無しで重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
  * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
  *
@@ -792,14 +800,21 @@ export function placeNames(
     const centeredY0 = cluster.cy + 4 - span / 2 - 11.5;
     // 候補の長方形を図の中へ寄せ、その位置で隙間を測り直す。名前が長い・高い時は寄せきれず、枠から出る分が費用に入る
     // `nearOnly`の時は、寄せた後も隙間が`MIN_LEADER`未満にならない候補（段`d`から寄せた量だけ隙間が縮んでも届かない候補）を作らない
-    const make = (x0: number, y0: number, d: number, nearOnly: boolean): NameCandidate | undefined => {
+    // `side`は点の左右に置く候補。2行以上の名前は、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り、角の候補は作らない
+    const make = (x0: number, y0: number, d: number, nearOnly: boolean, kind: 'side' | 'edge' | 'corner'): NameCandidate | undefined => {
+      if (rows >= 2 && kind === 'corner') return undefined;
       const shiftX = Math.max(0, PLOT_LEFT + FRAME_MARGIN - x0) - Math.max(0, x0 + rectWidth - (PLOT_RIGHT - FRAME_MARGIN));
       const shiftY = Math.max(0, PLOT_TOP + FRAME_MARGIN - y0) - Math.max(0, y0 + rectHeight - (PLOT_BOTTOM - FRAME_MARGIN));
       if (nearOnly && d - Math.max(Math.abs(shiftX), Math.abs(shiftY)) >= MIN_LEADER) return undefined;
       const rect = { x0: x0 + shiftX, x1: x0 + shiftX + rectWidth, y0: y0 + shiftY, y1: y0 + shiftY + rectHeight };
+      if (rows >= 2 && kind === 'side') {
+        const firstCenter = rect.y0 + 11.5 - 4;
+        if (cluster.cy < firstCenter || cluster.cy > firstCenter + span) return undefined;
+      }
       const nearest = nearestMember(cluster.members, marks, points, rect);
       return {
         x: rect.x0 + 1,
+        anchor: rect.x1 <= box.x0 ? 'end' : rect.x0 >= box.x1 ? 'start' : 'middle',
         firstBaseline: rect.y0 + 11.5,
         rect,
         gap: nearest.gap,
@@ -809,8 +824,8 @@ export function placeNames(
     // 隙間`d`の段の候補。辺の中央からのずれが小さい順に、右・左・下・上の辺を並べ、最後に4つの角を置く
     const candidatesAt = (d: number, nearOnly = false): NameCandidate[] => {
       const found: NameCandidate[] = [];
-      const add = (x0: number, y0: number): void => {
-        const candidate = make(x0, y0, d, nearOnly);
+      const add = (x0: number, y0: number, kind: 'side' | 'edge' | 'corner'): void => {
+        const candidate = make(x0, y0, d, nearOnly, kind);
         if (candidate !== undefined) found.push(candidate);
       };
       const step = d <= SLIDE_FINE_GAP ? SLIDE_STEP_NEAR : SLIDE_STEP_FAR;
@@ -819,20 +834,20 @@ export function placeNames(
         for (const sign of k === 0 ? [1] : [1, -1]) {
           const dy = centeredY0 + sign * k * step;
           if (dy + rectHeight > box.y0 - d && dy < box.y1 + d) {
-            add(box.x1 + d, dy);
-            add(box.x0 - d - rectWidth, dy);
+            add(box.x1 + d, dy, 'side');
+            add(box.x0 - d - rectWidth, dy, 'side');
           }
           const dx = centeredX0 + sign * k * step;
           if (dx + rectWidth > box.x0 - d && dx < box.x1 + d) {
-            add(dx, box.y1 + d);
-            add(dx, box.y0 - d - rectHeight);
+            add(dx, box.y1 + d, 'edge');
+            add(dx, box.y0 - d - rectHeight, 'edge');
           }
         }
       }
-      add(box.x1 + d, box.y1 + d);
-      add(box.x0 - d - rectWidth, box.y1 + d);
-      add(box.x1 + d, box.y0 - d - rectHeight);
-      add(box.x0 - d - rectWidth, box.y0 - d - rectHeight);
+      add(box.x1 + d, box.y1 + d, 'corner');
+      add(box.x0 - d - rectWidth, box.y1 + d, 'corner');
+      add(box.x1 + d, box.y0 - d - rectHeight, 'corner');
+      add(box.x0 - d - rectWidth, box.y0 - d - rectHeight, 'corner');
       return found;
     };
     // 候補の周り（段の上限まで離れた範囲）に掛かるものだけを、費用の計算に使う
@@ -898,12 +913,17 @@ export function placeNames(
       return nearCache;
     };
     const toName = (candidate: NameCandidate): PlotName => ({
-      lines: lines.map((line, index) => ({
-        targetKey: line.targetKey,
-        text: line.label,
-        x: candidate.x + columnOffsets[Math.floor(index / rows)]!,
-        y: candidate.firstBaseline + NAME_LINE_HEIGHT * (index % rows),
-      })),
+      lines: lines.map((line, index) => {
+        const column = Math.floor(index / rows);
+        const shift = candidate.anchor === 'end' ? columnWidths[column]! : candidate.anchor === 'middle' ? columnWidths[column]! / 2 : 0;
+        return {
+          targetKey: line.targetKey,
+          text: line.label,
+          x: candidate.x + columnOffsets[column]! + shift,
+          y: candidate.firstBaseline + NAME_LINE_HEIGHT * (index % rows),
+        };
+      }),
+      anchor: candidate.anchor,
       rect: candidate.rect,
       leader: candidate.leader,
     });
@@ -934,12 +954,20 @@ export function placeNames(
         const x = side === 'left' ? point.px - NAME_GAP - w : point.px + NAME_GAP;
         const baseline = point.py + 4;
         const rect = { x0: x - 1, x1: x + w + 1, y0: baseline - 11.5, y1: baseline + 4.5 };
-        return { x, firstBaseline: baseline, rect, gap: NAME_GAP - POINT_CLEARANCE - 1, leader: undefined };
+        return { x, anchor: side === 'left' ? 'end' : 'start', firstBaseline: baseline, rect, gap: NAME_GAP - POINT_CLEARANCE - 1, leader: undefined };
       };
       const leftName = oneLine(leftPoint, 'left');
       const rightName = oneLine(rightPoint, 'right');
       const asName = (point: (typeof lines)[number], candidate: NameCandidate): PlotName => ({
-        lines: [{ targetKey: point.targetKey, text: point.label, x: candidate.x, y: candidate.firstBaseline }],
+        lines: [
+          {
+            targetKey: point.targetKey,
+            text: point.label,
+            x: candidate.anchor === 'end' ? candidate.rect.x1 - 1 : candidate.x,
+            y: candidate.firstBaseline,
+          },
+        ],
+        anchor: candidate.anchor,
         rect: candidate.rect,
         leader: undefined,
       });
