@@ -126,7 +126,7 @@ test('scatterPlotModel: 印が重なる点の組の名前は、縦軸の値の�
       { targetKey: 'p', label: '月林檎配列', x: 1.0, y: 1.322 },
       { targetKey: 'q', label: '中指シフト月光', x: 1.0, y: 1.346 },
       { targetKey: 'r', label: '月見草エキス配列', x: 1.0, y: 1.319 },
-      { targetKey: 's', label: '月配列2-263式', x: 1.0, y: 1.339 },
+      { targetKey: 's', label: '月配列2-263式', x: 1.0, y: 1.328 },
       { targetKey: 't', label: '新下駄', x: 1.306, y: 0.982 },
       { targetKey: 'u', label: 'シン蜂蜜小梅', x: 1.362, y: 0.982 },
     ],
