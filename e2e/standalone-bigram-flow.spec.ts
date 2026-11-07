@@ -1,5 +1,7 @@
 import { expect, PAGE_TAG, test, type Locator, type Page } from './fixtures.ts';
 import { openTextChip } from './context-bar-helper.ts';
+import { openFigureSettings } from './bigram-flow-figure-helper.ts';
+import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { expectChosenTarget, openSettings, toggleTarget } from './pane-helper.ts';
 import { useKanaText } from './kana-text-helper.ts';
 
@@ -212,4 +214,21 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
 
   await pageA.close();
   await pageB.close();
+});
+
+test('保存済みの解析設定は、操作可能になった瞬間から表示されている（既定値のまま操作できる瞬間が無い）', async ({ page }) => {
+  await recordControlStates(
+    page,
+    {
+      storageKey: 'keydist:standalone-analyzer-options',
+      storageValue: JSON.stringify({ version: 1, 'bigram-flow': { lineScale: 'sqrt' } }),
+    },
+    // 紐の太さは図の表示の小窓にあり、小窓のボタンは図が描かれてから（読み込みが済んでから）出る。
+    { selector: '[data-figure-settings-window] select', read: 'value' },
+  );
+  await page.goto('/analyzer/bigram-flow');
+  const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
+  await expect(lineScale).toBeEnabled({ timeout: 10_000 });
+  await expect(lineScale).toHaveValue('sqrt');
+  expect(await enabledValues(page)).toEqual(['sqrt']);
 });
