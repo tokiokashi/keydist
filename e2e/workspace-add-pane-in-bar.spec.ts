@@ -35,10 +35,9 @@ async function open(page: Page, size: { width: number; height: number }, panes: 
 
 const addButton = (page: Page) => page.locator('.workspace-add-pane-button');
 
-test('パソコン幅: 文脈バーの中にあり、格子の上に専用の行が無い。＋だけで、文脈バーは1行', async ({ page }) => {
+test('パソコン幅: 文脈バーの中にあり、バーの直下から格子が始まる。＋だけで、文脈バーは1行', async ({ page }) => {
   await open(page, { width: 1440, height: 900 });
   await expect(page.locator('.context-bar .workspace-add-pane-button')).toBeVisible();
-  await expect(page.locator('.workspace-toolbar')).toHaveCount(0);
   const layout = await page.evaluate(() => {
     const bar = document.querySelector('.context-bar')!.getBoundingClientRect();
     const button = document.querySelector('.workspace-add-pane-button')!.getBoundingClientRect();

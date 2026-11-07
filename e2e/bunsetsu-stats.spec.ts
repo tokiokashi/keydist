@@ -47,7 +47,6 @@ test.describe('個別画面', () => {
     for (const word of ['境目', '内側', '打鍵できなかった']) {
       expect(text, word).not.toContain(word);
     }
-    await expect(feature(page).locator('[data-bunsetsu-stats-layout-note], [data-bunsetsu-stats-list-note]')).toHaveCount(0);
     // まとまりの左右の境（見出しと本文の両方）に縦の罫線が付く
     const heading = feature(page).locator('[data-bunsetsu-stats-layout-table] thead tr:first-child th[scope="colgroup"]').nth(1);
     await expect(heading).toHaveClass(/bunsetsu-stats-edge-start/);

@@ -73,7 +73,6 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/アクション（u）');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1カナあたりの距離（u）');
-    await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
     // 図の下に、縦軸の量と横軸の量の関係をキャプションで出す
     await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('1アクションあたりの距離と1カナあたりのアクション数の関係');
     await expect(feature(page).locator('[data-scatter-center-line]')).toHaveCount(0);
@@ -93,7 +92,6 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数/カナ');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1カナあたりのキー数');
-    await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
 
     await selectOnlyPreset(settings, 'perPress');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/カナ');

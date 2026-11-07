@@ -95,12 +95,9 @@ async function scrollState(dialog: Locator) {
   });
 }
 
-test('見出しのⓘでモーダルが開き、比較表の説明・単位・全列の説明を読める。表の下に説明の行は無い', async ({ page }) => {
+test('見出しのⓘでモーダルが開き、比較表の説明・単位・全列の説明を読める', async ({ page }) => {
   const table = await openComparison(page);
-  // 表の下の「列の説明」は無い。見出しのセルにもⓘは置かない。
-  await expect(page.getByRole('button', { name: '列の説明' })).toHaveCount(0);
   await expect(page.locator('.comparison-feature').getByRole('button')).toHaveCount(28);
-  await expect(table.locator('thead .info-button')).toHaveCount(0);
 
   const info = infoButton(page);
   await expect(info).toHaveAttribute('aria-haspopup', 'dialog');

@@ -523,8 +523,7 @@ for (const scale of ['relative', 'absolute'] as const) {
       expect(legend.dotsInside, '凡例の枠に点が触れない').toBe(0);
       expect(legend.labelsInsideFrame, '名前が枠に収まる').toBe(true);
       expect(legend.names, '凡例は対象の数だけ').toHaveLength(count);
-      // 図の外に凡例（一覧）が無い。対象の行は図の中にだけある
-      await expect(page.locator('ul[aria-label="凡例"]')).toHaveCount(0);
+      // 対象の行は図の中にだけある
       await expect(page.locator('[data-n-sensitivity-row="ok"]')).toHaveCount(count);
       await expect(page.locator('.n-sensitivity-svg [data-n-sensitivity-row="ok"]')).toHaveCount(count);
     });

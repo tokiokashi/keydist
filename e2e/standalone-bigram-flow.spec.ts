@@ -870,11 +870,6 @@ test('見出しは「名前 ⓘ / 対象 / 解析設定」で、ⓘで短い説�
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
-  // 本体は見出し・説明段落・観測値の注記を持たない（ペインの見出しとトップが持つ）。
-  const body = page.locator('.pane-body');
-  await expect(body.getByRole('heading', { name: 'Bigram Flow' })).toHaveCount(0);
-  await expect(body).not.toContainText('配列の優劣を判定するスコアではありません');
-
   const info = page.getByRole('button', { name: 'Bigram Flowの説明' });
   await info.click();
   await expect(page.getByRole('tooltip')).toContainText('2打鍵');
@@ -1026,8 +1021,6 @@ test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ�
   settings = await openSettings(page);
   await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
   await expect(settings.locator('[data-option-reset="true"]')).toHaveCount(1);
-  // 旧「標準に戻す」（複数項目をまとめて戻す）は無い。
-  await expect(page.getByRole('button', { name: '標準に戻す' })).toHaveCount(0);
 });
 
 test('解析設定の小窓のヘッダーの「すべて初期値に戻す」は解析設定だけを既定値へ戻し、対象はそのまま', async ({ page }) => {

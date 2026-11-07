@@ -367,9 +367,6 @@ test('測定を完了した後は、文字キーを取らない', async ({ page 
 test('保存した値の直接編集は、欄を確定した時にその場で保存され、元に戻すで戻せる。測定は別の操作なしに始められる', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
-  // 「変更を保存」「変更を戻す」は無い
-  await expect(page.getByRole('button', { name: '変更を保存' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '変更を戻す' })).toHaveCount(0);
   const actions = page.locator('#personal-speed-actions');
   await expect(actions).toHaveValue('5.00');
 

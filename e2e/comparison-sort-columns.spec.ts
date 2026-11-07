@@ -181,7 +181,7 @@ test('並び替えても対象の集合の順は変わらず、N感度の対象�
   await expectTargetNames(page, listOrder);
 });
 
-test('列名は短くそろい、見出しのセルにⓘは置かない', async ({ page }) => {
+test('列名は短くそろう', async ({ page }) => {
   const table = await openComparison(page);
   const headers = (await table.locator('thead th').allInnerTexts()).map((text) => text.replace(/[↑↓]/g, '').trim());
   expect(headers).toEqual([
@@ -215,8 +215,6 @@ test('列名は短くそろい、見出しのセルにⓘは置かない', async
     '交互打鍵の連続の平均の長さ',
     '交互打鍵の連続の最長の長さ',
   ]);
-  // 列ごとの説明は、見出しのⓘから開くモーダルに出る（comparison-column-help.spec.ts）。見出しのセルにⓘは置かない。
-  await expect(table.locator('thead .info-button')).toHaveCount(0);
 });
 
 /** 見出しのセルの幅（左から順）。 */

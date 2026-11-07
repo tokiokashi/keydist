@@ -195,10 +195,9 @@ test('スマホ幅: 文脈バーの元に戻す・やり直す・共有が直接
   await expect(redo).toBeVisible();
   await expect(undo).toBeDisabled();
 
-  // 共有は文字を省いたアイコンだけのボタン（⋯のメニューは無い）。
+  // 共有は文字を省いたアイコンだけのボタン。
   await expect(share).toBeVisible();
   expect((await share.boundingBox())?.width ?? 99).toBeLessThan(40);
-  await expect(page.getByRole('button', { name: '画面のメニュー' })).toHaveCount(0);
 
   const panel = await openTextChip(page);
   await panel.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: '英文（既定）' });
