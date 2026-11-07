@@ -537,7 +537,7 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
             label="縦軸"
             binding={bind('yAxis')}
             choices={COLUMN_CHOICES.filter((choice) => choice.value === options.yAxis || scatterAxisProblem(options.xAxis, choice.value) === undefined)}
-            hint="軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。1キーで動く距離など、配列ごとに違う回数で割った距離の線は引きません。"
+            hint="軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。押下1回の移動距離など、配列ごとに違う回数で割った距離の線は引きません。"
           />
         </>
       ) : null}

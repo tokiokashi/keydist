@@ -83,9 +83,12 @@ export function readoutAriaLabel(row: ReadoutRow, axes: ScatterAxes, contour: Sc
   return parts.join('　');
 }
 
-/** 図の下のキャプション。縦軸の量と横軸の量の関係。量の名前は軸の名前から単位を除いたもの。 */
+/**
+ * 図の下のキャプション。論文の図の書き方にならい「縦軸の量 vs. 横軸の量」と書く。量の名前は軸の名前から単位を除いたもの。
+ * 量の名前の中にも「の」「と」が入るので、日本語の助詞でつなぐと名前の切れ目が読み取りにくい。英字の「vs.」で切れ目を示す。
+ */
 export function scatterCaption(axes: ScatterAxes, language: TextLanguage): string {
-  return `${axisName(axes.y, language)}と${axisName(axes.x, language)}の関係`;
+  return `${axisName(axes.y, language)} vs. ${axisName(axes.x, language)}`;
 }
 
 /** 左右の手で全体を分ける割合の軸が、どの数を数えた割合か。 */

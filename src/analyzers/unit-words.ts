@@ -30,3 +30,12 @@ export function inputUnitNoteOf(language: TextLanguage, script: KanaScript = 'hi
     ? `${unit}数は、漢字を読みに直し、評価しない記号を取り除いた後のテキストの字の数です。大半はかなですが、「、」「。」「ー」・英数字・空白・改行なども数えます。`
     : `${unit}数は、テキストの字の数です。空白と句読点も数えます。`;
 }
+
+/**
+ * 量の名前で、文字数 `W`（仕様 §11.5）が数える字に付ける語。
+ * 日本語のテキストでは漢字を読みに直す前の表記で数えるので「変換後の」を付け、入力かな数 `C` と区別する。
+ * 英語のテキストは読みに直さず `W` と `C` が同じ数になるので何も付けない。
+ */
+export function textCharPrefixOf(language: TextLanguage): string {
+  return language === 'ja' ? '変換後の' : '';
+}

@@ -10,7 +10,7 @@ import { displayValue, metricDigits, runChartMetrics } from './metric-catalog.ts
 /**
  * 区切り方ごとの区間の指標と、区切りの前後の指標の表（定義は `docs/segment-metrics.md`）。
  * 抽出が出した値を並べるだけで、計算し直さない。配列の優劣・順位・合成スコアは出さない。
- * 順位を付けるのは、文節の区切りとランダムの区切りの比べだけ（1かなで動く距離の2つの量）。
+ * 順位を付けるのは、文節の区切りとランダムの区切りの比べだけ（1かな換算の移動距離の2つの量）。
  */
 
 export interface SegmentTableRow {
@@ -130,7 +130,7 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
             </table>
           </div>
           <details className="run-chart-segment-seeds">
-            <summary>ランダムの種ごとの値（1{k}で動く距離）</summary>
+            <summary>ランダムの種ごとの値（1{k}換算の移動距離）</summary>
             <table className="run-chart-segment-table" data-run-chart-segment-seeds="">
               <thead>
                 <tr>
@@ -152,11 +152,11 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
           </details>
           <ul className="run-chart-segment-rank" data-run-chart-segment-rank="">
             <li>
-              1{k}で動く距離の区間の90%点: 文節の値は、ランダムの{SEGMENT_SEED_COUNT}個と合わせた
+              1{k}換算の移動距離の区間の90%点: 文節の値は、ランダムの{SEGMENT_SEED_COUNT}個と合わせた
               {rankSentence(report.rank.p90)}
             </li>
             <li>
-              1{k}で動く距離の区切りの直後の1文字: 文節の値は、同じく
+              1{k}換算の移動距離の区切りの直後の1文字: 文節の値は、同じく
               {rankSentence(report.rank.after)}
             </li>
           </ul>
