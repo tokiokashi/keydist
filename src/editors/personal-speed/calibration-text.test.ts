@@ -78,8 +78,9 @@ test('測るボタンの直後の保存値への影響は、保存値を持た�
   }
   // 打鍵の上乗せを持たない時の文章を打つ速さは、前の打鍵の上乗せが無いので文を出さない
   assert.equal(measurementEffectText('sentence', true, []), undefined);
-  assert.notEqual(measurementEffectText('normal', true, []), undefined);
-  assert.notEqual(measurementEffectText('directional', true, ['repeat']), undefined);
+  // 通常の測定は方向別の値を置き換えず、方向別の測定は測った向きの値だけを置き換える
+  assert.ok((measurementEffectText('normal', true, []) ?? '').includes('方向別'));
+  assert.ok((measurementEffectText('directional', true, ['repeat']) ?? '').includes('向き'));
 });
 
 test('測るボタンの直後の保存値への影響は、置き換わる・消える値を、保存されている種類だけで挙げる', () => {
@@ -91,7 +92,7 @@ test('測るボタンの直後の保存値への影響は、置き換わる・�
   assert.ok(!directionalOther.includes('Chain'));
   // 向きの測定は続け打ちを消さない
   assert.ok(!(measurementEffectText('directional', true, ['repeat']) ?? '').includes('消えます'));
-  assert.notEqual(measurementEffectText('sentence', true, ['sfb']), undefined);
+  assert.ok((measurementEffectText('sentence', true, ['sfb']) ?? '').includes('置き換わ'));
 });
 
 test('通常速度・移動速度の測定の前の注意は、続け打ちの置き換えと他の種類が消えることを区別して伝える', () => {
