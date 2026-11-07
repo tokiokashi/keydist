@@ -16,7 +16,7 @@ import { scatterFigureModels, type ScatterFigureModel } from './figure-model.ts'
 import { SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { READING_NOTE, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
+import { READING_NOTE, readoutAriaLabel, readoutParts, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 import { MARK_RADIUS, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH } from './plot-model.ts';
 import { readingTargets, stillPinned, togglePinned } from './reading.ts';
 import './scatter-view.css';
@@ -108,7 +108,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
     const row = point === undefined ? undefined : plottedByKey.get(point.targetKey);
     return point === undefined || row === undefined
       ? []
-      : [{ role, key: point.targetKey, text: readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language) }];
+      : [{ role, key: point.targetKey, parts: readoutParts({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language) }];
   });
 
   return (
@@ -254,7 +254,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
                     data-active={hovered === point.targetKey || undefined}
                     data-pinned={isPinned || undefined}
                     tabIndex={0}
-                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
+                    aria-label={readoutAriaLabel({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
                     style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
                     onPointerEnter={() => onHover(point.targetKey)}
                     onPointerLeave={() => onLeave(point.targetKey)}
@@ -303,10 +303,24 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
             </figcaption>
           </figure>
           <div className="scatter-readouts" data-scatter-readouts="" data-pinned={pinned !== undefined || undefined} aria-live="off">
-            {shownReadouts.map(({ role, key, text }) => (
+            {shownReadouts.map(({ role, key, parts }) => (
               <p key={role} className="scatter-readout" data-scatter-readout={role} data-scatter-readout-of={key}>
                 {pinned === undefined ? null : <span className="scatter-readout-mark" aria-hidden="true" />}
-                {text}
+                <span className="scatter-readout-text">
+                  {parts.name}
+                  {'　'}
+                  <span className="scatter-readout-nowrap" data-scatter-readout-coordinates="">
+                    {parts.coordinates}
+                  </span>
+                  {parts.contour === undefined ? null : (
+                    <>
+                      {'　'}
+                      <span className="scatter-readout-nowrap" data-scatter-readout-contour="">
+                        {parts.contour}
+                      </span>
+                    </>
+                  )}
+                </span>
               </p>
             ))}
           </div>

@@ -106,9 +106,17 @@ export function axisTitle(column: ComparisonColumnId, language: TextLanguage): s
  * 組み合わせの名前・凡例・キャプション・点の読み取りには添えない。
  */
 export function axisPlotTitle(column: ComparisonColumnId, language: TextLanguage, log = false): string {
-  const label = SPECS[column].axisLabel;
   const unit = axisUnit(column);
-  const name = label === undefined ? axisName(column, language) : label(kanaUnitOf(language, SCATTER_KANA_SCRIPT), language);
+  const name = axisShortName(column, language);
   const notes = [...(unit === undefined ? [] : [unit]), ...(log ? ['対数'] : [])];
   return notes.length === 0 ? name : `${name}（${notes.join('、')}）`;
+}
+
+/**
+ * 縮めた名前。単位も「対数」の印も付けない。縮めた名前を宣言していない列は`axisName`と同じ。
+ * 軸の名前（`axisPlotTitle`）から単位と印を除いたもので、点の読み取りの線の量を軸と同じ語で示すのに使う。
+ */
+export function axisShortName(column: ComparisonColumnId, language: TextLanguage): string {
+  const label = SPECS[column].axisLabel;
+  return label === undefined ? axisName(column, language) : label(kanaUnitOf(language, SCATTER_KANA_SCRIPT), language);
 }

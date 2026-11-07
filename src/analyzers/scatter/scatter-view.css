@@ -217,6 +217,10 @@
   background: color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
+.scatter-readout-nowrap {
+  white-space: nowrap;
+}
+
 .scatter-excluded {
   list-style: none;
   margin: 0;
