@@ -103,7 +103,7 @@ const EXAMPLE_PRESS = [
   { targetKey: 'shingeta', label: '新下駄', x: 1.306, y: 0.982 },
   { targetKey: 'shin-koume', label: 'シン蜂蜜小梅', x: 1.362, y: 0.982 },
   { targetKey: 'naginata-v18', label: '薙刀式v18', x: 1.413, y: 0.982 },
-  { targetKey: 'nicola', label: '親指シフト（NICOLA）', x: 1.448, y: 1.0 },
+  { targetKey: 'nicola', label: '親指シフト', x: 1.448, y: 1.0 },
   { targetKey: 'asuka', label: '飛鳥', x: 1.539, y: 1.0 },
   { targetKey: 'kawasemi-plus', label: 'かわせみ配列+', x: 1.586, y: 0.815 },
 ];
@@ -121,7 +121,7 @@ const EXAMPLE_DEFAULT = [
   { targetKey: 'shingeta', label: '新下駄', x: 0.982, y: 0.621 },
   { targetKey: 'shin-koume', label: 'シン蜂蜜小梅', x: 0.982, y: 0.543 },
   { targetKey: 'naginata-v18', label: '薙刀式v18', x: 0.982, y: 0.637 },
-  { targetKey: 'nicola', label: '親指シフト（NICOLA）', x: 1.0, y: 0.557 },
+  { targetKey: 'nicola', label: '親指シフト', x: 1.0, y: 0.557 },
   { targetKey: 'asuka', label: '飛鳥', x: 1.0, y: 0.424 },
   { targetKey: 'kawasemi-plus', label: 'かわせみ配列+', x: 0.815, y: 0.836 },
 ];
@@ -314,7 +314,7 @@ test('scatterPlotModel: 3点の組は、近くに置けなくても分けない'
   assert.equal(triple.length, 1);
 });
 
-test('scatterPlotModel: 例の15配列で、親指シフト（NICOLA）とシン蜂蜜小梅の名前は分けて置き、ほかの2組はまとめたまま', () => {
+test('scatterPlotModel: 例の15配列で、親指シフトとシン蜂蜜小梅の名前は分けて置き、ほかの2組はまとめたまま', () => {
   const model = scatterPlotModel({ points: EXAMPLE_DEFAULT, ...NO_LINES });
   const nameOf = (key: string) => model.names.find((name) => name.lines.some((line) => line.targetKey === key))!;
   const nicola = nameOf('nicola');
@@ -328,7 +328,7 @@ test('scatterPlotModel: 例の15配列で、親指シフト（NICOLA）とシン
   const koumePoint = model.points.find((point) => point.targetKey === 'shin-koume')!;
   assert.ok(koumePoint.px < nicolaPoint.px);
   assert.ok(koume.rect.x1 < koumePoint.px, 'シン蜂蜜小梅は点の左');
-  assert.ok(nicola.rect.x0 > nicolaPoint.px, '親指シフト（NICOLA）は点の右');
+  assert.ok(nicola.rect.x0 > nicolaPoint.px, '親指シフトは点の右');
   assert.equal(nameOf('tsuki-ringo'), nameOf('tsukimisou-extract'));
   assert.equal(nameOf('tsuki-ringo').lines.length, 2);
   assert.equal(nameOf('naginata-v18'), nameOf('shingeta'));
@@ -344,7 +344,7 @@ test('scatterPlotModel: 印が重ならない近い点の名前は、互いに�
       { targetKey: 'a', label: '新下駄', x: 1.306, y: 0.982 },
       { targetKey: 'b', label: 'シン蜂蜜小梅', x: 1.362, y: 0.982 },
       { targetKey: 'c', label: '中指シフト月光', x: 1.0, y: 1.346 },
-      { targetKey: 'd', label: '親指シフト（NICOLA）', x: 1.448, y: 1.0 },
+      { targetKey: 'd', label: '親指シフト', x: 1.448, y: 1.0 },
       { targetKey: 'e', label: 'かわせみ配列+', x: 1.586, y: 0.815 },
     ],
     ...NO_LINES,
@@ -638,7 +638,7 @@ test('estimateTextWidth: ブラウザで描いた点の名前の幅（11px、実
     ['Norman', 41.5],
     ['QGMLWY', 51.1],
     ['TK音直入力法', 69.2],
-    ['親指シフト（NICOLA）', 118.1],
+    ['親指シフト', 54.8],
     ['新JIS（逐次シフト）', 103.9],
     ['月配列2-263式', 75.5],
     ['月配列U9', 47.8],

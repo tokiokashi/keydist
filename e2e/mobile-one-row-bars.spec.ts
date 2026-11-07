@@ -92,20 +92,20 @@ test('スマホ幅の見出しにAnalyzer名が出ず、対象名が省略され
   expect((await title.boundingBox())?.width ?? 0).toBeLessThanOrEqual(2);
   await expect(page.getByRole('button', { name: 'Bigram Flowの説明' })).toBeVisible();
 
-  await toggleTarget(page, 'layout:nicola');
+  await toggleTarget(page, 'layout:shin-jis-prefix');
   await page.keyboard.press('Escape');
   const summary = page.locator('.target-selection-summary');
-  await expect(summary).toHaveText('親指シフト（NICOLA）');
+  await expect(summary).toHaveText('新JIS（逐次シフト）');
   // 計算が終わってバッジが消えてから、対象の欄の全文が入っているかを測る（計算中の間は下のテストで測る）。
   await expect(page.locator('.pane-status-badge')).toHaveCount(0);
   expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
 
-// 英文では親指シフト（NICOLA）が使えないので、対象をNICOLAにすると「失敗」になる。失敗は計算の時間に依らず、
+// 英文では新JISが使えないので、対象を新JIS（逐次シフト）にすると「失敗」になる。名前が長いので、狭い幅では状態を点で出す。失敗は計算の時間に依らず、
 // 依頼を出した時点で決まるので、状態を検査の前提にできる（計算中の「直前の結果を表示」は時間に依るので使わない）。
 // `width`を渡すと、その幅で見る。点と文字の境目は幅で決まる（幅は固定なので、判定も決まる）。
-async function failWithNicola(page: Page, width?: number): Promise<void> {
+async function failWithLongName(page: Page, width?: number): Promise<void> {
   await openReady(page, 'bigram-flow');
   if (width !== undefined) await page.setViewportSize({ width, height: 844 });
   const panel = await openTextChip(page);
@@ -113,14 +113,14 @@ async function failWithNicola(page: Page, width?: number): Promise<void> {
   await expect(page.locator('.context-bar button.text-chip')).toContainText('英文');
   await page.keyboard.press('Escape');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
-  await toggleTarget(page, 'layout:nicola');
+  await toggleTarget(page, 'layout:shin-jis-prefix');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'failed', { timeout: 10_000 });
 }
 
-test('スマホ幅（360px）: 状態のバッジを点で出しても、対象の欄は動かず、対象名は省略されない', async ({ page }) => {
-  // 360pxでは「失敗」の文字が名前の欄に入らず、点で出る。文字で出すと対象名が省略される幅（370px以下）。
+test('スマホ幅（340px）: 状態のバッジを点で出しても、対象の欄は動かず、対象名は省略されない', async ({ page }) => {
+  // 340pxでは「失敗」の文字が新JIS（逐次シフト）の名前の欄に入らず、点で出る（文字が入るのは360px以上）。
   await openReady(page, 'bigram-flow');
-  await page.setViewportSize({ width: 360, height: 844 });
+  await page.setViewportSize({ width: 340, height: 844 });
   const panel = await openTextChip(page);
   await panel.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: '英文（既定）' });
   await page.keyboard.press('Escape');
@@ -128,7 +128,7 @@ test('スマホ幅（360px）: 状態のバッジを点で出しても、対象�
   const before = await targetButton(page).boundingBox();
   expect(before).not.toBeNull();
 
-  await toggleTarget(page, 'layout:nicola');
+  await toggleTarget(page, 'layout:shin-jis-prefix');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'failed', { timeout: 10_000 });
 
   // 状態と測った値を、同じ時点（同じ描画）で読む
@@ -153,7 +153,7 @@ test('スマホ幅（360px）: 状態のバッジを点で出しても、対象�
   // 点でも状態が分かる。状態の文は読み上げとtitleに残る
   expect(sample.badgeTitle).toBe('失敗');
   expect(sample.truncated).toBe(false);
-  expect(sample.summaryText).toBe('親指シフト（NICOLA）');
+  expect(sample.summaryText).toBe('新JIS（逐次シフト）');
   expect(sample.overflow).toBeLessThanOrEqual(0);
 
   // 点の出し入れで、対象ボタンは読み込み前の位置から動かない（点は名前の欄の流れに入らない）
@@ -162,10 +162,10 @@ test('スマホ幅（360px）: 状態のバッジを点で出しても、対象�
   expect(Math.abs((after?.y ?? -100) - before!.y)).toBeLessThanOrEqual(1);
 });
 
-test('スマホ幅（360px）: 点の形は、計算中（直前の結果を表示）が回る青い輪、失敗が塗りつぶしで分かれる', async ({ page }) => {
+test('スマホ幅（340px）: 点の形は、計算中（直前の結果を表示）が回る青い輪、失敗が塗りつぶしで分かれる', async ({ page }) => {
   // 計算中（stale）の表示そのもの（回ること・動きの検査）は `status-badge-spinner.spec.ts` で見る。
   // ここでは失敗の点を出した後で状態の属性だけを書き換え、点のCSSの形（輪の切れ目・塗り）が状態で変わることを確かめる
-  await failWithNicola(page, 360);
+  await failWithLongName(page, 340);
   const badge = page.locator('.pane-frame-name .pane-status-badge');
   const failedFill = await badge.evaluate((element) => getComputedStyle(element).backgroundColor);
   await badge.evaluate((element) => element.setAttribute('data-status', 'stale'));
@@ -232,7 +232,7 @@ test.describe('パソコン幅', () => {
 
   // 名前の行に幅がある時は、状態のバッジを文字で出す（点にするのは幅が足りない時だけ）。
   test('個別画面: 状態のバッジは、幅があれば文字で出る', async ({ page }) => {
-    await failWithNicola(page);
+    await failWithLongName(page);
     const badge = page.locator('.pane-frame .pane-status-badge');
     await expect(badge).toHaveText('失敗');
     await expect(badge).toHaveAttribute('data-text', 'true');

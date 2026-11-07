@@ -9,7 +9,7 @@ const face = (trigger: string[], entries: Record<string, string>, inputRole: Fac
 });
 
 /**
- * 親指シフト（NICOLA）J型。
+ * 親指シフトのJ型。規格の名前はNICOLA（画面の名前は「親指シフト」で、絞り込みの読みにNICOLAを持つ）。
  *
  * 配置はNICOLA日本語入力コンソーシアムの規格書
  * (http://nicola.sunicom.co.jp/spec/kikaku.htm)を仕様根拠としてkeydist形式で記述した。
@@ -133,6 +133,6 @@ export const NICOLA_FACES: Face[] = [
   ),
 ];
 
-export const NICOLA: Layout = withAliases(fromFaces('nicola', '親指シフト（NICOLA）', NICOLA_FACES), ['にこら', 'おやゆびしふと', 'にこらはいれつ']);
+export const NICOLA: Layout = withAliases(fromFaces('nicola', '親指シフト', NICOLA_FACES), ['NICOLA', 'にこら', 'おやゆびしふと', 'にこらはいれつ']);
 NICOLA.legends.set(THUMB_KEY.LT, '無変換');
 NICOLA.legends.set(THUMB_KEY.RT, '変換');
