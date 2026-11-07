@@ -233,8 +233,10 @@ export interface PlotName {
   readonly lines: readonly PlotNameLine[];
   /** 行をそろえる向き。点の左の名前は右端（`end`）、点の右の名前は左端（`start`）。点の上下の名前は、点の箱の横の中央が名前の長方形の横の中央より左なら左端、そうでなければ右端。列に分けた名前は列ごとに同じ向き。描画の`text-anchor`にそのまま使う。 */
   readonly anchor: 'start' | 'end';
-  /** 名前の占める長方形。周りに余白を足してある。名前どうしの重なりはこの長方形の交差で数える。 */
+  /** 名前の全ての行を囲む長方形。周りに余白を足してある。点との隙間と、図の枠からはみ出すかは、この長方形で測る。 */
   readonly rect: PlotRect;
+  /** 行ごとの、その行の字が占める長方形（周りの余白は`rect`と同じ）。他の名前・点の印・線との重なりは、これらの長方形で数える。 */
+  readonly boxes: readonly PlotRect[];
   /** 点のすぐ横より離れた場所に置いた名前と、点の印を結ぶ細い線。点のすぐ横に置いた名前には無い。 */
   readonly leader: { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number } | undefined;
 }
@@ -544,6 +546,11 @@ function overlaps(a: Rect, b: Rect): boolean {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 }
 
+/** 長方形の集まりのどれかが、もう一方の集まりのどれかと重なる。 */
+function anyOverlap(a: readonly Rect[], b: readonly Rect[]): boolean {
+  return a.some((x) => b.some((y) => overlaps(x, y)));
+}
+
 /** 細い線の値の文字（右端を`at`、基準線の高さを`at.y`に置く）が、周りへ余白を足して占める長方形。 */
 function valueRect(at: { readonly x: number; readonly y: number }, width: number): Rect {
   return { x0: at.x - width - 1, x1: at.x + 1, y0: at.y - 11.5, y1: at.y + 4.5 };
@@ -670,7 +677,7 @@ const GAP_LEVELS = [1, 2, 3, 4, 6, 8, 11, 15, 20, 26, 34, 44, 58, 76, 98, 124] a
 const SLIDE_STEP_NEAR = 2;
 const SLIDE_STEP_FAR = 4;
 const SLIDE_FINE_GAP = 8;
-/** 名前の長方形が他の名前・点の印と重なる1か所を、引き出し線の交差1か所より重く数える重み。線が名前の字を通る置き方より、名前どうしが重なる置き方を後にする。 */
+/** 名前の行の長方形が他の名前の行・点の印と重なる1か所を、引き出し線の交差1か所より重く数える重み。線が名前の字を通る置き方より、名前どうしが重なる置き方を後にする。 */
 const OVERLAP_WEIGHT = 1000;
 /** 引き出し線を引く最小の隙間。これより近い置き方には線を付けない。 */
 const MIN_LEADER = 6;
@@ -690,6 +697,8 @@ interface NameCandidate {
   readonly anchor: PlotName['anchor'];
   readonly firstBaseline: number;
   readonly rect: Rect;
+  /** 行ごとの字の長方形。`PlotName.boxes`と同じ。 */
+  readonly boxes: readonly Rect[];
   /** 名前の長方形と、組の点のうち一番近い点の余白の正方形との間の距離（上下左右のうち一番大きい差。重なれば0未満）。 */
   readonly gap: number;
   readonly leader: PlotName['leader'];
@@ -745,7 +754,7 @@ interface NameSlot {
   readonly nearCandidates: () => readonly NameCandidate[];
   /** `candidate`の重なりの数。`limit`を超えると無限大。 */
   readonly costOf: (candidate: NameCandidate, others: readonly PlotName[], limit: number) => number;
-  /** 重なりが、`others`のうち名前の長方形との重なりだけの時、重なる名前。他の重なり（点の印・図の外・引き出し線）がある時は`undefined`。 */
+  /** 重なりが、`others`の名前の行の長方形との重なりだけの時、重なる名前。他の重なり（点の印・図の外・引き出し線）がある時は`undefined`。 */
   readonly blockersOf: (candidate: NameCandidate, others: readonly PlotName[]) => readonly PlotName[] | undefined;
   readonly toName: (candidate: NameCandidate) => PlotName;
 }
@@ -755,13 +764,14 @@ interface NameSlot {
  * 名前と点の距離（隙間）は、組の点のうち名前に一番近い点の余白の正方形と名前の長方形の間で測る。図の中へ寄せた後の位置で測る。
  * 候補は、隙間が1px（点のすぐ横）から124pxまでの段ごとに、点の箱に沿って名前を一周ずらした位置と、箱の4つの角の斜め外側。
  * 重なりの数（他の名前・点の印・引き出し線と名前・引き出し線どうし・図の外）が少ない候補を選び、同じなら隙間が小さい候補を選ぶ。
- * 名前の長方形が他の名前・点の印と重なる1か所は、線の交差1か所より重く数える。線が名前の字を通る置き方の方が、名前どうしが重なる置き方より読める。
+ * 名前が他の名前・点の印・線と重なるかは、名前の行ごとの字の長方形で測る。2行以上の名前の短い行の横の空いた所は、他のものが使えるようにするため。隙間と図の外へのはみ出しは、全ての行を囲む長方形で測る。
+ * 名前の行の長方形が他の名前の行・点の印と重なる1か所は、線の交差1か所より重く数える。線が名前の字を通る置き方の方が、名前どうしが重なる置き方より読める。
  * 同じ隙間（1px未満は1pxとみなす）の候補は、辺の候補を名前の縦の中央が組の中心の高さに近い順に、続けて角の順に比べ、最初の候補を選ぶ。点の高さの近くに置いた名前の方が、どの点の名前か読み取りやすいため。
  * 高さの近さが同じ辺の候補は、右・左の辺では縦の中央からのずれが、上・下の辺では名前の左端を点の箱の左端にそろえた位置（名前が点から右へ伸びる）からのずれが小さい順に、右・左・下・上の辺の順に比べる。
  * 隙間が`MIN_LEADER`以上の名前には、一番近い点の印の縁から名前の長方形へ細い引き出し線を付ける。この説明の「引き出し線」は、この線だけを指す（下の短い線を含まない）。
  * 名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
  * 行は、点の左の名前は右端、点の右の名前は左端、点の上下の名前は点の箱の横の中央が名前の長方形の横の中央より左なら左端、そうでなければ右端でそろえる（列に分けた名前は列ごとに同じ）。上下の名前は、名前の長方形の左端を点の箱の左端にそろえた位置から試す。
- * 点の左右の名前では、点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。
+ * 点の左右の名前では、点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。引き出し線も名前の長方形の縁で終わるので、2行以上の名前では短い行の字から離れた所で終わることがある。
  * 2行以上の名前は、点の左右に置く候補を、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り（図の中へ寄せた後で判定する）、角の候補を使わない。
  * 点の高さから遠い行だけが点のそばに残る置き方を避けるため。上下の候補と1行の名前の候補は変えない。
  * 印が重なる2点の組は、まず点ごとに1行の名前を分けて置けるか試す。各点を1点だけの組とみなした時の、引き出し線が付かない候補（隙間が`MIN_LEADER`未満）のうち、
@@ -773,9 +783,9 @@ interface NameSlot {
  * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで、点の高さにそろえて）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
  *
  * 全ての名前を置いた後、`yieldToNeighbors`が真なら、引き出し線の付いた名前を置いた順に1つずつ見直す。
- * その名前の組の、線が付かない候補が、ちょうど1つの名前の長方形とだけ重なる（点の印・図の外・引き出し線との重なりが無い）時、重なる名前を別の位置へ動かせるか調べる。
+ * その名前の組の、線が付かない候補の行の長方形が、ちょうど1つの名前の行の長方形とだけ重なる（点の印・図の外・引き出し線との重なりが無い）時、重なる名前を別の位置へ動かせるか調べる。
  * 動かす名前は、組の名前をまとめて置いたものに限る（分けて置いた名前は動かさない）。
- * 動かす名前の線が付かない候補のうち、2つの名前を外した状態で重なりが無く、動かした状態で線の付いていた名前の候補にも重なりが無いものがあれば、
+ * 動かす名前の線が付かない候補のうち、2つの名前を外した状態で（行の長方形で測って）重なりが無く、動かした状態で線の付いていた名前の候補にも行の長方形の重なりが無いものがあれば、
  * 動かして、線の付いていた名前をその候補に置き直す（線は付かなくなる）。探す順は、線の付いていた名前の候補、重なる名前、重なる名前の移り先の順で、最初に見つかった組み合わせを採る。
  * 動かした名前と、線を無くした名前は、別の名前のために動かさない。
  *
@@ -813,6 +823,16 @@ export function placeNames(
     // 文字の高さは基準線の上10.5・下3.5。周りに1ずつ余白を足す
     const rectWidth = width + 2;
     const rectHeight = span + 16;
+    // 行ごとの字の長方形。短い行の横の空いた所に、他の名前・点の印・線を置けるようにする
+    const lineWidths = lines.map((line) => estimateTextWidth(line.label));
+    const boxesOf = (rect: Rect, anchor: PlotName['anchor']): Rect[] =>
+      lines.map((_, index) => {
+        const column = Math.floor(index / rows);
+        const at = rect.x0 + 1 + columnOffsets[column]! + (anchor === 'end' ? columnWidths[column]! : 0);
+        const left = anchor === 'end' ? at - lineWidths[index]! : at;
+        const y0 = rect.y0 + NAME_LINE_HEIGHT * (index % rows);
+        return { x0: left - 1, x1: left + lineWidths[index]! + 1, y0, y1: y0 + 16 };
+      });
     const box = cluster.members.reduce<Rect>(
       (acc, index) => {
         const mark = marks[index]!;
@@ -837,11 +857,13 @@ export function placeNames(
         if (cluster.cy < firstCenter || cluster.cy > firstCenter + span) return undefined;
       }
       const nearest = nearestMember(cluster.members, marks, points, rect);
+      const anchor = anchorOf(rect, box);
       return {
         x: rect.x0 + 1,
-        anchor: anchorOf(rect, box),
+        anchor,
         firstBaseline: rect.y0 + 11.5,
         rect,
+        boxes: boxesOf(rect, anchor),
         gap: nearest.gap,
         leader: nearest.gap >= MIN_LEADER ? leaderTo(points[nearest.index]!, rect) : undefined,
       };
@@ -890,7 +912,7 @@ export function placeNames(
     const nearNames = placed.filter((other) => overlaps(other.rect, region) || (other.leader !== undefined && segmentHits(other.leader, region)));
     // 重なりの数。`limit`を超えると数えるのをやめて無限大を返す
     const costOf = (candidate: NameCandidate, others: readonly PlotName[], limit: number): number => {
-      const { rect, leader } = candidate;
+      const { rect, boxes, leader } = candidate;
       // 枠の外へ出る置き方は、他の名前・点と重なる置き方より必ず後にする。どれも出る時は、出る量が少ない方
       const overshoot =
         Math.max(0, PLOT_LEFT + FRAME_MARGIN - rect.x0) +
@@ -905,13 +927,13 @@ export function placeNames(
         return cost > limit;
       };
       for (const mark of nearMarks) {
-        if (overlaps(rect, mark) && count(OVERLAP_WEIGHT)) return Number.POSITIVE_INFINITY;
+        if (boxes.some((b) => overlaps(b, mark)) && count(OVERLAP_WEIGHT)) return Number.POSITIVE_INFINITY;
       }
       for (const other of others) {
-        if (overlaps(rect, other.rect) && count(OVERLAP_WEIGHT)) return Number.POSITIVE_INFINITY;
-        if (other.leader !== undefined && segmentHits(other.leader, rect) && count(1)) return Number.POSITIVE_INFINITY;
+        if (anyOverlap(boxes, other.boxes) && count(OVERLAP_WEIGHT)) return Number.POSITIVE_INFINITY;
+        if (other.leader !== undefined && boxes.some((b) => segmentHits(other.leader!, b)) && count(1)) return Number.POSITIVE_INFINITY;
         if (leader === undefined) continue;
-        if (segmentHits(leader, other.rect) && count(1)) return Number.POSITIVE_INFINITY;
+        if (other.boxes.some((b) => segmentHits(leader, b)) && count(1)) return Number.POSITIVE_INFINITY;
         if (other.leader !== undefined && segmentsCross(leader, other.leader) && count(1)) return Number.POSITIVE_INFINITY;
       }
       if (leader !== undefined) {
@@ -922,12 +944,12 @@ export function placeNames(
       return cost;
     };
     const blockersOf = (candidate: NameCandidate, others: readonly PlotName[]): readonly PlotName[] | undefined => {
-      const { rect } = candidate;
-      if (leavesPlot(rect) || nearMarks.some((mark) => overlaps(rect, mark))) return undefined;
+      const { rect, boxes } = candidate;
+      if (leavesPlot(rect) || nearMarks.some((mark) => boxes.some((b) => overlaps(b, mark)))) return undefined;
       const found: PlotName[] = [];
       for (const other of others) {
-        if (overlaps(rect, other.rect)) found.push(other);
-        if (other.leader !== undefined && segmentHits(other.leader, rect)) return undefined;
+        if (anyOverlap(boxes, other.boxes)) found.push(other);
+        if (other.leader !== undefined && boxes.some((b) => segmentHits(other.leader!, b))) return undefined;
       }
       return found;
     };
@@ -953,6 +975,7 @@ export function placeNames(
       }),
       anchor: candidate.anchor,
       rect: candidate.rect,
+      boxes: candidate.boxes,
       leader: candidate.leader,
     });
     const search = (): { readonly chosen: NameCandidate; readonly cost: number } => {
@@ -1008,7 +1031,7 @@ export function placeNames(
       return left.x0 + left.x1 < right.x0 + right.x1;
     };
     for (const u of upperRoom) {
-      const l = lowerRoom.find((candidate) => !overlaps(u.rect, candidate.rect) && sameOrder(u.rect, candidate.rect));
+      const l = lowerRoom.find((candidate) => !anyOverlap(u.boxes, candidate.boxes) && sameOrder(u.rect, candidate.rect));
       if (l !== undefined) return [upperGroup.toName(u), lowerGroup.toName(l)];
     }
     return undefined;
@@ -1034,7 +1057,15 @@ export function placeNames(
         const x = side === 'left' ? point.px - NAME_GAP - w : point.px + NAME_GAP;
         const baseline = point.py + 4;
         const rect = { x0: x - 1, x1: x + w + 1, y0: baseline - 11.5, y1: baseline + 4.5 };
-        return { x, anchor: side === 'left' ? 'end' : 'start', firstBaseline: baseline, rect, gap: NAME_GAP - POINT_CLEARANCE - 1, leader: undefined };
+        return {
+          x,
+          anchor: side === 'left' ? 'end' : 'start',
+          firstBaseline: baseline,
+          rect,
+          boxes: [rect],
+          gap: NAME_GAP - POINT_CLEARANCE - 1,
+          leader: undefined,
+        };
       };
       const leftName = oneLine(leftPoint, 'left');
       const rightName = oneLine(rightPoint, 'right');
@@ -1049,6 +1080,7 @@ export function placeNames(
         ],
         anchor: candidate.anchor,
         rect: candidate.rect,
+        boxes: candidate.boxes,
         leader: undefined,
       });
       const leftPlaced = asName(leftPoint, leftName);
@@ -1097,7 +1129,7 @@ function yieldNames(placed: PlotName[], slots: readonly (NameSlot | undefined)[]
         roomFor.set(b, room);
       }
       // 線の付いていた名前の候補は、動かす名前以外とは重ならない。移り先の長方形と重ならなければ、重なりは0
-      const target = room.find((candidateB) => !overlaps(candidateA.rect, candidateB.rect));
+      const target = room.find((candidateB) => !anyOverlap(candidateA.boxes, candidateB.boxes));
       if (target === undefined) continue;
       placed[a] = slotA.toName(candidateA);
       placed[b] = slotB.toName(target);
@@ -1173,10 +1205,10 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
   const legend = placeLegend(
     drawn.length > 0 ? [...input.legendRows, input.contourName] : input.legendRows,
     marks,
-    names.map((placed) => placed.rect),
+    names.flatMap((placed) => placed.boxes),
   );
   const occupied: Rect[] = [
-    ...names.map((placed) => placed.rect),
+    ...names.flatMap((placed) => placed.boxes),
     ...marks,
     ...(legend === undefined ? [] : [{ x0: legend.x0, x1: legend.x1, y0: legend.y0, y1: legend.y1 }]),
   ];
