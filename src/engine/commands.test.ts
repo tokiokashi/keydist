@@ -642,6 +642,23 @@ test('setStandaloneAnalyzerOptionsCommand: 別のAnalyzer idの設定は道連�
   });
 });
 
+test('setStandaloneAnalyzerOptionsCommand: 既定値へ戻す書き込みは、解析設定の項目だけを替え、対象と条件には触れない', () => {
+  const history = emptyCommandHistory<KeydistAssets>();
+  const withOptions = applyCommand(emptyAssets(), history, setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual', lineScale: 'sqrt' }));
+  const withTarget = applyCommand(withOptions.assets, withOptions.history, setSingleTargetCommand(TARGET_A));
+  const withCondition = applyCommand(withTarget.assets, withTarget.history, setCascadeOverrideCommand({ kind: 'global' }, 'windowSize', 5));
+  assert.equal(withCondition.outcome.kind, 'applied');
+
+  const reset = applyCommand(
+    withCondition.assets,
+    withCondition.history,
+    setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'default', lineScale: 'linear' }),
+  );
+  assert.equal(reset.outcome.kind, 'applied');
+  assert.deepEqual(reset.assets.standaloneAnalyzerOptions, { 'bigram-flow': { source: 'default', lineScale: 'linear' } });
+  assert.deepEqual({ ...reset.assets, standaloneAnalyzerOptions: {} }, { ...withCondition.assets, standaloneAnalyzerOptions: {} });
+});
+
 test('setMultiTargetsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();

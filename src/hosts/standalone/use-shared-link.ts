@@ -11,6 +11,7 @@ import {
 } from '#engine/commands.ts';
 import type { OptionsUrlDecodeResult } from '#analyzers/options.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
+import { mergeSharedOptions } from './shared-options-merge.ts';
 import {
   decodeMultiTargetsFromUrl,
   decodeSingleTargetFromUrl,
@@ -113,8 +114,8 @@ export function useSharedLink<Options>({
     if (optionDiagnosticsFound.length > 0) setOptionDiagnostics(optionDiagnosticsFound);
     if (optionsResult.consumedParamNames.length > 0) {
       consumed.push(...optionsResult.consumedParamNames);
-      if (Object.keys(optionsResult.values).length > 0) {
-        const merged = { ...currentRef.current, ...optionsResult.values };
+      const merged = mergeSharedOptions(currentRef.current, optionsResult.values);
+      if (merged !== undefined) {
         commands.push(setStandaloneAnalyzerOptionsCommand(analyzerId, merged));
         setDraftRef.current(merged);
       }
