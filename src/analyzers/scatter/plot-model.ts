@@ -231,12 +231,23 @@ export interface PlotNameLine {
  */
 export interface PlotName {
   readonly lines: readonly PlotNameLine[];
-  /** 行をそろえる向き。名前の長方形の右端が点の箱の左端以下なら右端（`end`）、それ以外は左端（`start`）。列に分けた名前は列ごとに同じ向き。描画の`text-anchor`にそのまま使う。 */
+  /** 行をそろえる向き。点の左の名前は右端（`end`）、点の右の名前は左端（`start`）。点の上下の名前は、点の箱の横の中央が名前の長方形の横の中央より左なら左端、そうでなければ右端。列に分けた名前は列ごとに同じ向き。描画の`text-anchor`にそのまま使う。 */
   readonly anchor: 'start' | 'end';
   /** 名前の占める長方形。周りに余白を足してある。名前どうしの重なりはこの長方形の交差で数える。 */
   readonly rect: PlotRect;
   /** 点から離れた場所に置いた名前と、点の印を結ぶ細い線。近くに置いた名前には無い。 */
   readonly leader: { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number } | undefined;
+}
+
+/**
+ * 名前の行をそろえる向き。点の左に離れた名前は右端、右に離れた名前は左端。
+ * 横の範囲が点の箱と重なる名前（点の上下の名前）は、点の箱の横の中央が名前の長方形の横の中央より左なら左端、そうでなければ右端。
+ * 点の側の行の端が、点の箱の横の中央に近い側にそろう。
+ */
+function anchorOf(rect: Rect, box: Rect): PlotName['anchor'] {
+  if (rect.x1 <= box.x0) return 'end';
+  if (rect.x0 >= box.x1) return 'start';
+  return box.x0 + box.x1 < rect.x0 + rect.x1 ? 'start' : 'end';
 }
 
 export interface PlotPointInput {
@@ -744,8 +755,8 @@ interface NameSlot {
  * 同じ隙間（1px未満は1pxとみなす）の候補は、右・左の辺では縦の中央からのずれが、上・下の辺では名前の左端を点の箱の左端にそろえた位置（名前が点から右へ伸びる）からのずれが小さい順に、右・左・下・上の辺、続けて角の順に比べ、最初の候補を選ぶ。
  * 隙間が`MIN_LEADER`以上の名前には、一番近い点の印の縁から名前の長方形へ細い引き出し線を付ける。
  * 名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
- * 行は、名前の長方形の右端が点の箱の左端以下なら右端、それ以外は左端でそろえる（列に分けた名前は列ごとに同じ）。上下の名前は、名前の長方形の左端を点の箱の左端にそろえた位置から試す。
- * 点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。
+ * 行は、点の左の名前は右端、点の右の名前は左端、点の上下の名前は点の箱の横の中央が名前の長方形の横の中央より左なら左端、そうでなければ右端でそろえる（列に分けた名前は列ごとに同じ）。上下の名前は、名前の長方形の左端を点の箱の左端にそろえた位置から試す。
+ * 点の左右の名前では、点の側の行の端が名前の長方形の端と一致するので、長方形で測った隙間が見え方と合う。
  * 2行以上の名前は、点の左右に置く候補を、組の中心の高さが1行目と最終行の文字の縦の中央の間にある位置に限り（図の中へ寄せた後で判定する）、角の候補を使わない。
  * 点の高さから遠い行だけが点のそばに残る置き方を避けるため。上下の候補と1行の名前の候補は変えない。
  * 印が重なる2点の組は、まず点ごとに1行の名前を分けて置けるか試す。各点を1点だけの組とみなした時の、引き出し線が付かない候補（隙間が`MIN_LEADER`未満）のうち、
@@ -818,7 +829,7 @@ export function placeNames(
       const nearest = nearestMember(cluster.members, marks, points, rect);
       return {
         x: rect.x0 + 1,
-        anchor: rect.x1 <= box.x0 ? 'end' : 'start',
+        anchor: anchorOf(rect, box),
         firstBaseline: rect.y0 + 11.5,
         rect,
         gap: nearest.gap,
