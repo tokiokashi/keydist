@@ -449,7 +449,12 @@ test('scatterPlotModel: 細い線の値は、枠の線・点・点の名前に�
     for (const point of model.points) {
       assert.equal(hits({ x0: point.px - 7, x1: point.px + 7, y0: point.py - 7, y1: point.py + 7 }), false, `${line.text}と${point.label}の点`);
     }
-    for (const name of model.names) assert.equal(hits(name.rect), false, `${line.text}と${name.lines[0]!.text}の名前`);
+    for (const name of model.names)
+      assert.equal(
+        name.boxes.some((box) => hits(box)),
+        false,
+        `${line.text}と${name.lines[0]!.text}の名前`,
+      );
   }
 });
 
