@@ -228,8 +228,12 @@ export function encodeMultiTargetsToUrl(
 export interface SharedTargetsNotice {
   /** 手持ちに無かった自作の配列・Setupの名前（画面に出す）。 */
   readonly notFound: readonly { readonly kind: 'user-layout' | 'setup'; readonly name: string }[];
-  /** 読み取れなかった・この版に無い参照の件数。 */
+  /** 参照の形が崩れていて読み取れなかった件数（長さの上限を超えた値を含む）。 */
   readonly unreadable: number;
+  /** 組み込みの配列のidが、この版に無かった件数。 */
+  readonly missingBuiltin: number;
+  /** 件数の上限を超えて開かなかった対象の件数。 */
+  readonly overLimit: number;
 }
 
 export type SharedTargetsKind = 'single' | 'multi';
@@ -248,6 +252,12 @@ export function hasSharedTargetParams(search: string, kind: SharedTargetsKind): 
 interface NoticeBuilder {
   readonly notFound: { kind: 'user-layout' | 'setup'; name: string }[];
   unreadable: number;
+  missingBuiltin: number;
+  overLimit: number;
+}
+
+function newNoticeBuilder(): NoticeBuilder {
+  return { notFound: [], unreadable: 0, missingBuiltin: 0, overLimit: 0 };
 }
 
 function resolveAll(
@@ -268,7 +278,7 @@ function resolveAll(
     if (resolution.ok) {
       found.push(resolution.target);
     } else if (resolution.kind === 'layout') {
-      notice.unreadable += 1;
+      notice.missingBuiltin += 1;
     } else if (!notice.notFound.some((item) => item.kind === resolution.kind && item.name === resolution.name)) {
       notice.notFound.push({ kind: resolution.kind, name: resolution.name! });
     }
@@ -283,7 +293,7 @@ export interface DecodedSingleTarget {
 }
 
 export function decodeSingleTargetFromUrl(params: URLSearchParams, source: TargetShareSource, diagnostics: CodecDiagnostic[]): DecodedSingleTarget {
-  const notice: NoticeBuilder = { notFound: [], unreadable: 0 };
+  const notice = newNoticeBuilder();
   const raw = params.get(SHARE_TARGET_PARAM);
   if (raw === null) return { present: false, target: undefined, notice };
   const [target] = resolveAll([raw], `url.${SHARE_TARGET_PARAM}`, source, diagnostics, notice);
@@ -300,14 +310,14 @@ export interface DecodedMultiTargets {
 }
 
 export function decodeMultiTargetsFromUrl(params: URLSearchParams, source: TargetShareSource, diagnostics: CodecDiagnostic[]): DecodedMultiTargets {
-  const notice: NoticeBuilder = { notFound: [], unreadable: 0 };
+  const notice = newNoticeBuilder();
   const rawTargets = params.getAll(SHARE_TARGETS_PARAM);
   const rawBaseline = params.get(SHARE_BASELINE_PARAM);
   if (rawTargets.length === 0 && rawBaseline === null) return { present: false, targets: [], baseline: undefined, notice };
 
   if (rawTargets.length > SHARE_MAX_TARGETS) {
     diagnostics.push({ path: `url.${SHARE_TARGETS_PARAM}`, message: `対象は${SHARE_MAX_TARGETS}件までのため超過分を捨てました` });
-    notice.unreadable += rawTargets.length - SHARE_MAX_TARGETS;
+    notice.overLimit += rawTargets.length - SHARE_MAX_TARGETS;
   }
   const resolved = resolveAll(rawTargets.slice(0, SHARE_MAX_TARGETS), `url.${SHARE_TARGETS_PARAM}`, source, diagnostics, notice);
   const seen = new Set<string>();
@@ -343,7 +353,13 @@ export function describeSharedTargetsNotice(notice: SharedTargetsNotice): readon
     lines.push(`共有された${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は、この端末に見つかりませんでした`);
   }
   if (notice.unreadable > 0) {
-    lines.push(`共有リンクの対象のうち、読み取れないものがありました（${notice.unreadable}件）`);
+    lines.push(`共有リンクの一部（${notice.unreadable}件）を読み取れませんでした。リンクが途中で切れている可能性があります`);
+  }
+  if (notice.missingBuiltin > 0) {
+    lines.push(`共有された配列のうち${notice.missingBuiltin}件は、このバージョンにありません`);
+  }
+  if (notice.overLimit > 0) {
+    lines.push(`共有リンクの対象は${SHARE_MAX_TARGETS}件までのため、超えた分（${notice.overLimit}件）は開きませんでした`);
   }
   return lines;
 }
@@ -419,9 +435,15 @@ export function describeTextShareNotice(userText: boolean): readonly string[] {
   return userText ? ['自作のテキストはリンクに載りません。開いた側では、その人が選んでいるテキストのままです'] : [];
 }
 
-/** 既定と違う条件がある対象を共有する時に、送る側へ示す文。条件はリンクに載らない。 */
-export function describeConditionShareNotice(changed: boolean): readonly string[] {
-  return changed ? ['条件はリンクに載らないので、開いた側では数値が変わることがあります。'] : [];
+/**
+ * 既定と違う条件がある対象を共有する時に、送る側へ示す文。条件はリンクに載らず、開いた側では開いた人の条件で計算する。
+ * `labels`は既定と違う項目の名前。先頭の数件だけ出し、残りは件数にする。
+ */
+export function describeConditionShareNotice(labels: readonly string[]): readonly string[] {
+  if (labels.length === 0) return [];
+  const shown = labels.slice(0, MAX_NAMES_SHOWN);
+  const rest = labels.length - shown.length;
+  return [`${shown.join('・')}${rest > 0 ? `ほか${rest}件` : ''}の変更はリンクに載りません。開いた人の画面では、その人の条件で計算します`];
 }
 
 export interface DecodedSharedText {
