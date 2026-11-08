@@ -516,8 +516,8 @@ function logContours(
       let best = 0;
       let bestGap = Number.POSITIVE_INFINITY;
       for (let from = 0; from + MAX_LEVELS <= all.length; from++) {
-        const window = all.slice(from, from + MAX_LEVELS);
-        const gap = Math.abs(window.reduce((sum, v) => sum + Math.log(v), 0) / MAX_LEVELS - mid);
+        const run = all.slice(from, from + MAX_LEVELS);
+        const gap = Math.abs(run.reduce((sum, v) => sum + Math.log(v), 0) / MAX_LEVELS - mid);
         if (gap < bestGap - 1e-9) {
           best = from;
           bestGap = gap;
