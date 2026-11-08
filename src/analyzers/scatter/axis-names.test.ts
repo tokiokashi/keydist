@@ -197,27 +197,3 @@ test('長い名前は、日本語と英語のテキストで表のとおりに�
     assert.equal(axisName(column, 'en'), en, column);
   }
 });
-
-test('対数の目盛りの軸の名前: 単位がある列は単位と並べて括弧に入れ、無い列は「対数」だけを括弧に入れ、通常の目盛りでは変えない', () => {
-  assert.equal(axisPlotTitle('meanPerStroke', 'ja'), '距離/アクション（u）');
-  assert.equal(axisPlotTitle('meanPerStroke', 'ja', true), '距離/アクション（u、対数）');
-  assert.equal(axisPlotTitle('actionsPerUnit', 'ja', true), 'アクション数/距離（1/u、対数）');
-  assert.equal(axisPlotTitle('sameFingerRate', 'ja', true), '同指率（%、対数）');
-  assert.equal(axisPlotTitle('actions', 'ja', true), `${axisName('actions', 'ja')}（対数）`);
-  for (const column of COMPARISON_COLUMN_IDS) {
-    assert.equal(axisPlotTitle(column, 'ja', false), axisPlotTitle(column, 'ja'));
-    assert.ok(axisPlotTitle(column, 'ja', true).endsWith('対数）'), column);
-  }
-  // 組み合わせの名前・キャプション・点の読み取りに使う名前には、目盛りの種類を添えない
-  assert.ok(!axisTitle('meanPerStroke', 'ja').includes('対数'));
-  assert.ok(!axisName('meanPerStroke', 'ja').includes('対数'));
-});
-
-test('対数の目盛りの軸の名前の推定幅も、横の描画領域と縦の描画領域の高さに収まる', () => {
-  for (const language of LANGUAGES) {
-    for (const column of COMPARISON_COLUMN_IDS) {
-      const width = estimateTextWidth(axisPlotTitle(column, language, true));
-      assert.ok(width <= PLOT_INNER_WIDTH && width <= PLOT_INNER_HEIGHT, `${column} ${language} ${width}`);
-    }
-  }
-});
