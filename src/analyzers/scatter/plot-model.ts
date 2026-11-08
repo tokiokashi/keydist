@@ -434,6 +434,8 @@ function percentLevels(range: Range): readonly number[] {
  * 線の量が割合（単位が%）の時だけ、選ばれた刻みが10%より粗ければ10%に置き換える。刻みが10%の時は6本に絞らず、
  * 10%から90%までの範囲に入る線を全部引く（最大9本）。4本の下限は0%と100%を除く前の本数で数える（刻みを細かくする繰り返しは置き換えの前に終わる）ので、
  * 範囲が0%に届く図では、0%を除いて3本になることがある。0%の線は軸そのものが代わりになるので、細かくし直さない。
+ *
+ * 対数の目盛りの図で、割合でない線の量が`LOG_CONTOUR_SPAN`倍以上に広がる時は、先に倍率の刻み（`logContours`）で選ぶ。
  */
 function selectContours(
   contour: ScatterContour,
@@ -443,9 +445,12 @@ function selectContours(
 ): { readonly lines: readonly DrawnContour[]; readonly step: number } {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
+  // 対数の目盛りでは、描画領域の上で等間隔になるよう、値を対数の上で等間隔に取る
+  const at = (range: Range, i: number): number =>
+    log ? range.lo * (range.hi / range.lo) ** (i / LEVEL_GRID) : range.lo + ((range.hi - range.lo) * i) / LEVEL_GRID;
   for (let i = 0; i <= LEVEL_GRID; i++) {
     for (let j = 0; j <= LEVEL_GRID; j++) {
-      const value = contour.valueAt(xRange.lo + ((xRange.hi - xRange.lo) * i) / LEVEL_GRID, yRange.lo + ((yRange.hi - yRange.lo) * j) / LEVEL_GRID);
+      const value = contour.valueAt(at(xRange, i), at(yRange, j));
       if (value === undefined) continue;
       if (value < min) min = value;
       if (value > max) max = value;
@@ -454,6 +459,11 @@ function selectContours(
   if (!(max > min)) return { lines: [], step: 1 };
   const range = { lo: min, hi: max };
   const draw = (levels: readonly number[]) => levels.map((level) => contourLine(contour, level, xRange, yRange, log)).filter((line) => line.d !== '');
+  const isPercent = axisUnit(contour.column) === '%';
+  if (log && !isPercent && min > 0 && max >= min * LOG_CONTOUR_SPAN) {
+    const logSelected = logContours(range, draw);
+    if (logSelected !== undefined) return logSelected;
+  }
   let step = Math.max(niceTicks(range, 4).step, MIN_LEVEL_STEP);
   let selected: { readonly lines: readonly DrawnContour[]; readonly step: number };
   for (;;) {
@@ -468,10 +478,63 @@ function selectContours(
     }
     step = finerStep(step);
   }
-  if (axisUnit(contour.column) === '%' && selected.step >= PERCENT_STEP) {
+  if (isPercent && selected.step >= PERCENT_STEP) {
     return { lines: draw(percentLevels(range)), step: PERCENT_STEP };
   }
   return selected;
+}
+
+/**
+ * 線の量が描画領域の中でこの倍率以上に広がる対数の目盛りの図だけ、細い線を倍率の刻みで選ぶ。
+ * これより狭い図は一定の刻みでも線の間隔の偏りが目立たないので、一定の刻みのままにする。
+ */
+const LOG_CONTOUR_SPAN = 100;
+
+/**
+ * 倍率の刻みで選んだ細い線の本数の上限。倍率の刻みの線は対数の図で等間隔に並ぶので、一定の刻みの上限（`MAX_LEVELS`）より多く引いても詰まらない。
+ * 範囲の一部だけに線を引くと線の無い側が空いて見えるので、1・2・5の段で3桁（1000倍）に入る9本まで引く。
+ */
+const LOG_MAX_LEVELS = 9;
+
+/**
+ * 対数の目盛りの図で、線の量が描画領域の中で`LOG_CONTOUR_SPAN`倍以上に広がる時の細い線の値。目盛りと同じ段（`LOG_TIER_LEADS`）の値を、粗い段から順に試す。
+ * 一定の刻みで選ぶと、対数の図では値の大きい側に線が詰まり、値の小さい側に線が無くなるので、倍率の刻みで選ぶ。
+ * 段の値が`LOG_MAX_LEVELS`を超える時は、連続する`LOG_MAX_LEVELS`個のうち、対数の上の平均が範囲の対数の中点に最も近いものを残す。
+ * 描かれた線が`MIN_LEVELS`に届く最も粗い段を使い、どの段でも届かない時は`undefined`を返して一定の刻みの選び方に任せる。
+ * 返す刻みは、値を書く時の小数の桁を決めるもので、最小の値の位（10の冪）。
+ */
+function logContours(
+  range: Range,
+  draw: (levels: readonly number[]) => readonly DrawnContour[],
+): { readonly lines: readonly DrawnContour[]; readonly step: number } | undefined {
+  const mid = (Math.log(range.lo) + Math.log(range.hi)) / 2;
+  for (const tier of [1, 2, 3] as const) {
+    const all: number[] = [];
+    for (let power = Math.floor(Math.log10(range.lo)); power <= Math.ceil(Math.log10(range.hi)); power++) {
+      for (const lead of LOG_TIER_LEADS[tier]) {
+        const value = Number((lead * 10 ** power).toPrecision(12));
+        if (value >= range.lo && value <= range.hi) all.push(value);
+      }
+    }
+    all.sort((a, b) => a - b);
+    let levels = all;
+    if (all.length > LOG_MAX_LEVELS) {
+      let best = 0;
+      let bestGap = Number.POSITIVE_INFINITY;
+      for (let from = 0; from + LOG_MAX_LEVELS <= all.length; from++) {
+        const run = all.slice(from, from + LOG_MAX_LEVELS);
+        const gap = Math.abs(run.reduce((sum, v) => sum + Math.log(v), 0) / LOG_MAX_LEVELS - mid);
+        if (gap < bestGap - 1e-9) {
+          best = from;
+          bestGap = gap;
+        }
+      }
+      levels = all.slice(best, best + LOG_MAX_LEVELS);
+    }
+    const lines = draw(levels);
+    if (lines.length >= MIN_LEVELS) return { lines, step: 10 ** Math.floor(Math.log10(levels[0]!) + 1e-9) };
+  }
+  return undefined;
 }
 
 interface DrawnContour {
