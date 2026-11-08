@@ -1,11 +1,18 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import type { LayoutKind } from '#input/layouts/kind.ts';
+import { ChipSelectOptionField } from '#ui/primitives/chip-select-option-field.tsx';
 import { bindOption, CheckboxGroupOptionField, SegmentedOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import type { TextLanguage } from '#input/text/language.ts';
-import { COMPARISON_COLUMN_IDS, comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
+import {
+  COMPARISON_COLUMN_GROUP,
+  COMPARISON_COLUMN_IDS,
+  COMPARISON_COLUMN_IDS_BY_GROUP,
+  comparisonColumnText,
+  type ComparisonColumnId,
+} from '../comparison-column-text.ts';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
 import { SCATTER_PRESET_IDS, scatterPresetLabels, scatterAxisProblem, type ScatterAxisProblem } from './axes.ts';
@@ -47,12 +54,6 @@ const PLOT_RIGHT = PLOT_WIDTH - PLOT_MARGIN.right;
 const PLOT_BOTTOM = PLOT_HEIGHT - PLOT_MARGIN.bottom;
 /** 目盛りの線の長さ。枠の内側へ向ける。 */
 const TICK_LENGTH = 5;
-
-/** 対数の目盛りを選んでいるのに通常の目盛りで描く理由を、理由ごとに1文で伝える。 */
-const LOG_BLOCKER_TEXTS = {
-  noStraightLines: '細い線が直線にならない図なので、対数の目盛りにはできず、通常の目盛りで表示しています。',
-  nonPositive: '0以下の値があるので、対数の目盛りにはできず、通常の目盛りで表示しています。',
-} as const;
 
 function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): string {
   const k = kanaUnitOf(language, SCATTER_KANA_SCRIPT);
@@ -192,7 +193,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
       readout: row == null || text == null ? undefined : { row, mark: row.querySelector('.scatter-readout-mark'), text },
     };
   };
-  const { axes, plotted, excluded, contour, logScale, logReasons, usedKinds, model } = figure;
+  const { axes, plotted, excluded, contour, logScale, usedKinds, model } = figure;
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const quantityHelp = scatterQuantityHelp(axes, contour, language, logScale);
   const readouts = [
@@ -218,11 +219,6 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
             />
             {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
           </div>
-          {logReasons.map((reason) => (
-            <p key={reason} className="scatter-notice" data-scatter-log-notice={reason}>
-              {LOG_BLOCKER_TEXTS[reason]}
-            </p>
-          ))}
           <figure ref={figureRef} className="scatter-figure">
             <svg
               viewBox={`${model.viewBoxX} 0 ${PLOT_WIDTH - model.viewBoxX} ${PLOT_HEIGHT}`}
@@ -538,7 +534,7 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
   );
 }
 
-/** 散布図の解析設定（組み合わせ・列の数・目盛りと、自由に選ぶ時の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
+/** 散布図の解析設定（軸・列の数・組み合わせと、自由に選ぶ時の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
   const language = useTextLanguage();
@@ -546,51 +542,21 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
   const presetLabels = scatterPresetLabels(language);
   // 選んでいない列は、もう一方の軸に選んだ全部の列と選べない組になる時だけ、選べない状態にする
   const axisChoices = (own: readonly ComparisonColumnId[], other: readonly ComparisonColumnId[]) =>
-    COMPARISON_COLUMN_IDS.map((column) => ({
+    COMPARISON_COLUMN_IDS_BY_GROUP.map((column) => ({
       value: column,
       label: text[column].label,
+      group: COMPARISON_COLUMN_GROUP[column],
       disabled: !own.includes(column) && other.length > 0 && other.every((o) => scatterAxisProblem(o, column) !== undefined),
     }));
   return (
     <div className="option-groups">
-      <CheckboxGroupOptionField
-        label="組み合わせ"
-        binding={bind('presets')}
-        choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: presetLabels[id] }))}
-        minSelected={1}
-        listed
-      />
-      {options.presets.includes('free') ? (
-        <>
-          <CheckboxGroupOptionField
-            label="横軸"
-            binding={bind('xAxes')}
-            choices={axisChoices(options.xAxes, options.yAxes)}
-            selectAll
-            hint="横軸と縦軸の選んだ全部の組ごとに図を1つ描きます。軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。押下1回の移動距離など、配列ごとに違う回数で割った距離の線は引きません。"
-          />
-          <CheckboxGroupOptionField label="縦軸" binding={bind('yAxes')} choices={axisChoices(options.yAxes, options.xAxes)} selectAll />
-          {options.xAxes.length >= 2 && options.yAxes.length >= 2 ? (
-            <SegmentedOptionField
-              label="図の並び"
-              binding={bind('freeOrder')}
-              choices={[
-                { value: 'byX', label: '横軸ごと' },
-                { value: 'byY', label: '縦軸ごと' },
-              ]}
-              hint="横軸ごとは、横軸の順に並べ、その中で縦軸の順に並べます。縦軸ごとは、縦軸の順に並べ、その中で横軸の順に並べます。"
-            />
-          ) : null}
-        </>
-      ) : null}
       <SegmentedOptionField
-        label="目盛り"
+        label="軸"
         binding={bind('tickScale')}
         choices={[
-          { value: 'linear', label: '通常' },
+          { value: 'linear', label: '線形' },
           { value: 'log', label: '対数' },
         ]}
-        hint="対数にできるのは、細い線が直線になる図だけです。"
       />
       <SegmentedOptionField
         label="列の数"
@@ -601,8 +567,30 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
           { value: '2', label: '2' },
           { value: '3', label: '3' },
         ]}
-        hint="自動は、幅に収まる最大の列の数にします。数を選ぶと、その数が上限になります。"
       />
+      <CheckboxGroupOptionField
+        label="組み合わせ"
+        binding={bind('presets')}
+        choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: presetLabels[id] }))}
+        minSelected={1}
+        listed
+      />
+      {options.presets.includes('free') ? (
+        <>
+          <ChipSelectOptionField label="横軸" binding={bind('xAxes')} choices={axisChoices(options.xAxes, options.yAxes)} order={COMPARISON_COLUMN_IDS} />
+          <ChipSelectOptionField label="縦軸" binding={bind('yAxes')} choices={axisChoices(options.yAxes, options.xAxes)} order={COMPARISON_COLUMN_IDS} />
+          {options.xAxes.length >= 2 && options.yAxes.length >= 2 ? (
+            <SegmentedOptionField
+              label="図の並び"
+              binding={bind('freeOrder')}
+              choices={[
+                { value: 'byX', label: '横軸ごと' },
+                { value: 'byY', label: '縦軸ごと' },
+              ]}
+            />
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }

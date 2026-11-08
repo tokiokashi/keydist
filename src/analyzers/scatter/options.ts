@@ -109,7 +109,7 @@ export const scatterOptions = defineOptions({
     default: DEFAULT_SCATTER_TICK_SCALE,
     affects: 'view',
     url: picklistUrlCodec('scale', SCATTER_TICK_SCALES),
-    label: '目盛り',
+    label: '軸',
   }),
   columns: defineOption<ScatterColumnSetting>({
     schema: v.picklist(SCATTER_COLUMN_SETTINGS),

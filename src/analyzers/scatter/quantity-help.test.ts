@@ -335,18 +335,18 @@ test('図の見方の量の説明は、比較表の列名を比較表の見出�
   assert.ok(line?.includes('大半はかなですが'), line);
 });
 
-test('図の見方: 対数の目盛りで描いている時だけ、対数の目盛りの説明を出す', () => {
+test('図の見方: 対数で描いている時だけ、対数の説明を出す', () => {
   const { x, y } = SCATTER_PRESET_AXES.distance;
   const contour = scatterContour(x, y, INPUT_CHARS, 'ja');
   const linear = scatterQuantityHelp({ x, y }, contour, 'ja').help.notes;
   assert.deepEqual(scatterQuantityHelp({ x, y }, contour, 'ja', false).help.notes, linear);
   const log = scatterQuantityHelp({ x, y }, contour, 'ja', true).help.notes;
   assert.equal(log.length, linear.length + 1);
-  assert.ok(log.some((note) => note.includes('対数の目盛り')));
+  assert.ok(log.some((note) => note.includes('対数です')));
   assert.ok(!linear.some((note) => note.includes('対数')));
 });
 
-test('ペインの図の見方: 目盛りを対数にできる図とできない図の説明を出す', () => {
+test('ペインの図の見方: 軸を対数にできる図とできない図の説明を出す', () => {
   const notes = SCATTER_PANE_META.help('ja').notes;
-  assert.ok(notes.some((note) => note.includes('目盛りを対数にすると') && note.includes('0以下')));
+  assert.ok(notes.some((note) => note.includes('軸を対数にすると') && note.includes('0以下')));
 });

@@ -9,11 +9,13 @@ import {
   type ComparisonOptions,
   comparisonOptions,
 } from './options.ts';
-import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField } from '#ui/primitives/option-fields.tsx';
+import { ChipSelectOptionField } from '#ui/primitives/chip-select-option-field.tsx';
+import { bindOption, CheckboxOptionField, OptionField } from '#ui/primitives/option-fields.tsx';
 import { sortOrderByColumn } from '#ui/primitives/column-sort.ts';
 import { SortColumnHeader } from '#ui/primitives/sort-column-header.tsx';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
 import { useTextLanguage } from '../text-language-context.tsx';
+import { COMPARISON_COLUMN_GROUP, COMPARISON_COLUMN_IDS_BY_GROUP } from '../comparison-column-text.ts';
 import { COMPARISON_BAR_SCALE, COMPARISON_RELATIVE_BAR_NOTE, comparisonBarFraction, comparisonBarRange, type ComparisonBarRange } from './data-bar.ts';
 import type { AnalyzerSettingsProps, AnalyzerTargetItemProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import './comparison-view.css';
@@ -218,10 +220,19 @@ const SORT_DIRECTION_TEXT = { asc: '昇順', desc: '降順' } as const;
 export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ComparisonOptions>) {
   const bind = <K extends keyof ComparisonOptions>(key: K) => bindOption(options, DEFAULT_COMPARISON_OPTIONS, onOptionsChange, key);
   const columns = comparisonColumns(useTextLanguage());
-  const columnChoices = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: columns[column].label }));
+  const columnChoices = COMPARISON_COLUMN_IDS_BY_GROUP.map((column) => ({
+    value: column,
+    label: columns[column].label,
+    group: COMPARISON_COLUMN_GROUP[column],
+  }));
   return (
     <div className="option-groups">
-      <CheckboxGroupOptionField<ComparisonColumnId> label="表示する列" binding={bind('visibleColumns')} choices={columnChoices} selectAll />
+      <ChipSelectOptionField<ComparisonColumnId>
+        label="表示する列"
+        binding={bind('visibleColumns')}
+        choices={columnChoices}
+        order={COMPARISON_COLUMN_IDS}
+      />
       <CheckboxOptionField label="基準比（%）も表示する" binding={bind('showBaselineRatio')} />
       <OptionField label="並び替え" binding={bind('sort')}>
         {(id) => (

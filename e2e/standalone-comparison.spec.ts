@@ -190,14 +190,15 @@ test('共有リンクで届いた解析設定と対象は、「元に戻す」1�
   const rows = page.locator('.comparison-table tbody tr[data-comparison-row="ok"]');
   await expect(rows).toHaveCount(2, { timeout: 10_000 });
   await expect(page).toHaveURL(/\/analyzer\/comparison$/);
-  const firstColumn = async () => (await openSettings(page)).getByRole('checkbox', { name: 'アクション数', exact: true });
-  await expect(await firstColumn()).not.toBeChecked();
+  // 表示する列は、選んでいる列だけが「〜を外す」ボタン付きの札で並ぶ
+  const firstColumn = async () => (await openSettings(page)).getByRole('button', { name: 'アクション数を外す', exact: true });
+  await expect(await firstColumn()).toHaveCount(0);
   await page.keyboard.press('Escape');
 
   const undo = page.getByRole('button', { name: '元に戻す' });
   await undo.click();
   await expect(rows).toHaveCount(1);
-  await expect(await firstColumn()).toBeChecked();
+  await expect(await firstColumn()).toHaveCount(1);
   await page.keyboard.press('Escape');
   // 取り込みは履歴1項目なので、これ以上戻すものは無い。
   await expect(undo).toBeDisabled();
