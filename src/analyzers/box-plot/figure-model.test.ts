@@ -11,6 +11,10 @@ import {
   MIN_COLUMN_WIDTH,
   boxPlotLayout,
   boxPlotModel,
+  fitVerticalLabel,
+  LABEL_MAX_LENGTH,
+  verticalLabelLength,
+  verticalLabelRuns,
   type BoxRowContext,
 } from './figure-model.ts';
 
@@ -155,4 +159,23 @@ test('列は幅の下限を割らず、隣と重ならずに左から並び、�
   many.columns.forEach((column, index) => {
     if (index > 0) assert.equal(column.left, many.columns[index - 1]!.right);
   });
+});
+
+test('縦書きの名前のまとまりは、英数字の並びとかな・漢字の境目でも重ならず、名前の長さに収まる', () => {
+  for (const label of ['QWERTY最適化', 'JISかな配列', 'Colemak-DH（ANSI）', 'Eucalyn 配列', '親指シフトQWERTY']) {
+    const runs = verticalLabelRuns(label, 12);
+    for (let index = 1; index < runs.length; index++) {
+      const previous = runs[index - 1]!;
+      assert.ok(runs[index]!.offset >= previous.offset + previous.length, label);
+    }
+    const last = runs[runs.length - 1]!;
+    assert.equal(verticalLabelLength(label, 12), last.offset + last.length);
+  }
+});
+
+test('上限を超える名前は切り詰めて上限に収め、収まる名前はそのまま返す', () => {
+  assert.equal(fitVerticalLabel('Colemak-DH（ANSI）', LABEL_MAX_LENGTH, 12), 'Colemak-DH（ANSI）');
+  const fitted = fitVerticalLabel('とても長い自作の配列の名前'.repeat(5), LABEL_MAX_LENGTH, 12);
+  assert.ok(fitted.endsWith('…'));
+  assert.ok(verticalLabelLength(fitted, 12) <= LABEL_MAX_LENGTH);
 });
