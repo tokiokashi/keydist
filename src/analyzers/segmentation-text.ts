@@ -1,17 +1,28 @@
 import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
 
 /**
- * 文節の区切りを使うAnalyzerが、区切りの出どころと分割器を示す文面。Run Chartと同じ文面にそろえるため、ここに1つだけ置く。
- * 値の定義は `docs/segment-metrics.md`「文節の区切り」。
+ * 文節の区切りを使うAnalyzerが、図や表の横のⓘに出す区切りの出どころと分割器。Run Chartと同じ文面にそろえるため、ここに1つだけ置く。
+ * 値の定義は `docs/segment-metrics.md`「文節の区切り」。ⓘの見た目は `segmentation-source-button.tsx` が持つ。
  */
-export const SEGMENTATION_ORIGIN_TEXT: Readonly<Record<SegmentationOrigin, string>> = {
-  dictionary: '区切りの出どころは、漢字を辞書で読みに直した語の境目へ寄せて写した文節の区切りです。',
-  'kana-only':
-    '原文が漢字を含まないので、前処理の対応だけで区切りを写しています。かなだけの文では分割器の精度が落ちる見込みですが、精度は測っていません。',
-  'dictionary-unavailable': '辞書を読み込めず漢字を読みに直していないので、前処理の対応だけで区切りを写しています。',
+
+/** ⓘの名前。 */
+export const SEGMENTATION_SOURCE_NAME = '文節の区切り';
+/** ⓘの説明。 */
+export const SEGMENTATION_SOURCE_DESCRIPTION = '文節の区切りを求めた分割器と、その出どころです。';
+
+const ORIGIN_ITEM: Readonly<Record<SegmentationOrigin, string>> = {
+  dictionary: '漢字の読みを辞書で求め、語の境目に合わせた区切りです。',
+  'kana-only': '原文に漢字が無いので、辞書の読みは使っていません。かなだけの文では分割器の精度が落ちる見込みですが、精度は測っていません。',
+  'dictionary-unavailable': '辞書を読み込めなかったので、漢字の読みは使っていません。',
 };
 
-/** 「分割器はBudouX <版>（日本語のモデル）です。」の後に出どころの文を続けた文。 */
-export function segmentationSourceSentence(splitter: SegmenterInfo, origin: SegmentationOrigin): string {
-  return `分割器は${splitter.name} ${splitter.version}（日本語のモデル）です。${SEGMENTATION_ORIGIN_TEXT[origin]}`;
+/** ⓘの一覧の項目（分割器と区切りの出どころ）。 */
+export function segmentationSourceItems(
+  splitter: SegmenterInfo,
+  origin: SegmentationOrigin,
+): readonly { readonly name: string; readonly description: string }[] {
+  return [
+    { name: '分割器', description: `${splitter.name} ${splitter.version}（日本語のモデル）` },
+    { name: '区切りの出どころ', description: ORIGIN_ITEM[origin] },
+  ];
 }

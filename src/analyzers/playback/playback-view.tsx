@@ -6,7 +6,7 @@ import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
 import { OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import type { SingleBodyProps } from '../pane-parts.tsx';
-import { segmentationSourceSentence } from '../segmentation-text.ts';
+import { SegmentationSourceButton } from '../segmentation-source-button.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
 import type { PlaybackExtracted } from './extract.ts';
@@ -313,7 +313,10 @@ export function PlaybackBody({
             </span>
           ) : null}
           {bunsetsuUse !== undefined ? (
-            <span data-playback-calculation-bunsetsu> {segmentationSourceSentence(bunsetsuUse.splitter, bunsetsuUse.origin)}</span>
+            <span data-playback-calculation-bunsetsu>
+              {' '}
+              <SegmentationSourceButton splitter={bunsetsuUse.splitter} origin={bunsetsuUse.origin} />
+            </span>
           ) : null}
           {bunsetsuWaitUnavailable ? (
             <span data-playback-calculation-bunsetsu-failed> 文節の分割器を読み込めなかったので、文節の区切りの待機は足していません。</span>

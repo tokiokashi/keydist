@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { SEGMENT_SEED_COUNT, type RankAmongRandom, type SegmentMetricStats, type SegmentStats } from '#interpretation/segments.ts';
 import { SPAN_METRIC_IDS, type SpanMetricId } from '#interpretation/span-metrics.ts';
-import { segmentationSourceSentence } from '../segmentation-text.ts';
+import { SegmentationSourceButton } from '../segmentation-source-button.tsx';
 import type { RunChartSegments } from './extract.ts';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
@@ -99,8 +99,9 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
       ) : (
         <>
           <p className="run-chart-segment-condition" data-run-chart-segment-condition="">
-            {segmentationSourceSentence(segments.splitter, segments.origin)}固定長の長さは{report.fixedLength}
+            固定長の長さは{report.fixedLength}
             {k}です。
+            <SegmentationSourceButton splitter={segments.splitter} origin={segments.origin} />
           </p>
           <div className="run-chart-segment-scroll">
             <table className="run-chart-segment-table" data-run-chart-segment-table="">
