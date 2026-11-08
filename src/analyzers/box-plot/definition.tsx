@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { CopyImageControl } from '../copy-image-control.tsx';
-import { FONT_SIZE } from '../figure-text.ts';
+import { FONT_SIZE, textWidth } from '../figure-text.ts';
 import { useSharedScale } from '../shared-scale.tsx';
 import { useElementWidth } from '../use-element-width.tsx';
 import { boxPlotDefinition, type BoxPlotExtracted } from './extract.ts';
@@ -41,6 +41,8 @@ export type BoxPlotBodyProps = SetBodyProps<BoxPlotExtracted, BoxPlotOptions, Bo
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** まだ幅を測っていない間に描く幅 [px]。 */
+/** 画面のキャプションの文字の大きさ [px]（1rem）。 */
+const CAPTION_FONT_SIZE = 16;
 const FALLBACK_WIDTH = 360;
 /** 目盛りの線の長さ [px]。枠の内向きに引く。 */
 const TICK_LENGTH = 4;
@@ -59,12 +61,13 @@ function columnAriaLabel(row: BoxDisplayRow): string {
 }
 
 /** 縦軸の列と、スクロールする図を、1枚のSVGにまとめる（画像には図の全体を含める）。 */
-function composeImageSvg(axis: SVGSVGElement, plot: SVGSVGElement): SVGSVGElement {
+function composeImageSvg(axis: SVGSVGElement, plot: SVGSVGElement, blockWidth: number): SVGSVGElement {
   const axisWidth = axis.viewBox.baseVal.width;
   const plotWidth = plot.viewBox.baseVal.width;
   const height = plot.viewBox.baseVal.height;
   const root = document.createElementNS(SVG_NS, 'svg');
-  root.setAttribute('viewBox', `0 0 ${axisWidth + plotWidth} ${height}`);
+  const left = Math.max(0, (blockWidth - axisWidth - plotWidth) / 2);
+  root.setAttribute('viewBox', `0 0 ${Math.max(blockWidth, axisWidth + plotWidth)} ${height}`);
   const nest = (source: SVGSVGElement, x: number, width: number) => {
     const clone = source.cloneNode(true) as SVGSVGElement;
     for (const element of clone.querySelectorAll('[data-selected]')) element.removeAttribute('data-selected');
@@ -76,13 +79,13 @@ function composeImageSvg(axis: SVGSVGElement, plot: SVGSVGElement): SVGSVGElemen
     clone.setAttribute('height', String(height));
     root.append(clone);
   };
-  nest(axis, 0, axisWidth);
-  nest(plot, axisWidth, plotWidth);
+  nest(axis, left, axisWidth);
+  nest(plot, left + axisWidth, plotWidth);
   return root;
 }
 
 export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFigureImage }: BoxPlotBodyProps) {
-  const figureRef = useRef<HTMLElement>(null);
+  const figureRef = useRef<HTMLDivElement>(null);
   const axisRef = useRef<SVGSVGElement>(null);
   const plotRef = useRef<SVGSVGElement>(null);
   const measured = useElementWidth(figureRef);
@@ -97,6 +100,7 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
   const fittedLabels = useMemo(() => drawn.map((row) => fitVerticalLabel(row.label, LABEL_MAX_LENGTH, FONT_SIZE)), [drawn]);
   const labelLength = useMemo(() => Math.max(0, ...fittedLabels.map((label) => verticalLabelLength(label, FONT_SIZE))), [fittedLabels]);
   const layout = useMemo(() => boxPlotLayout(Math.max(0, width - AXIS_WIDTH), drawn.length, labelLength), [width, drawn.length, labelLength]);
+  const blockWidth = Math.max(layout.axisWidth + layout.plotWidth, Math.ceil(textWidth(BOX_PLOT_QUANTITY_NAME, CAPTION_FONT_SIZE) * 1.1));
   const selected = drawn.find((row) => row.targetKey === selectedKey);
   const help = useMemo(
     () =>
@@ -114,7 +118,7 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
   const imageSource = (): FigureImageSource | undefined => {
     const caption = figureRef.current?.querySelector('figcaption');
     if (axisRef.current == null || plotRef.current == null || caption == null) return undefined;
-    return { svg: composeImageSvg(axisRef.current, plotRef.current), caption };
+    return { svg: composeImageSvg(axisRef.current, plotRef.current, blockWidth), caption };
   };
 
   const toggle = (targetKey: string) => setSelectedKey((current) => (current === targetKey ? undefined : targetKey));
@@ -147,145 +151,147 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
             <InfoButton name="図の見方" description={BOX_PLOT_PANE_META.description} help={help} />
             {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
           </div>
-          <figure ref={figureRef} className="box-plot-figure">
-            <div className="box-plot-body">
-              {/* 縦軸の列。図が横にスクロールしても残る */}
-              <svg
-                ref={axisRef}
-                className="box-plot-axis-svg"
-                width={AXIS_WIDTH}
-                height={layout.height}
-                viewBox={`0 0 ${AXIS_WIDTH} ${layout.height}`}
-                aria-hidden="true"
-              >
-                {axis.ticks.map((tick) => {
-                  const y = valueY(tick.value, axis.max, frame.y0, frame.y1);
-                  return (
-                    <text key={tick.value} className="box-plot-tick" x={AXIS_WIDTH - 8} y={y + 4} textAnchor="end" style={{ fontSize: AXIS_FONT_SIZE }}>
-                      {tick.text}
-                    </text>
-                  );
-                })}
-                <text
-                  className="box-plot-axis-title"
-                  x={0}
-                  y={0}
-                  transform={`translate(12 ${(frame.y0 + frame.y1) / 2}) rotate(-90)`}
-                  textAnchor="middle"
-                  style={{ fontSize: AXIS_FONT_SIZE }}
-                  data-box-plot-axis-title=""
-                >
-                  {BOX_PLOT_AXIS_TITLE}
-                </text>
-              </svg>
-              <div className="box-plot-scroll" data-box-plot-scroll="">
-                {/* biome-ignore lint/a11y/useSemanticElements: SVGの図の中の列の集まりに付ける役割で、fieldsetには置き換えられない */}
+          <div ref={figureRef} className="box-plot-figure-wrap">
+            <figure className="box-plot-figure" style={{ width: blockWidth }}>
+              <div className="box-plot-body" style={{ maxWidth: layout.axisWidth + layout.plotWidth }}>
+                {/* 縦軸の列。図が横にスクロールしても残る */}
                 <svg
-                  ref={plotRef}
-                  className="box-plot-svg"
-                  width={layout.plotWidth}
+                  ref={axisRef}
+                  className="box-plot-axis-svg"
+                  width={AXIS_WIDTH}
                   height={layout.height}
-                  viewBox={`0 0 ${layout.plotWidth} ${layout.height}`}
-                  role="group"
-                  aria-label={`${BOX_PLOT_QUANTITY_NAME}の箱ひげ図`}
+                  viewBox={`0 0 ${AXIS_WIDTH} ${layout.height}`}
+                  aria-hidden="true"
                 >
-                  <rect className="box-plot-frame" x={frame.x0} y={frame.y0} width={frame.x1 - frame.x0} height={frame.y1 - frame.y0} />
                   {axis.ticks.map((tick) => {
                     const y = valueY(tick.value, axis.max, frame.y0, frame.y1);
                     return (
-                      <path
-                        key={tick.value}
-                        className="box-plot-tick-mark"
-                        data-box-plot-tick={tick.value}
-                        d={`M0,${y}h${TICK_LENGTH}M${layout.plotWidth},${y}h${-TICK_LENGTH}`}
-                      />
+                      <text key={tick.value} className="box-plot-tick" x={AXIS_WIDTH - 8} y={y + 4} textAnchor="end" style={{ fontSize: AXIS_FONT_SIZE }}>
+                        {tick.text}
+                      </text>
                     );
                   })}
-
-                  {drawn.map((row, index) => {
-                    const column = layout.columns[index]!;
-                    const isSelected = selected?.targetKey === row.targetKey;
-                    const y = boxGeometry(row.row.box, axis.max, frame.y0, frame.y1);
-                    const fitted = fittedLabels[index]!;
-                    const half = layout.boxWidth / 2;
-                    const cap = layout.capWidth / 2;
-                    return (
-                      // biome-ignore lint/a11y/useSemanticElements: SVGの<g>はbuttonに置き換えられない。押すとその配列の5つの値を図の下に出す操作の部品で、役割とキー操作をここで付けている
-                      <g
-                        key={row.targetKey}
-                        className="box-plot-column"
-                        role="button"
-                        tabIndex={0}
-                        aria-pressed={isSelected}
-                        aria-label={columnAriaLabel(row)}
-                        data-box-plot-row={row.targetKey}
-                        data-selected={isSelected || undefined}
-                        onClick={() => toggle(row.targetKey)}
-                        onKeyDown={(event) => onColumnKeyDown(event, row.targetKey)}
-                      >
-                        <rect
-                          className="box-plot-column-hit"
-                          x={column.left + 1}
-                          y={1}
-                          width={column.right - column.left - 2}
-                          height={layout.height - 2}
-                          rx={4}
-                        />
-                        <path
-                          className="box-plot-whisker"
-                          d={`M${column.centerX},${y.upperWhisker}V${y.upperQuartile}M${column.centerX},${y.lowerQuartile}V${y.lowerWhisker}M${column.centerX - cap},${y.upperWhisker}h${layout.capWidth}M${column.centerX - cap},${y.lowerWhisker}h${layout.capWidth}`}
-                        />
-                        <rect
-                          className="box-plot-box"
-                          data-box-plot-box={row.targetKey}
-                          x={column.centerX - half}
-                          y={y.upperQuartile}
-                          width={layout.boxWidth}
-                          height={y.lowerQuartile - y.upperQuartile}
-                        />
-                        <path
-                          className="box-plot-median"
-                          data-box-plot-median={row.targetKey}
-                          d={`M${column.centerX - half},${y.median}h${layout.boxWidth}`}
-                        />
-                        <g className="box-plot-column-label" data-box-plot-label-of={row.targetKey}>
-                          {fitted === row.label ? null : <title>{row.fullName || row.label}</title>}
-                          {verticalLabelRuns(fitted, FONT_SIZE).map((run) =>
-                            run.upright ? (
-                              <text
-                                key={run.offset}
-                                x={column.centerX}
-                                y={layout.labelTopY + run.offset + FONT_SIZE / 2}
-                                textAnchor="middle"
-                                dominantBaseline="central"
-                              >
-                                {run.text}
-                              </text>
-                            ) : (
-                              <text
-                                key={run.offset}
-                                x={0}
-                                y={0}
-                                transform={`translate(${column.centerX} ${layout.labelTopY + run.offset}) rotate(90)`}
-                                dominantBaseline="central"
-                                textLength={run.length}
-                                lengthAdjust="spacingAndGlyphs"
-                              >
-                                {run.text}
-                              </text>
-                            ),
-                          )}
-                        </g>
-                      </g>
-                    );
-                  })}
+                  <text
+                    className="box-plot-axis-title"
+                    x={0}
+                    y={0}
+                    transform={`translate(12 ${(frame.y0 + frame.y1) / 2}) rotate(-90)`}
+                    textAnchor="middle"
+                    style={{ fontSize: AXIS_FONT_SIZE }}
+                    data-box-plot-axis-title=""
+                  >
+                    {BOX_PLOT_AXIS_TITLE}
+                  </text>
                 </svg>
+                <div className="box-plot-scroll" data-box-plot-scroll="">
+                  {/* biome-ignore lint/a11y/useSemanticElements: SVGの図の中の列の集まりに付ける役割で、fieldsetには置き換えられない */}
+                  <svg
+                    ref={plotRef}
+                    className="box-plot-svg"
+                    width={layout.plotWidth}
+                    height={layout.height}
+                    viewBox={`0 0 ${layout.plotWidth} ${layout.height}`}
+                    role="group"
+                    aria-label={`${BOX_PLOT_QUANTITY_NAME}の箱ひげ図`}
+                  >
+                    <rect className="box-plot-frame" x={frame.x0} y={frame.y0} width={frame.x1 - frame.x0} height={frame.y1 - frame.y0} />
+                    {axis.ticks.map((tick) => {
+                      const y = valueY(tick.value, axis.max, frame.y0, frame.y1);
+                      return (
+                        <path
+                          key={tick.value}
+                          className="box-plot-tick-mark"
+                          data-box-plot-tick={tick.value}
+                          d={`M0,${y}h${TICK_LENGTH}M${layout.plotWidth},${y}h${-TICK_LENGTH}`}
+                        />
+                      );
+                    })}
+
+                    {drawn.map((row, index) => {
+                      const column = layout.columns[index]!;
+                      const isSelected = selected?.targetKey === row.targetKey;
+                      const y = boxGeometry(row.row.box, axis.max, frame.y0, frame.y1);
+                      const fitted = fittedLabels[index]!;
+                      const half = layout.boxWidth / 2;
+                      const cap = layout.capWidth / 2;
+                      return (
+                        // biome-ignore lint/a11y/useSemanticElements: SVGの<g>はbuttonに置き換えられない。押すとその配列の5つの値を図の下に出す操作の部品で、役割とキー操作をここで付けている
+                        <g
+                          key={row.targetKey}
+                          className="box-plot-column"
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={isSelected}
+                          aria-label={columnAriaLabel(row)}
+                          data-box-plot-row={row.targetKey}
+                          data-selected={isSelected || undefined}
+                          onClick={() => toggle(row.targetKey)}
+                          onKeyDown={(event) => onColumnKeyDown(event, row.targetKey)}
+                        >
+                          <rect
+                            className="box-plot-column-hit"
+                            x={column.left + 1}
+                            y={1}
+                            width={column.right - column.left - 2}
+                            height={layout.height - 2}
+                            rx={4}
+                          />
+                          <path
+                            className="box-plot-whisker"
+                            d={`M${column.centerX},${y.upperWhisker}V${y.upperQuartile}M${column.centerX},${y.lowerQuartile}V${y.lowerWhisker}M${column.centerX - cap},${y.upperWhisker}h${layout.capWidth}M${column.centerX - cap},${y.lowerWhisker}h${layout.capWidth}`}
+                          />
+                          <rect
+                            className="box-plot-box"
+                            data-box-plot-box={row.targetKey}
+                            x={column.centerX - half}
+                            y={y.upperQuartile}
+                            width={layout.boxWidth}
+                            height={y.lowerQuartile - y.upperQuartile}
+                          />
+                          <path
+                            className="box-plot-median"
+                            data-box-plot-median={row.targetKey}
+                            d={`M${column.centerX - half},${y.median}h${layout.boxWidth}`}
+                          />
+                          <g className="box-plot-column-label" data-box-plot-label-of={row.targetKey}>
+                            {fitted === row.label ? null : <title>{row.fullName || row.label}</title>}
+                            {verticalLabelRuns(fitted, FONT_SIZE).map((run) =>
+                              run.upright ? (
+                                <text
+                                  key={run.offset}
+                                  x={column.centerX}
+                                  y={layout.labelTopY + run.offset + FONT_SIZE / 2}
+                                  textAnchor="middle"
+                                  dominantBaseline="central"
+                                >
+                                  {run.text}
+                                </text>
+                              ) : (
+                                <text
+                                  key={run.offset}
+                                  x={0}
+                                  y={0}
+                                  transform={`translate(${column.centerX} ${layout.labelTopY + run.offset}) rotate(90)`}
+                                  dominantBaseline="central"
+                                  textLength={run.length}
+                                  lengthAdjust="spacingAndGlyphs"
+                                >
+                                  {run.text}
+                                </text>
+                              ),
+                            )}
+                          </g>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
               </div>
-            </div>
-            <figcaption className="box-plot-caption" data-box-plot-caption="" style={{ width: layout.axisWidth + layout.plotWidth }}>
-              {BOX_PLOT_QUANTITY_NAME}
-            </figcaption>
-          </figure>
+              <figcaption className="box-plot-caption" data-box-plot-caption="">
+                {BOX_PLOT_QUANTITY_NAME}
+              </figcaption>
+            </figure>
+          </div>
 
           {countLine === undefined ? null : (
             <p className="box-plot-count" data-box-plot-segment-count="">

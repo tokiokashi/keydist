@@ -20,13 +20,16 @@
   gap: 0.3rem 1rem;
 }
 
+/* 図とキャプションを包むブロックは、図の幅とキャプションを1行で置いた幅の大きい方。ペインより広い時だけ折り返す */
 .box-plot-figure {
   min-width: 0;
+  max-width: 100%;
   margin: 0;
 }
 
 /* 縦軸の列は動かさず、図だけを横にスクロールする */
 .box-plot-body {
+  margin-inline: auto;
   display: flex;
   align-items: flex-start;
   min-width: 0;
@@ -132,7 +135,6 @@
 
 /* 図の下のキャプション。幅は図（縦軸の列と枠）に合わせ、図が領域より広い時は領域に収める */
 .box-plot-caption {
-  max-width: 100%;
   margin-top: 0.5rem;
   color: var(--text);
   font-size: 1rem;
