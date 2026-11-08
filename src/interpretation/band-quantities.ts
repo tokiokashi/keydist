@@ -20,7 +20,7 @@ export const BAND_COUNT_OF: Readonly<Record<BandQuantityId, number>> = {
   distance: DISTANCE_BAND_EDGES.length + 1,
   action: 4,
   presses: 3,
-  hand: 3,
+  hand: 4,
   row: 5,
   fingerPresses: ALL_FINGERS.length,
   fingerDistance: ALL_FINGERS.length,
@@ -48,9 +48,13 @@ export function pressesBandOf(presses: number): number {
   return Math.min(Math.max(presses, 1), 3) - 1;
 }
 
-/** 手の区分の番号。左手だけ0・右手だけ1・両手2。 */
-export function handBandOf(left: boolean, right: boolean): number {
-  return left && right ? 2 : right ? 1 : 0;
+/**
+ * 手の区分の番号。左手だけ0・両手で順に1・両手で同時に2・右手だけ3。
+ * `left` と `right` は、打鍵のまとまりの押下に左手・右手の指があるか。`simultaneous` は、1つのステップの中に左右両方の手の押下があるか。
+ */
+export function handBandOf(left: boolean, right: boolean, simultaneous: boolean): number {
+  if (left && right) return simultaneous ? 2 : 1;
+  return right ? 3 : 0;
 }
 
 /** 押下の段の区分の番号。親指が押したキーは親指、それ以外はキーの段（物理配列が4段より多い時は下段に寄せる）。 */
@@ -159,12 +163,15 @@ export function countBandQuantities(strokes: readonly CountedStroke[], inputChar
     let pressCount = 0;
     let left = false;
     let right = false;
+    let simultaneous = false;
     for (let index = group.from; index < group.to; index++) {
+      let strokeLeft = false;
+      let strokeRight = false;
       for (const press of strokes[index]!.presses) {
         distance += press.distance;
         pressCount += press.keys.length;
-        if (isLeftFinger(press.finger)) left = true;
-        else right = true;
+        if (isLeftFinger(press.finger)) strokeLeft = true;
+        else strokeRight = true;
         const finger = fingerIndex.get(press.finger)!;
         counts.fingerDistance[finger]! += press.distance;
         for (const key of press.keys) {
@@ -172,12 +179,15 @@ export function countBandQuantities(strokes: readonly CountedStroke[], inputChar
           counts.row[rowBandOf(press.finger, key)]!++;
         }
       }
+      if (strokeLeft && strokeRight) simultaneous = true;
+      left ||= strokeLeft;
+      right ||= strokeRight;
     }
     const steps = group.to - group.from;
     counts.distance[distanceBandOf(distance / kanaCount)]! += kanaCount;
     counts.action[actionBandOf(steps, pressCount)]! += kanaCount;
     counts.presses[pressesBandOf(pressCount)]! += kanaCount;
-    if (left || right) counts.hand[handBandOf(left, right)]! += kanaCount;
+    if (left || right) counts.hand[handBandOf(left, right, simultaneous)]! += kanaCount;
   }
   const summarize = (values: number[]): BandQuantityCounts => ({ counts: values, total: sum(values) });
   const byQuantity: Record<BandQuantityId, BandQuantityCounts> = {

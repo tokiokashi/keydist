@@ -1,6 +1,6 @@
 import type { BandQuantityId } from '#interpretation/band-quantities.ts';
 import { FIGURE_INSET, FONT_SIZE, INLINE_MIN_WIDTH, textWidth } from '../figure-text.ts';
-import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
+import type { BandChartExtracted, BandChartOkRow, SkippedChar } from './extract.ts';
 import { bandNoValueMessage } from './quantities.ts';
 
 /**
@@ -32,7 +32,7 @@ export interface BandExcludedRow extends BandRowContext {
 }
 
 export interface BandSkippedNote extends BandRowContext {
-  readonly skipped: number;
+  readonly chars: readonly SkippedChar[];
 }
 
 export interface BandChartModel {
@@ -42,7 +42,7 @@ export interface BandChartModel {
   readonly rows: readonly BandDisplayRow[];
   /** 帯を描けない行。対象の順 */
   readonly excluded: readonly BandExcludedRow[];
-  /** 打てない文字が1以上の配列。対象の順 */
+  /** 打てない文字がある配列。対象の順 */
   readonly skipped: readonly BandSkippedNote[];
   /** 評価に渡したテキストが基準の対象と違う配列。対象の順 */
   readonly differentText: readonly BandRowContext[];
@@ -72,10 +72,10 @@ export function bandChartModel(extracted: BandChartExtracted, order: readonly st
       excluded.push({ ...context, status: 'failed', message: row.message });
     } else if (row.kind === 'no-value') {
       excluded.push({ ...context, status: 'no-value', message: bandNoValueMessage(extracted.quantity) });
-      if (row.skipped > 0) skipped.push({ ...context, skipped: row.skipped });
+      if (row.skippedChars.length > 0) skipped.push({ ...context, chars: row.skippedChars });
     } else {
       rows.push({ ...context, row });
-      if (row.skipped > 0) skipped.push({ ...context, skipped: row.skipped });
+      if (row.skippedChars.length > 0) skipped.push({ ...context, chars: row.skippedChars });
       if (!row.sameText) differentText.push(context);
     }
   }

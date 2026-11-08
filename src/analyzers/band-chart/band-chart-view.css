@@ -1,6 +1,6 @@
 /*
  * 区分の色。順序のある区分（移動距離・打ち方・押下数・段）は1色（青）の濃淡で、値の大きい区分ほど濃い。
- * 手と指は、左手の緑と右手の紫で色相を分け、手の中を濃淡にする（指は親指が最も濃い）。両手と段の親指は、左右・段の順序と別の橙にする。
+ * 手と指は、左手の緑と右手の紫で色相を分け、手の中を濃淡にする。両手の2区分と段の親指は、左右・段の順序と別の橙にし、両手の2区分は橙の濃淡で分ける。
  * 凡例・帯・画像への書き出しが同じ値を読むので、画像の書き出しが文書の外に置く複製からも引けるよう、:rootに置く。
  */
 :root {
@@ -19,6 +19,8 @@
   --band-chart-violet-3: light-dark(#7752bf, #9a7cd9);
   --band-chart-violet-4: light-dark(#4b2d8a, #ccb8f3);
   --band-chart-amber: light-dark(#f2b24a, #d9942a);
+  --band-chart-amber-0: light-dark(#f8dca8, #6e4f17);
+  --band-chart-amber-1: light-dark(#e89a1d, #d9942a);
   --band-chart-text-light: light-dark(#1a1917, #e6edf7);
   --band-chart-text-mid: light-dark(#0b1f3a, #04101f);
   --band-chart-text-strong: light-dark(#ffffff, #04101f);
@@ -133,6 +135,14 @@
   fill: var(--band-chart-amber);
 }
 
+.band-segment[data-band-color='amber-0'] {
+  fill: var(--band-chart-amber-0);
+}
+
+.band-segment[data-band-color='amber-1'] {
+  fill: var(--band-chart-amber-1);
+}
+
 /* 区分の境目に背景色の細い線を引き、隣り合う区分を見分けやすくする */
 .band-segment {
   stroke: var(--bg);
@@ -205,6 +215,14 @@
 }
 
 .band-segment-text[data-band-color='amber'] {
+  fill: var(--band-chart-text-mid);
+}
+
+.band-segment-text[data-band-color='amber-0'] {
+  fill: var(--band-chart-text-light);
+}
+
+.band-segment-text[data-band-color='amber-1'] {
   fill: var(--band-chart-text-mid);
 }
 
@@ -336,6 +354,51 @@
   color: var(--text-muted);
   font-size: 0.8rem;
   line-height: 1.5;
+}
+
+/* 打てない文字の表 */
+.band-skipped {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.band-skipped caption {
+  margin-bottom: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.band-skipped th,
+.band-skipped td {
+  padding: 0.2rem 1rem 0.2rem 0;
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.band-skipped thead th {
+  color: var(--text-muted);
+}
+
+.band-skipped th[scope='row'],
+.band-skipped thead th:first-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.band-skipped-char {
+  display: inline-block;
+  margin-right: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.band-skipped-count {
+  margin-left: 0.25rem;
+  color: var(--text-muted);
 }
 
 .band-excluded {

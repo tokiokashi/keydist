@@ -20,6 +20,27 @@ import { ALTERNATE_BAND_CHART_OPTIONS, DEFAULT_BAND_CHART_OPTIONS, bandChartOpti
  * 追加のTraceは依頼しない。打てない文字を覆う打鍵のまとまりは数えず、打てない文字の数は別に持つ。
  */
 
+/** 打てない文字1種類と、その文字の位置の数。 */
+export interface SkippedChar {
+  readonly char: string;
+  readonly count: number;
+}
+
+/**
+ * 打てない文字（`Trace.skippedPositions` の位置にある、評価に渡したテキストの文字）を、文字ごとに数える。
+ * 回数はその文字の位置の数で、`Trace.skipped`（展開後の英字の数）とは一致しないことがある。回数の多い順に、同数なら先に出た順に並べる。
+ */
+export function skippedCharCounts(text: string, skippedPositions: readonly number[]): readonly SkippedChar[] {
+  const chars = [...text];
+  const counts = new Map<string, number>();
+  for (const position of new Set(skippedPositions)) {
+    const char = chars[position];
+    if (char === undefined) continue;
+    counts.set(char, (counts.get(char) ?? 0) + 1);
+  }
+  return [...counts].map(([char, count]) => ({ char, count })).sort((a, b) => b.count - a.count);
+}
+
 /** 値を出せる1行（1配列）。 */
 export interface BandChartOkRow {
   readonly kind: 'ok';
@@ -30,8 +51,8 @@ export interface BandChartOkRow {
   readonly shares: readonly number[];
   /** 割合の分母（標本の合計）。0より大きい */
   readonly total: number;
-  /** 打てない文字の数（数えていない） */
-  readonly skipped: number;
+  /** 打てない文字（数えていない）。文字ごとの回数 */
+  readonly skippedChars: readonly SkippedChar[];
   /** 評価に渡したテキストが、最初の対象のテキストと同じか。違う時も値は自分のテキストで求めるが、画面で知らせる */
   readonly sameText: boolean;
 }
@@ -40,7 +61,7 @@ export interface BandChartOkRow {
 export interface BandChartNoValueRow {
   readonly kind: 'no-value';
   readonly targetKey: string;
-  readonly skipped: number;
+  readonly skippedChars: readonly SkippedChar[];
 }
 
 export interface BandChartFailedRow {
@@ -77,14 +98,15 @@ export function computeBandChartExtraction(
     const all = countsOf(member);
     const counted = all.byQuantity[quantity];
     const shares = bandShares(counted);
-    if (shares === undefined) return { kind: 'no-value', targetKey, skipped: all.skipped };
+    const skippedChars = skippedCharCounts(member.text ?? '', member.trace.skippedPositions);
+    if (shares === undefined) return { kind: 'no-value', targetKey, skippedChars };
     return {
       kind: 'ok',
       targetKey,
       counts: counted.counts,
       shares,
       total: counted.total,
-      skipped: all.skipped,
+      skippedChars,
       sameText: member === reference || member.text === reference?.text,
     };
   });

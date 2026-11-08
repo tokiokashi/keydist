@@ -12,7 +12,7 @@ import { kanaUnitOf } from '../unit-words.ts';
 /**
  * 区分の色の名前。`band-chart-view.css` が色に対応づける。
  * 順序のある区分（`blue`）は1色の濃淡、手と指は左手（`green`）と右手（`violet`）で色相を分けて手の中を濃淡にし、
- * 両手と段の親指は左右・段の順序と別の色相（`amber`）にする。
+ * 両手の2区分（順に・同時）と段の親指は左右・段の順序と別の色相（`amber`）にする。両手の2区分は同じ色相の濃淡で分ける。
  */
 export type BandColor =
   | 'blue-0'
@@ -29,7 +29,9 @@ export type BandColor =
   | 'violet-2'
   | 'violet-3'
   | 'violet-4'
-  | 'amber';
+  | 'amber'
+  | 'amber-0'
+  | 'amber-1';
 
 /** 標本の種類。かな（打鍵のまとまりが覆うかな）、押下、移動距離。 */
 export type BandSample = 'kana' | 'press' | 'distance';
@@ -65,7 +67,13 @@ export const BAND_QUANTITIES: Readonly<Record<BandQuantityId, BandQuantity>> = {
     colors: ['blue-0', 'blue-1', 'blue-2', 'blue-3'],
   },
   presses: { id: 'presses', name: '押下数', sample: 'kana', labels: ['1キー', '2キー', '3キー以上'], colors: ['blue-0', 'blue-2', 'blue-3'] },
-  hand: { id: 'hand', name: '手', sample: 'kana', labels: ['左手だけ', '右手だけ', '両手'], colors: ['green-2', 'violet-2', 'amber'] },
+  hand: {
+    id: 'hand',
+    name: '手',
+    sample: 'kana',
+    labels: ['左手だけ', '両手で順に', '両手で同時に', '右手だけ'],
+    colors: ['green-2', 'amber-0', 'amber-1', 'violet-2'],
+  },
   row: {
     id: 'row',
     name: '段',

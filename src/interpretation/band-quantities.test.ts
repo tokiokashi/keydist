@@ -55,12 +55,30 @@ test('打ち方・押下数・手の区分が定義どおりに分かれる', ()
   assert.deepEqual([1, 2, 3, 4].map(pressesBandOf), [0, 1, 2, 2]);
   assert.deepEqual(
     [
-      [true, false],
-      [false, true],
-      [true, true],
-    ].map(([left, right]) => handBandOf(left!, right!)),
-    [0, 1, 2],
+      [true, false, false],
+      [false, true, false],
+      [true, true, false],
+      [true, true, true],
+    ].map(([left, right, simultaneous]) => handBandOf(left!, right!, simultaneous!)),
+    [0, 3, 1, 2],
   );
+});
+
+test('手の区分は、左右の押下がどのステップも片手だけなら両手で順に、1つのステップに両手があれば両手で同時に、片手だけならその手になる', () => {
+  // ローマ字入力で手を替えるまとまり: しゃ = s(左) y(右) a(左)
+  const sya = traceBandCounts(traceOf('qwerty', 'しゃ')).byQuantity.hand;
+  assert.deepEqual(sya.counts, [0, 2, 0, 0]);
+  // 同じ手のまとまり: きょ = k y o（右手だけ）
+  assert.deepEqual(traceBandCounts(traceOf('qwerty', 'きょ')).byQuantity.hand.counts, [0, 0, 0, 2]);
+  // 親指と反対の手の指を同時に押すまとまり
+  const together = countBandQuantities([stroke(0, 0, press('LT', 0, [0]), press('RI', 1, [1]))], 1, []).byQuantity.hand;
+  assert.deepEqual(together.counts, [0, 0, 1, 0]);
+  // 同じ手の前置シフト（2つのステップとも左手）
+  const prefixShift = countBandQuantities([stroke(0, 0, press('LP', 0, [2])), stroke(0, 0, press('LI', 1, [1]))], 1, []).byQuantity.hand;
+  assert.deepEqual(prefixShift.counts, [1, 0, 0, 0]);
+  // 両手のステップが別々に並び、同時のステップが無ければ両手で順に
+  const sequential = countBandQuantities([stroke(0, 0, press('LP', 0, [2])), stroke(0, 0, press('RI', 1, [1]))], 1, []).byQuantity.hand;
+  assert.deepEqual(sequential.counts, [0, 1, 0, 0]);
 });
 
 test('段は親指が押したキーを親指に、それ以外をキーの段に分け、4段より外の段は端の段に寄せる', () => {
@@ -167,7 +185,7 @@ test('確定の打鍵も、範囲の重なりで同じまとまりに入れ、�
   const counted = countBandQuantities(strokes, 1, []).byQuantity;
   assert.deepEqual(counted.action.counts, [0, 0, 1, 0]);
   assert.deepEqual(counted.presses.counts, [0, 1, 0]);
-  assert.deepEqual(counted.hand.counts, [0, 0, 1]);
+  assert.deepEqual(counted.hand.counts, [0, 1, 0, 0]);
   assert.deepEqual(counted.row.counts, [0, 1, 0, 0, 1]);
   assert.equal(counted.fingerPresses.counts[4], 1); // 左親指
 });

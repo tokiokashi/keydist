@@ -7,7 +7,7 @@ import { BAND_HEIGHT, bandChartModel, bandLayout, percentText, segmentGeometries
 
 function okRow(targetKey: string, counts: readonly number[], options: Partial<BandChartOkRow> = {}): BandChartOkRow {
   const typed = counts.reduce((sum, count) => sum + count, 0);
-  return { kind: 'ok', targetKey, counts, shares: counts.map((count) => count / typed), total: typed, skipped: 0, sameText: true, ...options };
+  return { kind: 'ok', targetKey, counts, shares: counts.map((count) => count / typed), total: typed, skippedChars: [], sameText: true, ...options };
 }
 
 const CONTEXT: ReadonlyMap<string, BandRowContext> = new Map(
@@ -35,7 +35,7 @@ test('値を出せない対象は、帯を描かず、計算中・失敗・値�
     quantity: 'distance',
     rows: [
       okRow('layout:a', [1, 1, 1, 1]),
-      { kind: 'no-value', targetKey: 'layout:b', skipped: 3 },
+      { kind: 'no-value', targetKey: 'layout:b', skippedChars: [{ char: '\n', count: 3 }] },
       { kind: 'failed', targetKey: 'layout:c', failureKind: 'reference', message: '配列が見つかりません' },
     ],
     referenceTargetKey: 'layout:a',
@@ -55,18 +55,22 @@ test('値を出せない対象は、帯を描かず、計算中・失敗・値�
   );
 });
 
-test('打てない文字の数は1以上の配列だけ出て、値なしの配列も数を持つ', () => {
+test('打てない文字は、ある配列だけ表の行になり、値なしの配列も文字を持つ', () => {
   const extracted: BandChartExtracted = {
     quantity: 'distance',
-    rows: [okRow('layout:a', [1, 1, 1, 1]), okRow('layout:b', [1, 1, 1, 1], { skipped: 2 }), { kind: 'no-value', targetKey: 'layout:c', skipped: 5 }],
+    rows: [
+      okRow('layout:a', [1, 1, 1, 1]),
+      okRow('layout:b', [1, 1, 1, 1], { skippedChars: [{ char: '☆', count: 2 }] }),
+      { kind: 'no-value', targetKey: 'layout:c', skippedChars: [{ char: '\n', count: 5 }] },
+    ],
     referenceTargetKey: 'layout:a',
   };
   const model = bandChartModel(extracted, ['layout:a', 'layout:b', 'layout:c'], CONTEXT);
   assert.deepEqual(
-    model.skipped.map((row) => [row.label, row.skipped]),
+    model.skipped.map((row) => [row.label, row.chars]),
     [
-      ['B', 2],
-      ['C', 5],
+      ['B', [{ char: '☆', count: 2 }]],
+      ['C', [{ char: '\n', count: 5 }]],
     ],
   );
 });
