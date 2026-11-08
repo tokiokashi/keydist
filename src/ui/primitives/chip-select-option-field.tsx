@@ -23,16 +23,14 @@ const WANTED_HEIGHT = 480;
 
 interface PopoverPlace {
   readonly left: number;
-  /** 上端の位置。下に置く時と、ボタンに重ねて画面に収める時に使う。 */
-  readonly top?: number;
-  /** 下端の位置（画面の下端から）。ボタンの上に置く時に使う。 */
-  readonly bottom?: number;
+  readonly top: number;
   readonly maxHeight: number;
 }
 
 /**
  * 小窓の置き場所。下に取りたい高さが入れば下、上に入れば上に置く。どちらにも入らない時は、ボタンに重なっても
  * 画面に収まる位置まで持ち上げて取りたい高さを確保する。ボタンの下の狭い隙間に置くと、一覧が数行しか見えないため。
+ * 上端の位置で置くので、絞り込みで一覧が縮んでも検索欄は動かない。ボタンが画面の外にある時も、画面の中に収める。
  */
 function placeNear(anchor: Element, width: number): PopoverPlace {
   const rect = anchor.getBoundingClientRect();
@@ -41,9 +39,9 @@ function placeNear(anchor: Element, width: number): PopoverPlace {
   const below = rect.bottom + GAP;
   const spaceBelow = window.innerHeight - below - EDGE;
   const spaceAbove = rect.top - GAP - EDGE;
-  if (spaceBelow >= wanted) return { left, top: below, maxHeight: spaceBelow };
-  if (spaceAbove >= wanted) return { left, bottom: window.innerHeight - rect.top + GAP, maxHeight: spaceAbove };
-  return { left, top: Math.max(EDGE, window.innerHeight - EDGE - wanted), maxHeight: wanted };
+  const preferred = spaceBelow >= wanted ? below : spaceAbove >= wanted ? rect.top - GAP - wanted : window.innerHeight - EDGE - wanted;
+  const top = Math.max(EDGE, Math.min(preferred, window.innerHeight - EDGE - wanted));
+  return { left, top, maxHeight: wanted };
 }
 
 /** 検索の語で選択肢の名前を絞る。大文字小文字と全角半角の違いは無視する。 */
@@ -243,7 +241,7 @@ export function ChipSelectOptionField<T extends string>({
   };
 
   const panelStyle: CSSProperties | undefined =
-    place === undefined ? { visibility: 'hidden' } : { left: place.left, top: place.top, bottom: place.bottom, maxHeight: place.maxHeight };
+    place === undefined ? { visibility: 'hidden' } : { left: place.left, top: place.top, maxHeight: place.maxHeight };
 
   return (
     <fieldset
