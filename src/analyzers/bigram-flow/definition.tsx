@@ -627,12 +627,6 @@ function MovementProfilePlot({
   );
 }
 
-const FINGER_SET_HINTS = {
-  0: '同じ指の移動と、指をまたいだ打鍵位置の移動をまとめて描きます。大半は後者なので、手の中で打鍵位置がどう流れるかを見る図になります。',
-  1: '1指選択では、その指自身のキー間移動だけを描きます。',
-  2: '2指選択では押し順を固定せず、両方向の指間移動を描きます。',
-} as const;
-
 function fingerSetLabel(selectedFingers: readonly FingerClass[]): string {
   if (selectedFingers.length === 0) return '全指';
   return selectedFingers.map((selected) => FINGER_OPTIONS.find((finger) => finger.id === selected)?.label).join(' + ');
@@ -657,9 +651,14 @@ export interface BigramFlowBodyProps {
  * 図の読み方。図ごとの小見出しの横のⓘで出す。常に出す凡例にはしない（狭いペインで図を覆うため）。
  * 操作すれば分かること（キーにポインタを乗せると線を強調する等）は書かない。
  */
-const KEYBOARD_FLOW_READING = 'キーからキーへの移動を線で描きます。太さが回数で、線は始点が薄く終点が濃いです。';
+const SOURCE_READING = '2打鍵の取り方がActualなら実際に続けて打った2打鍵を、Within-handなら反対の手の打鍵を飛ばして同じ手で続けた2打鍵を描きます。';
+const FINGER_SET_READING =
+  '指を選ばない時は、同じ指の移動と指をまたいだ打鍵位置の移動をまとめて描きます。1指の時は、その指自身のキー間移動だけを描きます。2指の時は、押し順を固定せず両方向の指間移動を描きます。';
+const KEYBOARD_FLOW_READING = `キーからキーへの移動を線で描きます。太さが回数で、線は始点が薄く終点が濃いです。${SOURCE_READING}${FINGER_SET_READING}`;
 const RELATIVE_VECTORS_READING =
-  '打鍵ごとの移動の向きと距離を、打ち始めのキーを中心に重ねて描きます。外周は移動方向の分布、白い線は平均の移動を表します。点線の円は1uごとの距離。件数は描いた線の数（指の組と移動が同じものはまとめて1本）、平均移動は平均の移動の長さ、まとまりは0に近いほど方向が分散し1に近いほど同じ方向へ集中します。下の割合は内向きと外向きの比。';
+  '打鍵ごとの移動の向きと距離を、打ち始めのキーを中心に重ねて描きます。外周は移動方向の分布、白い線は平均の移動を表します。点線の円は1uごとの距離。件数は描いた線の数（指の組と移動が同じものはまとめて1本）、平均移動は平均の移動の長さ、まとまりは0に近いほど方向が分散し1に近いほど同じ方向へ集中します。下の割合は内向きと外向きの比。' +
+  SOURCE_READING +
+  FINGER_SET_READING;
 
 /**
  * 左右の手をまたぐ2打鍵の扱い。図の下に常に置くと縦の高さを取るので、該当する時だけⓘの読み方に足す
@@ -803,7 +802,7 @@ function FingerOptionField({ binding }: { binding: OptionBinding<readonly Finger
     }
   };
   return (
-    <OptionField label="指の組み合わせ" binding={binding} hint={FINGER_SET_HINTS[selected.length as 0 | 1 | 2]}>
+    <OptionField label="指の組み合わせ" binding={binding}>
       {(id) => (
         <fieldset className="plain-group option-segmented flow-finger-buttons" id={id} aria-labelledby={`${id}-label`}>
           {FINGER_OPTIONS.map((finger) => {
@@ -842,7 +841,6 @@ export function BigramFlowSettings({ options, onOptionsChange }: AnalyzerSetting
             { value: 'actual', label: 'Actual' },
             { value: 'within-hand', label: 'Within-hand' },
           ]}
-          hint={options.source === 'actual' ? '実際に続けて打った2打鍵' : '反対の手の打鍵を飛ばして、同じ手で続けた2打鍵'}
         />
         <FingerOptionField binding={bind('selectedFingers')} />
       </OptionGroup>

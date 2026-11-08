@@ -168,12 +168,7 @@ export function FingerMatrixSettings({ options, onOptionsChange }: AnalyzerSetti
   const SURFACE_CHOICES = FINGER_MATRIX_SURFACE_IDS.map((id) => ({ value: id, label: surfaceText[id].label }));
   return (
     <div className="option-groups">
-      <SelectOptionField
-        label="見る量"
-        binding={bind('surface')}
-        choices={SURFACE_CHOICES}
-        hint="同指連続の比率は、その指で押した回数に対する割合です。"
-      />
+      <SelectOptionField label="見る量" binding={bind('surface')} choices={SURFACE_CHOICES} />
       <OptionField label="並び替え" binding={bind('sort')}>
         {(id) => (
           <span id={id}>
