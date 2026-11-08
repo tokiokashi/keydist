@@ -113,3 +113,25 @@ test('縦軸: 並び・重複・知らない値は、比較表の列の順に直
   assert.deepEqual(options.yAxes, ['actions', 'sameFinger']);
   assert.equal(stored.length, 1);
 });
+
+test('横軸: 既定はアクション数/カナの1つで、URLに0個も複数も載せて読み戻す', () => {
+  assert.deepEqual(DEFAULT_SCATTER_OPTIONS.xAxes, ['perCharSteps']);
+  assert.equal(scatterOptions.encodeOptionsToUrl(DEFAULT_SCATTER_OPTIONS).has('x'), false);
+  for (const xAxes of [[], ['actions', 'sameFinger']] as const) {
+    const diagnostics: CodecDiagnostic[] = [];
+    const params = scatterOptions.encodeOptionsToUrl({ ...DEFAULT_SCATTER_OPTIONS, xAxes });
+    assert.equal(params.get('x'), xAxes.join(','));
+    const decoded = scatterOptions.decodeOptionsFromUrl(params, diagnostics);
+    assert.deepEqual(diagnostics, []);
+    assert.deepEqual(decoded.values.xAxes, xAxes);
+  }
+  const options = scatterOptions.decodeOptions({ xAxes: ['sameFinger', 'actions', 'nothing'] }, []) as typeof DEFAULT_SCATTER_OPTIONS;
+  assert.deepEqual(options.xAxes, ['actions', 'sameFinger']);
+});
+
+test('図の並び: 既定は横軸ごとで、縦軸ごとをURLに載せて読み戻す', () => {
+  assert.equal(DEFAULT_SCATTER_OPTIONS.freeOrder, 'byX');
+  assert.equal(scatterOptions.encodeOptionsToUrl(DEFAULT_SCATTER_OPTIONS).has('order'), false);
+  const params = scatterOptions.encodeOptionsToUrl({ ...DEFAULT_SCATTER_OPTIONS, freeOrder: 'byY' });
+  assert.equal(scatterOptions.decodeOptionsFromUrl(params, []).values.freeOrder, 'byY');
+});

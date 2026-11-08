@@ -20,7 +20,7 @@ import { logScaleBlockers, resolveLogScale, scatterPlotModel, type LogScaleBlock
 /**
  * 組み合わせ1つぶんの図の描画モデル（画面に依存しない純粋な関数）。
  * 選んだ組み合わせごとに1つ作り、その組み合わせ1つだけを選んだ時と同じ結果になる。
- * 目盛りの種類と「自由に選ぶ」の軸は全ての図で共通の入力として受け取り、図ごとの判定（対数にできるか・軸の組が選べるか）はここで行う。
+ * 目盛りの種類と「自由に選ぶ」の軸の並びは全ての図で共通の入力として受け取り、図ごとの判定（対数にできるか・軸の組が選べるか）はここで行う。
  */
 
 export interface ScatterFigureRowContext {
@@ -56,17 +56,19 @@ export interface ScatterFiguresInput {
   readonly order: readonly string[];
   readonly rowContext: ReadonlyMap<string, ScatterFigureRowContext>;
   readonly rows: readonly ScatterRow[];
-  /** 「自由に選ぶ」の軸。 */
-  readonly xAxis: ComparisonColumnId;
+  /** 「自由に選ぶ」の横軸。比較表の列の順。 */
+  readonly xAxes: readonly ComparisonColumnId[];
   /** 「自由に選ぶ」の縦軸。比較表の列の順。 */
   readonly yAxes: readonly ComparisonColumnId[];
+  /** 「自由に選ぶ」の図の並び。`byX`は横軸の順にその中で縦軸の順、`byY`は縦軸の順にその中で横軸の順。 */
+  readonly freeOrder: 'byX' | 'byY';
   readonly tickScale: 'linear' | 'log';
   readonly language: TextLanguage;
 }
 
 export interface ScatterFigureModel {
   readonly preset: ScatterPresetId;
-  /** 図を並べる位置の中での識別。`free`は縦軸ごとに図があるので、縦軸の列を含める。 */
+  /** 図を並べる位置の中での識別。`free`は横軸と縦軸の組ごとに図があるので、両方の列を含める。 */
   readonly key: string;
   readonly axes: ScatterAxes;
   readonly plotted: readonly ScatterPlottedRow[];
@@ -123,7 +125,7 @@ export function scatterFigureModel(preset: ScatterPresetId, axes: ScatterAxes, i
   });
   return {
     preset,
-    key: preset === 'free' ? `free:${axes.y}` : preset,
+    key: preset === 'free' ? `free:${axes.x}:${axes.y}` : preset,
     axes,
     plotted,
     excluded,
@@ -136,9 +138,10 @@ export function scatterFigureModel(preset: ScatterPresetId, axes: ScatterAxes, i
   };
 }
 
-/** 「自由に選ぶ」の縦軸のうち、横軸と選べない組になる縦軸。 */
-export interface ScatterBlockedYAxis {
-  readonly column: ComparisonColumnId;
+/** 「自由に選ぶ」の組のうち、選べない組。 */
+export interface ScatterBlockedPair {
+  readonly x: ComparisonColumnId;
+  readonly y: ComparisonColumnId;
   readonly problem: ScatterAxisProblem;
 }
 
@@ -148,15 +151,17 @@ export type ScatterSlot =
   | {
       readonly type: 'free-notice';
       readonly key: 'free-notice';
+      /** 横軸を1つも選んでいない。 */
+      readonly noXAxis: boolean;
       /** 縦軸を1つも選んでいない。 */
       readonly noYAxis: boolean;
-      /** 横軸と選べない組になった縦軸。 */
-      readonly blocked: readonly ScatterBlockedYAxis[];
+      /** 選べない組。 */
+      readonly blocked: readonly ScatterBlockedPair[];
     };
 
 /**
- * 選んだ組み合わせの図を、渡された順に並べる。`free`の位置には、縦軸ごとの図を縦軸の順に入れる。
- * 縦軸が無い時と、選べない組になった縦軸がある時は、`free`の図の後に知らせを1つ置く。
+ * 選んだ組み合わせの図を、渡された順に並べる。`free`の位置には、`freeOrder`の順（既定は横軸の順に、その中で縦軸の順）に、組ごとの図を入れる。
+ * 横軸か縦軸が無い時と、選べない組がある時は、`free`の図の後に知らせを1つ置く。
  */
 export function scatterSlots(presets: readonly ScatterPresetId[], input: ScatterFiguresInput): readonly ScatterSlot[] {
   return presets.flatMap((preset): ScatterSlot[] => {
@@ -165,19 +170,22 @@ export function scatterSlots(presets: readonly ScatterPresetId[], input: Scatter
       return [{ type: 'figure', key: figure.key, figure }];
     }
     const slots: ScatterSlot[] = [];
-    const blocked: ScatterBlockedYAxis[] = [];
-    for (const column of input.yAxes) {
-      const problem = scatterAxisProblem(input.xAxis, column);
-      if (problem !== undefined) {
-        blocked.push({ column, problem });
-        continue;
-      }
-      const figure = scatterFigureModel(preset, { x: input.xAxis, y: column }, input);
+    const blocked: ScatterBlockedPair[] = [];
+    const pairs = input.xAxes.flatMap((x) => input.yAxes.map((y) => ({ x, y })));
+    // 選べない組の知らせは、図の並びに関わらず横軸の順、その中で縦軸の順で書く。並べ替える前に積む
+    for (const { x, y } of pairs) {
+      const problem = scatterAxisProblem(x, y);
+      if (problem !== undefined) blocked.push({ x, y, problem });
+    }
+    if (input.freeOrder === 'byY') pairs.sort((a, b) => input.yAxes.indexOf(a.y) - input.yAxes.indexOf(b.y));
+    for (const { x, y } of pairs) {
+      if (scatterAxisProblem(x, y) !== undefined) continue;
+      const figure = scatterFigureModel(preset, { x, y }, input);
       slots.push({ type: 'figure', key: figure.key, figure });
     }
-    if (input.yAxes.length === 0 || blocked.length > 0) {
-      slots.push({ type: 'free-notice', key: 'free-notice', noYAxis: input.yAxes.length === 0, blocked });
-    }
+    const noXAxis = input.xAxes.length === 0;
+    const noYAxis = input.yAxes.length === 0;
+    if (noXAxis || noYAxis || blocked.length > 0) slots.push({ type: 'free-notice', key: 'free-notice', noXAxis, noYAxis, blocked });
     return slots;
   });
 }
