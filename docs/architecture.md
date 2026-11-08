@@ -343,7 +343,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 
 - **計算部は `interpretation/bunsetsu-stats.ts` の `segmentPerCharBox`**。標本は文節ごとの統計の表の列と同じ関数（`segmentPerCharSample`）で作り、10%点・25%点・75%点を足すだけにする。計算を二重に持たない
 - **配線**: 抽出は `analyzers/box-plot/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/box-plot`。解析設定は持たない。見る量は1つに絞り、分位点は定義で固定する
-- **文節の区切りの受け取り方は文節ごとの統計と同じ**（`usesSegmentation` は常に真、`assetsKeyOf` は区切りをキーに入れる）。区切りの出どころと分割器は、画面の文では出さず図の見方（ⓘ）に1行ずつ出す（`box-plot/pane-meta.ts` の `boxPlotSourceItems`。`segmentation-text.ts` は使わない）。日本語以外のテキスト・分割器を読み込めない時は値を出さず、旨を示す
+- **文節の区切りの受け取り方は文節ごとの統計と同じ**（`usesSegmentation` は常に真、`assetsKeyOf` は区切りをキーに入れる）。区切りの出どころと分割器は、画面の文では出さず図の見方（ⓘ）に1行ずつ出す（`box-plot/pane-meta.ts` の `boxPlotSourceItems` が `segmentation-text.ts` の `segmentationSourceItems` を使い、文節ごとの統計・Run Chartと文面をそろえる）。日本語以外のテキスト・分割器を読み込めない時は値を出さず、旨を示す
 - **評価に渡すテキストを抽出が読む**。各配列は自分のテキストと区切りで求め、基準（区切りが渡された最初の対象）とテキストまたは区切りが違う配列があれば画面に知らせ、文節の数を配列ごとに出す。全配列が同じなら文節の数は1つだけ出す（文にせず「文節 61」の形）
 - **座標は `box-plot/figure-model.ts`**（純粋）。縦軸は0から始め、目盛りの数字と軸の名前の列はスクロールしない別のSVGにし、枠と列（箱と名前）の図だけを横にスクロールする。列の幅は下限（`MIN_COLUMN_WIDTH`）を割らず、配列が多くて領域に収まらなければ図が領域より広くなる。名前は箱の下に縦書きで置く: かな・漢字は1字ずつ立て、英数字の並びは右へ90度倒す（`verticalLabelRuns`。字体の縦書きの字形に頼らず、字の位置を自分で決める）。文字幅の見積もりと名前の切り詰めは帯グラフと共有する（`analyzers/figure-text.ts`）
 - **図の書式は散布図と同じ**（枠で囲む・目盛りは枠の内向き・格子線なし・軸の名前は中央、キャプションは図の下）。箱は全配列で1色・同じ太さにし、ひげの外の値・基準の線・回帰直線は描かない
