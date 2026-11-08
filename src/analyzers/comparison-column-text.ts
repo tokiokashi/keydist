@@ -52,7 +52,7 @@ export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
 export interface ComparisonColumnText {
   /**
    * 見出しの短い名前。見出しには単位を付けない（単位は見出しのⓘから開く説明に書く）。
-   * 率の列は値の側に `%` が付き、`u/アクション`・`u/かな` は名前が単位を含む。
+   * 率の列は値の側に `%` が付く。1つあたりの量の列は「量/何あたり」の形で、何あたりかを名前が含む（`距離/アクション`・`アクション数/かな`）。
    * 「かな」はテキストの言語で出し分ける（英語のテキストでは「字」。`unit-words.ts`）。散布図は「カナ」と書く（`KanaScript`）。
    */
   readonly label: string;
