@@ -282,7 +282,7 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
                 </svg>
               </div>
             </div>
-            <figcaption className="box-plot-caption" data-box-plot-caption="">
+            <figcaption className="box-plot-caption" data-box-plot-caption="" style={{ width: layout.axisWidth + layout.plotWidth }}>
               {BOX_PLOT_QUANTITY_NAME}
             </figcaption>
           </figure>
