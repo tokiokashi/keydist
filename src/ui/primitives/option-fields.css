@@ -228,3 +228,27 @@
   justify-self: start;
   font-size: 0.76rem;
 }
+
+.option-checkbox-bulk {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.option-checkbox-bulk button {
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.option-checkbox-bulk button:hover,
+.option-checkbox-bulk button:focus-visible {
+  background: var(--surface-muted);
+}
+
+.option-checkbox-group label:has(input:disabled:not(:checked)) {
+  opacity: 0.55;
+}

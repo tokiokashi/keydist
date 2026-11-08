@@ -221,7 +221,7 @@ export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSetting
   const columnChoices = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: columns[column].label }));
   return (
     <div className="option-groups">
-      <CheckboxGroupOptionField<ComparisonColumnId> label="表示する列" binding={bind('visibleColumns')} choices={columnChoices} />
+      <CheckboxGroupOptionField<ComparisonColumnId> label="表示する列" binding={bind('visibleColumns')} choices={columnChoices} selectAll />
       <CheckboxOptionField
         label="基準比（%）も表示する"
         binding={bind('showBaselineRatio')}

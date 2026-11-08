@@ -8,13 +8,7 @@ import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { fixedTestText } from '../../../test/kana-test-text.ts';
 import { computeComparisonRowValues } from '../comparison-column-values.ts';
 import type { ScatterRow } from './extract.ts';
-import {
-  scatterFigureModel,
-  scatterFigureModels,
-  type ScatterFigureModel,
-  type ScatterFigureRowContext,
-  type ScatterFiguresInput,
-} from './figure-model.ts';
+import { scatterSlots, type ScatterFigureModel, type ScatterFigureRowContext, type ScatterFiguresInput, type ScatterSlot } from './figure-model.ts';
 
 const CATALOG = {
   layouts: LAYOUT_BY_ID,
@@ -59,8 +53,13 @@ function plain(figure: ScatterFigureModel) {
   return { ...rest, contour: stripped(contour), lineContour: stripped(lineContour) };
 }
 
+/** 並べた位置のうち、図だけを順に取り出す。 */
+function scatterFigureModels(presets: Parameters<typeof scatterSlots>[0], figuresInput: ScatterFiguresInput): ScatterFigureModel[] {
+  return scatterSlots(presets, figuresInput).flatMap((slot) => (slot.type === 'figure' ? [slot.figure] : []));
+}
+
 function input(overrides: Partial<ScatterFiguresInput> = {}): ScatterFiguresInput {
-  return { ...BUILTIN, xAxis: 'perCharSteps', yAxis: 'meanPerStroke', tickScale: 'linear', language: 'ja', ...overrides };
+  return { ...BUILTIN, xAxis: 'perCharSteps', yAxes: ['meanPerStroke'], tickScale: 'linear', language: 'ja', ...overrides };
 }
 
 test('選んだ組み合わせの図は、渡した順に並ぶ', () => {
@@ -75,7 +74,7 @@ test('選んだ組み合わせの図は、渡した順に並ぶ', () => {
 test('各図のモデルは、その組み合わせ1つだけを選んだ時と同じ', () => {
   const together = scatterFigureModels(['distance', 'hand', 'handShare'], input());
   for (const figure of together) {
-    assert.deepEqual(plain(figure), plain(scatterFigureModel(figure.preset, input())), figure.preset);
+    assert.deepEqual(plain(figure), plain(scatterFigureModels([figure.preset], input())[0]!), figure.preset);
     assert.deepEqual(plain(figure), plain(scatterFigureModels([figure.preset], input())[0]!), figure.preset);
   }
   // 並びから外しても、残った図は変わらない
@@ -84,7 +83,7 @@ test('各図のモデルは、その組み合わせ1つだけを選んだ時と�
 });
 
 test('目盛りと「自由に選ぶ」の軸は、全ての図で同じ値を使う', () => {
-  const figures = scatterFigureModels(['distance', 'free'], input({ tickScale: 'log', xAxis: 'totalUnits', yAxis: 'sameFinger' }));
+  const figures = scatterFigureModels(['distance', 'free'], input({ tickScale: 'log', xAxis: 'totalUnits', yAxes: ['sameFinger'] }));
   assert.deepEqual(figures[1]!.axes, { x: 'totalUnits', y: 'sameFinger' });
   // 「自由に選ぶ」の軸は、他の組み合わせの図の軸を変えない
   assert.deepEqual(figures[0]!.axes, { x: 'perCharSteps', y: 'meanPerStroke' });
@@ -102,10 +101,36 @@ test('対数を選ぶと、対数にできない図にだけその旨の理由�
   for (const figure of scatterFigureModels(['distance', 'handShare'], input())) assert.deepEqual(figure.logReasons, []);
 });
 
-test('「自由に選ぶ」で選べない軸の組は、「自由に選ぶ」の図にだけ問題として付く', () => {
-  const figures = scatterFigureModels(['distance', 'free'], input({ xAxis: 'perCharSteps', yAxis: 'perCharSteps' }));
-  assert.equal(figures[0]!.problem, undefined);
-  assert.equal(figures[1]!.problem, 'same');
+test('「自由に選ぶ」の位置に、縦軸ごとの図が縦軸の順に入る', () => {
+  const slots = scatterSlots(['distance', 'free', 'hand'], input({ yAxes: ['meanPerStroke', 'sameFinger', 'rightHandDistanceShare'] }));
+  assert.deepEqual(
+    slots.map((slot) => slot.key),
+    ['distance', 'free:meanPerStroke', 'free:sameFinger', 'free:rightHandDistanceShare', 'hand'],
+  );
+  for (const slot of slots) assert.equal(slot.type, 'figure');
+});
+
+test('横軸と選べない組になった縦軸は図を描かず、1つの知らせにまとめて「自由に選ぶ」の図の後に置く', () => {
+  const slots = scatterSlots(['distance', 'free', 'hand'], input({ xAxis: 'perCharSteps', yAxes: ['actions', 'meanPerStroke', 'perCharSteps'] }));
+  assert.deepEqual(
+    slots.map((slot) => slot.key),
+    ['distance', 'free:meanPerStroke', 'free-notice', 'hand'],
+  );
+  const notice = slots.find((slot): slot is Extract<ScatterSlot, { type: 'free-notice' }> => slot.type === 'free-notice')!;
+  assert.equal(notice.noYAxis, false);
+  assert.deepEqual(notice.blocked[0], { column: 'actions', problem: 'proportional' });
+  assert.deepEqual(notice.blocked[1], { column: 'perCharSteps', problem: 'same' });
+  assert.equal(notice.blocked.length, 2);
+});
+
+test('縦軸が無い時は、「自由に選ぶ」の図を描かず知らせを置き、他の図は残す', () => {
+  const slots = scatterSlots(['distance', 'free'], input({ yAxes: [] }));
+  assert.deepEqual(
+    slots.map((slot) => slot.key),
+    ['distance', 'free-notice'],
+  );
+  const notice = slots[1]!;
+  assert.equal(notice.type === 'free-notice' && notice.noYAxis, true);
 });
 
 test('計算中・失敗の対象は、どの図にも同じ行が付く', () => {

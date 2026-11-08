@@ -5,14 +5,14 @@ import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import type { TextLanguage } from '#input/text/language.ts';
-import { COMPARISON_COLUMN_IDS, comparisonColumnText } from '../comparison-column-text.ts';
+import { COMPARISON_COLUMN_IDS, comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
 import { SCATTER_PRESET_IDS, scatterPresetLabels, scatterAxisProblem, type ScatterAxisProblem } from './axes.ts';
 import { axisName, axisPlotTitle, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 import { scatterDefinition, type ScatterExtracted } from './extract.ts';
 import { FIGURE_GAP, FIGURE_MAX_WIDTH, scatterColumnCount } from './figure-layout.ts';
-import { scatterFigureModels, type ScatterFigureModel } from './figure-model.ts';
+import { scatterSlots, type ScatterFigureModel, type ScatterSlot } from './figure-model.ts';
 import { SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
@@ -59,6 +59,34 @@ function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): s
   return problem === 'same'
     ? '同じ列は、横軸と縦軸の両方に選べません。'
     : `アクション数とアクション数/${k}、距離と距離/${k}、距離/アクションとアクション数/距離のように、同じテキストなら一方が他方の定数倍か、積が一定になる2列は、同時に選べません。`;
+}
+
+/** 縦軸が無い時と、横軸と選べない組になった縦軸がある時に、「自由に選ぶ」の図の代わりに出す知らせ。 */
+function FreeNotice({
+  slot,
+  xAxis,
+  language,
+}: {
+  readonly slot: Extract<ScatterSlot, { type: 'free-notice' }>;
+  readonly xAxis: ComparisonColumnId;
+  readonly language: TextLanguage;
+}) {
+  const problems = [...new Set(slot.blocked.map((entry) => entry.problem))];
+  return (
+    <div className="scatter-cell" data-scatter-figure="free">
+      {slot.noYAxis ? (
+        <p className="scatter-notice" role="status" data-scatter-no-y-axis="">
+          縦軸が選ばれていません。
+        </p>
+      ) : null}
+      {slot.blocked.length > 0 ? (
+        <p className="scatter-notice" role="alert" data-scatter-axis-problem="">
+          {`縦軸の${slot.blocked.map((entry) => `「${axisName(entry.column, language)}」`).join('')}は、横軸の「${axisName(xAxis, language)}」と選べない組のため、図を描いていません。`}
+          {problems.map((problem) => axisProblemText(problem, language)).join('')}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function KindMark({ kind, size = MARK_SIZE }: { readonly kind: LayoutKind; readonly size?: number }) {
@@ -167,7 +195,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
       readout: row == null || text == null ? undefined : { row, mark: row.querySelector('.scatter-readout-mark'), text },
     };
   };
-  const { axes, problem, plotted, excluded, contour, logScale, logReasons, usedKinds, model } = figure;
+  const { axes, plotted, excluded, contour, logScale, logReasons, usedKinds, model } = figure;
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const quantityHelp = scatterQuantityHelp(axes, contour, language, logScale);
   const readouts = [
@@ -182,12 +210,8 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
   });
 
   return (
-    <div className="scatter-cell" data-scatter-figure={figure.preset}>
-      {problem !== undefined ? (
-        <p className="scatter-notice" role="alert" data-scatter-axis-problem="">
-          {axisProblemText(problem, language)}
-        </p>
-      ) : plotted.length > 0 ? (
+    <div className="scatter-cell" data-scatter-figure={figure.preset} data-scatter-y={figure.preset === 'free' ? figure.axes.y : undefined}>
+      {plotted.length > 0 ? (
         <>
           <div className="scatter-heading">
             <InfoButton
@@ -455,19 +479,21 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
   const [hoveredKey, setHoveredKey] = useState<string | undefined>(undefined);
   const [pinnedKey, setPinnedKey] = useState<string | undefined>(undefined);
 
-  const figures = useMemo(
+  const slots = useMemo(
     () =>
-      scatterFigureModels(options.presets, {
+      scatterSlots(options.presets, {
         order,
         rowContext,
         rows: extracted.rows,
         xAxis: options.xAxis,
-        yAxis: options.yAxis,
+        yAxes: options.yAxes,
         tickScale: options.tickScale,
         language,
       }),
-    [options.presets, options.xAxis, options.yAxis, options.tickScale, order, rowContext, extracted.rows, language],
+    [options.presets, options.xAxis, options.yAxes, options.tickScale, order, rowContext, extracted.rows, language],
   );
+
+  const figures = useMemo(() => slots.flatMap((slot) => (slot.type === 'figure' ? [slot.figure] : [])), [slots]);
 
   // 留めた対象がどの図にも描かれなくなったら、留めるのをやめる
   const plottedKeys = useMemo(() => new Set(figures.flatMap((figure) => figure.model.points.map((point) => point.targetKey))), [figures]);
@@ -477,7 +503,7 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
   }, [pinnedKey, pinned]);
   const reading = readingTargets(pinned, hoveredKey);
 
-  const columns = scatterColumnCount(options.columns, width, figures.length);
+  const columns = scatterColumnCount(options.columns, width, slots.length);
 
   // Escは、フォーカスが散布図の中にある時だけ留めるのをやめる。ⓘの小窓などの別の要素のEscには反応しない
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -492,25 +518,29 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
         className="scatter-grid"
         style={{ gap: FIGURE_GAP, gridTemplateColumns: `repeat(${columns}, minmax(0, ${FIGURE_MAX_WIDTH}px))` }}
       >
-        {figures.map((figure) => (
-          <FigureView
-            key={figure.preset}
-            figure={figure}
-            language={language}
-            copyFigureImage={copyFigureImage}
-            pinned={reading.pinned}
-            hovered={reading.hovered}
-            onHover={setHoveredKey}
-            onLeave={(targetKey) => setHoveredKey((current) => (current === targetKey ? undefined : current))}
-            onTogglePin={(targetKey) => setPinnedKey((current) => togglePinned(stillPinned(current, plottedKeys), targetKey))}
-          />
-        ))}
+        {slots.map((slot) =>
+          slot.type === 'free-notice' ? (
+            <FreeNotice key={slot.key} slot={slot} xAxis={options.xAxis} language={language} />
+          ) : (
+            <FigureView
+              key={slot.key}
+              figure={slot.figure}
+              language={language}
+              copyFigureImage={copyFigureImage}
+              pinned={reading.pinned}
+              hovered={reading.hovered}
+              onHover={setHoveredKey}
+              onLeave={(targetKey) => setHoveredKey((current) => (current === targetKey ? undefined : current))}
+              onTogglePin={(targetKey) => setPinnedKey((current) => togglePinned(stillPinned(current, plottedKeys), targetKey))}
+            />
+          ),
+        )}
       </div>
     </section>
   );
 }
 
-/** 散布図の解析設定（組み合わせ・列の数・目盛りと、自由に選ぶ時の軸）。選べない組になる列は、選択肢から外す。 */
+/** 散布図の解析設定（組み合わせ・列の数・目盛りと、自由に選ぶ時の軸）。縦軸は、横軸と選べない組になる列を選べない状態にする。 */
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
   const language = useTextLanguage();
@@ -528,16 +558,16 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
       />
       {options.presets.includes('free') ? (
         <>
-          <SelectOptionField
-            label="横軸"
-            binding={bind('xAxis')}
-            choices={COLUMN_CHOICES.filter((choice) => choice.value === options.xAxis || scatterAxisProblem(choice.value, options.yAxis) === undefined)}
-          />
-          <SelectOptionField
+          <SelectOptionField label="横軸" binding={bind('xAxis')} choices={COLUMN_CHOICES} />
+          <CheckboxGroupOptionField
             label="縦軸"
-            binding={bind('yAxis')}
-            choices={COLUMN_CHOICES.filter((choice) => choice.value === options.yAxis || scatterAxisProblem(options.xAxis, choice.value) === undefined)}
-            hint="軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。押下1回の移動距離など、配列ごとに違う回数で割った距離の線は引きません。"
+            binding={bind('yAxes')}
+            choices={COLUMN_CHOICES.map((choice) => ({
+              ...choice,
+              disabled: !options.yAxes.includes(choice.value) && scatterAxisProblem(options.xAxis, choice.value) !== undefined,
+            }))}
+            selectAll
+            hint="縦軸ごとに図を1つ描きます。軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。押下1回の移動距離など、配列ごとに違う回数で割った距離の線は引きません。"
           />
         </>
       ) : null}

@@ -58,16 +58,17 @@ export interface ScatterFiguresInput {
   readonly rows: readonly ScatterRow[];
   /** 「自由に選ぶ」の軸。 */
   readonly xAxis: ComparisonColumnId;
-  readonly yAxis: ComparisonColumnId;
+  /** 「自由に選ぶ」の縦軸。比較表の列の順。 */
+  readonly yAxes: readonly ComparisonColumnId[];
   readonly tickScale: 'linear' | 'log';
   readonly language: TextLanguage;
 }
 
 export interface ScatterFigureModel {
   readonly preset: ScatterPresetId;
+  /** 図を並べる位置の中での識別。`free`は縦軸ごとに図があるので、縦軸の列を含める。 */
+  readonly key: string;
   readonly axes: ScatterAxes;
-  /** 選べない軸の組。`free`の図でだけ起きる。あれば図は描かない。 */
-  readonly problem: ScatterAxisProblem | undefined;
   readonly plotted: readonly ScatterPlottedRow[];
   readonly excluded: readonly ScatterExcludedRow[];
   readonly contour: ScatterContour | undefined;
@@ -80,14 +81,8 @@ export interface ScatterFigureModel {
   readonly model: ScatterPlotModel;
 }
 
-export function scatterAxesOf(preset: ScatterPresetId, xAxis: ComparisonColumnId, yAxis: ComparisonColumnId): ScatterAxes {
-  return preset === 'free' ? { x: xAxis, y: yAxis } : SCATTER_PRESET_AXES[preset];
-}
-
-/** 組み合わせ1つぶんの図のモデルを作る。 */
-export function scatterFigureModel(preset: ScatterPresetId, input: ScatterFiguresInput): ScatterFigureModel {
-  const axes = scatterAxesOf(preset, input.xAxis, input.yAxis);
-  const problem = scatterAxisProblem(axes.x, axes.y);
+/** 図1つぶんのモデルを作る。`free`の軸は`axes`で渡す。選べない軸の組は呼び出し側で除く。 */
+export function scatterFigureModel(preset: ScatterPresetId, axes: ScatterAxes, input: ScatterFiguresInput): ScatterFigureModel {
   const rowByKey = new Map(input.rows.map((row) => [row.targetKey, row] as const));
   const plotted: ScatterPlottedRow[] = [];
   const excluded: ScatterExcludedRow[] = [];
@@ -111,7 +106,7 @@ export function scatterFigureModel(preset: ScatterPresetId, input: ScatterFigure
       else excluded.push({ targetKey, label, fullName, status: 'no-value', message: '値なし' });
     }
   }
-  const contour = problem === undefined ? scatterContour(axes.x, axes.y, inputChars, input.language) : undefined;
+  const contour = scatterContour(axes.x, axes.y, inputChars, input.language);
   // 線を引かない組でも、3つの量の関係は図の見方に出すので`contour`は残す。点の読み取りと凡例には、線を引く組の線の量だけを出す
   const lineContour = contour?.drawsLines === true ? contour : undefined;
   // 対数の目盛りは、対数にできる図でだけ使う。選んだ設定と表示が違う時は、図の近くに理由を出す
@@ -126,10 +121,63 @@ export function scatterFigureModel(preset: ScatterPresetId, input: ScatterFigure
     centerAxes: { x: isHandShareColumn(axes.x), y: isHandShareColumn(axes.y) },
     logScale,
   });
-  return { preset, axes, problem, plotted, excluded, contour, lineContour, logScale, logReasons, usedKinds, model };
+  return {
+    preset,
+    key: preset === 'free' ? `free:${axes.y}` : preset,
+    axes,
+    plotted,
+    excluded,
+    contour,
+    lineContour,
+    logScale,
+    logReasons,
+    usedKinds,
+    model,
+  };
 }
 
-/** 選んだ組み合わせの図のモデルを、渡された順に作る。 */
-export function scatterFigureModels(presets: readonly ScatterPresetId[], input: ScatterFiguresInput): readonly ScatterFigureModel[] {
-  return presets.map((preset) => scatterFigureModel(preset, input));
+/** 「自由に選ぶ」の縦軸のうち、横軸と選べない組になる縦軸。 */
+export interface ScatterBlockedYAxis {
+  readonly column: ComparisonColumnId;
+  readonly problem: ScatterAxisProblem;
+}
+
+/** 図を並べる位置に入るもの。図1つか、「自由に選ぶ」の図の代わりに出す知らせ。 */
+export type ScatterSlot =
+  | { readonly type: 'figure'; readonly key: string; readonly figure: ScatterFigureModel }
+  | {
+      readonly type: 'free-notice';
+      readonly key: 'free-notice';
+      /** 縦軸を1つも選んでいない。 */
+      readonly noYAxis: boolean;
+      /** 横軸と選べない組になった縦軸。 */
+      readonly blocked: readonly ScatterBlockedYAxis[];
+    };
+
+/**
+ * 選んだ組み合わせの図を、渡された順に並べる。`free`の位置には、縦軸ごとの図を縦軸の順に入れる。
+ * 縦軸が無い時と、選べない組になった縦軸がある時は、`free`の図の後に知らせを1つ置く。
+ */
+export function scatterSlots(presets: readonly ScatterPresetId[], input: ScatterFiguresInput): readonly ScatterSlot[] {
+  return presets.flatMap((preset): ScatterSlot[] => {
+    if (preset !== 'free') {
+      const figure = scatterFigureModel(preset, SCATTER_PRESET_AXES[preset], input);
+      return [{ type: 'figure', key: figure.key, figure }];
+    }
+    const slots: ScatterSlot[] = [];
+    const blocked: ScatterBlockedYAxis[] = [];
+    for (const column of input.yAxes) {
+      const problem = scatterAxisProblem(input.xAxis, column);
+      if (problem !== undefined) {
+        blocked.push({ column, problem });
+        continue;
+      }
+      const figure = scatterFigureModel(preset, { x: input.xAxis, y: column }, input);
+      slots.push({ type: 'figure', key: figure.key, figure });
+    }
+    if (input.yAxes.length === 0 || blocked.length > 0) {
+      slots.push({ type: 'free-notice', key: 'free-notice', noYAxis: input.yAxes.length === 0, blocked });
+    }
+    return slots;
+  });
 }
