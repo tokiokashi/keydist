@@ -1,5 +1,8 @@
 import type { ScatterContour } from './axes.ts';
+import { formatTickValue, multiple, multiplesIn, niceTicks } from '../axis-ticks.ts';
 import { axisUnit } from './axis-names.ts';
+
+export { formatTickValue, niceTicks };
 
 /**
  * 散布図の座標の計算（画面に依存しない純粋な関数）。軸の範囲・目盛り・細い線の位置と値の置き場所、点の名前の置き場所を決める。
@@ -40,38 +43,6 @@ export function logAxisRange(values: readonly number[]): Range {
   const max = Math.log10(Math.max(...values));
   const pad = max > min ? (max - min) * 0.1 : Math.log10(1.1);
   return { lo: 10 ** (min - pad), hi: 10 ** (max + pad) };
-}
-
-/** 範囲の中の、切りのよい（1・2・5の10の冪乗倍）値。おおよそ`target`本。 */
-export function niceTicks(range: Range, target: number): { readonly values: readonly number[]; readonly step: number } {
-  const span = range.hi - range.lo;
-  if (!(span > 0) || !Number.isFinite(span)) return { values: [], step: 1 };
-  const rough = span / Math.max(1, target);
-  const magnitude = 10 ** Math.floor(Math.log10(rough));
-  const normalized = rough / magnitude;
-  const step = (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * magnitude;
-  const { first, last } = multiplesIn(range, step);
-  const values: number[] = [];
-  for (let i = first; i <= last; i++) values.push(multiple(i, step));
-  return { values, step };
-}
-
-/** `step`の整数倍のうち、範囲に入るものの添字の最小と最大。 */
-function multiplesIn(range: Range, step: number): { readonly first: number; readonly last: number } {
-  return { first: Math.ceil(range.lo / step - 1e-9), last: Math.floor(range.hi / step + 1e-9) };
-}
-
-function multiple(index: number, step: number): number {
-  return Number((index * step).toPrecision(12));
-}
-
-/** 目盛りの刻み`step`が見分けられる小数の桁数。 */
-function decimalsOf(step: number): number {
-  return step >= 1 ? 0 : Math.min(6, Math.ceil(-Math.log10(step) - 1e-9));
-}
-
-export function formatTickValue(value: number, step: number): string {
-  return value.toFixed(decimalsOf(step));
 }
 
 /** 対数の目盛りの数字。その値を丸めずに表せる最小の桁数で書く。 */
