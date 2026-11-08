@@ -345,6 +345,18 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 - 公開はGitHub Actionsから行うので、`CNAME` ファイルは置かない（Actionsからの公開ではPagesが読まない。ドメインの正はSettingsの設定）
 - CIの `build` は `/keydist/` で組む。ルート以外のパスに置いても壊れないことを確かめるため
 
+### リリース前の確認（staging）
+
+`main` をリリースの前に画面で確かめられるよう、`.github/workflows/staging.yml` が本番と別のURLへ配信する。
+配信先はCloudflareのWorkerで、設定は `.github/staging/wrangler.jsonc` にある。本番の公開とは独立していて、ここで配信したものは本番に出ない。
+
+- `main` へのpushのたびに、そのコミットを https://staging.keydist.tokiokashi.com/ へ配信する
+- マージ前のブランチを先に見たい時は、Actions画面の「Deploy to staging」→「Run workflow」でブランチを選ぶ。クラウドのエージェントは手動実行ができないので、オーナーの操作になる
+- 配信先は1つだけで、最後に配信したものが残る。ブランチを手動で配信した後は、次の `main` へのpushで `main` に戻る
+- URLが固定なので、stagingのブラウザの保存データは配信をまたいで残る。本番とはオリジンが違うので、本番の保存データは見えない
+- すべての応答に `X-Robots-Tag: noindex` を付け、検索エンジンに載せない
+- リポジトリのSecretsに `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` が無い間は、配信せずに成功で終わる
+
 ## テスト
 
 `node --test` を使う。unit test は主対象のソース隣へ `src/**/*.test.ts` として置く。`test/*.test.ts` には architecture・commit-msg などリポジトリ横断の検査だけを置き、fixture は `test/fixtures/` に置く。

@@ -1,0 +1,116 @@
+name: Deploy to staging
+
+# main をリリースの前に画面で確かめられるよう、本番とは別のURL（.github/staging/wrangler.jsonc の routes）へ配信する。
+# 本番の公開（release.yml / pages.yml）とは独立していて、ここで出したものは本番に出ない。
+# - main への push: そのコミットを配信する
+# - 手動実行（workflow_dispatch）: 「Use workflow from」で選んだブランチを配信する。マージ前のブランチを先に見たい時に使う
+# 配信先は1つだけで、最後に配信したものが残る。URLが固定なので、ブラウザの保存データは配信をまたいで残る
+# 検査（typecheck・test・e2e）はここでは回さない。ci.yml と e2e.yml が同じコミットを検査している
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 後から来た配信が新しい内容なので、走っている配信は取り消してよい
+concurrency:
+  group: staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Secrets が入るまでは配信できない。その間 main への push のたびに失敗が並ばないよう、知らせて成功で終える
+      - name: Check Cloudflare secrets
+        id: secrets
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN と CLOUDFLARE_ACCOUNT_ID が無いので配信しない"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      # setup-node のキャッシュは Node 付属の npm（10）を呼び、devEngines の検査で止まるので、npm のキャッシュは自前で持つ
+      - name: Cache npm
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - name: Cache reading dictionary
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/cache@v6
+        with:
+          path: .cache/dictionary
+          key: dictionary-${{ hashFiles('src/platform/reading/dictionary-spec.ts') }}
+
+      - name: Install dependencies
+        if: steps.secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # package.json の packageManager に書いた版へ npm を揃える。devEngines の検査はプロジェクトの中で走るので、入れ替えは外で打つ
+          npm_version="$(node -p "require('./package.json').packageManager.replace(/^npm@/, '')")"
+          (cd "$RUNNER_TEMP" && npm install --global "npm@$npm_version")
+          npm ci
+
+      # 配信先は独自ドメインの直下なので base は `/`
+      - name: Build
+        if: steps.secrets.outputs.ready == 'true'
+        shell: bash
+        env:
+          KEYDIST_BASE_PATH: /
+        run: npm run build
+
+      # 検索エンジンに本番と同じ中身の別URLを載せないよう、すべての応答に noindex を付ける
+      - name: Add noindex header
+        if: steps.secrets.outputs.ready == 'true'
+        shell: bash
+        run: |
+          printf '/*\n  X-Robots-Tag: noindex\n' > .output/public/_headers
+
+      - name: Deploy
+        if: steps.secrets.outputs.ready == 'true'
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.151.2 deploy --config .github/staging/wrangler.jsonc
+
+      - name: Write summary
+        if: steps.secrets.outputs.ready == 'true'
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          {
+            echo "## Staging"
+            echo
+            echo "https://staging.keydist.tokiokashi.com/"
+            echo
+            echo "branch: \`$REF_NAME\`"
+            echo
+            echo "commit: \`$SHA\`"
+          } >> "$GITHUB_STEP_SUMMARY"
