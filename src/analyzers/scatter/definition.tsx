@@ -569,11 +569,12 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
         ]}
       />
       <CheckboxGroupOptionField
-        label="組み合わせ"
+        label="表示する図"
         binding={bind('presets')}
         choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: presetLabels[id] }))}
         minSelected={1}
         listed
+        selectAll
       />
       {options.presets.includes('free') ? (
         <>

@@ -81,7 +81,7 @@ export const scatterOptions = defineOptions({
     default: [DEFAULT_SCATTER_PRESET],
     affects: 'view',
     url: normalizedSetUrlCodec('preset', SCATTER_PRESET_IDS, normalizeScatterPresets),
-    label: '組み合わせ',
+    label: '表示する図',
   }),
   xAxes: defineOption<readonly ComparisonColumnId[]>({
     decode: axesDecoder(DEFAULT_SCATTER_X_AXIS, '横軸'),
