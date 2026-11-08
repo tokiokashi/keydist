@@ -82,10 +82,10 @@ test('各図のモデルは、その組み合わせ1つだけを選んだ時と�
   assert.deepEqual(withoutFirst.map(plain), together.slice(1).map(plain));
 });
 
-test('軸の種類と「自由に選ぶ」の軸は、全ての図で同じ値を使う', () => {
+test('軸の種類と「自由選択」の軸は、全ての図で同じ値を使う', () => {
   const figures = scatterFigureModels(['distance', 'free'], input({ tickScale: 'log', xAxes: ['totalUnits'], yAxes: ['sameFinger'] }));
   assert.deepEqual(figures[1]!.axes, { x: 'totalUnits', y: 'sameFinger' });
-  // 「自由に選ぶ」の軸は、他の組み合わせの図の軸を変えない
+  // 「自由選択」の軸は、他の組み合わせの図の軸を変えない
   assert.deepEqual(figures[0]!.axes, { x: 'perCharSteps', y: 'meanPerStroke' });
   assert.equal(figures[0]!.logScale, true);
 });
@@ -101,7 +101,7 @@ test('対数を選ぶと、対数にできない図にだけその旨の理由�
   for (const figure of scatterFigureModels(['distance', 'handShare'], input())) assert.deepEqual(figure.logReasons, []);
 });
 
-test('「自由に選ぶ」の位置に、縦軸ごとの図が縦軸の順に入る', () => {
+test('「自由選択」の位置に、縦軸ごとの図が縦軸の順に入る', () => {
   const slots = scatterSlots(['distance', 'free', 'hand'], input({ yAxes: ['meanPerStroke', 'sameFinger', 'rightHandDistanceShare'] }));
   assert.deepEqual(
     slots.map((slot) => slot.key),
@@ -110,7 +110,7 @@ test('「自由に選ぶ」の位置に、縦軸ごとの図が縦軸の順に�
   for (const slot of slots) assert.equal(slot.type, 'figure');
 });
 
-test('横軸と選べない組になった縦軸は図を描かず、1つの知らせにまとめて「自由に選ぶ」の図の後に置く', () => {
+test('横軸と選べない組になった縦軸は図を描かず、1つの知らせにまとめて「自由選択」の図の後に置く', () => {
   const slots = scatterSlots(['distance', 'free', 'hand'], input({ xAxes: ['perCharSteps'], yAxes: ['actions', 'meanPerStroke', 'perCharSteps'] }));
   assert.deepEqual(
     slots.map((slot) => slot.key),
@@ -123,7 +123,7 @@ test('横軸と選べない組になった縦軸は図を描かず、1つの知�
   assert.equal(notice.blocked.length, 2);
 });
 
-test('縦軸が無い時は、「自由に選ぶ」の図を描かず知らせを置き、他の図は残す', () => {
+test('縦軸が無い時は、「自由選択」の図を描かず知らせを置き、他の図は残す', () => {
   const slots = scatterSlots(['distance', 'free'], input({ yAxes: [] }));
   assert.deepEqual(
     slots.map((slot) => slot.key),

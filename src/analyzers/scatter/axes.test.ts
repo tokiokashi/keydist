@@ -263,7 +263,7 @@ test('組み込みの全配列: 恒等式の列どうしの全ての組で、等
   assert.ok(drawn > 0);
 });
 
-test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字あたりの選び方を含む）', () => {
+test('自由選択: 等位線を引く組と、その量（総数と1文字あたりの選び方を含む）', () => {
   const column = (x: ComparisonColumnId, y: ComparisonColumnId) => scatterContour(x, y, 100, 'ja')?.column;
   // 距離 = 動作数 × u/打鍵
   assert.equal(column('actions', 'meanPerStroke'), 'totalUnits');
@@ -380,7 +380,7 @@ const PROPORTIONAL_PAIRS: ReadonlyArray<readonly [ComparisonColumnId, Comparison
   ['actionsPerTextChar', 'perCharSteps'],
 ];
 
-test('自由に選ぶ: 選べない組は、同じ列と、積または比が一定になる2列', () => {
+test('自由選択: 選べない組は、同じ列と、積または比が一定になる2列', () => {
   assert.equal(scatterAxisProblem('actions', 'actions'), 'same');
   for (const [a, b] of PROPORTIONAL_PAIRS) {
     assert.equal(scatterAxisProblem(a, b), 'proportional', `${a} ${b}`);
@@ -444,7 +444,7 @@ test('組み込みの全配列: コスパ×アクション/uが文字/uと、コ
   assert.ok(someDifferent, 'W≠Cの行がある');
 });
 
-test('組み合わせの一覧の並び: 見る量のまとまりで並び、既定の組み合わせが先頭で、自由に選ぶが最後', () => {
+test('組み合わせの一覧の並び: 見る量のまとまりで並び、既定の組み合わせが先頭で、自由選択が最後', () => {
   assert.deepEqual(
     [...SCATTER_PRESET_IDS],
     ['distance', 'textDistance', 'charsPerAction', 'press', 'perPress', 'movedPress', 'sameFinger', 'hand', 'handRates', 'handShare', 'free'],
@@ -582,7 +582,7 @@ test('細い線の量: 用意した組み合わせは、移動ありキーの割
       ['handShare', undefined],
     ],
   );
-  // 自由に選ぶ: 線の量が他の列から導かれる組でも、同じ規則で決まる
+  // 自由選択: 線の量が他の列から導かれる組でも、同じ規則で決まる
   const free = (x: ComparisonColumnId, y: ComparisonColumnId) => scatterContour(x, y, 100, 'ja');
   assert.equal(free('perActionPresses', 'perPressUnits')?.drawsLines, false);
   assert.equal(free('perActionPresses', 'meanPerStroke')?.drawsLines, false);

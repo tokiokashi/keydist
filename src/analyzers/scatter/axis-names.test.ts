@@ -139,7 +139,7 @@ test('組み合わせの名前: コスパの組だけ「コスパ（文字数/�
   assert.equal(labels.hand, '手を切り替える回数と同じ手が続く回数');
   assert.equal(labels.handShare, '右手キー率と右手距離率');
   assert.equal(labels.movedPress, '移動ありキー率と移動を伴う押下1回の移動距離');
-  assert.equal(labels.free, '自由に選ぶ');
+  assert.equal(labels.free, '自由選択');
   assert.equal(axisName('textCharsPerAction', 'ja'), '1アクションで打てる変換後の文字数');
   assert.equal(axisTitle('actionsPerUnit', 'ja'), '1u分の移動で打つアクション数（1/u）');
   assert.equal(axisPlotTitle('textCharsPerAction', 'ja'), '文字数/アクション');
