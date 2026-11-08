@@ -350,7 +350,7 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 `main` をリリースの前に画面で確かめられるよう、`.github/workflows/staging.yml` が本番と別のURLへ配信する。
 配信先はCloudflareのWorkerで、設定は `.github/staging/wrangler.jsonc` にある。本番の公開とは独立していて、ここで配信したものは本番に出ない。
 
-- `main` へのpushのたびに、そのコミットを https://staging.keydist.tokiokashi.com/ へ配信する
+- `main` へのpushのたびに、そのコミットを https://keydist-staging.tokiokashi.com/ へ配信する
 - マージ前のブランチを先に見たい時は、Actions画面の「Deploy to staging」→「Run workflow」でブランチを選ぶ。クラウドのエージェントは手動実行ができないので、オーナーの操作になる
 - 配信先は1つだけで、最後に配信したものが残る。ブランチを手動で配信した後は、次の `main` へのpushで `main` に戻る
 - URLが固定なので、stagingのブラウザの保存データは配信をまたいで残る。本番とはオリジンが違うので、本番の保存データは見えない
