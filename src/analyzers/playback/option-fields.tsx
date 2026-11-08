@@ -1,6 +1,4 @@
 import { useContext, type ReactNode } from 'react';
-import { useTextLanguage } from '../text-language-context.tsx';
-import { kanaUnitOf } from '../unit-words.ts';
 import {
   PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX,
   PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
@@ -49,7 +47,6 @@ const USE_NOT_USE = [
  * どちらもここから同じ入力欄を取る。どの項目をどちらに置くかは`settings-sections.ts`の表が決める。
  */
 export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (next: PlaybackOptions) => void): Record<keyof PlaybackOptions, ReactNode> {
-  const language = useTextLanguage();
   const bind = <K extends keyof PlaybackOptions>(key: K) => bindOption(options, DEFAULT_PLAYBACK_OPTIONS, onOptionsChange, key);
   const bindOnOff = (
     key:
@@ -71,7 +68,7 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
   const personalSpeedSaved = useContext(PersonalSpeedSavedContext);
   const personalSpeedInUse = personalSpeedSaved && options.applyPersonalSpeed;
   // 保存値の部分の設定は、個人速度を適用しない間は読まれない
-  const partHint = (text: string) => (options.applyPersonalSpeed ? text : `${text}個人速度を適用しないため、この設定は使われません。`);
+  const unusedWithoutPersonalSpeed = options.applyPersonalSpeed ? undefined : '個人速度を適用しないため、この設定は使われません。';
   const fields: Record<keyof PlaybackOptions, ReactNode> = {
     stepsPerSecond: (
       <NumberOptionField
@@ -81,11 +78,7 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         max={PLAYBACK_STEPS_PER_SECOND_MAX}
         step={0.05}
         unit="ステップ/秒"
-        hint={
-          personalSpeedInUse
-            ? '1秒に進むステップ数。個人速度で計算しているため、基準速度は使われません。'
-            : '1秒に進むステップ数。個人速度で計算している間は使われません。'
-        }
+        hint={personalSpeedInUse ? '個人速度で計算しているため、基準速度は使われません。' : undefined}
       />
     ),
     speedMultiplier: (
@@ -96,25 +89,10 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         max={PLAYBACK_SPEED_MULTIPLIER_MAX}
         step={0.1}
         unit="倍"
-        hint="個人速度で計算している時も、最後に掛ける倍率です。"
       />
     ),
-    sameFingerDelay: (
-      <SegmentedOptionField
-        label="同じ指の移動時間を考慮"
-        binding={bindOnOff('sameFingerDelay')}
-        choices={ON_OFF}
-        hint="同じ指が離れたキーへ移る時間を、ステップの長さに入れます。"
-      />
-    ),
-    allFingerMovementDelay: (
-      <SegmentedOptionField
-        label="全指の移動時間で律速"
-        binding={bindOnOff('allFingerMovementDelay')}
-        choices={ON_OFF}
-        hint="すべての指が次のキーへ移るのに要する時間より、ステップが短くならないようにします。"
-      />
-    ),
+    sameFingerDelay: <SegmentedOptionField label="同じ指の移動時間を考慮" binding={bindOnOff('sameFingerDelay')} choices={ON_OFF} />,
+    allFingerMovementDelay: <SegmentedOptionField label="全指の移動時間で律速" binding={bindOnOff('allFingerMovementDelay')} choices={ON_OFF} />,
     applyPersonalSpeed: (
       <SegmentedOptionField
         label="個人速度"
@@ -123,7 +101,6 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
           { value: 'on', label: '適用する' },
           { value: 'off', label: '適用しない' },
         ]}
-        hint="個人速度の画面で測った速さで、再生の時間を求めます。"
       />
     ),
     sameHandSpeed: (
@@ -135,7 +112,7 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
           { value: 'pair', label: '組ごと' },
           { value: 'representative', label: '代表値だけ' },
         ]}
-        hint={partHint('同じ手の別の指へ移る速さに、測った値のどこまで使うかです。組ごとは向きを分けず、代表値だけは指の組の違いも使いません。')}
+        hint={unusedWithoutPersonalSpeed}
       />
     ),
     useCrossHandDirection: (
@@ -143,32 +120,22 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         label="異手の方向別の速度"
         binding={bindOnOff('useCrossHandDirection')}
         choices={USE_NOT_USE}
-        hint={partHint('左右の手をまたぐ時に、向きごとに測った速さを使います。使わない時は通常速度を使います。')}
+        hint={unusedWithoutPersonalSpeed}
       />
     ),
     useFingerValues: (
-      <SegmentedOptionField
-        label="指ごとの値"
-        binding={bindOnOff('useFingerValues')}
-        choices={USE_NOT_USE}
-        hint={partHint('指ごとに測った、同じキーを続けて打つ時間と移動の時間を使います。使わない時は全部の指に代表値を使います。')}
-      />
+      <SegmentedOptionField label="指ごとの値" binding={bindOnOff('useFingerValues')} choices={USE_NOT_USE} hint={unusedWithoutPersonalSpeed} />
     ),
     useSimultaneousOverhead: (
       <SegmentedOptionField
         label="同時押しの上乗せ"
         binding={bindOnOff('useSimultaneousOverhead')}
         choices={USE_NOT_USE}
-        hint={partHint('同時押しのステップに足す上乗せを使います。使わない時は足しません。')}
+        hint={unusedWithoutPersonalSpeed}
       />
     ),
     useKeystrokeOverhead: (
-      <SegmentedOptionField
-        label="打鍵の上乗せ"
-        binding={bindOnOff('useKeystrokeOverhead')}
-        choices={USE_NOT_USE}
-        hint={partHint('文章を打つ速さで測った、ステップに足す上乗せを使います。使わない時は足しません。')}
-      />
+      <SegmentedOptionField label="打鍵の上乗せ" binding={bindOnOff('useKeystrokeOverhead')} choices={USE_NOT_USE} hint={unusedWithoutPersonalSpeed} />
     ),
     commaBeforeMs: (
       <NumberOptionField
@@ -179,7 +146,6 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         step={50}
         integer
         unit="ミリ秒"
-        hint="日本語のテキストの「、」「，」「,」を打つ前に置く間です。"
       />
     ),
     commaAfterMs: (
@@ -191,7 +157,6 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         step={50}
         integer
         unit="ミリ秒"
-        hint="日本語のテキストの「、」「，」「,」を打った後に置く間です。"
       />
     ),
     periodBeforeMs: (
@@ -203,7 +168,6 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         step={50}
         integer
         unit="ミリ秒"
-        hint="日本語のテキストの「。」「．」「.」を打つ前に置く間です。"
       />
     ),
     periodAfterMs: (
@@ -215,7 +179,6 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         step={50}
         integer
         unit="ミリ秒"
-        hint="日本語のテキストの「。」「．」「.」を打った後に置く間です。配列がその文字を打てない時も、テキストのその位置に置きます。"
       />
     ),
     bunsetsuWaitMs: (
@@ -227,7 +190,6 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         step={50}
         integer
         unit="ミリ秒"
-        hint="日本語のテキストの文節の区切りに置く間です。区切りの前の文節を打ち終えた後、次の文節を打ち始める前に置きます。"
       />
     ),
     rateAverage: (
@@ -238,7 +200,6 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
           { value: 'sma', label: 'SMA' },
           { value: 'ewma', label: 'EWMA' },
         ]}
-        hint="SMAは直近の打鍵の単純な平均、EWMAは古い打鍵ほど寄与を時間で減らす平均です。"
       />
     ),
     rateWindow: (
@@ -250,11 +211,7 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         step={1}
         integer
         unit="アクション"
-        hint={
-          options.rateAverage === 'ewma'
-            ? 'SMAで平均する直近のアクション数。平均の方式がEWMAのため、窓幅は使われません。'
-            : 'SMAで平均する直近のアクション数。'
-        }
+        hint={options.rateAverage === 'ewma' ? '平均の方式がEWMAのため、窓幅は使われません。' : undefined}
       />
     ),
     rateHalfLifeSeconds: (
@@ -265,55 +222,17 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         max={PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX}
         step={0.1}
         unit="秒"
-        hint={
-          options.rateAverage === 'sma'
-            ? 'EWMAで、アクションの寄与が半分になるまでの時間。平均の方式がSMAのため、半減時間は使われません。'
-            : 'EWMAで、アクションの寄与が半分になるまでの時間。'
-        }
+        hint={options.rateAverage === 'sma' ? '平均の方式がSMAのため、半減時間は使われません。' : undefined}
       />
     ),
-    showChain: (
-      <CheckboxOptionField
-        label="Chainの動的表示"
-        binding={bind('showChain')}
-        hint="Chainの区間で、前のキーから今押すキーへの動きと、区間の中での順番を配列図に重ねます。速度グラフにも、区間を帯で示します。"
-      />
-    ),
-    showArpeggio: (
-      <CheckboxOptionField
-        label="Arpeggioの動的表示"
-        binding={bind('showArpeggio')}
-        hint="Arpeggioの区間で、前のキーから今押すキーへの動きと、区間の中での順番を配列図に重ねます。速度グラフにも、区間を帯で示します。"
-      />
-    ),
-    showSameFingerMotion: (
-      <CheckboxOptionField label="同指移動の動的表示" binding={bind('showSameFingerMotion')} hint="同じ指が離れたキーへ移る動きを配列図に重ねます。" />
-    ),
-    showFingerPositions: (
-      <CheckboxOptionField label="指の位置を表示" binding={bind('showFingerPositions')} hint="各指が今いるキーを、指ごとの色で配列図に出します。" />
-    ),
-    showPlannedKeys: (
-      <CheckboxOptionField
-        label="押下予定キーを表示"
-        binding={bind('showPlannedKeys')}
-        hint={`これから押すキーを、今の入力の残りと、先読みNで決まる${kanaUnitOf(language)}数先までの分だけ配列図に出します。先読みNは条件で変えます。距離の計算にも使う値なので、変えると距離の数値も変わります。`}
-      />
-    ),
-    showRomajiInput: (
-      <CheckboxOptionField
-        label="入力の行にローマ字を表示"
-        binding={bind('showRomajiInput')}
-        hint="ローマ字の規則を持つ配列で、入力の行の打っている途中の単位とこの先の単位をローマ字で出し、打ち終えた単位はかなで出します。オンの間は、状態の行の「打鍵」と「予定」は出ません。ローマ字の規則を持たない配列では変わりません。"
-      />
-    ),
-    showRomajiPlan: (
-      <CheckboxOptionField
-        label="今のかなの残りキーを配列図に表示"
-        binding={bind('showRomajiPlan')}
-        hint="ローマ字の規則を持つ配列で、今の入力単位のまだ押していないキーを、押下予定キーと同じ緑の塗りで配列図に出します。ローマ字の規則を持たない配列では出ません。"
-      />
-    ),
-    showTrail: <CheckboxOptionField label="押下履歴を表示" binding={bind('showTrail')} hint="押したキーを、残すステップ数の分だけ配列図に残します。" />,
+    showChain: <CheckboxOptionField label="Chainの動的表示" binding={bind('showChain')} />,
+    showArpeggio: <CheckboxOptionField label="Arpeggioの動的表示" binding={bind('showArpeggio')} />,
+    showSameFingerMotion: <CheckboxOptionField label="同指移動の動的表示" binding={bind('showSameFingerMotion')} />,
+    showFingerPositions: <CheckboxOptionField label="指の位置を表示" binding={bind('showFingerPositions')} />,
+    showPlannedKeys: <CheckboxOptionField label="押下予定キーを表示" binding={bind('showPlannedKeys')} />,
+    showRomajiInput: <CheckboxOptionField label="入力の行にローマ字を表示" binding={bind('showRomajiInput')} />,
+    showRomajiPlan: <CheckboxOptionField label="今のかなの残りキーを配列図に表示" binding={bind('showRomajiPlan')} />,
+    showTrail: <CheckboxOptionField label="押下履歴を表示" binding={bind('showTrail')} />,
     trailSteps: (
       <NumberOptionField
         label="押下履歴を残すステップ数"
@@ -323,20 +242,10 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         step={1}
         integer
         unit="ステップ"
-        hint={
-          options.showTrail
-            ? '押したキーを何ステップ前まで残すかです。'
-            : '押したキーを何ステップ前まで残すかです。押下履歴を表示しない間は使われません。'
-        }
+        hint={options.showTrail ? undefined : '押下履歴を表示しない間は使われません。'}
       />
     ),
-    showOrderLabels: (
-      <CheckboxOptionField
-        label="順番ラベルを表示"
-        binding={bind('showOrderLabels')}
-        hint="出ている押下予定キー・今のかなの残りキー・押下履歴に、押す順番を付けます。ChainとArpeggioの順番には関わりません。"
-      />
-    ),
+    showOrderLabels: <CheckboxOptionField label="順番ラベルを表示" binding={bind('showOrderLabels')} />,
     keyFeedbackStyle: (
       <SelectOptionField
         label="押下フィードバック"
@@ -357,7 +266,6 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         max={PLAYBACK_PREPARATION_SECONDS_MAX}
         step={0.05}
         format={(value) => `${value.toFixed(2)}秒`}
-        hint="指の位置を、次に押す時刻よりこの時間だけ早く動かして見せます。0秒なら押した瞬間に切り替えます。"
       />
     ),
     scale: (

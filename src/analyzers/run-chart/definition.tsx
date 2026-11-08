@@ -420,13 +420,11 @@ export function RunChartSettings({ options, onOptionsChange }: AnalyzerSettingsP
         step={1}
         integer
         unit={unit}
-        hint={`各点の値を、その点で終わる直近の何${unit}から求めるかです。大きいほど線がなめらかになり、短い範囲の変動が見えにくくなります。`}
       />
       <SelectOptionField
         label="区切り"
         binding={bindOption(options, DEFAULT_RUN_CHART_OPTIONS, onOptionsChange, 'segmentation')}
         choices={RUN_CHART_SEGMENTATION_IDS.map((id) => ({ value: id, label: SEGMENTATION_LABELS[id] }))}
-        hint="図に重ねる区切りです。区切りなし以外では、文節・固定長・ランダムの区切りで、区間ごとの指標と区切りの前後の指標を比べる表を出します。日本語のテキストでだけ使えます。"
       />
       <NumberOptionField
         label={RUN_CHART_SEED_LABEL}
@@ -436,7 +434,6 @@ export function RunChartSettings({ options, onOptionsChange }: AnalyzerSettingsP
         step={1}
         integer
         unit=""
-        hint="ランダムの区切りに使う種は、この値から続く20個です。同じテキストと同じ値からは、同じ区切りが出ます。"
       />
     </div>
   );
