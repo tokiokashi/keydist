@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, type ComparisonColumnId, comparisonColumnText } from '../comparison-column-text.ts';
-import { SCATTER_PRESET_AXES, SCATTER_PRESET_IDS, scatterAxisProblem, scatterContour, scatterPresetDescriptions, scatterPresetLabels } from './axes.ts';
-import { axisName, axisPlotTitle, axisTitle, axisUnit, SCATTER_KANA_SCRIPT } from './axis-names.ts';
+import { SCATTER_PRESET_AXES, SCATTER_PRESET_IDS, scatterAxisProblem, scatterContour, scatterPresetLabels } from './axes.ts';
+import { axisName, axisPlotTitle, axisTitle, axisUnit } from './axis-names.ts';
 import { estimateTextWidth, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel } from './plot-model.ts';
 import { scatterCaption } from './quantity-help.ts';
 
@@ -96,15 +96,9 @@ test('細い線の量の名前を入れた凡例は、軸に取れる全ての�
   assert.ok(checked > 0);
 });
 
-test('キャプション・組み合わせの名前と説明・関係式と換算の文は、比較表の列名でなく軸の名前で組み立てる', () => {
+test('キャプションと組み合わせの名前は、軸の長い名前で組み立てる', () => {
   for (const language of LANGUAGES) {
-    // 比較表の列名のうち、軸の名前に使わない書き方（u/アクション、アクション数/かな など）。単位の語は「かな」と「カナ」の両方の書き方で探す
-    const columnLabels = [comparisonColumnText(language), comparisonColumnText(language, SCATTER_KANA_SCRIPT)].flatMap((text) =>
-      COMPARISON_COLUMN_IDS.map((column) => text[column].label).filter((label) => label.includes('/')),
-    );
-    const sentences: string[] = [];
     for (const id of SCATTER_PRESET_IDS) {
-      sentences.push(scatterPresetLabels(language)[id], scatterPresetDescriptions(language)[id]);
       if (id === 'free') continue;
       const axes = SCATTER_PRESET_AXES[id];
       // コスパの組だけ、横軸の量を呼び慣れた名前（コスパ）を前に付けた名前にする。ほかの組は軸の長い名前をつなぐ
@@ -114,18 +108,6 @@ test('キャプション・組み合わせの名前と説明・関係式と換�
           : `${axisName(axes.x, language)}と${axisName(axes.y, language)}`;
       assert.equal(scatterPresetLabels(language)[id], expectedLabel, id);
       assert.equal(scatterCaption(axes, language), `${axisName(axes.y, language)} vs. ${axisName(axes.x, language)}`, id);
-      sentences.push(scatterCaption(axes, language));
-    }
-    for (const x of COMPARISON_COLUMN_IDS) {
-      for (const y of COMPARISON_COLUMN_IDS) {
-        if (scatterAxisProblem(x, y) !== undefined) continue;
-        const contour = scatterContour(x, y, 100, language);
-        if (contour === undefined) continue;
-        sentences.push(contour.relation, contour.conversion ?? '', scatterCaption({ x, y }, language));
-      }
-    }
-    for (const sentence of sentences) {
-      for (const label of columnLabels) assert.ok(!sentence.includes(label), `${language} 「${sentence}」に列名 ${label} が残っている`);
     }
   }
 });

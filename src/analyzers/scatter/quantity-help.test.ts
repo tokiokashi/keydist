@@ -326,7 +326,7 @@ test('図の見方の量の説明は、比較表の列名を比較表の見出�
   const { help } = scatterQuantityHelp(SCATTER_PRESET_AXES.perPress, scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS, 'ja'), 'ja');
   assert.deepEqual(
     help.items.map((item) => item.description.slice(0, item.description.indexOf('。') + 1)),
-    ['比較表の列名は「キー数/かな」。', '比較表の列名は「u/キー」。', '比較表の列名は「u/かな」。'],
+    ['比較表の列名は「キー数/かな」。', '比較表の列名は「距離/キー」。', '比較表の列名は「距離/かな」。'],
   );
   const [x, , line] = help.items.map((item) => item.description);
   assert.ok(x?.includes('入力1カナあたりに押すキーの数。'), x);

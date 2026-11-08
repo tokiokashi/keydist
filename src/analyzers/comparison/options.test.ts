@@ -65,7 +65,7 @@ test('COMPARISON_COLUMNS: 文字数に関わる5つの列は小数第3位まで�
     (['textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const).map(
       (id) => COMPARISON_COLUMNS[id].label,
     ),
-    ['文字/アクション', 'アクション/文字', 'アクション/u', '文字/u', 'u/文字'],
+    ['文字数/アクション', 'アクション数/文字', 'アクション数/距離', '文字数/距離', '距離/文字'],
   );
 });
 
