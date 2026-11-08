@@ -105,7 +105,7 @@ function colorNote(id: BandQuantityId): string {
     case 'row':
       return `数字段から下段までは1色の濃淡で、親指だけ別の色です。${SEGMENT_TEXT_NOTE}`;
     case 'hand':
-      return `左手だけは緑、右手だけは紫、両手の2区分は橙の濃淡（順には薄く、同時は濃く）にしています。${SEGMENT_TEXT_NOTE}`;
+      return `左手だけは緑、右手だけは紫、両手の2区分は橙の濃淡で分けています。${SEGMENT_TEXT_NOTE}`;
     case 'fingerPresses':
     case 'fingerDistance':
       return `左手の指は緑、右手の指は紫の濃淡で、手の中では親指から小指へ濃淡が変わります。${SEGMENT_TEXT_NOTE}`;

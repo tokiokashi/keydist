@@ -28,7 +28,7 @@ export interface SkippedChar {
 
 /**
  * 打てない文字（`Trace.skippedPositions` の位置にある、評価に渡したテキストの文字）を、文字ごとに数える。
- * 回数はその文字の位置の数で、`Trace.skipped`（展開後の英字の数）とは一致しないことがある。回数の多い順に、同数なら先に出た順に並べる。
+ * 回数はその文字の位置の数で、`Trace.skipped`（展開後の英字の数）とは一致しないことがある。回数の多い順に、同数なら渡された位置の順に並べる（`Trace.skippedPositions` は昇順なので、テキストで先に出た順になる）。
  */
 export function skippedCharCounts(text: string, skippedPositions: readonly number[]): readonly SkippedChar[] {
   const chars = [...text];

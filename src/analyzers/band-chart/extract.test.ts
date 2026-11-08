@@ -112,7 +112,7 @@ test('評価に渡したテキストが最初の対象と違う対象は、sameT
   assert.equal(second?.total, members[1]!.trace.inputChars - second!.skippedChars.reduce((sum, entry) => sum + entry.count, 0));
 });
 
-test('打てない文字は、位置にある文字ごとに数え、回数の多い順に、同数なら先に出た順に並べる', () => {
+test('打てない文字は、位置にある文字ごとに数え、回数の多い順に、同数なら渡された位置の順に並べる', () => {
   assert.deepEqual(skippedCharCounts('あ\nい\nう☆え\n', [1, 3, 5, 7, 4]), [
     { char: '\n', count: 3 },
     { char: '☆', count: 1 },
