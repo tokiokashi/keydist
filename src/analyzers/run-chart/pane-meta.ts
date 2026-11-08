@@ -1,4 +1,5 @@
 import { SEGMENT_SEED_COUNT } from '#interpretation/segments.ts';
+import { RUN_CHART_SEED_LABEL } from './options.ts';
 
 /**
  * 画面に出す名前と短い説明（docs/architecture.md「Analyzerがペインに渡すもの」）。
@@ -23,6 +24,15 @@ export const RUN_CHART_PANE_META = {
     items: [
       { name: '中心線', description: 'テキスト全体の値です。図では点線で描きます。' },
       { name: '目安線', description: '中心線から上下に引く、細い線です。' },
+      {
+        name: '集計窓',
+        description:
+          '各点の値を、その点で終わる直近の何かな（英語のテキストでは何字）から求めるかです。大きいほど線がなめらかになり、短い範囲の変動が見えにくくなります。',
+      },
+      {
+        name: RUN_CHART_SEED_LABEL,
+        description: `ランダムの区切りに使う種は、この値から続く${SEGMENT_SEED_COUNT}個です。同じテキストと同じ値からは、同じ区切りが出ます。`,
+      },
       { name: '順位', description: '文節の区切りの値を、ランダムの区切りの値と合わせて小さい方から数えた番目です。' },
     ],
   },

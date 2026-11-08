@@ -44,6 +44,7 @@ import {
   type GlobalEditableId,
 } from './condition-edit.ts';
 import { ACTION_COUNT_TEXT, conditionDiagnosticText, conditionItemLabel, type ConditionSummaryRow } from './condition-summary.ts';
+import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import './condition-editor.css';
 
@@ -414,14 +415,12 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     <div className="condition-editor">
       <div className="condition-groups">
         <section className="condition-group" aria-label="距離の測り方">
-          <h3 className="condition-group-title">距離の測り方</h3>
+          <h3 className="condition-group-title">
+            距離の測り方
+            <InfoButton name="先読みN" description="同じ指を残すかホームへ戻すかを決める時に、先の何かな（英語のテキストでは何字）まで見るかです。" />
+          </h3>
           {row('windowSize', (badge) => (
-            <OptionField
-              label="先読みN"
-              binding={windowBinding}
-              badge={badge}
-              hint="同じ指を残すかホームへ戻すかを決める時に、先の何かな（英語のテキストでは何字）まで見るか"
-            >
+            <OptionField label="先読みN" binding={windowBinding} badge={badge}>
               {(id) => (
                 <fieldset className="plain-group condition-stepper" id={id} aria-labelledby={`${id}-label`}>
                   <button
@@ -441,22 +440,10 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
             </OptionField>
           ))}
           {row('sfbHomeCost', (badge) => (
-            <SegmentedOptionField
-              label="同指連続のホーム復帰距離"
-              binding={boolBinding('sfbHomeCost')}
-              choices={ON_OFF}
-              badge={badge}
-              hint="同じ指で続けて打つ時、ホームキーへ戻る移動も距離に入れます"
-            />
+            <SegmentedOptionField label="同指連続のホーム復帰距離" binding={boolBinding('sfbHomeCost')} choices={ON_OFF} badge={badge} />
           ))}
           {row('preferOppositeThumb', (badge) => (
-            <SegmentedOptionField
-              label="親指シフトの振り替え"
-              binding={boolBinding('preferOppositeThumb')}
-              choices={ON_OFF}
-              badge={badge}
-              hint="親指シフトを、出力するキーと反対側の親指で押します"
-            />
+            <SegmentedOptionField label="親指シフトの振り替え" binding={boolBinding('preferOppositeThumb')} choices={ON_OFF} badge={badge} />
           ))}
         </section>
 
@@ -476,7 +463,6 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                 { value: 'off', label: 'しない' },
               ]}
               badge={badge}
-              hint="押し続けられるシフト系キーを、続けて打つ間は押したままにします"
             />
           ))}
           {row('actionRealizationPolicy', (badge) => (
@@ -537,13 +523,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
           <section className="condition-group" aria-label="ローマ字">
             <h3 className="condition-group-title">ローマ字</h3>
             {row('romajiRuleId', (badge) => (
-              <SelectOptionField
-                label="ローマ字規則"
-                binding={romajiBinding}
-                choices={romajiChoices}
-                badge={badge}
-                hint="かなをローマ字で打つ時の綴り。かな配列には効きません"
-              />
+              <SelectOptionField label="ローマ字規則" binding={romajiBinding} choices={romajiChoices} badge={badge} />
             ))}
           </section>
         )}
@@ -551,36 +531,24 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         <section className="condition-group" aria-label="物理配列と指の割当">
           <h3 className="condition-group-title">物理配列と指の割当</h3>
           {row('defaultShapeId', (badge) => (
-            <SelectOptionField
-              label="既定の物理配列"
-              binding={shapeBinding}
-              choices={shapeChoices}
-              badge={badge}
-              hint="配列を選んだ時に使う物理配列。Setupは自分の物理配列を使います"
-            />
+            <SelectOptionField label="既定の物理配列" binding={shapeBinding} choices={shapeChoices} badge={badge} />
           ))}
           {row('fingerAssignmentId', (badge) => (
-            <SelectOptionField
-              label="指の割当"
-              binding={fingerBinding}
-              choices={fingerChoices}
-              badge={badge}
-              hint="既定は物理配列で決まる（JIS の物理配列なら JIS既定）"
-            />
+            <SelectOptionField label="指の割当" binding={fingerBinding} choices={fingerChoices} badge={badge} />
           ))}
         </section>
 
         {hidden('keepSymbols') ? null : (
           <section className="condition-group" aria-label="日本語の記号">
-            <h3 className="condition-group-title">日本語の記号</h3>
-            {row('keepSymbols', (badge) => (
-              <SegmentedOptionField
-                label="日本語の記号の評価"
-                binding={boolBinding('keepSymbols')}
-                choices={ON_OFF}
-                badge={badge}
-                hint="日本語のテキストで、「、」「。」以外の記号も評価に入れます。OFFでは、かなと英数字と「、」「。」だけを評価します。英語のテキストには影響しません"
+            <h3 className="condition-group-title">
+              日本語の記号
+              <InfoButton
+                name="日本語の記号の評価"
+                description="ONでは、「、」「。」以外の記号も評価に入れます。OFFでは、かなと英数字と「、」「。」だけを評価します。"
               />
+            </h3>
+            {row('keepSymbols', (badge) => (
+              <SegmentedOptionField label="日本語の記号の評価" binding={boolBinding('keepSymbols')} choices={ON_OFF} badge={badge} />
             ))}
           </section>
         )}
