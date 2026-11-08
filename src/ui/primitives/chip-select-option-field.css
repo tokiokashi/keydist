@@ -136,9 +136,30 @@
 }
 
 .chip-select-group legend {
-  padding: 0.45rem 0.5rem 0.15rem;
+  width: 100%;
+  padding: 0.45rem 0 0.15rem;
+}
+
+.chip-select-group-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.1rem 0.5rem;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip-select-group-check input {
+  flex: none;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.chip-select-group-check:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .chip-select-choice {

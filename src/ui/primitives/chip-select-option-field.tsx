@@ -103,6 +103,10 @@ export function ChipSelectOptionField<T extends string>({
   const selectVisible = () => write(new Set([...binding.value, ...visible.filter((choice) => choice.disabled !== true).map((choice) => choice.value)]));
   const clearVisible = () => write(new Set(binding.value.filter((value) => !visible.some((choice) => choice.value === value))));
   const hasUnselectedVisible = visible.some((choice) => choice.disabled !== true && !binding.value.includes(choice.value));
+  const addMembers = (members: readonly OptionChoice<T>[]) =>
+    write(new Set([...binding.value, ...members.filter((choice) => choice.disabled !== true).map((choice) => choice.value)]));
+  const removeMembers = (members: readonly OptionChoice<T>[]) =>
+    write(new Set(binding.value.filter((value) => !members.some((choice) => choice.value === value))));
   const hasSelectedVisible = visible.some((choice) => binding.value.includes(choice.value));
 
   const close = (focusTrigger: boolean) => {
@@ -205,6 +209,30 @@ export function ChipSelectOptionField<T extends string>({
     );
   };
 
+  // まとまりの見出しのチェック。選べる選択肢（選んでいるものを含む）が全部選ばれていればオン、一部ならindeterminate。
+  const renderGroupCheck = (group: string, members: readonly OptionChoice<T>[]) => {
+    const isSelected = (choice: OptionChoice<T>) => binding.value.includes(choice.value);
+    const pool = members.filter((choice) => choice.disabled !== true || isSelected(choice));
+    const selectedCount = pool.filter(isSelected).length;
+    const checked = pool.length > 0 && selectedCount === pool.length;
+    const canAdd = members.some((choice) => choice.disabled !== true && !isSelected(choice));
+    const canRemove = members.some(isSelected);
+    return (
+      <label className="chip-select-group-check">
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={!canAdd && !canRemove}
+          ref={(element) => {
+            if (element !== null) element.indeterminate = selectedCount > 0 && !checked;
+          }}
+          onChange={() => (checked ? removeMembers(members) : addMembers(members))}
+        />
+        <span>{group}</span>
+      </label>
+    );
+  };
+
   const panelStyle: CSSProperties | undefined =
     place === undefined ? { visibility: 'hidden' } : { left: place.left, top: place.top, maxHeight: place.maxHeight };
 
@@ -281,7 +309,7 @@ export function ChipSelectOptionField<T extends string>({
                     {groups.plain.map(renderChoice)}
                     {groups.grouped.map(([group, members]) => (
                       <fieldset key={group} className="chip-select-group">
-                        <legend>{group}</legend>
+                        <legend>{renderGroupCheck(group, members)}</legend>
                         {members.map(renderChoice)}
                       </fieldset>
                     ))}
