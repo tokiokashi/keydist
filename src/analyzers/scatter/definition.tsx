@@ -55,12 +55,6 @@ const PLOT_BOTTOM = PLOT_HEIGHT - PLOT_MARGIN.bottom;
 /** 目盛りの線の長さ。枠の内側へ向ける。 */
 const TICK_LENGTH = 5;
 
-/** 軸を対数にしているのに線形で描く理由を、理由ごとに1文で伝える。 */
-const LOG_BLOCKER_TEXTS = {
-  noStraightLines: '細い線が直線にならない図なので、対数の軸にはできず、線形の軸で表示しています。',
-  nonPositive: '0以下の値があるので、対数の軸にはできず、線形の軸で表示しています。',
-} as const;
-
 function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): string {
   const k = kanaUnitOf(language, SCATTER_KANA_SCRIPT);
   return problem === 'same'
@@ -199,7 +193,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
       readout: row == null || text == null ? undefined : { row, mark: row.querySelector('.scatter-readout-mark'), text },
     };
   };
-  const { axes, plotted, excluded, contour, logScale, logReasons, usedKinds, model } = figure;
+  const { axes, plotted, excluded, contour, logScale, usedKinds, model } = figure;
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const quantityHelp = scatterQuantityHelp(axes, contour, language, logScale);
   const readouts = [
@@ -225,11 +219,6 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
             />
             {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
           </div>
-          {logReasons.map((reason) => (
-            <p key={reason} className="scatter-notice" data-scatter-log-notice={reason}>
-              {LOG_BLOCKER_TEXTS[reason]}
-            </p>
-          ))}
           <figure ref={figureRef} className="scatter-figure">
             <svg
               viewBox={`${model.viewBoxX} 0 ${PLOT_WIDTH - model.viewBoxX} ${PLOT_HEIGHT}`}
