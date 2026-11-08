@@ -9,7 +9,7 @@ import { HeatmapDiagram, type HeatmapDiagramFlow, type HeatmapShiftStyle } from 
 import { baseLayerLegends, type HeatmapDrawStyle, type HeatmapPalette } from '../heatmap-figure.ts';
 import { heatmapBounds, heatmapDrawnKeys, sharedHeatmapBounds } from '../heatmap-keys.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
-import { heatmapDefinition, sharedHeatmapScales, type HeatmapExtracted } from './extract.ts';
+import { heatmapDefinition, heatmapScales, type HeatmapExtracted } from './extract.ts';
 import { HeatmapFlowLegend } from './flow-legend.tsx';
 import { HeatmapPaletteLegend } from './palette-legend.tsx';
 import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
@@ -27,7 +27,8 @@ import { HEATMAP_PANE_META, HEATMAP_STANDALONE_SET_TARGETS_WIDTH_REM } from './p
  *
  * 単体の画面では、Singleの対象の図の下に、Multiの集合の対象の図を格子に並べる（`setTargets`）。
  * 格子に並べる対象を選ぶ操作は、一番上の図と格子の間に置く（`setTargetPicker`）。
- * 色の尺度は並べた図の全部で共通にし、同じ押下数のキーが同じ濃さになる。格子の図のキーは押せず、
+ * 一番上の図の色の尺度は、その図の値だけで決める。格子の図の色の尺度は格子の図の全部で共通にし、
+ * 格子の図どうしでは同じ押下数のキーが同じ濃さになる。格子の図のキーは押せず、
  * ツールチップは押下数だけを出す。
  */
 
@@ -101,13 +102,13 @@ export function HeatmapBody({
 }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
   const figureSettings = useFigureSettings('打鍵頻度');
   const flowSource = options.flowLineSource;
-  // 線の太さの尺度は、色の尺度と同じく、一番上の図と計算できた格子の図の全部で共通にする
-  const { maxCount, flowMaxWeight } = sharedHeatmapScales(
+  // 線の太さの尺度は、色の尺度と同じ組で決める。一番上の図は自身の値、格子の図は計算できた格子の図の全部
+  const scales = heatmapScales(
     extracted,
     flowSource,
     (setTargets ?? []).map((figure) => figure.state),
   );
-  const flowOf = (figureExtracted: HeatmapExtracted): HeatmapDiagramFlow | undefined =>
+  const flowOf = (figureExtracted: HeatmapExtracted, flowMaxWeight: number): HeatmapDiagramFlow | undefined =>
     options.flowLines ? { vectors: figureExtracted.flowLines[flowSource].vectors, maxWeight: flowMaxWeight } : undefined;
   // 格子の図は、描く範囲を全部で共通にする。キーの大きさと位置が図ごとに変わらない
   const setBounds = sharedHeatmapBounds(
@@ -130,10 +131,10 @@ export function HeatmapBody({
           diagramId="integrated"
           captionAction={figureSettings.toggle}
           {...(legends === undefined ? {} : { captionNote: legends })}
-          {...flowProp(flowOf(extracted))}
+          {...flowProp(flowOf(extracted, scales.top.flowMaxWeight))}
           detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
           colorCounts={extracted.keyCounts}
-          maxCount={maxCount}
+          maxCount={scales.top.maxCount}
           ariaSuffix="（全レイヤー合算・線形）"
           {...(keySelection === undefined ? {} : { keySelection })}
         />
@@ -151,11 +152,11 @@ export function HeatmapBody({
                 <HeatmapDiagram
                   {...figureProps(figure.state.layout, figure.state.geometry, options.drawStyle, options.palette)}
                   title={figure.label}
-                  {...flowProp(flowOf(figure.state.extracted))}
+                  {...flowProp(flowOf(figure.state.extracted, scales.set.flowMaxWeight))}
                   diagramId={`set-${figure.key}`}
                   detailOf={(keyId) => (figure.state.status === 'ready' ? figure.state.extracted.keyDetails.merged.get(keyId) : undefined)}
                   colorCounts={figure.state.extracted.keyCounts}
-                  maxCount={maxCount}
+                  maxCount={scales.set.maxCount}
                   ariaSuffix="（全レイヤー合算・線形）"
                   fill
                   countOnlyTooltip
