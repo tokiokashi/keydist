@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FIGURE_INSET, INLINE_MIN_WIDTH } from '../figure-text.ts';
+import { bandNoValueMessage } from './quantities.ts';
 import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
-import { BAND_HEIGHT, bandChartModel, bandLayout, NO_VALUE_MESSAGE, percentText, segmentGeometries, type BandRowContext } from './figure-model.ts';
+import { BAND_HEIGHT, bandChartModel, bandLayout, percentText, segmentGeometries, type BandRowContext } from './figure-model.ts';
 
 function okRow(targetKey: string, counts: readonly number[], options: Partial<BandChartOkRow> = {}): BandChartOkRow {
   const typed = counts.reduce((sum, count) => sum + count, 0);
-  return { kind: 'ok', targetKey, counts, shares: counts.map((count) => count / typed), typed, skipped: 0, sameText: true, ...options };
+  return { kind: 'ok', targetKey, counts, shares: counts.map((count) => count / typed), total: typed, skipped: 0, sameText: true, ...options };
 }
 
 const CONTEXT: ReadonlyMap<string, BandRowContext> = new Map(
@@ -15,6 +16,7 @@ const CONTEXT: ReadonlyMap<string, BandRowContext> = new Map(
 
 test('行の順は対象の順で、抽出の行の順には従わない', () => {
   const extracted: BandChartExtracted = {
+    quantity: 'distance',
     rows: [okRow('layout:c', [1, 1, 1, 1]), okRow('layout:a', [4, 0, 0, 0]), okRow('layout:b', [0, 0, 0, 4])],
     referenceTargetKey: 'layout:a',
   };
@@ -30,6 +32,7 @@ test('行の順は対象の順で、抽出の行の順には従わない', () =>
 
 test('値を出せない対象は、帯を描かず、計算中・失敗・値なしの行として対象の順に出る', () => {
   const extracted: BandChartExtracted = {
+    quantity: 'distance',
     rows: [
       okRow('layout:a', [1, 1, 1, 1]),
       { kind: 'no-value', targetKey: 'layout:b', skipped: 3 },
@@ -43,7 +46,7 @@ test('値を出せない対象は、帯を描かず、計算中・失敗・値�
     [
       ['D', 'computing', '計算中…'],
       ['C', 'failed', '配列が見つかりません'],
-      ['B', 'no-value', NO_VALUE_MESSAGE],
+      ['B', 'no-value', bandNoValueMessage('distance')],
     ],
   );
   assert.deepEqual(
@@ -54,6 +57,7 @@ test('値を出せない対象は、帯を描かず、計算中・失敗・値�
 
 test('打てない文字の数は1以上の配列だけ出て、値なしの配列も数を持つ', () => {
   const extracted: BandChartExtracted = {
+    quantity: 'distance',
     rows: [okRow('layout:a', [1, 1, 1, 1]), okRow('layout:b', [1, 1, 1, 1], { skipped: 2 }), { kind: 'no-value', targetKey: 'layout:c', skipped: 5 }],
     referenceTargetKey: 'layout:a',
   };
@@ -69,6 +73,7 @@ test('打てない文字の数は1以上の配列だけ出て、値なしの配�
 
 test('評価に渡すテキストが基準と違う配列だけを知らせる', () => {
   const extracted: BandChartExtracted = {
+    quantity: 'distance',
     rows: [okRow('layout:a', [1, 1, 1, 1]), okRow('layout:b', [1, 1, 1, 1], { sameText: false })],
     referenceTargetKey: 'layout:a',
   };

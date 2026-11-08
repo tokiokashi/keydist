@@ -1,6 +1,7 @@
-import { DISTANCE_BAND_COUNT, DISTANCE_BAND_EDGES } from '#interpretation/distance-bands.ts';
+import type { BandQuantityId } from '#interpretation/band-quantities.ts';
 import { FIGURE_INSET, FONT_SIZE, INLINE_MIN_WIDTH, textWidth } from '../figure-text.ts';
 import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
+import { bandNoValueMessage } from './quantities.ts';
 
 /**
  * 帯グラフの表示モデル（画面に依存しない純粋な関数）。
@@ -14,16 +15,6 @@ export interface BandRowContext {
   readonly label: string;
   /** 集合によらない完全な名前。hover（`title`属性）に出す。 */
   readonly fullName: string;
-}
-
-/** 区分の名前（距離の境目で書く）。 */
-export function bandLabels(): readonly string[] {
-  const edges = DISTANCE_BAND_EDGES;
-  return Array.from({ length: DISTANCE_BAND_COUNT }, (_, index) => {
-    if (index === 0) return `${edges[0]}u未満`;
-    if (index === DISTANCE_BAND_COUNT - 1) return `${edges[index - 1]}u以上`;
-    return `${edges[index - 1]}〜${edges[index]}u`;
-  });
 }
 
 /** 割合（0〜1）の表記。`digits`は小数の桁数。 */
@@ -45,6 +36,8 @@ export interface BandSkippedNote extends BandRowContext {
 }
 
 export interface BandChartModel {
+  /** 数えた量 */
+  readonly quantity: BandQuantityId;
   /** 帯を描く行。対象の順 */
   readonly rows: readonly BandDisplayRow[];
   /** 帯を描けない行。対象の順 */
@@ -57,7 +50,6 @@ export interface BandChartModel {
   readonly reference: BandRowContext | undefined;
 }
 
-export const NO_VALUE_MESSAGE = '打てた文字がありません';
 export const COMPUTING_MESSAGE = '計算中…';
 
 export function bandChartModel(extracted: BandChartExtracted, order: readonly string[], rowContext: ReadonlyMap<string, BandRowContext>): BandChartModel {
@@ -79,7 +71,7 @@ export function bandChartModel(extracted: BandChartExtracted, order: readonly st
     } else if (row.kind === 'failed') {
       excluded.push({ ...context, status: 'failed', message: row.message });
     } else if (row.kind === 'no-value') {
-      excluded.push({ ...context, status: 'no-value', message: NO_VALUE_MESSAGE });
+      excluded.push({ ...context, status: 'no-value', message: bandNoValueMessage(extracted.quantity) });
       if (row.skipped > 0) skipped.push({ ...context, skipped: row.skipped });
     } else {
       rows.push({ ...context, row });
@@ -92,7 +84,7 @@ export function bandChartModel(extracted: BandChartExtracted, order: readonly st
     referenceKey === undefined
       ? undefined
       : { targetKey: referenceKey, label: rowContext.get(referenceKey)?.label ?? '—', fullName: rowContext.get(referenceKey)?.fullName ?? '' };
-  return { rows, excluded, skipped, differentText, reference };
+  return { quantity: extracted.quantity, rows, excluded, skipped, differentText, reference };
 }
 
 // ---------------------------------------------------------------------------
@@ -206,12 +198,12 @@ export interface LegendLayout {
   readonly items: readonly LegendItem[];
 }
 
-/** 凡例の項目を左から並べ、幅に収まらなければ次の行へ折り返す。 */
-export function legendLayout(width: number): LegendLayout {
+/** 凡例の項目（区分の名前）を左から並べ、幅に収まらなければ次の行へ折り返す。 */
+export function legendLayout(width: number, labels: readonly string[]): LegendLayout {
   const items: LegendItem[] = [];
   let x = FIGURE_INSET;
   let line = 0;
-  bandLabels().forEach((label, index) => {
+  labels.forEach((label, index) => {
     const itemWidth = LEGEND_SWATCH + LEGEND_SWATCH_GAP + textWidth(label, FONT_SIZE);
     if (x > FIGURE_INSET && x + itemWidth > width - FIGURE_INSET) {
       x = FIGURE_INSET;
