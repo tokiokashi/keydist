@@ -25,10 +25,27 @@
   margin: 0;
 }
 
+/* 縦軸の列は動かさず、図だけを横にスクロールする */
+.box-plot-body {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.box-plot-axis-svg {
+  display: block;
+  flex: none;
+}
+
+.box-plot-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+}
+
 .box-plot-svg {
   display: block;
-  width: 100%;
-  height: auto;
+  max-width: none;
 }
 
 /* 描画領域の枠。目盛りの線は枠の内向きに付け、格子線は引かない（散布図と同じ） */
@@ -54,31 +71,32 @@
   fill: var(--text);
 }
 
-.box-plot-row {
+.box-plot-column {
   outline: none;
   cursor: default;
 }
 
-.box-plot-row-label {
+/* 名前は箱の下に縦書きで置く。かな・漢字は1字ずつ立て、英字は右へ90度倒す（字の位置は本体が決める） */
+.box-plot-column-label text {
   fill: var(--text);
   font-size: 12px;
   pointer-events: none;
 }
 
-/* 行の押せる範囲。選んだ行は、枠と薄い塗りで示す */
-.box-plot-row-hit {
+/* 列の押せる範囲。選んだ列は、枠と薄い塗りで示す */
+.box-plot-column-hit {
   fill: transparent;
   stroke: none;
   pointer-events: all;
 }
 
-.box-plot-row[data-selected] .box-plot-row-hit {
+.box-plot-column[data-selected] .box-plot-column-hit {
   fill: color-mix(in srgb, var(--focus) 12%, transparent);
   stroke: var(--focus);
   stroke-width: 1.5;
 }
 
-.box-plot-row:focus-visible .box-plot-row-hit {
+.box-plot-column:focus-visible .box-plot-column-hit {
   stroke: var(--focus);
   stroke-width: 2;
 }
@@ -102,6 +120,14 @@
   stroke: var(--text);
   stroke-width: 2;
   pointer-events: none;
+}
+
+/* 文節の数。文にせず、短い表示にする */
+.box-plot-count {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 図の下のキャプション */
@@ -129,12 +155,6 @@
   margin: 0;
   color: var(--text);
   font-weight: 600;
-}
-
-.box-plot-detail-total {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
 }
 
 .box-plot-detail-table {

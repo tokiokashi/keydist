@@ -1,5 +1,7 @@
+import type { SegmentationOrigin } from '#input/text/segmentation.ts';
 import { sharedMetricText } from '../metric-labels.ts';
 import { WIDE_RECOMMENDED_WIDTH_REM } from '../recommended-width.ts';
+import type { BoxPlotSource } from './extract.ts';
 
 /**
  * 画面に出す名前と短い説明（docs/architecture.md「Analyzerがペインに渡すもの」）。
@@ -12,29 +14,42 @@ const DISTANCE = sharedMetricText('ja').perCharUnits;
 /** 量の名前（図の下のキャプション）。 */
 export const BOX_PLOT_QUANTITY_NAME = `文節ごとの${DISTANCE.label}`;
 
-/** 横軸の名前。 */
+/** 縦軸の名前。 */
 export const BOX_PLOT_AXIS_TITLE = `${DISTANCE.label}（${DISTANCE.unit}）`;
+
+const ORIGIN_DESCRIPTION: Readonly<Record<SegmentationOrigin, string>> = {
+  dictionary: '漢字を辞書で読みに直した語の境目へ寄せています。',
+  'kana-only': '原文に漢字が無いので、かなの文をそのまま区切っています。',
+  'dictionary-unavailable': '辞書を読み込めなかったので、漢字を読みに直さず区切っています。',
+};
+
+/** 図の見方に足す、区切りの分割器と出どころ（抽出が持つ値なので、本体が足す）。 */
+export function boxPlotSourceItems(source: BoxPlotSource): readonly { readonly name: string; readonly description: string }[] {
+  return [
+    { name: '分割器', description: `${source.splitter.name} ${source.splitter.version}です。` },
+    { name: '区切りの出どころ', description: ORIGIN_DESCRIPTION[source.origin] },
+  ];
+}
 
 export const BOX_PLOT_PANE_META = {
   name: '箱ひげ図',
   description:
-    'テキストを文節に区切り、選んだ配列やSetupで同じテキストを打った時の、文節ごとの1かな換算の移動距離の分布を、配列ごとの1つの箱ひげ図で並べます。日本語のテキストでだけ値を出します。',
+    'テキストを文節に区切り、選んだ配列やSetupで同じテキストを打った時の、文節ごとの1かな換算の移動距離の分布を、配列ごとの箱ひげ図で横に並べます。日本語のテキストでだけ値を出します。',
   /** 見出しのⓘから開く説明。解析設定や対象に依らない固定の文だけを置く。 */
   help: {
     notes: [
-      `量は、${BOX_PLOT_QUANTITY_NAME} [${DISTANCE.unit}] です。1つの文節を打つ時の指の移動距離を、その文節のかな数で割った値を、全文節で集めて分布にします。`,
-      '文節ごとの1かな換算の移動距離は、文節頭を含み、打てない文字もかな数に数えます。文節ごとの統計の表の同じ名前の列と同じ値です。',
-      '分位点は、文節の値を小さい順に並べた時の順位の値で、値の間を補間しません。中央値は、文節の数が偶数の時、中央の2つの平均です。',
-      '距離の目盛りは0から始め、図の中の全配列で共通です。評価に渡すテキストが他の対象と違う対象は、自分のテキストと区切りから求めます。',
+      `量は、${BOX_PLOT_QUANTITY_NAME} [${DISTANCE.unit}] です。1つの文節を打つ時の指の移動距離を、その文節のかな数で割った値です。`,
+      '文節頭を含み、打てない文字もかな数に数えます。',
+      '分位点は補間しません。中央値は、文節の数が偶数なら中央の2つの平均です。',
+      '縦軸は0から始め、全配列で共通です。',
     ],
     listLabel: '図の読み方',
     items: [
-      { name: '箱', description: '文節ごとの値の25%点から75%点です。' },
-      { name: '箱の中の線', description: '文節ごとの値の中央値です。' },
-      { name: 'ひげ', description: '文節ごとの値の10%点から90%点です。ひげの外の値は描きません。' },
-      { name: '文節の数', description: '値を求めた文節の数です。図の下に出します。' },
+      { name: '箱', description: '25%点から75%点です。' },
+      { name: '箱の中の線', description: '中央値です。' },
+      { name: 'ひげ', description: '10%点から90%点です。ひげの外の値は描きません。' },
     ],
   },
-  /** 名前と箱が横に並ぶ幅。 */
+  /** 縦の箱が横に並ぶ幅。 */
   recommendedWidthRem: WIDE_RECOMMENDED_WIDTH_REM,
 } as const;
