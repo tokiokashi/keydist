@@ -12,5 +12,6 @@
   },
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [{ "pattern": "staging.keydist.tokiokashi.com", "custom_domain": true }]
+  // ドメインのUniversal SSLの証明書は1段のサブドメインまでしか覆わない。2段にするとTLSの接続が失敗する
+  "routes": [{ "pattern": "keydist-staging.tokiokashi.com", "custom_domain": true }]
 }

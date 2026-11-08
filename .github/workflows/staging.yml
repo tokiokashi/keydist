@@ -108,7 +108,7 @@ jobs:
           {
             echo "## Staging"
             echo
-            echo "https://staging.keydist.tokiokashi.com/"
+            echo "https://keydist-staging.tokiokashi.com/"
             echo
             echo "branch: \`$REF_NAME\`"
             echo
