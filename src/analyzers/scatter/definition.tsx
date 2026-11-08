@@ -261,7 +261,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
                 textAnchor="middle"
                 data-scatter-y-title=""
               >
-                {axisPlotTitle(axes.y, language, logScale)}
+                {axisPlotTitle(axes.y, language)}
               </text>
               <text
                 className="scatter-axis-title"
@@ -270,7 +270,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
                 textAnchor="middle"
                 data-scatter-x-title=""
               >
-                {axisPlotTitle(axes.x, language, logScale)}
+                {axisPlotTitle(axes.x, language)}
               </text>
 
               {model.centerLines.map((line) => (

@@ -124,19 +124,17 @@ export function axisTitle(column: ComparisonColumnId, language: TextLanguage): s
 
 /**
  * 軸の名前に出す、単位つきの名前。縮めた名前を宣言していない列は`axisTitle`と同じ。
- * `log`が真の時は、目盛りが対数であることを括弧の中に添える（「距離/アクション（u、対数）」「アクション数/カナ（対数）」）。
- * 組み合わせの名前・凡例・キャプション・点の読み取りには添えない。
+ * 目盛りが対数でも名前は変えない。図の書式の慣習どおり、対数であることは目盛りの数字と間隔で示す。
  */
-export function axisPlotTitle(column: ComparisonColumnId, language: TextLanguage, log = false): string {
+export function axisPlotTitle(column: ComparisonColumnId, language: TextLanguage): string {
   const unit = axisUnit(column);
   const name = axisShortName(column, language);
-  const notes = [...(unit === undefined ? [] : [unit]), ...(log ? ['対数'] : [])];
-  return notes.length === 0 ? name : `${name}（${notes.join('、')}）`;
+  return unit === undefined ? name : `${name}（${unit}）`;
 }
 
 /**
- * 縮めた名前。単位も「対数」の印も付けない。縮めた名前を宣言していない列は`axisName`と同じ。
- * 軸の名前（`axisPlotTitle`）から単位と印を除いたもので、点の読み取りの線の量を軸と同じ語で示すのに使う。
+ * 縮めた名前。単位を付けない。縮めた名前を宣言していない列は`axisName`と同じ。
+ * 軸の名前（`axisPlotTitle`）から単位を除いたもので、点の読み取りの線の量を軸と同じ語で示すのに使う。
  */
 export function axisShortName(column: ComparisonColumnId, language: TextLanguage): string {
   const label = SPECS[column].axisLabel;

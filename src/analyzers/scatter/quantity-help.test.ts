@@ -300,11 +300,11 @@ test('点の読み取りの部品: 座標は「(横, 縦)」の1つの文字列�
   assert.equal(readoutText(row, axes, contour, 'ja'), 'QWERTY　(1.500, 2.000)　距離/カナ 3.000');
 });
 
-test('点の読み取り: 軸の名前に添える単位と「対数」の印は、線の量の名前に付けない', () => {
+test('点の読み取り: 軸の名前に添える単位は、線の量の名前に付けない', () => {
   const column = SCATTER_PRESET_AXES.distance;
   const contour = scatterContour(column.x, column.y, INPUT_CHARS, 'ja');
   assert.ok(contour !== undefined);
-  assert.equal(axisPlotTitle(contour.column, 'ja', true), '距離/カナ（u、対数）');
+  assert.equal(axisPlotTitle(contour.column, 'ja'), '距離/カナ（u）');
   assert.equal(axisShortName(contour.column, 'ja'), '距離/カナ');
 });
 
