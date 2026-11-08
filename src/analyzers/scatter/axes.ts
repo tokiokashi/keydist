@@ -123,7 +123,7 @@ export function scatterPresetDescriptions(language: TextLanguage): Readonly<Reco
     handRates: `${n('sameHandContinuationRate')}と${n('sameFingerRate')}を並べて、手と指の続き方を見ます。`,
     handShare: `${n('rightHandPressShare')}と${n('rightHandDistanceShare')}で、右手が受け持つ割合を押すキーの数と距離の2つで比べます。左右の偏りを見る図です。`,
     movedPress: `${n('movedPressShare')}と${n('perMovedPressUnits')}から、${n('perPressUnits')}がどう決まるかを見ます。`,
-    charsPerAction: `${n('textCharsPerAction')}と${n('actionsPerUnit')}から、${n('textCharsPerUnit')}がどう決まるかを見ます。大きいほど手間が少ない向きの2軸で、既定の組み合わせの逆の向きです。`,
+    charsPerAction: `${n('textCharsPerAction')}と${n('actionsPerUnit')}から、${n('textCharsPerUnit')}がどう決まるかを見ます。大きいほど手間が少ない向きの2軸で、既定の図の逆の向きです。`,
     textDistance: `${n('unitsPerTextChar')}を、${n('actionsPerTextChar')}と${n('meanPerStroke')}に分けて見ます。`,
     free: '比較表の列から横軸と縦軸を選びます。',
   };

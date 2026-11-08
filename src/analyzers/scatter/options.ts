@@ -34,12 +34,12 @@ export const DEFAULT_SCATTER_COLUMN_SETTING: ScatterColumnSetting = 'auto';
 function decodePresets(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): readonly ScatterPresetId[] {
   if (raw === undefined) return [DEFAULT_SCATTER_PRESET];
   if (!Array.isArray(raw)) {
-    diagnostics.push({ path, message: '配列でないため、既定の組み合わせへ戻しました' });
+    diagnostics.push({ path, message: '配列でないため、表示する図を既定へ戻しました' });
     return [DEFAULT_SCATTER_PRESET];
   }
   for (const item of raw) {
     if (!(SCATTER_PRESET_IDS as readonly unknown[]).includes(item)) {
-      diagnostics.push({ path: `${path}[]`, message: `未知の組み合わせ「${String(item)}」を捨てました` });
+      diagnostics.push({ path: `${path}[]`, message: `未知の図「${String(item)}」を捨てました` });
     }
   }
   return normalizeScatterPresets(raw);

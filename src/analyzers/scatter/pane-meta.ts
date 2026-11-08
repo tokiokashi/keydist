@@ -17,7 +17,7 @@ export const SCATTER_PANE_META = {
       '軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置を細い線で結び、線の上に値を書きます。数値の名前は凡例に示します。押下1回の移動距離のように、配列ごとに違う回数で割った距離の線は、同じテキストを打つ時の距離と取り違えやすいので引きません。',
       '解析設定で軸を対数にすると、細い線が2軸の積か比で決まる図（細い線が平行な直線になる図）で、横軸と縦軸の両方を対数で描きます。値に0以下がある図と、細い線が直線にならない図は、線形で描きます。',
     ],
-    listLabel: '用意する組み合わせ',
+    listLabel: '選べる図',
     items: SCATTER_PRESET_IDS.map((id) => ({ name: scatterPresetLabels(language)[id], description: scatterPresetDescriptions(language)[id] })),
   }),
   /** 図を3列まで並べられる幅（`figure-layout.ts`）。既定の幅では2列までしか収まらない。 */
