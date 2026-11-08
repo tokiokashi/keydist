@@ -490,7 +490,7 @@ src/
     axis-ticks.ts     軸の目盛りの値（1・2・5の刻み）と書式。散布図と箱ひげ図が共有する純粋な計算
     figure-text.ts / use-element-width.tsx  帯グラフと箱ひげ図が共有する、文字の幅の見積もりと名前の切り詰め、図の幅を測る部品
     metric-labels.ts  複数のAnalyzerが縦軸に描く指標のうち、名前と単位が同じ指標の表示の文字
-    segmentation-text.ts  文節の区切りの出どころと分割器を示す文面。区切りを使うAnalyzer（Run Chart・文節ごとの統計）が共有する
+    segmentation-text.ts  文節の区切りの出どころと分割器を示す文面。区切りを使うAnalyzer（Run Chart・文節ごとの統計・打鍵再生・箱ひげ図）が共有する
     key-detail-view.ts  キーの詳細を画面に出す文字列と並び（ツールチップ・小窓の表・入力方法の面ごとの分け方）。図と小窓が共有する純粋な変換
     heatmap-diagram.tsx / heatmap-figure.ts  ヒートマップとヒートマップ（レイヤー）が共有するキーボードの図と、その純粋な計算（色の強度・刻印）。Analyzerどうしは互いをimportできないので、複数のAnalyzerが同じ図を描く時の共有物はここに置く
     bigram-vectors.ts / keyboard-flow-lines.ts / heatmap-flow.ts  2打鍵の組の数え方（`bigram-vectors.ts`）、Keyboard Flowの線の色・曲線・太さの尺度・連打の除き方（`keyboard-flow-lines.ts`）、ヒートマップの図の座標へ合わせた線の端と太さ（`heatmap-flow.ts`）。Bigram Flowとヒートマップが同じ組・同じ色・同じ太さの尺度で線を描くために、ここへ置く
