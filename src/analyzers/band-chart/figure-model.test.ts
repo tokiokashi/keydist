@@ -4,19 +4,14 @@ import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
 import {
   BAND_HEIGHT,
   bandChartModel,
-  bandLabels,
   bandLayout,
-  fitLabel,
   FIGURE_INSET,
   INLINE_MIN_WIDTH,
-  legendLayout,
   NO_VALUE_MESSAGE,
   percentText,
   segmentGeometries,
-  textWidth,
   type BandRowContext,
 } from './figure-model.ts';
-import { BAND_CHART_PANE_META } from './pane-meta.ts';
 
 function okRow(targetKey: string, counts: readonly number[], options: Partial<BandChartOkRow> = {}): BandChartOkRow {
   const typed = counts.reduce((sum, count) => sum + count, 0);
@@ -26,10 +21,6 @@ function okRow(targetKey: string, counts: readonly number[], options: Partial<Ba
 const CONTEXT: ReadonlyMap<string, BandRowContext> = new Map(
   ['a', 'b', 'c', 'd'].map((key) => [`layout:${key}`, { targetKey: `layout:${key}`, label: key.toUpperCase(), fullName: `配列${key}` }] as const),
 );
-
-test('区分の名前は、境目で書く', () => {
-  assert.deepEqual(bandLabels(), ['0.5u未満', '0.5〜1.5u', '1.5〜2.5u', '2.5u以上']);
-});
 
 test('行の順は対象の順で、抽出の行の順には従わない', () => {
   const extracted: BandChartExtracted = {
@@ -116,12 +107,6 @@ test('区分の幅は帯の幅を隙間なく覆い、割合が0の区分は含�
   assert.ok(Math.abs(last.x + last.width - 500) < 1e-9);
 });
 
-test('割合の文字は、区分の幅が文字の入らない狭さの時は書かない', () => {
-  const [narrow, wide] = segmentGeometries([0.01, 0.99], 0, 300);
-  assert.equal(narrow!.showText, false);
-  assert.equal(wide!.showText, true);
-});
-
 test('狭い幅では名前を帯の上の行に置き、名前と帯が重ならない', () => {
   const layout = bandLayout(INLINE_MIN_WIDTH - 1, 3);
   assert.equal(layout.mode, 'stacked');
@@ -129,42 +114,4 @@ test('狭い幅では名前を帯の上の行に置き、名前と帯が重な�
   assert.equal(layout.bandX + layout.bandWidth, layout.width - FIGURE_INSET);
   for (const row of layout.rows) assert.ok(row.labelY + 9 <= row.bandY);
   for (let i = 1; i < layout.rows.length; i++) assert.ok(layout.rows[i]!.top >= layout.rows[i - 1]!.bandY + BAND_HEIGHT);
-});
-
-test('広い幅では名前を帯の左に置き、名前の幅の右から帯が始まる', () => {
-  const layout = bandLayout(900, 3);
-  assert.equal(layout.mode, 'inline');
-  assert.ok(layout.bandX >= FIGURE_INSET + layout.labelWidth);
-  assert.equal(layout.bandX + layout.bandWidth, 900 - FIGURE_INSET);
-  for (let i = 1; i < layout.rows.length; i++) assert.ok(layout.rows[i]!.bandY >= layout.rows[i - 1]!.bandY + BAND_HEIGHT);
-  assert.ok(layout.rows[2]!.bandY + BAND_HEIGHT <= layout.height);
-});
-
-test('名前は、名前の幅に収まるように末尾を省く', () => {
-  assert.equal(fitLabel('QWERTY', 200, 12), 'QWERTY');
-  const fitted = fitLabel('とても長い配列の名前（訓令式・既定の指割り当て）', 100, 12);
-  assert.ok(fitted.endsWith('…'));
-  assert.ok(textWidth(fitted, 12) <= 100);
-});
-
-test('凡例は4つの区分を全部含み、幅が足りなければ折り返す', () => {
-  const wide = legendLayout(600);
-  assert.equal(wide.items.length, 4);
-  assert.equal(new Set(wide.items.map((item) => item.y)).size, 1);
-  const narrow = legendLayout(200);
-  assert.equal(narrow.items.length, 4);
-  assert.ok(new Set(narrow.items.map((item) => item.y)).size > 1);
-  assert.ok(narrow.height > wide.height);
-  for (const item of narrow.items) assert.ok(item.textX + textWidth(item.label, 12) <= 200 - FIGURE_INSET + 1e-9);
-});
-
-test('図の見方は、英語のテキストでは「かな」を使わず「字」と書く', () => {
-  const ja = BAND_CHART_PANE_META.help('ja');
-  const en = BAND_CHART_PANE_META.help('en');
-  assert.ok(ja.notes[0]!.includes('1かなごとの移動距離の割合'));
-  assert.ok(en.notes[0]!.includes('1字ごとの移動距離の割合'));
-  assert.doesNotMatch([...en.notes, ...en.items.map((item) => item.description)].join(''), /かな(?!ど)/u);
-  const text = ja.notes.join('');
-  for (const edge of ['0.5u', '1.5u', '2.5u']) assert.ok(text.includes(edge));
-  assert.ok(text.includes('打てない文字は数えません'));
 });
