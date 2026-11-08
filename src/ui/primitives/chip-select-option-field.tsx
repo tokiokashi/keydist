@@ -56,11 +56,15 @@ export function ChipSelectOptionField<T extends string>({
   label,
   binding,
   choices,
+  order,
   hint,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<readonly T[]>;
+  /** 小窓に並べる順。`group`を持つ選択肢は、見出しごとにまとめて、見出しは最初に現れた順に出す。 */
   readonly choices: readonly OptionChoice<T>[];
+  /** 札と保存する値の並び。省略は`choices`の順。 */
+  readonly order?: readonly T[];
   readonly hint?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -73,7 +77,11 @@ export function ChipSelectOptionField<T extends string>({
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const selected = choices.filter((choice) => binding.value.includes(choice.value));
+  const ordered = useMemo(
+    () => (order === undefined ? choices : order.flatMap((value) => choices.filter((choice) => choice.value === value))),
+    [choices, order],
+  );
+  const selected = ordered.filter((choice) => binding.value.includes(choice.value));
   const visible = useMemo(() => choices.filter((choice) => matchesQuery(choice.label, query)), [choices, query]);
   const groups = useMemo(() => {
     const plain = visible.filter((choice) => choice.group === undefined);
@@ -85,7 +93,7 @@ export function ChipSelectOptionField<T extends string>({
     return { plain, grouped: [...grouped] };
   }, [visible]);
 
-  const write = (values: ReadonlySet<T>) => binding.onChange(choices.map((choice) => choice.value).filter((value) => values.has(value)));
+  const write = (values: ReadonlySet<T>) => binding.onChange(ordered.map((choice) => choice.value).filter((value) => values.has(value)));
   const toggle = (value: T) => {
     const next = new Set(binding.value);
     if (!next.delete(value)) next.add(value);

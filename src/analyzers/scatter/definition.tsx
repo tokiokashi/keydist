@@ -6,7 +6,13 @@ import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import type { TextLanguage } from '#input/text/language.ts';
-import { COMPARISON_COLUMN_IDS, comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
+import {
+  COMPARISON_COLUMN_GROUP,
+  COMPARISON_COLUMN_IDS,
+  COMPARISON_COLUMN_IDS_BY_GROUP,
+  comparisonColumnText,
+  type ComparisonColumnId,
+} from '../comparison-column-text.ts';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
 import { SCATTER_PRESET_IDS, scatterPresetLabels, scatterAxisProblem, type ScatterAxisProblem } from './axes.ts';
@@ -49,10 +55,10 @@ const PLOT_BOTTOM = PLOT_HEIGHT - PLOT_MARGIN.bottom;
 /** 目盛りの線の長さ。枠の内側へ向ける。 */
 const TICK_LENGTH = 5;
 
-/** 対数の目盛りを選んでいるのに通常の目盛りで描く理由を、理由ごとに1文で伝える。 */
+/** 軸を対数にしているのに線形で描く理由を、理由ごとに1文で伝える。 */
 const LOG_BLOCKER_TEXTS = {
-  noStraightLines: '細い線が直線にならない図なので、対数の目盛りにはできず、通常の目盛りで表示しています。',
-  nonPositive: '0以下の値があるので、対数の目盛りにはできず、通常の目盛りで表示しています。',
+  noStraightLines: '細い線が直線にならない図なので、対数の軸にはできず、線形の軸で表示しています。',
+  nonPositive: '0以下の値があるので、対数の軸にはできず、線形の軸で表示しています。',
 } as const;
 
 function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): string {
@@ -539,7 +545,7 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
   );
 }
 
-/** 散布図の解析設定（目盛り・列の数・組み合わせと、自由に選ぶ時の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
+/** 散布図の解析設定（軸・列の数・組み合わせと、自由に選ぶ時の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
   const language = useTextLanguage();
@@ -547,18 +553,19 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
   const presetLabels = scatterPresetLabels(language);
   // 選んでいない列は、もう一方の軸に選んだ全部の列と選べない組になる時だけ、選べない状態にする
   const axisChoices = (own: readonly ComparisonColumnId[], other: readonly ComparisonColumnId[]) =>
-    COMPARISON_COLUMN_IDS.map((column) => ({
+    COMPARISON_COLUMN_IDS_BY_GROUP.map((column) => ({
       value: column,
       label: text[column].label,
+      group: COMPARISON_COLUMN_GROUP[column],
       disabled: !own.includes(column) && other.length > 0 && other.every((o) => scatterAxisProblem(o, column) !== undefined),
     }));
   return (
     <div className="option-groups">
       <SegmentedOptionField
-        label="目盛り"
+        label="軸"
         binding={bind('tickScale')}
         choices={[
-          { value: 'linear', label: '通常' },
+          { value: 'linear', label: '線形' },
           { value: 'log', label: '対数' },
         ]}
       />
@@ -581,8 +588,8 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
       />
       {options.presets.includes('free') ? (
         <>
-          <ChipSelectOptionField label="横軸" binding={bind('xAxes')} choices={axisChoices(options.xAxes, options.yAxes)} />
-          <ChipSelectOptionField label="縦軸" binding={bind('yAxes')} choices={axisChoices(options.yAxes, options.xAxes)} />
+          <ChipSelectOptionField label="横軸" binding={bind('xAxes')} choices={axisChoices(options.xAxes, options.yAxes)} order={COMPARISON_COLUMN_IDS} />
+          <ChipSelectOptionField label="縦軸" binding={bind('yAxes')} choices={axisChoices(options.yAxes, options.xAxes)} order={COMPARISON_COLUMN_IDS} />
           {options.xAxes.length >= 2 && options.yAxes.length >= 2 ? (
             <SegmentedOptionField
               label="図の並び"

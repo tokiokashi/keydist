@@ -77,7 +77,7 @@ export interface ScatterFigureModel {
   /** 細い線を引く組の細い線の量。引かない組は`undefined`。 */
   readonly lineContour: ScatterContour | undefined;
   readonly logScale: boolean;
-  /** 対数の目盛りを選んでいるのに通常の目盛りで描く理由。 */
+  /** 軸を対数にしているのに線形で描く理由。 */
   readonly logReasons: readonly (keyof LogScaleBlockers)[];
   readonly usedKinds: readonly LayoutKind[];
   readonly model: ScatterPlotModel;

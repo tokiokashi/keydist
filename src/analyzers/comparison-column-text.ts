@@ -49,6 +49,66 @@ export const COMPARISON_COLUMN_IDS = [
 
 export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
 
+/**
+ * 列を設定の小窓（比較表の表示する列・散布図の横軸と縦軸）で見出し付きにまとめる分け方。まとまりの並びはここに書いた順で、
+ * まとまりの中の列は`COMPARISON_COLUMN_IDS`の順。`Record`にしているので、列を足すとまとまりを決めるまで型検査が通らない。
+ */
+const GROUP = {
+  distance: '距離',
+  actionsAndKeys: 'アクションとキー',
+  textChars: '文字数',
+  finger: '指',
+  hands: '左右の手',
+  bigram: 'Bigram',
+} as const;
+
+export const COMPARISON_COLUMN_GROUPS = [GROUP.distance, GROUP.actionsAndKeys, GROUP.textChars, GROUP.finger, GROUP.hands, GROUP.bigram] as const;
+
+export type ComparisonColumnGroup = (typeof COMPARISON_COLUMN_GROUPS)[number];
+
+export const COMPARISON_COLUMN_GROUP: Readonly<Record<ComparisonColumnId, ComparisonColumnGroup>> = {
+  totalUnits: GROUP.distance,
+  meanPerStroke: GROUP.distance,
+  perCharUnits: GROUP.distance,
+  perPressUnits: GROUP.distance,
+  perMovedPressUnits: GROUP.distance,
+  movedPressShare: GROUP.distance,
+  unitsPerTextChar: GROUP.distance,
+  actions: GROUP.actionsAndKeys,
+  perCharSteps: GROUP.actionsAndKeys,
+  perCharPresses: GROUP.actionsAndKeys,
+  perActionPresses: GROUP.actionsAndKeys,
+  singleTapLayerRate: GROUP.actionsAndKeys,
+  singleTapRate: GROUP.actionsAndKeys,
+  singleKeyRate: GROUP.actionsAndKeys,
+  textCharsPerAction: GROUP.textChars,
+  actionsPerTextChar: GROUP.textChars,
+  actionsPerUnit: GROUP.textChars,
+  textCharsPerUnit: GROUP.textChars,
+  sameFinger: GROUP.finger,
+  sameFingerRate: GROUP.finger,
+  adjacentMean: GROUP.finger,
+  adjacentStdDev: GROUP.finger,
+  rightHandDistanceShare: GROUP.hands,
+  rightHandPressShare: GROUP.hands,
+  sameHandContinuationRate: GROUP.hands,
+  handSwitches: GROUP.hands,
+  handContinuations: GROUP.hands,
+  bothHandPairShare: GROUP.hands,
+  bothHandStrokes: GROUP.hands,
+  alternationCoverage: GROUP.hands,
+  alternationRuns: GROUP.hands,
+  alternationMeanLength: GROUP.hands,
+  alternationMaxLength: GROUP.hands,
+  physicalBigramCombinations: GROUP.bigram,
+  logicalBigramCombinations: GROUP.bigram,
+};
+
+/** 小窓に並べる順（まとまりの順、まとまりの中は列の順）の列。 */
+export const COMPARISON_COLUMN_IDS_BY_GROUP: readonly ComparisonColumnId[] = COMPARISON_COLUMN_GROUPS.flatMap((group) =>
+  COMPARISON_COLUMN_IDS.filter((id) => COMPARISON_COLUMN_GROUP[id] === group),
+);
+
 export interface ComparisonColumnText {
   /**
    * 見出しの短い名前。見出しには単位を付けない（単位は見出しのⓘから開く説明に書く）。
