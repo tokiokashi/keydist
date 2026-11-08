@@ -1,8 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { CopyImageControl } from '../copy-image-control.tsx';
+import { fitLabel, FONT_SIZE, textWidth } from '../figure-text.ts';
 import { resolvePaneHelp } from '../pane-help.tsx';
+import { useElementWidth } from '../use-element-width.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
 import { bandChartDefinition, type BandChartExtracted } from './extract.ts';
@@ -12,12 +14,9 @@ import {
   bandChartModel,
   bandLabels,
   bandLayout,
-  FONT_SIZE,
-  fitLabel,
   legendLayout,
   percentText,
   segmentGeometries,
-  textWidth,
   type BandDisplayRow,
   type BandRowContext,
 } from './figure-model.ts';
@@ -41,22 +40,6 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const FALLBACK_WIDTH = 360;
 /** 画像で、凡例と帯の間に空ける間隔 [px]。 */
 const IMAGE_LEGEND_GAP = 6;
-
-/** 要素の幅 [px]。まだ測っていない間は `undefined`。 */
-function useElementWidth(ref: RefObject<HTMLElement | null>): number | undefined {
-  const [width, setWidth] = useState<number | undefined>(undefined);
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (element === null) return;
-    const measure = () => setWidth(Math.floor(element.getBoundingClientRect().width));
-    measure();
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [ref]);
-  return width;
-}
 
 /** 凡例と帯を1枚のSVGにまとめる。凡例は画面では図の上端に残る別の要素だが、画像には1枚の図として含める。 */
 function composeImageSvg(legend: SVGSVGElement, rows: SVGSVGElement): SVGSVGElement {

@@ -15,6 +15,7 @@ import { playbackDefinition } from '#analyzers/playback/extract.ts';
 import { runChartDefinition } from '#analyzers/run-chart/extract.ts';
 import { scatterDefinition } from '#analyzers/scatter/extract.ts';
 import { bandChartDefinition } from '#analyzers/band-chart/extract.ts';
+import { boxPlotDefinition } from '#analyzers/box-plot/extract.ts';
 import { WORKSPACE_ANALYZERS } from '#hosts/workspace/analyzer-registry.ts';
 import { ANALYZER_OPTIONS_DECODERS } from './analyzer-options-decoders.ts';
 
@@ -34,6 +35,7 @@ const DEFINITIONS = [
   runChartDefinition,
   scatterDefinition,
   bandChartDefinition,
+  boxPlotDefinition,
 ];
 
 test('全Analyzerの解析設定を、そのAnalyzerの定義と同じdecodeOptionsで読む', () => {

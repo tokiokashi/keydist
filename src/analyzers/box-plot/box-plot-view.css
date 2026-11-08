@@ -1,0 +1,188 @@
+/*
+ * 箱の色は全配列で1色。画像の書き出しが文書の外に置く複製からも引けるよう、:rootに置く。
+ */
+:root {
+  --box-plot-fill: light-dark(#a3c4ee, #2d5b92);
+  --box-plot-stroke: light-dark(#1e5ba8, #9cc4f7);
+}
+
+.box-plot-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.box-plot-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 1rem;
+}
+
+.box-plot-figure {
+  min-width: 0;
+  margin: 0;
+}
+
+.box-plot-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 描画領域の枠。目盛りの線は枠の内向きに付け、格子線は引かない（散布図と同じ） */
+.box-plot-frame {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.box-plot-tick-mark {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.box-plot-tick {
+  fill: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 軸の名前は目盛りより読みやすく、本文の色にする */
+.box-plot-axis-title {
+  fill: var(--text);
+}
+
+.box-plot-row {
+  outline: none;
+  cursor: default;
+}
+
+.box-plot-row-label {
+  fill: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* 行の押せる範囲。選んだ行は、枠と薄い塗りで示す */
+.box-plot-row-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+
+.box-plot-row[data-selected] .box-plot-row-hit {
+  fill: color-mix(in srgb, var(--focus) 12%, transparent);
+  stroke: var(--focus);
+  stroke-width: 1.5;
+}
+
+.box-plot-row:focus-visible .box-plot-row-hit {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+.box-plot-whisker {
+  fill: none;
+  stroke: var(--box-plot-stroke);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.box-plot-box {
+  fill: var(--box-plot-fill);
+  stroke: var(--box-plot-stroke);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.box-plot-median {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+/* 図の下のキャプション */
+.box-plot-caption {
+  margin-top: 0.5rem;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 選んだ配列の5つの値 */
+.box-plot-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.box-plot-detail-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.box-plot-detail-total {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.box-plot-detail-table {
+  width: max-content;
+  min-width: 16rem;
+  max-width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.box-plot-detail-table th,
+.box-plot-detail-table td {
+  padding: 0.2rem 0.8rem 0.2rem 0;
+  text-align: left;
+  font-weight: 400;
+}
+
+.box-plot-detail-table thead th {
+  color: var(--text-muted);
+}
+
+.box-plot-detail-table td,
+.box-plot-detail-table thead th:not(:first-child) {
+  text-align: right;
+}
+
+.box-plot-notice {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.box-plot-excluded {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.box-plot-excluded li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.box-plot-excluded [role='alert'] {
+  color: var(--danger);
+}

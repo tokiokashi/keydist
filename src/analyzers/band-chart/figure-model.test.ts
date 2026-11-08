@@ -1,17 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { FIGURE_INSET, INLINE_MIN_WIDTH } from '../figure-text.ts';
 import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
-import {
-  BAND_HEIGHT,
-  bandChartModel,
-  bandLayout,
-  FIGURE_INSET,
-  INLINE_MIN_WIDTH,
-  NO_VALUE_MESSAGE,
-  percentText,
-  segmentGeometries,
-  type BandRowContext,
-} from './figure-model.ts';
+import { BAND_HEIGHT, bandChartModel, bandLayout, NO_VALUE_MESSAGE, percentText, segmentGeometries, type BandRowContext } from './figure-model.ts';
 
 function okRow(targetKey: string, counts: readonly number[], options: Partial<BandChartOkRow> = {}): BandChartOkRow {
   const typed = counts.reduce((sum, count) => sum + count, 0);
