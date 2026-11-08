@@ -90,7 +90,7 @@ test('比較表の列名と説明は、単位の語をカタカナで書くと�
       }
     }
   }
-  assert.equal(comparisonColumnText('ja', 'katakana').perCharUnits.label, 'u/カナ');
+  assert.equal(comparisonColumnText('ja', 'katakana').perCharUnits.label, '距離/カナ');
 });
 
 test('入力かな数の説明は、日本語で「かな数」、英語で「字数」から始まる', () => {
@@ -106,8 +106,8 @@ test('比較表の列名と説明は、英語のテキストで「かな」が�
     assertUnitWord(ja[column].label, en[column].label, `${column} label`);
     assert.ok(!hasKanaUnit(en[column].description), `${column} description: ${en[column].description}`);
   }
-  assert.equal(ja.perCharUnits.label, 'u/かな');
-  assert.equal(en.perCharUnits.label, 'u/字');
+  assert.equal(ja.perCharUnits.label, '距離/かな');
+  assert.equal(en.perCharUnits.label, '距離/字');
 });
 
 test('「表示する列」の選択肢の列定義は、比較表の列名と同じ言語で出る', () => {

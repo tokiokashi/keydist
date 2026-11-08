@@ -58,7 +58,7 @@ function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): s
   const k = kanaUnitOf(language, SCATTER_KANA_SCRIPT);
   return problem === 'same'
     ? '同じ列は、横軸と縦軸の両方に選べません。'
-    : `アクション数とアクション数/${k}、距離とu/${k}、u/アクションとアクション/uのように、同じテキストなら一方が他方の定数倍か、積が一定になる2列は、同時に選べません。`;
+    : `アクション数とアクション数/${k}、距離と距離/${k}、距離/アクションとアクション数/距離のように、同じテキストなら一方が他方の定数倍か、積が一定になる2列は、同時に選べません。`;
 }
 
 function KindMark({ kind, size = MARK_SIZE }: { readonly kind: LayoutKind; readonly size?: number }) {

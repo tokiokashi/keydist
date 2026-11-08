@@ -29,7 +29,7 @@ interface AxisNameSpec {
   readonly name?: (kana: KanaUnit, language: TextLanguage) => string;
   readonly unit?: AxisUnit;
   /**
-   * 軸の名前に使う縮めた名前。単位は含めない。「量/何あたり」の形で、何あたりかを残す。「カナ」は`name`と同じくテキストの言語で出し分ける。比較表の列名と同じ文になる列は、列名をそのまま使う。
+   * 軸の名前に使う縮めた名前。単位は含めない。「量/何あたり」の形で、何あたりかを残す。比較表の列名が同じ形なので、列名を使う。「カナ」は`name`と同じくテキストの言語で出し分ける。比較表の列名と同じ文になる列は、列名をそのまま使う。
    * 宣言の無い列は`name`のまま軸に出す。
    */
   readonly axisLabel?: (kana: KanaUnit, language: TextLanguage) => string;
@@ -43,22 +43,35 @@ function perTextCharOf(language: TextLanguage): string {
   return `${textCharPrefixOf(language).replace(/の$/u, '')}1文字あたり`;
 }
 
+/** 軸の名前に比較表の列名を使う。「量/何あたり」の形の列名は、そのまま軸の縮めた名前になる。 */
+function columnLabel(column: ComparisonColumnId): (kana: KanaUnit, language: TextLanguage) => string {
+  return (_k, language) => comparisonColumnText(language, SCATTER_KANA_SCRIPT)[column].label;
+}
+
 const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
   actions: {},
   totalUnits: { name: () => '総移動距離', unit: 'u' },
   meanPerStroke: {
     name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).meanPerStroke.label,
     unit: 'u',
-    axisLabel: () => '距離/アクション',
+    axisLabel: columnLabel('meanPerStroke'),
   },
-  perCharUnits: { name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perCharUnits.label, unit: 'u', axisLabel: (k) => `距離/${k}` },
+  perCharUnits: {
+    name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perCharUnits.label,
+    unit: 'u',
+    axisLabel: columnLabel('perCharUnits'),
+  },
   perCharSteps: {
     name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perCharSteps.label,
-    axisLabel: (_k, language) => comparisonColumnText(language, SCATTER_KANA_SCRIPT).perCharSteps.label,
+    axisLabel: columnLabel('perCharSteps'),
   },
-  perCharPresses: { name: (k) => `1${k}換算の押下数`, axisLabel: (k) => `${KEY_COUNT_NAME}/${k}` },
-  perActionPresses: { name: () => '1アクションの押下数', axisLabel: () => `${KEY_COUNT_NAME}/アクション` },
-  perPressUnits: { name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perPressUnits.label, unit: 'u', axisLabel: () => '距離/キー' },
+  perCharPresses: { name: (k) => `1${k}換算の押下数`, axisLabel: columnLabel('perCharPresses') },
+  perActionPresses: { name: () => '1アクションの押下数', axisLabel: columnLabel('perActionPresses') },
+  perPressUnits: {
+    name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perPressUnits.label,
+    unit: 'u',
+    axisLabel: columnLabel('perPressUnits'),
+  },
   singleTapLayerRate: { unit: '%' },
   singleTapRate: { unit: '%' },
   singleKeyRate: { unit: '%' },
@@ -69,12 +82,16 @@ const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
   rightHandDistanceShare: { unit: '%' },
   rightHandPressShare: { unit: '%' },
   movedPressShare: { unit: '%' },
-  perMovedPressUnits: { name: () => '移動を伴う押下1回の移動距離', unit: 'u', axisLabel: () => '距離/移動ありキー' },
-  textCharsPerAction: { name: (_k, language) => `1アクションで打てる${textCharPrefixOf(language)}文字数`, axisLabel: () => '文字数/アクション' },
-  actionsPerTextChar: { name: (_k, language) => `${perTextCharOf(language)}のアクション数`, axisLabel: () => 'アクション数/文字' },
-  actionsPerUnit: { name: () => '1u分の移動で打つアクション数', unit: '1/u', axisLabel: () => 'アクション数/距離' },
-  textCharsPerUnit: { name: (_k, language) => `1u分の移動で打てる${textCharPrefixOf(language)}文字数`, unit: '1/u', axisLabel: () => '文字数/距離' },
-  unitsPerTextChar: { name: (_k, language) => `${perTextCharOf(language)}の移動距離`, unit: 'u', axisLabel: () => '距離/文字' },
+  perMovedPressUnits: { name: () => '移動を伴う押下1回の移動距離', unit: 'u', axisLabel: columnLabel('perMovedPressUnits') },
+  textCharsPerAction: { name: (_k, language) => `1アクションで打てる${textCharPrefixOf(language)}文字数`, axisLabel: columnLabel('textCharsPerAction') },
+  actionsPerTextChar: { name: (_k, language) => `${perTextCharOf(language)}のアクション数`, axisLabel: columnLabel('actionsPerTextChar') },
+  actionsPerUnit: { name: () => '1u分の移動で打つアクション数', unit: '1/u', axisLabel: columnLabel('actionsPerUnit') },
+  textCharsPerUnit: {
+    name: (_k, language) => `1u分の移動で打てる${textCharPrefixOf(language)}文字数`,
+    unit: '1/u',
+    axisLabel: columnLabel('textCharsPerUnit'),
+  },
+  unitsPerTextChar: { name: (_k, language) => `${perTextCharOf(language)}の移動距離`, unit: 'u', axisLabel: columnLabel('unitsPerTextChar') },
   physicalBigramCombinations: {},
   logicalBigramCombinations: {},
   alternationCoverage: { unit: '%' },

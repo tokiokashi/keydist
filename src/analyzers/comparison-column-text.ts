@@ -52,7 +52,7 @@ export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
 export interface ComparisonColumnText {
   /**
    * 見出しの短い名前。見出しには単位を付けない（単位は見出しのⓘから開く説明に書く）。
-   * 率の列は値の側に `%` が付き、`u/アクション`・`u/かな` は名前が単位を含む。
+   * 率の列は値の側に `%` が付く。1つあたりの量の列は「量/何あたり」の形で、何あたりかを名前が含む（`距離/アクション`・`アクション数/かな`）。
    * 「かな」はテキストの言語で出し分ける（英語のテキストでは「字」。`unit-words.ts`）。散布図は「カナ」と書く（`KanaScript`）。
    */
   readonly label: string;
@@ -79,11 +79,11 @@ function buildColumnText(language: TextLanguage, script: KanaScript): Readonly<R
       description: '全指の総移動距離（u）。',
     },
     meanPerStroke: {
-      label: 'u/アクション',
+      label: '距離/アクション',
       description: '1アクションあたりの平均移動距離（u/アクション）。',
     },
     perCharUnits: {
-      label: `u/${k}`,
+      label: `距離/${k}`,
       description: `入力1${k}あたりの総移動距離（u/${k}）。${countNote}この数はローマ字展開やコンボ結合の前で数えるので、アクション数を減らした効果がこの値に残ります。`,
     },
     perCharSteps: {
@@ -99,7 +99,7 @@ function buildColumnText(language: TextLanguage, script: KanaScript): Readonly<R
       description: '1アクションで押すキーの数。コンボや同時押しでまとめて打つほど大きくなります。',
     },
     perPressUnits: {
-      label: 'u/キー',
+      label: '距離/キー',
       description: '押したキー1つあたりの移動距離（u/キー）。距離が0のキー（ホームキーや親指キー）も数に入れます。',
     },
     singleTapLayerRate: {
@@ -144,29 +144,29 @@ function buildColumnText(language: TextLanguage, script: KanaScript): Readonly<R
         '押したキーの数のうち、指が動いた（移動距離が0より大きい）時に押したキー（移動ありキー）の数の割合（%）。移動距離が0の時に押したキー（同じ指が続かない時のホームキー、同じキーの連続など）は入りません。',
     },
     perMovedPressUnits: {
-      label: 'u/移動ありキー',
+      label: '距離/移動ありキー',
       description:
         '移動ありキー1つあたりの移動距離（u/キー）。総移動距離を、移動ありキーの数で割った値。移動ありキー率と掛け合わせるとu/キーになります。',
     },
     textCharsPerAction: {
-      label: '文字/アクション',
+      label: '文字数/アクション',
       description: `1アクションで出せる文字の数（コスパとも呼ばれる量）。${textCharNote}かな漢字変換の操作はアクションに数えません。アクション数が0の時は値がありません。`,
     },
     actionsPerTextChar: {
-      label: 'アクション/文字',
+      label: 'アクション数/文字',
       description: `テキストの1文字を打つのに行うアクションの数。${textCharNote}アクション数を文字数で割った値で、アクション数か文字数が0の時は値がありません。`,
     },
     actionsPerUnit: {
-      label: 'アクション/u',
+      label: 'アクション数/距離',
       description:
         '1uの距離を動く間に行うアクションの数。アクション数を総移動距離で割った値で、大きいほど距離あたりに多くのアクションを行います。総移動距離が0の時は値がありません。',
     },
     textCharsPerUnit: {
-      label: '文字/u',
+      label: '文字数/距離',
       description: `1uの距離を動く間に出せる文字の数。${textCharNote}文字数を総移動距離で割った値で、総移動距離が0の時は値がありません。`,
     },
     unitsPerTextChar: {
-      label: 'u/文字',
+      label: '距離/文字',
       description: `テキストの1文字を打つのに動く距離（u/文字）。${textCharNote}総移動距離を文字数で割った値で、文字数が0の時は値がありません。`,
     },
     physicalBigramCombinations: {
@@ -205,7 +205,7 @@ function buildColumnText(language: TextLanguage, script: KanaScript): Readonly<R
         '隣り合う2アクションの組のうち、少なくとも一方が両手で押すアクションである組の割合（%）。手の切り替えと同じ手の続きの回数の合計（押す手が無いアクションを含む組を除いた組の数）で割ります。',
     },
     bothHandStrokes: {
-      label: '両手のアクション',
+      label: '両手のアクション数',
       description:
         '左右の手が同時に押すアクションの数。親指以外のキーを押すアクションは、親指を手に数えません。両手で文字を出すアクションと、片手は切り替えのキーだけを押すアクションを合わせて数えます。',
     },

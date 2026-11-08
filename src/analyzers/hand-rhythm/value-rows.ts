@@ -30,7 +30,7 @@ export function pairRowsOf(extracted: HandRhythmExtracted): ValueRow[] {
       label: '両手のアクションを含む組',
       text: `${aggregate.bothHandPairs}組（組全体の${formatShareOf(aggregate.bothHandPairs, pairCount)}）`,
     },
-    { id: 'both-hand-strokes', label: '両手のアクション', text: `${bothHandStrokes.simultaneous + bothHandStrokes.mixed}アクション` },
+    { id: 'both-hand-strokes', label: '両手のアクション数', text: `${bothHandStrokes.simultaneous + bothHandStrokes.mixed}アクション` },
     { id: 'both-output', label: '両手で文字を出す', text: `${bothHandStrokes.simultaneous}アクション` },
     { id: 'both-mixed', label: '片手は切り替えのキーだけ', text: `${bothHandStrokes.mixed}アクション` },
   ];
