@@ -59,7 +59,7 @@ const GROUP = {
   actionsAndKeys: 'アクションとキー',
   textChars: '文字数',
   finger: '指',
-  hands: '左右の手',
+  hands: '手',
   bigram: 'Bigram',
 } as const;
 
