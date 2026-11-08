@@ -117,7 +117,7 @@ export function bandSampleText(id: BandQuantityId, language: TextLanguage): Band
   const sample = BAND_QUANTITIES[id].sample;
   if (sample === 'kana') {
     const unit = kanaUnitOf(language);
-    return { totalLabel: `打てた${unit}数`, countHeader: `${unit}数`, total: String, count: String };
+    return { totalLabel: `数えた${unit}数`, countHeader: `${unit}数`, total: String, count: String };
   }
   if (sample === 'press') return { totalLabel: '押下数', countHeader: '押下数', total: String, count: String };
   return {

@@ -105,7 +105,7 @@ function colorNote(id: BandQuantityId): string {
       return `左手は緑、右手は紫、両手は橙にしています。${SEGMENT_TEXT_NOTE}`;
     case 'fingerPresses':
     case 'fingerDistance':
-      return `左手の指は緑、右手の指は紫の濃淡で、親指が最も濃く、小指が最も薄い色です。${SEGMENT_TEXT_NOTE}`;
+      return `左手の指は緑、右手の指は紫の濃淡で、手の中では親指から小指へ濃淡が変わります。${SEGMENT_TEXT_NOTE}`;
   }
 }
 

@@ -192,7 +192,7 @@
 }
 
 .band-segment-text[data-band-color='violet-2'] {
-  fill: var(--band-chart-text-mid);
+  fill: var(--band-chart-text-violet-mid);
 }
 
 .band-segment-text[data-band-color='violet-3'] {
