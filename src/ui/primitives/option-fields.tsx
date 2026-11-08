@@ -304,6 +304,7 @@ export function CheckboxGroupOptionField<T extends string>({
   hint,
   minSelected = 0,
   listed = false,
+  selectAll = false,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<readonly T[]>;
@@ -311,6 +312,8 @@ export function CheckboxGroupOptionField<T extends string>({
   readonly hint?: ReactNode;
   readonly minSelected?: number;
   readonly listed?: boolean;
+  /** 見出しの横に、選べる選択肢を全部選ぶボタンを置く。選んでいるものは外さない。 */
+  readonly selectAll?: boolean;
 }) {
   const locked = binding.value.length <= minSelected;
   const toggle = (value: T) => {
@@ -321,6 +324,8 @@ export function CheckboxGroupOptionField<T extends string>({
         choices.map((choice) => choice.value).filter((candidate) => candidate === value || binding.value.includes(candidate));
     binding.onChange(next);
   };
+  const selectable = choices.filter((choice) => choice.disabled !== true || binding.value.includes(choice.value)).map((choice) => choice.value);
+  const allSelected = selectable.every((value) => binding.value.includes(value));
   const labelId = useId();
   return (
     <fieldset className="option-field option-field-group" aria-labelledby={labelId} data-option-default={isDefaultValue(binding) || undefined}>
@@ -328,6 +333,16 @@ export function CheckboxGroupOptionField<T extends string>({
         <span className="option-field-label" id={labelId}>
           {label}
         </span>
+        {selectAll ? (
+          <button
+            type="button"
+            className="option-field-select-all"
+            disabled={allSelected}
+            onClick={() => binding.onChange(choices.map((choice) => choice.value).filter((value) => selectable.includes(value)))}
+          >
+            すべて選ぶ
+          </button>
+        ) : null}
         <ResetButton label={label} binding={binding} />
       </div>
       <div className={listed ? 'option-checkbox-group option-checkbox-group-listed' : 'option-checkbox-group'}>

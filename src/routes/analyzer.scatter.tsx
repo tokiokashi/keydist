@@ -14,8 +14,7 @@ export const Route = createFileRoute('/analyzer/scatter')({
       { title: `${SCATTER_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content:
-          '配列やSetupを選んで、2つの数値の関係を配列ごとの点で描きます。1かな換算のアクション数と1アクションの移動距離などの組み合わせを選べます。',
+        content: '配列やSetupを選んで、2つの数値の関係を配列ごとの点で描きます。1かな換算のアクション数と1アクションの移動距離などの図を選べます。',
       },
     ],
   }),

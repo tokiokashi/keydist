@@ -112,6 +112,32 @@
   margin-left: auto;
 }
 
+.option-field-head .option-field-select-all + .option-field-reset {
+  margin-left: auto;
+}
+
+.option-field-select-all {
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.option-field-select-all:hover,
+.option-field-select-all:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.option-field-select-all:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .option-field-reset:hover,
 .option-field-reset:focus-visible {
   border-color: var(--border-strong);
