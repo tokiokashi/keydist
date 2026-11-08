@@ -107,6 +107,8 @@ export function OptionField<T>({ label, binding, valueText, hint, badge, childre
 export interface OptionChoice<T extends string> {
   readonly value: T;
   readonly label: string;
+  /** `CheckboxGroupOptionField` で、選んでいない選択肢を選べない状態にする。選んでいる選択肢は外せる。 */
+  readonly disabled?: boolean;
   /** `SelectOptionField` で見出し（`<optgroup>`）の下にまとめる時の見出し。無ければ見出しの外に置く。 */
   readonly group?: string;
 }
@@ -302,6 +304,7 @@ export function CheckboxGroupOptionField<T extends string>({
   hint,
   minSelected = 0,
   listed = false,
+  selectAll = false,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<readonly T[]>;
@@ -309,6 +312,8 @@ export function CheckboxGroupOptionField<T extends string>({
   readonly hint?: ReactNode;
   readonly minSelected?: number;
   readonly listed?: boolean;
+  /** 選択肢をすべて選ぶ操作とすべて外す操作を出す。1つ以上を選ぶ項目（`minSelected`が1以上）には付けない。 */
+  readonly selectAll?: boolean;
 }) {
   const locked = binding.value.length <= minSelected;
   const toggle = (value: T) => {
@@ -319,6 +324,13 @@ export function CheckboxGroupOptionField<T extends string>({
         choices.map((choice) => choice.value).filter((candidate) => candidate === value || binding.value.includes(candidate));
     binding.onChange(next);
   };
+  // 選べない状態の選択肢は足さない。すでに選んでいるものは残す
+  const selectEvery = () =>
+    binding.onChange(
+      choices
+        .map((choice) => choice.value)
+        .filter((value) => binding.value.includes(value) || choices.find((choice) => choice.value === value)?.disabled !== true),
+    );
   const labelId = useId();
   return (
     <fieldset className="option-field option-field-group" aria-labelledby={labelId} data-option-default={isDefaultValue(binding) || undefined}>
@@ -328,12 +340,22 @@ export function CheckboxGroupOptionField<T extends string>({
         </span>
         <ResetButton label={label} binding={binding} />
       </div>
+      {selectAll ? (
+        <div className="option-checkbox-bulk">
+          <button type="button" onClick={selectEvery}>
+            すべて選ぶ
+          </button>
+          <button type="button" onClick={() => binding.onChange([])}>
+            すべて外す
+          </button>
+        </div>
+      ) : null}
       <div className={listed ? 'option-checkbox-group option-checkbox-group-listed' : 'option-checkbox-group'}>
         {choices.map((choice) => {
           const checked = binding.value.includes(choice.value);
           return (
             <label key={choice.value}>
-              <input type="checkbox" checked={checked} disabled={checked && locked} onChange={() => toggle(choice.value)} />
+              <input type="checkbox" checked={checked} disabled={checked ? locked : choice.disabled === true} onChange={() => toggle(choice.value)} />
               {choice.label}
             </label>
           );

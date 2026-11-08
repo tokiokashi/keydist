@@ -89,3 +89,27 @@ test('列の数: 既定は自動で、URLに載せて読み戻すと同じ設定
   assert.equal(scatterOptions.decodeOptionsFromUrl(new URLSearchParams('columns=4'), broken).values.columns, undefined);
   assert.equal(broken.length, 1);
 });
+
+test('縦軸: 既定は距離/アクションの1つで、URLに0個も複数も載せて読み戻す', () => {
+  assert.deepEqual(DEFAULT_SCATTER_OPTIONS.yAxes, ['meanPerStroke']);
+  assert.equal(scatterOptions.encodeOptionsToUrl(DEFAULT_SCATTER_OPTIONS).has('y'), false);
+  for (const yAxes of [[], ['actions', 'sameFinger']] as const) {
+    const diagnostics: CodecDiagnostic[] = [];
+    const params = scatterOptions.encodeOptionsToUrl({ ...DEFAULT_SCATTER_OPTIONS, yAxes });
+    assert.equal(params.get('y'), yAxes.join(','));
+    const decoded = scatterOptions.decodeOptionsFromUrl(params, diagnostics);
+    assert.deepEqual(diagnostics, []);
+    assert.deepEqual(decoded.values.yAxes, yAxes);
+  }
+});
+
+test('縦軸: 並び・重複・知らない値は、比較表の列の順に直して知らない値を診断に残す', () => {
+  const diagnostics: CodecDiagnostic[] = [];
+  const decoded = scatterOptions.decodeOptionsFromUrl(new URLSearchParams('y=sameFinger,nothing,actions,sameFinger'), diagnostics);
+  assert.deepEqual(decoded.values.yAxes, ['actions', 'sameFinger']);
+  assert.equal(diagnostics.length, 2);
+  const stored: CodecDiagnostic[] = [];
+  const options = scatterOptions.decodeOptions({ yAxes: ['sameFinger', 'actions', 'nothing'] }, stored) as typeof DEFAULT_SCATTER_OPTIONS;
+  assert.deepEqual(options.yAxes, ['actions', 'sameFinger']);
+  assert.equal(stored.length, 1);
+});
