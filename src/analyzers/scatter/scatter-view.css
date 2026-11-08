@@ -40,50 +40,6 @@
   gap: 0.3rem 1rem;
 }
 
-/* 図を画像でコピーするボタンと、結果の知らせ。ⓘと同じ大きさ・見た目にする */
-.scatter-copy {
-  position: relative;
-  display: inline-flex;
-}
-
-.scatter-copy-button {
-  display: inline-grid;
-  place-items: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.scatter-copy-button:hover,
-.scatter-copy-button:focus-visible {
-  border-color: var(--border);
-  background: var(--surface-muted);
-  color: var(--text);
-}
-
-.scatter-copy-status:empty {
-  display: none;
-}
-
-.scatter-copy-status {
-  position: absolute;
-  top: calc(100% + 0.3rem);
-  left: 0;
-  z-index: 30;
-  padding: 0.25rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--surface-raised);
-  color: var(--text);
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
 /* 枠の中の凡例。背景を付けて、下の線が文字に掛からないようにする */
 .scatter-legend-box rect {
   fill: var(--bg);

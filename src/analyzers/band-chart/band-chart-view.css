@@ -1,0 +1,258 @@
+/*
+ * 区分の色は1色（青）の濃淡で、距離の大きい区分ほど濃い。凡例・帯・画像への書き出しが同じ値を読むので、
+ * 画像の書き出しが文書の外に置く複製からも引けるよう、:rootに置く。
+ */
+:root {
+  --band-chart-0: light-dark(#dce9f9, #1d3350);
+  --band-chart-1: light-dark(#a3c4ee, #2d5b92);
+  --band-chart-2: light-dark(#5b97df, #4b8de0);
+  --band-chart-3: light-dark(#1e5ba8, #9cc4f7);
+  --band-chart-text-0: light-dark(#1a1917, #e6edf7);
+  --band-chart-text-1: light-dark(#1a1917, #e6edf7);
+  --band-chart-text-2: light-dark(#0b1f3a, #04101f);
+  --band-chart-text-3: light-dark(#ffffff, #04101f);
+}
+
+.band-chart-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.band-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 1rem;
+}
+
+.band-figure {
+  min-width: 0;
+  margin: 0;
+}
+
+/*
+ * 凡例は図の上端に残る。配列が多く図をスクロールする時も、区分の色が見えたままになる。
+ * 個別画面では、固定したペインの見出しの下に合わせる（`PaneFrame` が公開する値。Workspaceのペインでは無いので0）。
+ */
+.band-legend {
+  position: sticky;
+  top: var(--sticky-header-bottom, 0px);
+  z-index: 3;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.band-legend-svg,
+.band-rows-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.band-legend-text {
+  fill: var(--text);
+  font-size: 12px;
+}
+
+.band-rows {
+  position: relative;
+  padding-top: 0.5rem;
+}
+
+.band-segment[data-band='0'] {
+  fill: var(--band-chart-0);
+}
+
+.band-segment[data-band='1'] {
+  fill: var(--band-chart-1);
+}
+
+.band-segment[data-band='2'] {
+  fill: var(--band-chart-2);
+}
+
+.band-segment[data-band='3'] {
+  fill: var(--band-chart-3);
+}
+
+/* 区分の境目に背景色の細い線を引き、隣り合う区分を見分けやすくする */
+.band-segment {
+  stroke: var(--bg);
+  stroke-width: 1;
+}
+
+.band-swatch {
+  stroke: none;
+}
+
+.band-segment-text {
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.band-segment-text[data-band='0'] {
+  fill: var(--band-chart-text-0);
+}
+
+.band-segment-text[data-band='1'] {
+  fill: var(--band-chart-text-1);
+}
+
+.band-segment-text[data-band='2'] {
+  fill: var(--band-chart-text-2);
+}
+
+.band-segment-text[data-band='3'] {
+  fill: var(--band-chart-text-3);
+}
+
+.band-segment[data-active] {
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+.band-row {
+  outline: none;
+  cursor: default;
+}
+
+.band-row-label {
+  fill: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* 行の押せる範囲。選んだ行は、枠と薄い塗りで示す */
+.band-row-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+
+.band-row[data-selected] .band-row-hit {
+  fill: color-mix(in srgb, var(--focus) 12%, transparent);
+  stroke: var(--focus);
+  stroke-width: 1.5;
+}
+
+.band-row:focus-visible .band-row-hit {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+.band-tooltip[data-below] {
+  transform: translateX(-50%);
+}
+
+.band-tooltip {
+  position: absolute;
+  z-index: 4;
+  transform: translate(-50%, -100%);
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 図の下のキャプション */
+.band-caption {
+  margin-top: 0.5rem;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 選んだ配列の4区分の割合 */
+.band-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.band-detail-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.band-detail-total {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.band-detail-table {
+  width: max-content;
+  min-width: 16rem;
+  max-width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.band-detail-table th,
+.band-detail-table td {
+  padding: 0.2rem 0.8rem 0.2rem 0;
+  text-align: left;
+  font-weight: 400;
+}
+
+.band-detail-table thead th {
+  color: var(--text-muted);
+}
+
+.band-detail-table td {
+  text-align: right;
+}
+
+.band-detail-table thead th:not(:first-child) {
+  text-align: right;
+}
+
+.band-detail-swatch {
+  display: inline-block;
+  margin-right: 0.45rem;
+  vertical-align: -1px;
+}
+
+.band-detail-swatch .band-segment {
+  stroke: none;
+}
+
+.band-notice {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.band-excluded {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.band-excluded li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.band-excluded [role='alert'] {
+  color: var(--danger);
+}

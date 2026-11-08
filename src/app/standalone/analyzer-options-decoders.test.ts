@@ -14,6 +14,7 @@ import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { playbackDefinition } from '#analyzers/playback/extract.ts';
 import { runChartDefinition } from '#analyzers/run-chart/extract.ts';
 import { scatterDefinition } from '#analyzers/scatter/extract.ts';
+import { bandChartDefinition } from '#analyzers/band-chart/extract.ts';
 import { WORKSPACE_ANALYZERS } from '#hosts/workspace/analyzer-registry.ts';
 import { ANALYZER_OPTIONS_DECODERS } from './analyzer-options-decoders.ts';
 
@@ -32,6 +33,7 @@ const DEFINITIONS = [
   playbackDefinition,
   runChartDefinition,
   scatterDefinition,
+  bandChartDefinition,
 ];
 
 test('全Analyzerの解析設定を、そのAnalyzerの定義と同じdecodeOptionsで読む', () => {

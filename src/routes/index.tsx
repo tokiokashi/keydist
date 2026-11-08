@@ -13,6 +13,7 @@ import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { RUN_CHART_PANE_META } from '#analyzers/run-chart/pane-meta.ts';
 import { BUNSETSU_STATS_PANE_META } from '#analyzers/bunsetsu-stats/pane-meta.ts';
 import { SCATTER_PANE_META } from '#analyzers/scatter/pane-meta.ts';
+import { BAND_CHART_PANE_META } from '#analyzers/band-chart/pane-meta.ts';
 import { WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
 import { TopTargetPick } from '../app/top/TopTargetPick.tsx';
 import { SAMPLE_KINDS, sampleLabel } from '#engine/sample-workspace.ts';
@@ -74,6 +75,9 @@ function SidebarSample() {
         </Link>
         <Link className="sidebar-link" to="/analyzer/scatter">
           {SCATTER_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/band-chart">
+          {BAND_CHART_PANE_META.name}
         </Link>
       </section>
       <section className="sidebar-group">
