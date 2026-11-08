@@ -146,7 +146,7 @@ export const AXIS_FONT_SIZE = 11;
 export const AXIS_WIDTH = 58;
 /** 1列（箱と名前）の幅の下限と上限 [px]。下限は縦書きの名前の字が隣と重ならない幅。 */
 export const MIN_COLUMN_WIDTH = 32;
-export const MAX_COLUMN_WIDTH = 96;
+export const MAX_COLUMN_WIDTH = 48;
 /** 枠の上端 [px]。 */
 const FRAME_TOP = 8;
 /** 枠の高さ [px]。 */
@@ -198,7 +198,7 @@ export function boxPlotLayout(available: number, columnCount: number, labelLengt
     height: y1 + LABEL_GAP + labelLength + LABEL_BOTTOM_PAD,
     frame: { x0: 0.5, x1: plotWidth - 0.5, y0, y1 },
     columnWidth,
-    boxWidth: Math.min(MAX_BOX_WIDTH, Math.round(columnWidth * 0.55)),
+    boxWidth: Math.min(MAX_BOX_WIDTH, Math.round(columnWidth * 0.6)),
     capWidth: Math.min(MAX_WHISKER_CAP_WIDTH, Math.round(columnWidth * 0.3)),
     columns,
     labelTopY: y1 + LABEL_GAP,
