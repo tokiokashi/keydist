@@ -82,7 +82,7 @@ test('各図のモデルは、その組み合わせ1つだけを選んだ時と�
   assert.deepEqual(withoutFirst.map(plain), together.slice(1).map(plain));
 });
 
-test('目盛りと「自由に選ぶ」の軸は、全ての図で同じ値を使う', () => {
+test('軸の種類と「自由に選ぶ」の軸は、全ての図で同じ値を使う', () => {
   const figures = scatterFigureModels(['distance', 'free'], input({ tickScale: 'log', xAxes: ['totalUnits'], yAxes: ['sameFinger'] }));
   assert.deepEqual(figures[1]!.axes, { x: 'totalUnits', y: 'sameFinger' });
   // 「自由に選ぶ」の軸は、他の組み合わせの図の軸を変えない
@@ -90,14 +90,14 @@ test('目盛りと「自由に選ぶ」の軸は、全ての図で同じ値を�
   assert.equal(figures[0]!.logScale, true);
 });
 
-test('対数を選ぶと、対数にできない図にだけその旨の理由が付き、その図は通常の目盛りで描く', () => {
+test('対数を選ぶと、対数にできない図にだけその旨の理由が付き、その図は線形の軸で描く', () => {
   const figures = scatterFigureModels(['distance', 'handShare'], input({ tickScale: 'log' }));
   const [distance, handShare] = figures;
   assert.equal(distance!.logScale, true);
   assert.deepEqual(distance!.logReasons, []);
   assert.equal(handShare!.logScale, false);
   assert.ok(handShare!.logReasons.includes('noStraightLines'));
-  // 通常の目盛りを選んでいる時は、どの図にも理由が付かない
+  // 線形を選んでいる時は、どの図にも理由が付かない
   for (const figure of scatterFigureModels(['distance', 'handShare'], input())) assert.deepEqual(figure.logReasons, []);
 });
 
