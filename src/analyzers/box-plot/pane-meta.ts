@@ -1,6 +1,6 @@
-import type { SegmentationOrigin } from '#input/text/segmentation.ts';
 import { sharedMetricText } from '../metric-labels.ts';
 import { WIDE_RECOMMENDED_WIDTH_REM } from '../recommended-width.ts';
+import { segmentationSourceItems } from '../segmentation-text.ts';
 import type { BoxPlotSource } from './extract.ts';
 
 /**
@@ -17,18 +17,9 @@ export const BOX_PLOT_QUANTITY_NAME = `文節ごとの${DISTANCE.label}`;
 /** 縦軸の名前。 */
 export const BOX_PLOT_AXIS_TITLE = `${DISTANCE.label}（${DISTANCE.unit}）`;
 
-const ORIGIN_DESCRIPTION: Readonly<Record<SegmentationOrigin, string>> = {
-  dictionary: '漢字を辞書で読みに直した語の境目へ寄せています。',
-  'kana-only': '原文に漢字が無いので、かなの文をそのまま区切っています。',
-  'dictionary-unavailable': '辞書を読み込めなかったので、漢字を読みに直さず区切っています。',
-};
-
-/** 図の見方に足す、区切りの分割器と出どころ（抽出が持つ値なので、本体が足す）。 */
+/** 図の見方に足す、区切りの分割器と出どころ（抽出が持つ値なので、本体が足す）。文面は文節ごとの統計・Run Chartとそろえる。 */
 export function boxPlotSourceItems(source: BoxPlotSource): readonly { readonly name: string; readonly description: string }[] {
-  return [
-    { name: '分割器', description: `${source.splitter.name} ${source.splitter.version}です。` },
-    { name: '区切りの出どころ', description: ORIGIN_DESCRIPTION[source.origin] },
-  ];
+  return segmentationSourceItems(source.splitter, source.origin);
 }
 
 export const BOX_PLOT_PANE_META = {
