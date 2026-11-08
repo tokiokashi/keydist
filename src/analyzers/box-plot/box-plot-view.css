@@ -133,7 +133,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 図の下のキャプション。幅は図（縦軸の列と枠）に合わせ、図が領域より広い時は領域に収める */
+/* 図の下のキャプション。図を包むfigureの幅の中で中央に置く */
 .box-plot-caption {
   margin-top: 0.5rem;
   color: var(--text);

@@ -41,9 +41,9 @@ export type BoxPlotBodyProps = SetBodyProps<BoxPlotExtracted, BoxPlotOptions, Bo
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** まだ幅を測っていない間に描く幅 [px]。 */
-/** 画面のキャプションの文字の大きさ [px]（1rem）。 */
-const CAPTION_FONT_SIZE = 16;
 const FALLBACK_WIDTH = 360;
+/** 画面のキャプションの文字の大きさ [px]。box-plot-view.cssの1remとそろえる。 */
+const CAPTION_FONT_SIZE = 16;
 /** 目盛りの線の長さ [px]。枠の内向きに引く。 */
 const TICK_LENGTH = 4;
 
