@@ -172,13 +172,14 @@ export function scatterSlots(presets: readonly ScatterPresetId[], input: Scatter
     const slots: ScatterSlot[] = [];
     const blocked: ScatterBlockedPair[] = [];
     const pairs = input.xAxes.flatMap((x) => input.yAxes.map((y) => ({ x, y })));
-    if (input.freeOrder === 'byY') pairs.sort((a, b) => input.yAxes.indexOf(a.y) - input.yAxes.indexOf(b.y));
+    // 選べない組の知らせは、図の並びに関わらず横軸の順、その中で縦軸の順で書く。並べ替える前に積む
     for (const { x, y } of pairs) {
       const problem = scatterAxisProblem(x, y);
-      if (problem !== undefined) {
-        blocked.push({ x, y, problem });
-        continue;
-      }
+      if (problem !== undefined) blocked.push({ x, y, problem });
+    }
+    if (input.freeOrder === 'byY') pairs.sort((a, b) => input.yAxes.indexOf(a.y) - input.yAxes.indexOf(b.y));
+    for (const { x, y } of pairs) {
+      if (scatterAxisProblem(x, y) !== undefined) continue;
       const figure = scatterFigureModel(preset, { x, y }, input);
       slots.push({ type: 'figure', key: figure.key, figure });
     }

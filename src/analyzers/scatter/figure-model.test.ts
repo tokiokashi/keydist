@@ -189,3 +189,16 @@ test('縦軸ごとの並びでは、縦軸の順に、その中で横軸の順�
     ['free:perCharSteps:meanPerStroke', 'free:totalUnits:meanPerStroke', 'free:perCharSteps:sameFinger', 'free:totalUnits:sameFinger'],
   );
 });
+
+test('選べない組の知らせは、図の並びに関わらず横軸の順、その中で縦軸の順で書く', () => {
+  for (const freeOrder of ['byX', 'byY'] as const) {
+    const slots = scatterSlots(['free'], input({ xAxes: ['actions', 'perCharSteps'], yAxes: ['actions', 'perCharSteps'], freeOrder }));
+    const notice = slots.find((slot) => slot.type === 'free-notice');
+    assert.ok(notice?.type === 'free-notice', freeOrder);
+    assert.deepEqual(
+      notice.blocked.map(({ x, y }) => `${x}:${y}`),
+      ['actions:actions', 'actions:perCharSteps', 'perCharSteps:actions', 'perCharSteps:perCharSteps'],
+      freeOrder,
+    );
+  }
+});

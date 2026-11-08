@@ -114,7 +114,7 @@ test('縦軸: 並び・重複・知らない値は、比較表の列の順に直
   assert.equal(stored.length, 1);
 });
 
-test('横軸: 既定は文字数/アクションの1つで、URLに0個も複数も載せて読み戻す', () => {
+test('横軸: 既定はアクション数/カナの1つで、URLに0個も複数も載せて読み戻す', () => {
   assert.deepEqual(DEFAULT_SCATTER_OPTIONS.xAxes, ['perCharSteps']);
   assert.equal(scatterOptions.encodeOptionsToUrl(DEFAULT_SCATTER_OPTIONS).has('x'), false);
   for (const xAxes of [[], ['actions', 'sameFinger']] as const) {
