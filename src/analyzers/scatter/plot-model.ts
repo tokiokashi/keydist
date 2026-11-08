@@ -491,9 +491,15 @@ function selectContours(
 const LOG_CONTOUR_SPAN = 100;
 
 /**
+ * 倍率の刻みで選んだ細い線の本数の上限。倍率の刻みの線は対数の図で等間隔に並ぶので、一定の刻みの上限（`MAX_LEVELS`）より多く引いても詰まらない。
+ * 範囲の一部だけに線を引くと線の無い側が空いて見えるので、1・2・5の段で3桁（1000倍）に入る9本まで引く。
+ */
+const LOG_MAX_LEVELS = 9;
+
+/**
  * 対数の目盛りの図で、線の量が描画領域の中で`LOG_CONTOUR_SPAN`倍以上に広がる時の細い線の値。目盛りと同じ段（`LOG_TIER_LEADS`）の値を、粗い段から順に試す。
  * 一定の刻みで選ぶと、対数の図では値の大きい側に線が詰まり、値の小さい側に線が無くなるので、倍率の刻みで選ぶ。
- * 段の値が`MAX_LEVELS`を超える時は、連続する`MAX_LEVELS`個のうち、対数の上の平均が範囲の対数の中点に最も近いものを残す。
+ * 段の値が`LOG_MAX_LEVELS`を超える時は、連続する`LOG_MAX_LEVELS`個のうち、対数の上の平均が範囲の対数の中点に最も近いものを残す。
  * 描かれた線が`MIN_LEVELS`に届く最も粗い段を使い、どの段でも届かない時は`undefined`を返して一定の刻みの選び方に任せる。
  * 返す刻みは、値を書く時の小数の桁を決めるもので、最小の値の位（10の冪）。
  */
@@ -512,18 +518,18 @@ function logContours(
     }
     all.sort((a, b) => a - b);
     let levels = all;
-    if (all.length > MAX_LEVELS) {
+    if (all.length > LOG_MAX_LEVELS) {
       let best = 0;
       let bestGap = Number.POSITIVE_INFINITY;
-      for (let from = 0; from + MAX_LEVELS <= all.length; from++) {
-        const run = all.slice(from, from + MAX_LEVELS);
-        const gap = Math.abs(run.reduce((sum, v) => sum + Math.log(v), 0) / MAX_LEVELS - mid);
+      for (let from = 0; from + LOG_MAX_LEVELS <= all.length; from++) {
+        const run = all.slice(from, from + LOG_MAX_LEVELS);
+        const gap = Math.abs(run.reduce((sum, v) => sum + Math.log(v), 0) / LOG_MAX_LEVELS - mid);
         if (gap < bestGap - 1e-9) {
           best = from;
           bestGap = gap;
         }
       }
-      levels = all.slice(best, best + MAX_LEVELS);
+      levels = all.slice(best, best + LOG_MAX_LEVELS);
     }
     const lines = draw(levels);
     if (lines.length >= MIN_LEVELS) return { lines, step: 10 ** Math.floor(Math.log10(levels[0]!) + 1e-9) };
