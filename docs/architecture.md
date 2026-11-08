@@ -343,7 +343,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 
 - **計算部は `interpretation/bunsetsu-stats.ts` の `segmentPerCharBox`**。標本は文節ごとの統計の表の列と同じ関数（`segmentPerCharSample`）で作り、10%点・25%点・75%点を足すだけにする。計算を二重に持たない
 - **配線**: 抽出は `analyzers/box-plot/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/box-plot`。解析設定は持たない。見る量は1つに絞り、分位点は定義で固定する
-- **文節の区切りの受け取り方は文節ごとの統計と同じ**（`usesSegmentation` は常に真、`assetsKeyOf` は区切りをキーに入れる）。区切りの出どころと分割器は、画面の文では出さず図の見方（ⓘ）に1行ずつ出す（`box-plot/pane-meta.ts` の `boxPlotSourceItems`。`segmentation-text.ts` は使わない）。日本語以外のテキスト・分割器を読み込めない時は値を出さず、旨を示す
+- **文節の区切りの受け取り方は文節ごとの統計と同じ**（`usesSegmentation` は常に真、`assetsKeyOf` は区切りをキーに入れる）。区切りの出どころと分割器は、画面の文では出さず図の見方（ⓘ）に1行ずつ出す（`box-plot/pane-meta.ts` の `boxPlotSourceItems` が `segmentation-text.ts` の `segmentationSourceItems` を使い、文節ごとの統計・Run Chartと文面をそろえる）。日本語以外のテキスト・分割器を読み込めない時は値を出さず、旨を示す
 - **評価に渡すテキストを抽出が読む**。各配列は自分のテキストと区切りで求め、基準（区切りが渡された最初の対象）とテキストまたは区切りが違う配列があれば画面に知らせ、文節の数を配列ごとに出す。全配列が同じなら文節の数は1つだけ出す（文にせず「文節 61」の形）
 - **座標は `box-plot/figure-model.ts`**（純粋）。縦軸は0から始め、目盛りの数字と軸の名前の列はスクロールしない別のSVGにし、枠と列（箱と名前）の図だけを横にスクロールする。列の幅は下限（`MIN_COLUMN_WIDTH`）を割らず、配列が多くて領域に収まらなければ図が領域より広くなる。名前は箱の下に縦書きで置く: かな・漢字は1字ずつ立て、英数字の並びは右へ90度倒す（`verticalLabelRuns`。字体の縦書きの字形に頼らず、字の位置を自分で決める）。文字幅の見積もりと名前の切り詰めは帯グラフと共有する（`analyzers/figure-text.ts`）
 - **図の書式は散布図と同じ**（枠で囲む・目盛りは枠の内向き・格子線なし・軸の名前は中央、キャプションは図の下）。箱は全配列で1色・同じ太さにし、ひげの外の値・基準の線・回帰直線は描かない
@@ -490,7 +490,7 @@ src/
     axis-ticks.ts     軸の目盛りの値（1・2・5の刻み）と書式。散布図と箱ひげ図が共有する純粋な計算
     figure-text.ts / use-element-width.tsx  帯グラフと箱ひげ図が共有する、文字の幅の見積もりと名前の切り詰め、図の幅を測る部品
     metric-labels.ts  複数のAnalyzerが縦軸に描く指標のうち、名前と単位が同じ指標の表示の文字
-    segmentation-text.ts  文節の区切りの出どころと分割器を示す文面。区切りを使うAnalyzer（Run Chart・文節ごとの統計）が共有する
+    segmentation-text.ts  文節の区切りの出どころと分割器を示す文面。区切りを使うAnalyzer（Run Chart・文節ごとの統計・打鍵再生・箱ひげ図）が共有する
     key-detail-view.ts  キーの詳細を画面に出す文字列と並び（ツールチップ・小窓の表・入力方法の面ごとの分け方）。図と小窓が共有する純粋な変換
     heatmap-diagram.tsx / heatmap-figure.ts  ヒートマップとヒートマップ（レイヤー）が共有するキーボードの図と、その純粋な計算（色の強度・刻印）。Analyzerどうしは互いをimportできないので、複数のAnalyzerが同じ図を描く時の共有物はここに置く
     bigram-vectors.ts / keyboard-flow-lines.ts / heatmap-flow.ts  2打鍵の組の数え方（`bigram-vectors.ts`）、Keyboard Flowの線の色・曲線・太さの尺度・連打の除き方（`keyboard-flow-lines.ts`）、ヒートマップの図の座標へ合わせた線の端と太さ（`heatmap-flow.ts`）。Bigram Flowとヒートマップが同じ組・同じ色・同じ太さの尺度で線を描くために、ここへ置く

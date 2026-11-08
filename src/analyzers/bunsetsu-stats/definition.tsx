@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { sharedMetricText } from '../metric-labels.ts';
-import { segmentationSourceSentence } from '../segmentation-text.ts';
+import { SegmentationSourceButton } from '../segmentation-source-button.tsx';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { bindOption, OptionField } from '#ui/primitives/option-fields.tsx';
 import { sortOrderByColumn } from '#ui/primitives/column-sort.ts';
@@ -62,11 +62,14 @@ function RowName({ row }: { readonly row: DisplayRow }) {
 }
 
 function TextTable({ text }: { readonly text: NonNullable<BunsetsuStatsExtracted['text']> }) {
-  const { table } = text;
+  const { table, source } = text;
   return (
     <div className="bunsetsu-stats-scroll">
       <table className="bunsetsu-stats-table bunsetsu-stats-text-table" data-bunsetsu-stats-text-table="">
-        <caption>テキストの表（配列によらない量）</caption>
+        <caption>
+          テキストの表（配列によらない量）
+          <SegmentationSourceButton splitter={source.splitter} origin={source.origin} />
+        </caption>
         <tbody>
           <tr>
             <th scope="row">評価に渡したテキストのかな数</th>
@@ -396,9 +399,6 @@ export function BunsetsuStatsBody({ extracted, order, rowContext, segmentation, 
 
       {unavailable || text === undefined ? null : (
         <>
-          <p className="bunsetsu-stats-notice" data-bunsetsu-stats-source="">
-            {segmentationSourceSentence(text.source.splitter, text.source.origin)}
-          </p>
           <TextTable text={text} />
           <LayoutTable rows={layoutRows} sort={options.sort} onSortChange={(next) => onOptionsChange({ ...options, sort: next })} />
           <FrequentSegmentsTable text={text} rows={rows} />
