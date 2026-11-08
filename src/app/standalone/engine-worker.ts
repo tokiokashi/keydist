@@ -12,6 +12,7 @@ import { playbackDefinition } from '#analyzers/playback/extract.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { scatterDefinition } from '#analyzers/scatter/extract.ts';
 import { bandChartDefinition } from '#analyzers/band-chart/extract.ts';
+import { boxPlotDefinition } from '#analyzers/box-plot/extract.ts';
 import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { runChartDefinition } from '#analyzers/run-chart/extract.ts';
@@ -43,6 +44,7 @@ const handle = createEngineWorkerHandler(createEngineCache(), {
     bunsetsuStatsDefinition,
     scatterDefinition,
     bandChartDefinition,
+    boxPlotDefinition,
   ],
 });
 

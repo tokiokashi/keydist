@@ -8,7 +8,7 @@ import { buildGeometry, PHYSICAL_SHAPES, type PhysicalShape } from '#input/shape
 
 import { SAMPLE_TEXT_JA_NEKO } from '#input/text/sample-ja-neko.ts';
 import { generateTrace, type Trace } from '#trace/generate.ts';
-import { analyzeBunsetsuText, buildBunsetsuTraceBasis, bunsetsuLayoutStats, skippedPositionsOf } from './bunsetsu-stats.ts';
+import { analyzeBunsetsuText, buildBunsetsuTraceBasis, bunsetsuLayoutStats, segmentPerCharBox, skippedPositionsOf } from './bunsetsu-stats.ts';
 import { boundaryInterior } from './boundary-context.ts';
 import { segmentStats } from './segments.ts';
 import { buildSpanIndex } from './span-metrics.ts';
@@ -112,6 +112,29 @@ test('文節ごとの1文字で動く距離の中央値と90%点が定義どお�
   assert.equal(stats.segmentPerChar.median, run.median);
   assert.equal(stats.segmentPerChar.p90, run.p90);
   assert.equal(stats.segmentPerChar.count, run.count);
+});
+
+test('箱ひげ図の値: 10%点・25%点・75%点は補間しない順位の値で、中央値と90%点は文節ごとの統計の表の列と一致する', () => {
+  const index = buildSpanIndex(TRACE);
+  const box = segmentPerCharBox(index, BUNSETSU)!;
+  // 文節ごとの1文字あたりの距離は小さい順に [1.5, 2.5, 3.5, 4.5, 7, 10]（6個）
+  assert.equal(box.count, 6);
+  assert.equal(box.lowerWhisker, 1.5); // ⌈0.1 × 6⌉ = 1番目
+  assert.equal(box.lowerQuartile, 2.5); // ⌈0.25 × 6⌉ = 2番目
+  assert.equal(box.median, (3.5 + 4.5) / 2); // 偶数個なので中央の2つの平均
+  assert.equal(box.upperQuartile, 7); // ⌈0.75 × 6⌉ = 5番目
+  assert.equal(box.upperWhisker, 10); // ⌈0.9 × 6⌉ = 6番目
+  const stats = bunsetsuLayoutStats(buildBunsetsuTraceBasis(TRACE), BUNSETSU, analyzeBunsetsuText(CHARS, BUNSETSU));
+  assert.equal(box.median, stats.segmentPerChar.median);
+  assert.equal(box.upperWhisker, stats.segmentPerChar.p90);
+  assert.equal(box.count, stats.segmentPerChar.count);
+});
+
+test('箱ひげ図の値: 値が決まる文節が無ければ値なし、文節が1つなら5つの値が同じになる', () => {
+  assert.equal(segmentPerCharBox(buildSpanIndex({ strokes: [], skipped: 0, skippedPositions: [], inputChars: 0 } as unknown as Trace), []), undefined);
+  const single = segmentPerCharBox(buildSpanIndex(TRACE), [])!;
+  assert.equal(single.count, 1);
+  assert.equal(new Set([single.lowerWhisker, single.lowerQuartile, single.median, single.upperQuartile, single.upperWhisker]).size, 1);
 });
 
 test('頻出の文節: 文字数1の文節を除き、回数の多い順（同じ回数は最初に出た順）に並び、セルは内側の文字の距離の和 / 文字数の和になる', () => {

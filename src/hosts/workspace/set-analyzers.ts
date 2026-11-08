@@ -6,6 +6,7 @@ import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { runChartAnalyzer } from '#analyzers/run-chart/definition.tsx';
 import { scatterAnalyzer } from '#analyzers/scatter/definition.tsx';
 import { bandChartAnalyzer } from '#analyzers/band-chart/definition.tsx';
+import { boxPlotAnalyzer } from '#analyzers/box-plot/definition.tsx';
 
 /**
  * Workspaceのペインに載せる、対象の集合を見るAnalyzer（Set）のペインに渡すもの。Setを足す時は、
@@ -26,6 +27,7 @@ export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
   bunsetsuStatsAnalyzer,
   scatterAnalyzer,
   bandChartAnalyzer,
+  boxPlotAnalyzer,
 ];
 
 export function findSetAnalyzer(analyzerId: string): AnyPaneParts | undefined {

@@ -1,4 +1,5 @@
 import { DISTANCE_BAND_COUNT, DISTANCE_BAND_EDGES } from '#interpretation/distance-bands.ts';
+import { FIGURE_INSET, FONT_SIZE, INLINE_MIN_WIDTH, textWidth } from '../figure-text.ts';
 import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
 
 /**
@@ -98,13 +99,9 @@ export function bandChartModel(extracted: BandChartExtracted, order: readonly st
 // 座標
 // ---------------------------------------------------------------------------
 
-/** 図の文字の大きさ [px]。 */
-export const FONT_SIZE = 12;
 /** 帯の中の割合の文字の大きさ [px]。 */
 export const BAND_TEXT_SIZE = 11;
 export const BAND_HEIGHT = 24;
-/** 名前を帯の左に置く最小の幅 [px]。これより狭い領域では、名前を帯の上の行に置く。 */
-export const INLINE_MIN_WIDTH = 480;
 const INLINE_LABEL_MIN = 110;
 const INLINE_LABEL_MAX = 200;
 const INLINE_LABEL_GAP = 12;
@@ -113,27 +110,6 @@ const STACKED_LABEL_HEIGHT = 18;
 const STACKED_ROW_PITCH = STACKED_LABEL_HEIGHT + BAND_HEIGHT + 12;
 /** 図の上下の余白 [px]。 */
 const FIGURE_PADDING = 2;
-/** 図の左右の余白 [px]。画像にした時に、名前と帯が縁に接しないようにする。 */
-export const FIGURE_INSET = 4;
-
-/** 文字列の幅の見積もり [px]。全角の字は1em、それ以外は0.6em。 */
-export function textWidth(text: string, fontSize: number): number {
-  let width = 0;
-  for (const character of text) {
-    const code = character.codePointAt(0)!;
-    const wide = code >= 0x1100 && !(code >= 0xff61 && code <= 0xff9f);
-    width += (wide ? 1 : 0.6) * fontSize;
-  }
-  return width;
-}
-
-/** 名前を `maxWidth` に収める。収まらない時は末尾を「…」に替える。 */
-export function fitLabel(text: string, maxWidth: number, fontSize: number): string {
-  if (textWidth(text, fontSize) <= maxWidth) return text;
-  const characters = [...text];
-  while (characters.length > 0 && textWidth(`${characters.join('')}…`, fontSize) > maxWidth) characters.pop();
-  return `${characters.join('')}…`;
-}
 
 export interface BandRowGeometry {
   /** 名前の左端 */

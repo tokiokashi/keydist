@@ -203,6 +203,22 @@ export interface SegmentPerCharSummary {
   readonly p90: number | undefined;
 }
 
+/** 文節ごとの1文字あたりの距離の箱ひげ図の5つの値（定義は `docs/segment-metrics.md`「文節の中と境目の統計」の「表に出ない図だけの量（箱ひげ図）」）。 */
+export interface SegmentPerCharBox {
+  /** 値が決まった文節の数 */
+  readonly count: number;
+  /** ひげの下端。10%点（補間しない） */
+  readonly lowerWhisker: number;
+  /** 箱の下端。25%点（補間しない） */
+  readonly lowerQuartile: number;
+  /** 箱の中の線。`median` */
+  readonly median: number;
+  /** 箱の上端。75%点（補間しない） */
+  readonly upperQuartile: number;
+  /** ひげの上端。90%点（補間しない）。`SegmentPerCharSummary.p90` と同じ値 */
+  readonly upperWhisker: number;
+}
+
 /** 全文の距離を、文字の種類ごとに分けた和。 */
 export interface DistanceParts {
   /** テキストの先頭の文字（打鍵できた時） */
@@ -237,6 +253,28 @@ export interface BunsetsuLayoutStats {
   /** 頻出の文節の行ごとの、内側の文字（先頭の文字と打鍵できなかった文字を除く）の1文字あたりの距離。全出現を合わせた、距離の和 / 文字数の和 */
   readonly frequentSegmentCells: readonly (number | undefined)[];
   readonly frequentBigramCells: readonly BigramCell[];
+}
+
+/** 文節ごとの1文字あたりの距離の標本（小さい順）。文節ごとの統計の表の列と箱ひげ図が、同じ標本を使う。 */
+function segmentPerCharSample(index: SpanIndex, bunsetsu: readonly number[]): Float64Array {
+  return segmentValues(index, 'perCharUnits', bunsetsu);
+}
+
+/**
+ * 文節ごとの1文字あたりの距離の箱ひげ図の値。標本は `bunsetsuLayoutStats` の `segmentPerChar` と同じで、値が決まる文節が無ければ `undefined`。
+ * 中央値は `median`、ほかの分位点は `quantileNearestRank`（90%点と同じ補間しない順位の値）で求める。
+ */
+export function segmentPerCharBox(index: SpanIndex, bunsetsu: readonly number[]): SegmentPerCharBox | undefined {
+  const sample = segmentPerCharSample(index, bunsetsu);
+  if (sample.length === 0) return undefined;
+  return {
+    count: sample.length,
+    lowerWhisker: quantileNearestRank(sample, 0.1)!,
+    lowerQuartile: quantileNearestRank(sample, 0.25)!,
+    median: median(sample)!,
+    upperQuartile: quantileNearestRank(sample, 0.75)!,
+    upperWhisker: quantileNearestRank(sample, 0.9)!,
+  };
 }
 
 function summarize(values: readonly number[]): CharDistanceSummary {
@@ -314,7 +352,7 @@ export function bunsetsuLayoutStats(
     }
   }
   const sortedSegmentDistances = Float64Array.from(segmentDistances).sort();
-  const perChar = segmentValues(index, 'perCharUnits', bunsetsu);
+  const perChar = segmentPerCharSample(index, bunsetsu);
 
   const frequentSegmentCells = rows.segments.map((row) => {
     const occurrences = structure.segmentOccurrences.get(row.text);

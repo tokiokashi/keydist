@@ -15,6 +15,7 @@ import { RUN_CHART_PANE_META } from '#analyzers/run-chart/pane-meta.ts';
 import { BUNSETSU_STATS_PANE_META } from '#analyzers/bunsetsu-stats/pane-meta.ts';
 import { SCATTER_PANE_META } from '#analyzers/scatter/pane-meta.ts';
 import { BAND_CHART_PANE_META } from '#analyzers/band-chart/pane-meta.ts';
+import { BOX_PLOT_PANE_META } from '#analyzers/box-plot/pane-meta.ts';
 import { setTargetForSingleAndMultiCommand } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { setupNumbersOf, targetChoiceGroups, TargetSelection } from '#hosts/shared/index.ts';
@@ -133,6 +134,9 @@ export function TopTargetPick() {
           </Link>
           <Link className="top-pick-link" to="/analyzer/band-chart">
             {BAND_CHART_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/box-plot">
+            {BOX_PLOT_PANE_META.name}
           </Link>
         </p>
       ) : null}
