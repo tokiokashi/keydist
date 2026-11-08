@@ -66,7 +66,7 @@ export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, Heatmap
 });
 
 /**
- * 並べた図の全部で共通にする色の尺度の最大値（仕様 §11.10）。各図の全キーの押下数の最大値を渡す。
+ * 格子の図の全部で共通にする色の尺度の最大値（仕様 §11.10）。各図の全キーの押下数の最大値を渡す。
  * 計算できた図だけを渡し、全部0（または図が無い）なら1にする。
  */
 export function sharedMaxCount(maxCounts: readonly number[]): number {
@@ -74,27 +74,40 @@ export function sharedMaxCount(maxCounts: readonly number[]): number {
 }
 
 /**
- * 並べた図の全部で共通にする、線の太さの尺度の最大値（組数）。各図の線の組数の最大値を渡す。
+ * 格子の図の全部で共通にする、線の太さの尺度の最大値（組数）。各図の線の組数の最大値を渡す。
  * 計算できた図だけを渡し、線が無い（または図が無い）なら1にする。
  */
 export function sharedMaxFlowWeight(maxWeights: readonly number[]): number {
   return Math.max(1, ...maxWeights);
 }
 
+/** 色の尺度と線の太さの尺度の最大値。 */
+export interface HeatmapScales {
+  readonly maxCount: number;
+  readonly flowMaxWeight: number;
+}
+
 /**
- * 一番上の図と格子の図の全部で共通にする、色の尺度と線の太さの尺度の最大値。
+ * 一番上の図と格子の図の、色の尺度と線の太さの尺度の最大値。
+ * 一番上の図は自身の値だけで決める。格子の図の値に引きずられて、主に見る図が薄くならないようにするため。
+ * 格子の図は、格子の図の全部で共通にする。格子の図どうしでは、同じ押下数のキーが同じ濃さになる。
  * 格子の図は計算できたものだけを数え、計算中・失敗の図は尺度に入れない。
  * 格子の図の状態は、画面が持つ形（`SetTargetFigure`の`state`）をそのまま渡せる。
- * 格子の図の最大の方が大きい時も、その値を一番上の図を含む全部の図に使う。
  */
-export function sharedHeatmapScales(
+export function heatmapScales(
   top: HeatmapExtracted,
   flowSource: BigramSource,
   setStates: readonly ({ readonly status: 'ready'; readonly extracted: HeatmapExtracted } | { readonly status: 'computing' | 'failed' })[],
-): { readonly maxCount: number; readonly flowMaxWeight: number } {
+): { readonly top: HeatmapScales; readonly set: HeatmapScales } {
   const ready = setStates.flatMap((state) => (state.status === 'ready' ? [state.extracted] : []));
   return {
-    maxCount: sharedMaxCount([top.maxCount, ...ready.map((extracted) => extracted.maxCount)]),
-    flowMaxWeight: sharedMaxFlowWeight([top.flowLines[flowSource].maxWeight, ...ready.map((extracted) => extracted.flowLines[flowSource].maxWeight)]),
+    top: {
+      maxCount: sharedMaxCount([top.maxCount]),
+      flowMaxWeight: sharedMaxFlowWeight([top.flowLines[flowSource].maxWeight]),
+    },
+    set: {
+      maxCount: sharedMaxCount(ready.map((extracted) => extracted.maxCount)),
+      flowMaxWeight: sharedMaxFlowWeight(ready.map((extracted) => extracted.flowLines[flowSource].maxWeight)),
+    },
   };
 }
