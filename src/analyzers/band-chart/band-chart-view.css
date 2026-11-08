@@ -279,9 +279,18 @@
   pointer-events: none;
 }
 
-/* 図の下のキャプション */
+/*
+ * キャプションは図の下端に残る。配列が多く図が縦に長い時も、見ている量の名前が見えたままになる。
+ * 図の終わりまでスクロールすると、図の下の元の位置に収まる。
+ */
 .band-caption {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
   margin-top: 0.5rem;
+  padding: 0.35rem 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
   color: var(--text);
   font-size: 1rem;
   font-weight: 600;
