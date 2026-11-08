@@ -417,7 +417,10 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         <section className="condition-group" aria-label="距離の測り方">
           <h3 className="condition-group-title">
             距離の測り方
-            <InfoButton name="先読みN" description="同じ指を残すかホームへ戻すかを決める時に、先の何かな（英語のテキストでは何字）まで見るかです。" />
+            <InfoButton
+              name="先読みN"
+              description="先読みNは、同じ指を残すかホームへ戻すかを決める時に、先の何かな（英語のテキストでは何字）まで見る値です。"
+            />
           </h3>
           {row('windowSize', (badge) => (
             <OptionField label="先読みN" binding={windowBinding} badge={badge}>
