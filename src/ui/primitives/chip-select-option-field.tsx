@@ -18,8 +18,8 @@ import './chip-select-option-field.css';
 /** 画面の端から残す余白と、ボタンと小窓の間隔（px）。 */
 const EDGE = 8;
 const GAP = 4;
-/** 下に置いて一覧が見られる最低限の高さ。これより狭く、上の方が広い時だけ上に出す。 */
-const MIN_BELOW = 220;
+/** 小窓に取りたい高さ（px）。選択肢が多い時に、一覧を十分な行数で見られる高さ。 */
+const WANTED_HEIGHT = 480;
 
 interface PopoverPlace {
   readonly left: number;
@@ -27,14 +27,21 @@ interface PopoverPlace {
   readonly maxHeight: number;
 }
 
-function placeBelow(anchor: Element, width: number): PopoverPlace {
+/**
+ * 小窓の置き場所。下に取りたい高さが入れば下、上に入れば上に置く。どちらにも入らない時は、ボタンに重なっても
+ * 画面に収まる位置まで持ち上げて取りたい高さを確保する。ボタンの下の狭い隙間に置くと、一覧が数行しか見えないため。
+ * 上端の位置で置くので、絞り込みで一覧が縮んでも検索欄は動かない。ボタンが画面の外にある時も、画面の中に収める。
+ */
+function placeNear(anchor: Element, width: number): PopoverPlace {
   const rect = anchor.getBoundingClientRect();
   const left = Math.max(EDGE, Math.min(rect.left, window.innerWidth - width - EDGE));
+  const wanted = Math.min(WANTED_HEIGHT, window.innerHeight - EDGE * 2);
   const below = rect.bottom + GAP;
   const spaceBelow = window.innerHeight - below - EDGE;
   const spaceAbove = rect.top - GAP - EDGE;
-  if (spaceBelow >= MIN_BELOW || spaceBelow >= spaceAbove) return { left, top: below, maxHeight: spaceBelow };
-  return { left, top: EDGE, maxHeight: spaceAbove };
+  const preferred = spaceBelow >= wanted ? below : spaceAbove >= wanted ? rect.top - GAP - wanted : window.innerHeight - EDGE - wanted;
+  const top = Math.max(EDGE, Math.min(preferred, window.innerHeight - EDGE - wanted));
+  return { left, top, maxHeight: wanted };
 }
 
 /** 検索の語で選択肢の名前を絞る。大文字小文字と全角半角の違いは無視する。 */
@@ -123,7 +130,7 @@ export function ChipSelectOptionField<T extends string>({
     const update = () => {
       const trigger = triggerRef.current;
       if (trigger === null) return;
-      setPlace(placeBelow(trigger, Math.min(22 * 16, window.innerWidth - EDGE * 2)));
+      setPlace(placeNear(trigger, Math.min(22 * 16, window.innerWidth - EDGE * 2)));
     };
     const onScroll = (event: Event) => {
       if (event.target instanceof Node && panelRef.current?.contains(event.target)) return;
@@ -247,20 +254,6 @@ export function ChipSelectOptionField<T extends string>({
         <span className="option-field-label" id={labelId}>
           {label}
         </span>
-        <ResetButton label={label} binding={binding} />
-      </div>
-      <div className="chip-select-chips">
-        {selected.map((choice) => (
-          <span key={choice.value} className="chip-select-chip">
-            <span className="chip-select-chip-text">{choice.label}</span>
-            <button type="button" className="chip-select-chip-remove" aria-label={`${choice.label}を外す`} onClick={() => toggle(choice.value)}>
-              <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-            </button>
-          </span>
-        ))}
-        {selected.length === 0 ? <span className="chip-select-empty">未選択</span> : null}
         <button
           ref={triggerRef}
           type="button"
@@ -276,6 +269,20 @@ export function ChipSelectOptionField<T extends string>({
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </button>
+        <ResetButton label={label} binding={binding} />
+      </div>
+      <div className="chip-select-chips">
+        {selected.map((choice) => (
+          <span key={choice.value} className="chip-select-chip">
+            <span className="chip-select-chip-text">{choice.label}</span>
+            <button type="button" className="chip-select-chip-remove" aria-label={`${choice.label}を外す`} onClick={() => toggle(choice.value)}>
+              <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
+          </span>
+        ))}
+        {selected.length === 0 ? <span className="chip-select-empty">未選択</span> : null}
       </div>
       {hint !== undefined ? <p className="option-field-hint">{hint}</p> : null}
       {open

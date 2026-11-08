@@ -237,3 +237,13 @@
     min-height: 2.4rem;
   }
 }
+
+/* 開くボタンは見出しの横に置く。札が増えて何行になっても、ボタンの位置が動かないようにするため */
+.chip-select .option-field-head .chip-select-add + .option-field-reset {
+  margin-left: auto;
+}
+
+.chip-select .option-field-head .chip-select-add {
+  width: 1.4rem;
+  height: 1.4rem;
+}
