@@ -40,7 +40,7 @@ export function isDefaultValue<T>(binding: OptionBinding<T>): boolean {
   return JSON.stringify(binding.value) === JSON.stringify(binding.defaultValue);
 }
 
-function ResetButton<T>({ label, binding }: { label: string; binding: OptionBinding<T> }) {
+export function ResetButton<T>({ label, binding }: { label: string; binding: OptionBinding<T> }) {
   if (isDefaultValue(binding)) return null;
   return (
     <button
@@ -295,7 +295,7 @@ export function RangeOptionField({
 /**
  * 複数を選ぶ項目（表示する列など）。空も1つの値として扱う（全選択の意味にはしない）。
  * `minSelected`を渡すと、選んだ数がその数まで減った時に、残った選択肢を操作できない状態にして外せなくする。
- * `listed`は選択肢の名前が長い時に、1行に1つずつ縦に並べる。
+ * `listed`は選択肢の名前が長い時に、1行に1つずつ縦に並べる。選択肢が多い項目は`ChipSelectOptionField`を使う。
  */
 export function CheckboxGroupOptionField<T extends string>({
   label,
@@ -304,7 +304,6 @@ export function CheckboxGroupOptionField<T extends string>({
   hint,
   minSelected = 0,
   listed = false,
-  selectAll = false,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<readonly T[]>;
@@ -312,8 +311,6 @@ export function CheckboxGroupOptionField<T extends string>({
   readonly hint?: ReactNode;
   readonly minSelected?: number;
   readonly listed?: boolean;
-  /** 選択肢をすべて選ぶ操作とすべて外す操作を出す。1つ以上を選ぶ項目（`minSelected`が1以上）には付けない。 */
-  readonly selectAll?: boolean;
 }) {
   const locked = binding.value.length <= minSelected;
   const toggle = (value: T) => {
@@ -324,13 +321,6 @@ export function CheckboxGroupOptionField<T extends string>({
         choices.map((choice) => choice.value).filter((candidate) => candidate === value || binding.value.includes(candidate));
     binding.onChange(next);
   };
-  // 選べない状態の選択肢は足さない。すでに選んでいるものは残す
-  const selectEvery = () =>
-    binding.onChange(
-      choices
-        .map((choice) => choice.value)
-        .filter((value) => binding.value.includes(value) || choices.find((choice) => choice.value === value)?.disabled !== true),
-    );
   const labelId = useId();
   return (
     <fieldset className="option-field option-field-group" aria-labelledby={labelId} data-option-default={isDefaultValue(binding) || undefined}>
@@ -340,16 +330,6 @@ export function CheckboxGroupOptionField<T extends string>({
         </span>
         <ResetButton label={label} binding={binding} />
       </div>
-      {selectAll ? (
-        <div className="option-checkbox-bulk">
-          <button type="button" onClick={selectEvery}>
-            すべて選ぶ
-          </button>
-          <button type="button" onClick={() => binding.onChange([])}>
-            すべて外す
-          </button>
-        </div>
-      ) : null}
       <div className={listed ? 'option-checkbox-group option-checkbox-group-listed' : 'option-checkbox-group'}>
         {choices.map((choice) => {
           const checked = binding.value.includes(choice.value);

@@ -9,7 +9,8 @@ import {
   type ComparisonOptions,
   comparisonOptions,
 } from './options.ts';
-import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField } from '#ui/primitives/option-fields.tsx';
+import { ChipSelectOptionField } from '#ui/primitives/chip-select-option-field.tsx';
+import { bindOption, CheckboxOptionField, OptionField } from '#ui/primitives/option-fields.tsx';
 import { sortOrderByColumn } from '#ui/primitives/column-sort.ts';
 import { SortColumnHeader } from '#ui/primitives/sort-column-header.tsx';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
@@ -221,7 +222,7 @@ export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSetting
   const columnChoices = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: columns[column].label }));
   return (
     <div className="option-groups">
-      <CheckboxGroupOptionField<ComparisonColumnId> label="表示する列" binding={bind('visibleColumns')} choices={columnChoices} selectAll />
+      <ChipSelectOptionField<ComparisonColumnId> label="表示する列" binding={bind('visibleColumns')} choices={columnChoices} />
       <CheckboxOptionField
         label="基準比（%）も表示する"
         binding={bind('showBaselineRatio')}

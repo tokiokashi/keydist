@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import type { LayoutKind } from '#input/layouts/kind.ts';
+import { ChipSelectOptionField } from '#ui/primitives/chip-select-option-field.tsx';
 import { bindOption, CheckboxGroupOptionField, SegmentedOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
@@ -538,7 +539,7 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
   );
 }
 
-/** 散布図の解析設定（組み合わせ・列の数・目盛りと、自由に選ぶ時の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
+/** 散布図の解析設定（目盛り・列の数・組み合わせと、自由に選ぶ時の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
   const language = useTextLanguage();
@@ -553,36 +554,6 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
     }));
   return (
     <div className="option-groups">
-      <CheckboxGroupOptionField
-        label="組み合わせ"
-        binding={bind('presets')}
-        choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: presetLabels[id] }))}
-        minSelected={1}
-        listed
-      />
-      {options.presets.includes('free') ? (
-        <>
-          <CheckboxGroupOptionField
-            label="横軸"
-            binding={bind('xAxes')}
-            choices={axisChoices(options.xAxes, options.yAxes)}
-            selectAll
-            hint="横軸と縦軸の選んだ全部の組ごとに図を1つ描きます。軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。押下1回の移動距離など、配列ごとに違う回数で割った距離の線は引きません。"
-          />
-          <CheckboxGroupOptionField label="縦軸" binding={bind('yAxes')} choices={axisChoices(options.yAxes, options.xAxes)} selectAll />
-          {options.xAxes.length >= 2 && options.yAxes.length >= 2 ? (
-            <SegmentedOptionField
-              label="図の並び"
-              binding={bind('freeOrder')}
-              choices={[
-                { value: 'byX', label: '横軸ごと' },
-                { value: 'byY', label: '縦軸ごと' },
-              ]}
-              hint="横軸ごとは、横軸の順に並べ、その中で縦軸の順に並べます。縦軸ごとは、縦軸の順に並べ、その中で横軸の順に並べます。"
-            />
-          ) : null}
-        </>
-      ) : null}
       <SegmentedOptionField
         label="目盛り"
         binding={bind('tickScale')}
@@ -590,7 +561,6 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
           { value: 'linear', label: '通常' },
           { value: 'log', label: '対数' },
         ]}
-        hint="対数にできるのは、細い線が直線になる図だけです。"
       />
       <SegmentedOptionField
         label="列の数"
@@ -601,8 +571,30 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
           { value: '2', label: '2' },
           { value: '3', label: '3' },
         ]}
-        hint="自動は、幅に収まる最大の列の数にします。数を選ぶと、その数が上限になります。"
       />
+      <CheckboxGroupOptionField
+        label="組み合わせ"
+        binding={bind('presets')}
+        choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: presetLabels[id] }))}
+        minSelected={1}
+        listed
+      />
+      {options.presets.includes('free') ? (
+        <>
+          <ChipSelectOptionField label="横軸" binding={bind('xAxes')} choices={axisChoices(options.xAxes, options.yAxes)} />
+          <ChipSelectOptionField label="縦軸" binding={bind('yAxes')} choices={axisChoices(options.yAxes, options.xAxes)} />
+          {options.xAxes.length >= 2 && options.yAxes.length >= 2 ? (
+            <SegmentedOptionField
+              label="図の並び"
+              binding={bind('freeOrder')}
+              choices={[
+                { value: 'byX', label: '横軸ごと' },
+                { value: 'byY', label: '縦軸ごと' },
+              ]}
+            />
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }
