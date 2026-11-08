@@ -146,8 +146,8 @@
   gap: 0.5rem;
   padding: 0.1rem 0.5rem;
   color: var(--text-muted);
-  font-size: 0.74rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -186,6 +186,16 @@
 .chip-select-choice[data-disabled] {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+/* まとまりの中の選択肢は、見出しのチェックより一段下げて、見出しと選択肢を見分けられるようにする */
+.chip-select-group .chip-select-choice {
+  padding-left: 1.7rem;
+}
+
+.chip-select-group + .chip-select-group {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--border);
 }
 
 .chip-select-none {
