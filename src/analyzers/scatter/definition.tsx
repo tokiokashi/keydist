@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import type { LayoutKind } from '#input/layouts/kind.ts';
-import { bindOption, CheckboxGroupOptionField, SegmentedOptionField, SelectOptionField } from '#ui/primitives/option-fields.tsx';
+import { bindOption, CheckboxGroupOptionField, SegmentedOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
@@ -61,19 +61,16 @@ function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): s
     : `アクション数とアクション数/${k}、距離と距離/${k}、距離/アクションとアクション数/距離のように、同じテキストなら一方が他方の定数倍か、積が一定になる2列は、同時に選べません。`;
 }
 
-/** 縦軸が無い時と、横軸と選べない組になった縦軸がある時に、「自由に選ぶ」の図の代わりに出す知らせ。 */
-function FreeNotice({
-  slot,
-  xAxis,
-  language,
-}: {
-  readonly slot: Extract<ScatterSlot, { type: 'free-notice' }>;
-  readonly xAxis: ComparisonColumnId;
-  readonly language: TextLanguage;
-}) {
+/** 横軸か縦軸が無い時と、選べない組がある時に、「自由に選ぶ」の図の代わりに出す知らせ。 */
+function FreeNotice({ slot, language }: { readonly slot: Extract<ScatterSlot, { type: 'free-notice' }>; readonly language: TextLanguage }) {
   const problems = [...new Set(slot.blocked.map((entry) => entry.problem))];
   return (
     <div className="scatter-cell" data-scatter-figure="free">
+      {slot.noXAxis ? (
+        <p className="scatter-notice" role="status" data-scatter-no-x-axis="">
+          横軸が選ばれていません。
+        </p>
+      ) : null}
       {slot.noYAxis ? (
         <p className="scatter-notice" role="status" data-scatter-no-y-axis="">
           縦軸が選ばれていません。
@@ -81,7 +78,7 @@ function FreeNotice({
       ) : null}
       {slot.blocked.length > 0 ? (
         <p className="scatter-notice" role="alert" data-scatter-axis-problem="">
-          {`縦軸の${slot.blocked.map((entry) => `「${axisName(entry.column, language)}」`).join('')}は、横軸の「${axisName(xAxis, language)}」と選べない組のため、図を描いていません。`}
+          {`横軸と縦軸の${slot.blocked.map((entry) => `「${axisName(entry.x, language)}」と「${axisName(entry.y, language)}」`).join('、')}は、選べない組のため、図を描いていません。`}
           {problems.map((problem) => axisProblemText(problem, language)).join('')}
         </p>
       ) : null}
@@ -485,12 +482,13 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
         order,
         rowContext,
         rows: extracted.rows,
-        xAxis: options.xAxis,
+        xAxes: options.xAxes,
         yAxes: options.yAxes,
+        freeOrder: options.freeOrder,
         tickScale: options.tickScale,
         language,
       }),
-    [options.presets, options.xAxis, options.yAxes, options.tickScale, order, rowContext, extracted.rows, language],
+    [options.presets, options.xAxes, options.yAxes, options.freeOrder, options.tickScale, order, rowContext, extracted.rows, language],
   );
 
   const figures = useMemo(() => slots.flatMap((slot) => (slot.type === 'figure' ? [slot.figure] : [])), [slots]);
@@ -520,7 +518,7 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
       >
         {slots.map((slot) =>
           slot.type === 'free-notice' ? (
-            <FreeNotice key={slot.key} slot={slot} xAxis={options.xAxis} language={language} />
+            <FreeNotice key={slot.key} slot={slot} language={language} />
           ) : (
             <FigureView
               key={slot.key}
@@ -540,13 +538,19 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
   );
 }
 
-/** 散布図の解析設定（組み合わせ・列の数・目盛りと、自由に選ぶ時の軸）。縦軸は、横軸と選べない組になる列を選べない状態にする。 */
+/** 散布図の解析設定（組み合わせ・列の数・目盛りと、自由に選ぶ時の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
   const language = useTextLanguage();
   const text = comparisonColumnText(language, SCATTER_KANA_SCRIPT);
   const presetLabels = scatterPresetLabels(language);
-  const COLUMN_CHOICES = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: text[column].label }));
+  // 選んでいない列は、もう一方の軸に選んだ全部の列と選べない組になる時だけ、選べない状態にする
+  const axisChoices = (own: readonly ComparisonColumnId[], other: readonly ComparisonColumnId[]) =>
+    COMPARISON_COLUMN_IDS.map((column) => ({
+      value: column,
+      label: text[column].label,
+      disabled: !own.includes(column) && other.length > 0 && other.every((o) => scatterAxisProblem(o, column) !== undefined),
+    }));
   return (
     <div className="option-groups">
       <CheckboxGroupOptionField
@@ -558,17 +562,25 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
       />
       {options.presets.includes('free') ? (
         <>
-          <SelectOptionField label="横軸" binding={bind('xAxis')} choices={COLUMN_CHOICES} />
           <CheckboxGroupOptionField
-            label="縦軸"
-            binding={bind('yAxes')}
-            choices={COLUMN_CHOICES.map((choice) => ({
-              ...choice,
-              disabled: !options.yAxes.includes(choice.value) && scatterAxisProblem(options.xAxis, choice.value) !== undefined,
-            }))}
+            label="横軸"
+            binding={bind('xAxes')}
+            choices={axisChoices(options.xAxes, options.yAxes)}
             selectAll
-            hint="縦軸ごとに図を1つ描きます。軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。押下1回の移動距離など、配列ごとに違う回数で割った距離の線は引きません。"
+            hint="横軸と縦軸の選んだ全部の組ごとに図を1つ描きます。軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。押下1回の移動距離など、配列ごとに違う回数で割った距離の線は引きません。"
           />
+          <CheckboxGroupOptionField label="縦軸" binding={bind('yAxes')} choices={axisChoices(options.yAxes, options.xAxes)} selectAll />
+          {options.xAxes.length >= 2 && options.yAxes.length >= 2 ? (
+            <SegmentedOptionField
+              label="図の並び"
+              binding={bind('freeOrder')}
+              choices={[
+                { value: 'byX', label: '横軸ごと' },
+                { value: 'byY', label: '縦軸ごと' },
+              ]}
+              hint="横軸ごとは、横軸の順に並べ、その中で縦軸の順に並べます。縦軸ごとは、縦軸の順に並べ、その中で横軸の順に並べます。"
+            />
+          ) : null}
         </>
       ) : null}
       <SegmentedOptionField
