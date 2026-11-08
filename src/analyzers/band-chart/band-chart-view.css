@@ -22,6 +22,7 @@
   --band-chart-text-light: light-dark(#1a1917, #e6edf7);
   --band-chart-text-mid: light-dark(#0b1f3a, #04101f);
   --band-chart-text-strong: light-dark(#ffffff, #04101f);
+  --band-chart-text-violet-mid: light-dark(#0b1f3a, #ffffff);
 }
 
 .band-chart-feature {
