@@ -1,0 +1,16 @@
+// main を本番より先に確かめるための配信先（.github/workflows/staging.yml が使う）。
+// 静的ファイルだけを配るWorkerで、サーバー側のコードは持たない。
+{
+  "name": "keydist-staging",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    // パスはこのファイルからの相対。ビルドは .output/public に静的ファイルを書き出す
+    "directory": "../../.output/public",
+    // GitHub Pagesと同じく、無いパスには404.htmlを404で返す。
+    // 保存したWorkspaceのURL（/workspace/<id>）は404.htmlに複製した枠が描く
+    "not_found_handling": "404-page"
+  },
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "staging.keydist.tokiokashi.com", "custom_domain": true }]
+}
