@@ -51,7 +51,8 @@ export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
 
 /**
  * 列を設定の小窓（比較表の表示する列・散布図の横軸と縦軸）で見出し付きにまとめる分け方。まとまりの並びはここに書いた順で、
- * まとまりの中の列は`COMPARISON_COLUMN_IDS`の順。`Record`にしているので、列を足すとまとまりを決めるまで型検査が通らない。
+ * まとまりの中の列は`COMPARISON_COLUMN_GROUP`に書いた順（分子が同じ量の列を隣り合わせるため、比較表の列の順とは違う）。
+ * `Record`にしているので、列を足すとまとまりを決めるまで型検査が通らない。
  */
 const GROUP = {
   distance: '距離',
@@ -76,14 +77,14 @@ export const COMPARISON_COLUMN_GROUP: Readonly<Record<ComparisonColumnId, Compar
   unitsPerTextChar: GROUP.distance,
   actions: GROUP.actionsAndKeys,
   perCharSteps: GROUP.actionsAndKeys,
+  actionsPerTextChar: GROUP.actionsAndKeys,
+  actionsPerUnit: GROUP.actionsAndKeys,
   perCharPresses: GROUP.actionsAndKeys,
   perActionPresses: GROUP.actionsAndKeys,
   singleTapLayerRate: GROUP.actionsAndKeys,
   singleTapRate: GROUP.actionsAndKeys,
   singleKeyRate: GROUP.actionsAndKeys,
   textCharsPerAction: GROUP.textChars,
-  actionsPerTextChar: GROUP.actionsAndKeys,
-  actionsPerUnit: GROUP.actionsAndKeys,
   textCharsPerUnit: GROUP.textChars,
   sameFinger: GROUP.finger,
   sameFingerRate: GROUP.finger,
@@ -104,9 +105,9 @@ export const COMPARISON_COLUMN_GROUP: Readonly<Record<ComparisonColumnId, Compar
   logicalBigramCombinations: GROUP.bigram,
 };
 
-/** 小窓に並べる順（まとまりの順、まとまりの中は列の順）の列。 */
+/** 小窓に並べる順（まとまりの順、まとまりの中は`COMPARISON_COLUMN_GROUP`に書いた順）の列。 */
 export const COMPARISON_COLUMN_IDS_BY_GROUP: readonly ComparisonColumnId[] = COMPARISON_COLUMN_GROUPS.flatMap((group) =>
-  COMPARISON_COLUMN_IDS.filter((id) => COMPARISON_COLUMN_GROUP[id] === group),
+  (Object.keys(COMPARISON_COLUMN_GROUP) as ComparisonColumnId[]).filter((id) => COMPARISON_COLUMN_GROUP[id] === group),
 );
 
 export interface ComparisonColumnText {
