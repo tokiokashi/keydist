@@ -50,7 +50,7 @@ export interface ReadoutParts {
 
 /**
  * 画面に出す点の読み取りの部品。横軸と縦軸の量の名前は図の軸に出ているので付けず、座標だけにする。
- * 線の量は軸の名前と同じ縮めた名前で示す（単位と「対数」の印は付けない）。
+ * 線の量は軸の名前と同じ縮めた名前で示す（単位は付けない）。
  */
 export function readoutParts(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): ReadoutParts {
   const value = contourValue(row, contour);
