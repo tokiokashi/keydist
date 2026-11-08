@@ -13,6 +13,7 @@ import { nSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { playbackOptions } from '#analyzers/playback/options.ts';
 import { runChartOptions } from '#analyzers/run-chart/options.ts';
 import { scatterOptions } from '#analyzers/scatter/options.ts';
+import { bandChartOptions } from '#analyzers/band-chart/options.ts';
 
 export type AnalyzerOptionsDecoder = (raw: unknown, diagnostics: CodecDiagnostic[]) => unknown;
 
@@ -38,4 +39,5 @@ export const ANALYZER_OPTIONS_DECODERS: ReadonlyMap<string, AnalyzerOptionsDecod
   ['playback', playbackOptions.decodeOptions],
   ['run-chart', runChartOptions.decodeOptions],
   ['scatter', scatterOptions.decodeOptions],
+  ['band-chart', bandChartOptions.decodeOptions],
 ]);

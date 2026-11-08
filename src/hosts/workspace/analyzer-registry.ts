@@ -28,6 +28,8 @@ import { bunsetsuStatsDefinition } from '#analyzers/bunsetsu-stats/extract.ts';
 import { BUNSETSU_STATS_PANE_META } from '#analyzers/bunsetsu-stats/pane-meta.ts';
 import { scatterDefinition } from '#analyzers/scatter/extract.ts';
 import { SCATTER_PANE_META } from '#analyzers/scatter/pane-meta.ts';
+import { bandChartDefinition } from '#analyzers/band-chart/extract.ts';
+import { BAND_CHART_PANE_META } from '#analyzers/band-chart/pane-meta.ts';
 
 /**
  * Workspaceのペインに置けるAnalyzer。ペインの追加（Analyzerを選ぶ）と、保存したペインの
@@ -65,6 +67,7 @@ export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
   { id: runChartDefinition.id, ...RUN_CHART_PANE_META, cardinality: 'set' },
   { id: bunsetsuStatsDefinition.id, ...BUNSETSU_STATS_PANE_META, cardinality: 'set' },
   { id: scatterDefinition.id, ...SCATTER_PANE_META, cardinality: 'set' },
+  { id: bandChartDefinition.id, ...BAND_CHART_PANE_META, cardinality: 'set' },
 ];
 
 export function findWorkspaceAnalyzer(analyzerId: string): WorkspaceAnalyzerEntry | undefined {

@@ -1,0 +1,43 @@
+/* 図を画像でコピーするボタンと、結果の知らせ。ⓘと同じ大きさ・見た目にする */
+.copy-image {
+  position: relative;
+  display: inline-flex;
+}
+
+.copy-image-button {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.copy-image-button:hover,
+.copy-image-button:focus-visible {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.copy-image-status:empty {
+  display: none;
+}
+
+.copy-image-status {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  z-index: 30;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}

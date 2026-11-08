@@ -1,4 +1,4 @@
-import { useCallback, useContext, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
 import type { ConditionHeaderInfo, ConditionSummaryRow, ConditionTargetDiff } from './condition-summary.ts';
@@ -211,6 +211,27 @@ export function PaneFrame({
   const headerLead = useContext(PaneHeaderLeadContext);
   // 文字で出せるかを見出しの実際の幅から測る。先頭を持つ見出し（Workspaceのペイン）と、名前の行に出す個別画面の見出しが対象
   const badgeAsText = useStatusBadgeFit(headerRef, statusLabel !== '' && (!nameInLead || headerLead !== null));
+
+  // 固定した見出しの下端（文脈バーの高さを含む）をCSS変数で公開する。本体の中で固定する要素（帯グラフの凡例）が、見出しの下に位置を合わせられる。
+  // 固定しない見出し（Workspaceのペイン）では公開しない（本体を載せる入れ物の上端に合わせるので、値が無い間はCSS側の既定0）。
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!stickyHeader || header === null) return undefined;
+    const root = document.documentElement;
+    const publish = () => {
+      const top = Number.parseFloat(getComputedStyle(header).top);
+      root.style.setProperty('--sticky-header-bottom', `${(Number.isFinite(top) ? top : 0) + header.getBoundingClientRect().height}px`);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(header);
+    const bar = document.querySelector('.context-bar');
+    if (bar !== null) observer.observe(bar);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--sticky-header-bottom');
+    };
+  }, [stickyHeader]);
 
   // 本体の図の表示の小窓。解析設定の小窓と同じ部品で描き、Workspaceでは同じくペイン名を出す。
   // 関数を毎回作り直さないよう、ペイン名が変わる時だけ作る
