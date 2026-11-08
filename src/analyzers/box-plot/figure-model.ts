@@ -151,12 +151,12 @@ export const MAX_COLUMN_WIDTH = 96;
 const FRAME_TOP = 8;
 /** 枠の高さ [px]。 */
 const FRAME_HEIGHT = 240;
-/** 名前を置く領域の高さ [px]。枠の下に続く。 */
-export const LABEL_AREA_HEIGHT = 112;
 /** 枠と名前の間 [px]。 */
 const LABEL_GAP = 8;
-/** 名前の縦の長さの上限 [px]。 */
-export const LABEL_MAX_LENGTH = LABEL_AREA_HEIGHT - LABEL_GAP - 12;
+/** 名前の下の余白 [px]。 */
+const LABEL_BOTTOM_PAD = 8;
+/** 名前の縦の長さの上限 [px]。組み込みの全配列の名前が切れない長さで、これを超える自作の名前だけを切り詰める。 */
+export const LABEL_MAX_LENGTH = 140;
 
 export interface BoxColumnGeometry {
   /** 列の左端と右端 */
@@ -182,8 +182,8 @@ export interface BoxPlotLayout {
   readonly labelTopY: number;
 }
 
-/** `available`は縦軸の列を除いた、図を置く領域の幅。 */
-export function boxPlotLayout(available: number, columnCount: number): BoxPlotLayout {
+/** `available`は縦軸の列を除いた、図を置く領域の幅。`labelLength`は表示する名前のうち一番長いものの縦の長さ。 */
+export function boxPlotLayout(available: number, columnCount: number, labelLength: number): BoxPlotLayout {
   const columnWidth = columnCount === 0 ? MAX_COLUMN_WIDTH : Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, Math.floor(available / columnCount)));
   const plotWidth = columnWidth * columnCount;
   const y0 = FRAME_TOP;
@@ -195,7 +195,7 @@ export function boxPlotLayout(available: number, columnCount: number): BoxPlotLa
   return {
     axisWidth: AXIS_WIDTH,
     plotWidth,
-    height: y1 + LABEL_AREA_HEIGHT,
+    height: y1 + LABEL_GAP + labelLength + LABEL_BOTTOM_PAD,
     frame: { x0: 0.5, x1: plotWidth - 0.5, y0, y1 },
     columnWidth,
     boxWidth: Math.min(MAX_BOX_WIDTH, Math.round(columnWidth * 0.55)),
@@ -240,17 +240,35 @@ export interface LabelRun {
   readonly upright: boolean;
   /** 名前の先頭からの距離 [px]（まとまりの先頭の位置） */
   readonly offset: number;
+  /** まとまりの縦の長さ [px]。倒す並びは、この長さに字を詰めて置く */
+  readonly length: number;
 }
 
-/** 倒して置く並びの後ろに空ける間（em）。英大文字は見積もりの0.6emより幅が広く、次の字に触れるため。 */
-const ROTATED_RUN_GAP_EM = 0.4;
+/** 倒して置く並びと、次の字の間（em）。 */
+const RUN_GAP_EM = 0.15;
+/** 縦書きで空白が取る長さ（em）。半字より狭くする。 */
+const SPACE_EM = 0.25;
+/** 英大文字が取る幅（em）。倒した並びの長さの見積もりに使う。 */
+const UPPERCASE_EM = 0.72;
 
 /** 縦書きで倒して置く全角の字（伸ばす棒・括弧のように、字の向きが縦書きで変わるもの）。 */
 const ROTATED_WIDE = new Set([...'ー〜～―（）「」『』']);
 
+function isUpright(character: string): boolean {
+  const code = character.codePointAt(0)!;
+  return code >= 0x1100 && !(code >= 0xff61 && code <= 0xff9f) && !ROTATED_WIDE.has(character);
+}
+
+/** 倒して置く1字の長さ [px]。 */
+function rotatedWidth(character: string, fontSize: number): number {
+  if (ROTATED_WIDE.has(character)) return fontSize;
+  if (character >= 'A' && character <= 'Z') return UPPERCASE_EM * fontSize;
+  return textWidth(character, fontSize);
+}
+
 /**
- * 名前を縦書きの並びにする。かな・漢字は1字ずつ立て、英数字と記号は並びごと右へ90度倒す。
- * 字の送りは `textWidth`（全角1em、それ以外0.6em）と同じなので、`fitLabel` で収めた長さに合う。
+ * 名前を縦書きの並びにする。かな・漢字は1字ずつ立て、英数字と記号、全角の括弧と伸ばす棒は並びごと右へ90度倒す。空白は詰める。
+ * 倒す並びは、見積もった長さ（`length`）に字を詰めて置くので、次の字と重ならない。
  * 字体の縦書きの字形に頼らず、字の位置を自分で決める（字形の無い環境でも字が重ならない）。
  */
 export function verticalLabelRuns(label: string, fontSize: number): readonly LabelRun[] {
@@ -258,25 +276,45 @@ export function verticalLabelRuns(label: string, fontSize: number): readonly Lab
   let offset = 0;
   let rotated = '';
   let rotatedStart = 0;
+  let rotatedLength = 0;
   const flush = () => {
     if (rotated === '') return;
-    runs.push({ text: rotated, upright: false, offset: rotatedStart });
+    runs.push({ text: rotated, upright: false, offset: rotatedStart, length: rotatedLength });
+    offset += fontSize * RUN_GAP_EM;
     rotated = '';
+    rotatedLength = 0;
   };
   for (const character of label) {
-    const width = textWidth(character, fontSize);
-    const code = character.codePointAt(0)!;
-    const upright = code >= 0x1100 && !(code >= 0xff61 && code <= 0xff9f) && !ROTATED_WIDE.has(character);
-    if (upright) {
-      if (rotated !== '') offset += fontSize * ROTATED_RUN_GAP_EM;
+    if (/\s/.test(character)) {
       flush();
-      runs.push({ text: character, upright: true, offset });
+      offset += fontSize * SPACE_EM;
+    } else if (isUpright(character)) {
+      flush();
+      runs.push({ text: character, upright: true, offset, length: fontSize });
+      offset += fontSize;
     } else {
       if (rotated === '') rotatedStart = offset;
       rotated += character;
+      const width = rotatedWidth(character, fontSize);
+      rotatedLength += width;
+      offset += width;
     }
-    offset += width;
   }
   flush();
   return runs;
+}
+
+/** 縦書きにした名前の縦の長さ [px]。 */
+export function verticalLabelLength(label: string, fontSize: number): number {
+  const runs = verticalLabelRuns(label, fontSize);
+  const last = runs[runs.length - 1];
+  return last === undefined ? 0 : last.offset + last.length;
+}
+
+/** 縦書きの長さが`maxLength`に収まるよう、末尾を「…」に替える。収まる名前はそのまま返す。 */
+export function fitVerticalLabel(label: string, maxLength: number, fontSize: number): string {
+  if (verticalLabelLength(label, fontSize) <= maxLength) return label;
+  const characters = [...label];
+  while (characters.length > 0 && verticalLabelLength(`${characters.join('')}…`, fontSize) > maxLength) characters.pop();
+  return `${characters.join('')}…`;
 }

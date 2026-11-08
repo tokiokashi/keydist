@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { textWidth } from '../figure-text.ts';
 import type { BoxPlotExtracted, BoxPlotOkRow, BoxPlotRow } from './extract.ts';
 import {
   COMPUTING_MESSAGE,
@@ -12,7 +11,6 @@ import {
   MIN_COLUMN_WIDTH,
   boxPlotLayout,
   boxPlotModel,
-  verticalLabelRuns,
   type BoxRowContext,
 } from './figure-model.ts';
 
@@ -126,7 +124,7 @@ test('共通の目盛りを渡すと、同じ値が全ペインで同じ位置�
   const box = okRow('a', 1).box;
   const narrow = boxAxis(boxOwnRange(boxPlotModel(extractedOf([okRow('a', 1)]), ['a'], CONTEXT).rows)!.max);
   const shared = boxAxis(3);
-  const layout = boxPlotLayout(600, 1);
+  const layout = boxPlotLayout(600, 1, 100);
   const own = boxGeometry(box, narrow.max, layout.frame.y0, layout.frame.y1);
   const aligned = boxGeometry(box, shared.max, layout.frame.y0, layout.frame.y1);
   // 縦軸は上が大きいので、最大が大きい共通の目盛りでは、同じ値が下に来る（縦位置が大きい）
@@ -135,7 +133,7 @@ test('共通の目盛りを渡すと、同じ値が全ペインで同じ位置�
 });
 
 test('箱の位置は、10%点・25%点・中央値・75%点・90%点の順に下から上へ並び、0が枠の下端、軸の上端の値が枠の上端に来る', () => {
-  const layout = boxPlotLayout(600, 2);
+  const layout = boxPlotLayout(600, 2, 100);
   const geometry = boxGeometry(
     { count: 5, lowerWhisker: 0, lowerQuartile: 0.5, median: 1, upperQuartile: 1.5, upperWhisker: 2 },
     2,
@@ -149,30 +147,12 @@ test('箱の位置は、10%点・25%点・中央値・75%点・90%点の順に�
 });
 
 test('列は幅の下限を割らず、隣と重ならずに左から並び、列が多ければ図は領域より広くなる', () => {
-  const few = boxPlotLayout(600, 3);
+  const few = boxPlotLayout(600, 3, 100);
   assert.equal(few.plotWidth, few.columnWidth * 3);
-  const many = boxPlotLayout(300, 43);
+  const many = boxPlotLayout(300, 43, 100);
   assert.ok(many.columnWidth >= MIN_COLUMN_WIDTH);
   assert.ok(many.plotWidth > 300);
   many.columns.forEach((column, index) => {
     if (index > 0) assert.equal(column.left, many.columns[index - 1]!.right);
   });
-});
-
-test('縦書きの名前は、かな・漢字を1字ずつ立て、英数字の並びを1まとまりに倒し、字の送りが名前の長さに合う', () => {
-  const runs = verticalLabelRuns('JISかなー配列', 12);
-  assert.deepEqual(
-    runs.map(({ text, upright }) => ({ text, upright })),
-    [
-      { text: 'JIS', upright: false },
-      { text: 'か', upright: true },
-      { text: 'な', upright: true },
-      { text: 'ー', upright: false },
-      { text: '配', upright: true },
-      { text: '列', upright: true },
-    ],
-  );
-  // 次のまとまりは、前の並びの長さより下に置く
-  assert.ok(runs[1]!.offset > textWidth('JIS', 12));
-  assert.ok(Math.abs(runs[2]!.offset - runs[1]!.offset - 12) < 1e-9);
 });

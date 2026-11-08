@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { CopyImageControl } from '../copy-image-control.tsx';
-import { fitLabel, FONT_SIZE } from '../figure-text.ts';
+import { FONT_SIZE } from '../figure-text.ts';
 import { useSharedScale } from '../shared-scale.tsx';
 import { useElementWidth } from '../use-element-width.tsx';
 import { boxPlotDefinition, type BoxPlotExtracted } from './extract.ts';
@@ -15,9 +15,11 @@ import {
   boxGeometry,
   boxOwnRange,
   boxPlotLayout,
+  fitVerticalLabel,
   boxPlotModel,
   distanceText,
   valueY,
+  verticalLabelLength,
   verticalLabelRuns,
   type BoxDisplayRow,
   type BoxRowContext,
@@ -92,7 +94,9 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
   const drawn = unavailable ? [] : model.rows;
   const range = useSharedScale(BOX_PLOT_SCALE_KEY, boxOwnRange(drawn));
   const axis = useMemo(() => boxAxis(range?.max ?? 0), [range?.max]);
-  const layout = useMemo(() => boxPlotLayout(Math.max(0, width - AXIS_WIDTH), drawn.length), [width, drawn.length]);
+  const fittedLabels = useMemo(() => drawn.map((row) => fitVerticalLabel(row.label, LABEL_MAX_LENGTH, FONT_SIZE)), [drawn]);
+  const labelLength = useMemo(() => Math.max(0, ...fittedLabels.map((label) => verticalLabelLength(label, FONT_SIZE))), [fittedLabels]);
+  const layout = useMemo(() => boxPlotLayout(Math.max(0, width - AXIS_WIDTH), drawn.length, labelLength), [width, drawn.length, labelLength]);
   const selected = drawn.find((row) => row.targetKey === selectedKey);
   const help = useMemo(
     () =>
@@ -202,7 +206,7 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
                     const column = layout.columns[index]!;
                     const isSelected = selected?.targetKey === row.targetKey;
                     const y = boxGeometry(row.row.box, axis.max, frame.y0, frame.y1);
-                    const fitted = fitLabel(row.label, LABEL_MAX_LENGTH, FONT_SIZE);
+                    const fitted = fittedLabels[index]!;
                     const half = layout.boxWidth / 2;
                     const cap = layout.capWidth / 2;
                     return (
@@ -264,6 +268,8 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
                                 y={0}
                                 transform={`translate(${column.centerX} ${layout.labelTopY + run.offset}) rotate(90)`}
                                 dominantBaseline="central"
+                                textLength={run.length}
+                                lengthAdjust="spacingAndGlyphs"
                               >
                                 {run.text}
                               </text>
