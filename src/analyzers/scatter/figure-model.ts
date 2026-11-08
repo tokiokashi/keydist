@@ -20,7 +20,7 @@ import { logScaleBlockers, resolveLogScale, scatterPlotModel, type LogScaleBlock
 /**
  * 組み合わせ1つぶんの図の描画モデル（画面に依存しない純粋な関数）。
  * 選んだ組み合わせごとに1つ作り、その組み合わせ1つだけを選んだ時と同じ結果になる。
- * 目盛りの種類と「自由に選ぶ」の軸の並びは全ての図で共通の入力として受け取り、図ごとの判定（対数にできるか・軸の組が選べるか）はここで行う。
+ * 目盛りの種類と「自由選択」の軸の並びは全ての図で共通の入力として受け取り、図ごとの判定（対数にできるか・軸の組が選べるか）はここで行う。
  */
 
 export interface ScatterFigureRowContext {
@@ -56,11 +56,11 @@ export interface ScatterFiguresInput {
   readonly order: readonly string[];
   readonly rowContext: ReadonlyMap<string, ScatterFigureRowContext>;
   readonly rows: readonly ScatterRow[];
-  /** 「自由に選ぶ」の横軸。比較表の列の順。 */
+  /** 「自由選択」の横軸。比較表の列の順。 */
   readonly xAxes: readonly ComparisonColumnId[];
-  /** 「自由に選ぶ」の縦軸。比較表の列の順。 */
+  /** 「自由選択」の縦軸。比較表の列の順。 */
   readonly yAxes: readonly ComparisonColumnId[];
-  /** 「自由に選ぶ」の図の並び。`byX`は横軸の順にその中で縦軸の順、`byY`は縦軸の順にその中で横軸の順。 */
+  /** 「自由選択」の図の並び。`byX`は横軸の順にその中で縦軸の順、`byY`は縦軸の順にその中で横軸の順。 */
   readonly freeOrder: 'byX' | 'byY';
   readonly tickScale: 'linear' | 'log';
   readonly language: TextLanguage;
@@ -138,14 +138,14 @@ export function scatterFigureModel(preset: ScatterPresetId, axes: ScatterAxes, i
   };
 }
 
-/** 「自由に選ぶ」の組のうち、選べない組。 */
+/** 「自由選択」の組のうち、選べない組。 */
 export interface ScatterBlockedPair {
   readonly x: ComparisonColumnId;
   readonly y: ComparisonColumnId;
   readonly problem: ScatterAxisProblem;
 }
 
-/** 図を並べる位置に入るもの。図1つか、「自由に選ぶ」の図の代わりに出す知らせ。 */
+/** 図を並べる位置に入るもの。図1つか、「自由選択」の図の代わりに出す知らせ。 */
 export type ScatterSlot =
   | { readonly type: 'figure'; readonly key: string; readonly figure: ScatterFigureModel }
   | {

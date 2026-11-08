@@ -39,7 +39,7 @@ export function isHandShareColumn(column: ComparisonColumnId): boolean {
 
 /**
  * 用意する組み合わせ。見る量のまとまりで並べる。
- * アクション数と距離・文字数の組、キーの組、指と手の組、自由に選ぶの順。先頭が既定。
+ * アクション数と距離・文字数の組、キーの組、指と手の組、自由選択の順。先頭が既定。
  */
 export const SCATTER_PRESET_IDS = [
   'distance',
@@ -107,7 +107,7 @@ export function scatterPresetLabels(language: TextLanguage): Readonly<Record<Sca
     movedPress: label('movedPress'),
     textDistance: label('textDistance'),
     charsPerAction: `コスパ（${axisPlotTitle(SCATTER_PRESET_AXES.charsPerAction.x, language)}）と${axisName(SCATTER_PRESET_AXES.charsPerAction.y, language)}`,
-    free: '自由に選ぶ',
+    free: '自由選択',
   };
 }
 

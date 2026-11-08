@@ -62,7 +62,7 @@ function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): s
     : `アクション数とアクション数/${k}、距離と距離/${k}、距離/アクションとアクション数/距離のように、同じテキストなら一方が他方の定数倍か、積が一定になる2列は、同時に選べません。`;
 }
 
-/** 横軸か縦軸が無い時と、選べない組がある時に、「自由に選ぶ」の図の代わりに出す知らせ。 */
+/** 横軸か縦軸が無い時と、選べない組がある時に、「自由選択」の図の代わりに出す知らせ。 */
 function FreeNotice({ slot, language }: { readonly slot: Extract<ScatterSlot, { type: 'free-notice' }>; readonly language: TextLanguage }) {
   const problems = [...new Set(slot.blocked.map((entry) => entry.problem))];
   return (
@@ -534,7 +534,7 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
   );
 }
 
-/** 散布図の解析設定（軸・列の数・組み合わせと、自由に選ぶ時の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
+/** 散布図の解析設定（軸・列の数・組み合わせと、自由選択の軸）。横軸と縦軸は、足しても描ける図が増えない列を選べない状態にする。 */
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
   const language = useTextLanguage();
