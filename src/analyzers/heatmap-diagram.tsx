@@ -34,7 +34,7 @@ export interface HeatmapShiftStyle {
   readonly colorSlot: number;
 }
 
-/** 図に重ねる2打鍵の線。`maxWeight` は太さの尺度の最大値（組数）で、並べた図の全部で共通にする。 */
+/** 図に重ねる2打鍵の線。`maxWeight` は太さの尺度の最大値（組数）。一番上の図はその図の値、格子の図は格子の図の全部で共通の値を渡す。 */
 export interface HeatmapDiagramFlow {
   readonly vectors: readonly BigramVector[];
   readonly maxWeight: number;

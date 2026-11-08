@@ -104,14 +104,14 @@ test('キーの詳細の押下数は、ヒートマップの押下数と全キ�
   }
 });
 
-test('色の尺度の最大値: 並べた図の全部の最大値を取り、全部0なら1にする', () => {
+test('色の尺度の最大値: 格子の図の全部の最大値を取り、全部0なら1にする', () => {
   assert.equal(sharedMaxCount([3, 10, 7]), 10);
   assert.equal(sharedMaxCount([4]), 4);
   assert.equal(sharedMaxCount([0, 0]), 1);
   assert.equal(sharedMaxCount([]), 1);
 });
 
-test('色の尺度と同じく、線の太さの尺度の最大値は並べた図の全部の最大値を取り、線が無ければ1にする', () => {
+test('色の尺度と同じく、線の太さの尺度の最大値は格子の図の全部の最大値を取り、線が無ければ1にする', () => {
   assert.equal(sharedMaxFlowWeight([3, 10, 7]), 10);
   assert.equal(sharedMaxFlowWeight([1, 1]), 1);
   assert.equal(sharedMaxFlowWeight([]), 1);
