@@ -256,20 +256,6 @@ export function ChipSelectOptionField<T extends string>({
         <span className="option-field-label" id={labelId}>
           {label}
         </span>
-        <ResetButton label={label} binding={binding} />
-      </div>
-      <div className="chip-select-chips">
-        {selected.map((choice) => (
-          <span key={choice.value} className="chip-select-chip">
-            <span className="chip-select-chip-text">{choice.label}</span>
-            <button type="button" className="chip-select-chip-remove" aria-label={`${choice.label}を外す`} onClick={() => toggle(choice.value)}>
-              <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-            </button>
-          </span>
-        ))}
-        {selected.length === 0 ? <span className="chip-select-empty">未選択</span> : null}
         <button
           ref={triggerRef}
           type="button"
@@ -285,6 +271,20 @@ export function ChipSelectOptionField<T extends string>({
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </button>
+        <ResetButton label={label} binding={binding} />
+      </div>
+      <div className="chip-select-chips">
+        {selected.map((choice) => (
+          <span key={choice.value} className="chip-select-chip">
+            <span className="chip-select-chip-text">{choice.label}</span>
+            <button type="button" className="chip-select-chip-remove" aria-label={`${choice.label}を外す`} onClick={() => toggle(choice.value)}>
+              <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
+          </span>
+        ))}
+        {selected.length === 0 ? <span className="chip-select-empty">未選択</span> : null}
       </div>
       {hint !== undefined ? <p className="option-field-hint">{hint}</p> : null}
       {open
