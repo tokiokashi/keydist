@@ -328,7 +328,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 
 評価に渡したテキストの標本（かな・押下・移動距離）を区分に分け、区分ごとの割合を配列・Setupごとの1本の帯で並べるMulti（`analyzers/band-chart/`）。帯に出す量は7つ（移動距離・打ち方・押下数・手・段・指ごとの押下・指ごとの移動距離）で、解析設定の「量」で1つ選ぶ。定義は `docs/segment-metrics.md`「帯グラフの量」。距離モデルは変えない。
 
-- **計算部は `interpretation/band-quantities.ts`**（画面に依存しない純粋な関数）。ステップを覆うかなの範囲の重なりで打鍵のまとまりに分け、7つの量を一度に数える。打てない文字（`Trace.skippedPositions`）を覆うまとまりは数えない。手は左手だけ・両手で順に・両手で同時に・右手だけの4区分で、同時かどうかは1つのステップの押下の手で決める。Traceから数えた7つの量は、メンバーに覚えさせて使い回す（量を切り替えても数え直さない）。追加のTraceは依頼しない
+- **計算部は `interpretation/band-quantities.ts`**（画面に依存しない純粋な関数）。ステップを覆うかなの範囲の重なりで打鍵のまとまりに分け、7つの量を一度に数える。打てない文字（`Trace.skippedPositions`）を覆うまとまりは数えない。手は左手・両手順次・両手同時・右手の4区分で、同時かどうかは1つのステップの押下の手で決める。Traceから数えた7つの量は、メンバーに覚えさせて使い回す（量を切り替えても数え直さない）。追加のTraceは依頼しない
 - **量の名前・区分の名前・区分の色は `band-chart/quantities.ts`**（純粋）。抽出は選んだ量の区分ごとの標本の量・割合・分母を行にし、画面はそれを `figure-model.ts` が決めた座標に置く
 - **配線**: 抽出は `analyzers/band-chart/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/band-chart`
 - **解析設定は量の選択だけ**（`options.ts` の `quantity`。抽出に効く）。このAnalyzerだけが読むので、置き場は帯グラフの解析設定にする。選んだ量は他のAnalyzerの解析設定と同じ部品（`SelectOptionField`）と保存・URLの経路を使うので、同じWorkspaceに別の量を選んだペインを並べられる。区分の境目は身体・好みで割れず、要望の実例も無いので固定する

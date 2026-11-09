@@ -49,7 +49,7 @@ export function pressesBandOf(presses: number): number {
 }
 
 /**
- * 手の区分の番号。左手だけ0・両手で順に1・両手で同時に2・右手だけ3。
+ * 手の区分の番号。左手0・両手順次1・両手同時2・右手3。
  * `left` と `right` は、打鍵のまとまりの押下に左手・右手の指があるか。`simultaneous` は、1つのステップの中に左右両方の手の押下があるか。
  */
 export function handBandOf(left: boolean, right: boolean, simultaneous: boolean): number {

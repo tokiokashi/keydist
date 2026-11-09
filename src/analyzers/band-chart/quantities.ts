@@ -71,7 +71,7 @@ export const BAND_QUANTITIES: Readonly<Record<BandQuantityId, BandQuantity>> = {
     id: 'hand',
     name: '手',
     sample: 'kana',
-    labels: ['左手だけ', '両手で順に', '両手で同時に', '右手だけ'],
+    labels: ['左手', '両手順次', '両手同時', '右手'],
     colors: ['green-2', 'amber-0', 'amber-1', 'violet-2'],
   },
   row: {

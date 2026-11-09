@@ -79,7 +79,7 @@ function definitionNotes(id: BandQuantityId, unit: string): readonly string[] {
     case 'hand':
       return [
         kanaSampleNote(unit),
-        '手は、打鍵のまとまりの押下の指が左右のどちらの手かで決めます。親指は、その親指の手に数えます。押下が左手だけなら左手だけ、右手だけなら右手だけです。両方の手の押下がある時は、1つのステップの中に左右の押下があれば両手で同時に、どのステップも片手の押下だけなら両手で順にです。前置シフトのように押下が複数のステップに分かれる時も、まとまり全体の押下の手で決めます。',
+        '手は、打鍵のまとまりの押下の指が左右のどちらの手かで決めます。親指は、その親指の手に数えます。押下が左手なら左手、右手なら右手です。両方の手の押下がある時は、1つのステップの中に左右の押下があれば両手同時、どのステップも片手の押下だけなら両手順次です。前置シフトのように押下が複数のステップに分かれる時も、まとまり全体の押下の手で決めます。',
       ];
     case 'row':
       return [PRESS_SAMPLE_NOTE, '段は、親指が押したキーを「親指」に、それ以外のキーを物理配列の段（数字段・上段・中段・下段）に分けます。'];
@@ -105,7 +105,7 @@ function colorNote(id: BandQuantityId): string {
     case 'row':
       return `数字段から下段までは1色の濃淡で、親指だけ別の色です。${SEGMENT_TEXT_NOTE}`;
     case 'hand':
-      return `左手だけは緑、右手だけは紫、両手の2区分は橙の濃淡で分けています。${SEGMENT_TEXT_NOTE}`;
+      return `左手は緑、右手は紫、両手の2区分は橙の濃淡で分けています。${SEGMENT_TEXT_NOTE}`;
     case 'fingerPresses':
     case 'fingerDistance':
       return `左手の指は緑、右手の指は紫の濃淡で、手の中では親指から小指へ濃淡が変わります。${SEGMENT_TEXT_NOTE}`;

@@ -64,11 +64,11 @@ test('打ち方・押下数・手の区分が定義どおりに分かれる', ()
   );
 });
 
-test('手の区分は、左右の押下がどのステップも片手だけなら両手で順に、1つのステップに両手があれば両手で同時に、片手だけならその手になる', () => {
+test('手の区分は、左右の押下がどのステップも片手だけなら両手順次、1つのステップに両手があれば両手同時、片手だけならその手になる', () => {
   // ローマ字入力で手を替えるまとまり: しゃ = s(左) y(右) a(左)
   const sya = traceBandCounts(traceOf('qwerty', 'しゃ')).byQuantity.hand;
   assert.deepEqual(sya.counts, [0, 2, 0, 0]);
-  // 同じ手のまとまり: きょ = k y o（右手だけ）
+  // 同じ手のまとまり: きょ = k y o（右手）
   assert.deepEqual(traceBandCounts(traceOf('qwerty', 'きょ')).byQuantity.hand.counts, [0, 0, 0, 2]);
   // 親指と反対の手の指を同時に押すまとまり
   const together = countBandQuantities([stroke(0, 0, press('LT', 0, [0]), press('RI', 1, [1]))], 1, []).byQuantity.hand;
@@ -76,7 +76,7 @@ test('手の区分は、左右の押下がどのステップも片手だけな�
   // 同じ手の前置シフト（2つのステップとも左手）
   const prefixShift = countBandQuantities([stroke(0, 0, press('LP', 0, [2])), stroke(0, 0, press('LI', 1, [1]))], 1, []).byQuantity.hand;
   assert.deepEqual(prefixShift.counts, [1, 0, 0, 0]);
-  // 両手のステップが別々に並び、同時のステップが無ければ両手で順に
+  // 両手のステップが別々に並び、同時のステップが無ければ両手順次
   const sequential = countBandQuantities([stroke(0, 0, press('LP', 0, [2])), stroke(0, 0, press('RI', 1, [1]))], 1, []).byQuantity.hand;
   assert.deepEqual(sequential.counts, [0, 1, 0, 0]);
 });
