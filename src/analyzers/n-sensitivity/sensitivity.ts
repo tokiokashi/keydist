@@ -31,7 +31,8 @@ export function nSensitivity(
     const m = computeMetrics(trace, geometry, {
       windowSize,
       sfbHomeCost: options.sfbHomeCost,
-      preferOppositeThumb: options.preferOppositeThumb ?? false,
+      centerShiftThumb: options.centerShiftThumb ?? 'right',
+      spaceThumb: options.spaceThumb ?? 'right',
       chainInterpretation: { ...chainInterpretation },
       arpeggioInterpretation: { ...arpeggioInterpretation },
       triggerRealizationPolicy: {

@@ -271,7 +271,8 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   const tracePolicy: TracePolicy = {
     windowSize: cascade.windowSize.value,
     sfbHomeCost: cascade.sfbHomeCost.value,
-    preferOppositeThumb: cascade.preferOppositeThumb.value,
+    centerShiftThumb: cascade.centerShiftThumb.value,
+    spaceThumb: cascade.spaceThumb.value,
     triggerRealizationPolicy: cascade.triggerRealizationPolicy.value,
     actionRealizationPolicy: cascade.actionRealizationPolicy.value,
   };

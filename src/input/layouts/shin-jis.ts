@@ -23,7 +23,7 @@ import {
  * 「シフトを押しながらキーを押す」方式に合わせ、simultaneous + triggerOrder='prefix'
  * として表す。NICOLA型の押し順不問な同時打鍵とは区別する。
  * シフトの物理キーは両定義とも右親指を基準にする。
- * preferOppositeThumb による左右振り替えは simultaneous / prefix の両方で有効。
+ * centerShiftThumb による左右振り替えは simultaneous / prefix の両方で有効。
  */
 
 const face = (

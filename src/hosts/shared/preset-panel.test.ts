@@ -42,9 +42,9 @@ test('presetRows: キーの並びが違っても同じ値なら同じとみな�
 });
 
 test('changedGlobalItemCount: 増えた・消えた・変わった項目を数え、同じ値は数えない', () => {
-  const before: SettingsCascadeOverrides = { global: { windowSize: 5, sfbHomeCost: false, preferOppositeThumb: true } };
+  const before: SettingsCascadeOverrides = { global: { windowSize: 5, sfbHomeCost: false, centerShiftThumb: 'opposite' } };
   const after: SettingsCascadeOverrides = { global: { windowSize: 5, sfbHomeCost: true, romajiRuleId: 'azik' } };
-  // sfbHomeCost=変更、preferOppositeThumb=消えた、romajiRuleId=増えた。windowSizeは同じ
+  // sfbHomeCost=変更、centerShiftThumb=消えた、romajiRuleId=増えた。windowSizeは同じ
   assert.equal(changedGlobalItemCount(before, after), 3);
   assert.equal(changedGlobalItemCount(before, before), 0);
   assert.equal(changedGlobalItemCount({}, {}), 0);

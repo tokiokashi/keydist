@@ -1,5 +1,5 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, hasMultiFingerKeys, type Finger, type Geometry } from '#input/shapes/geometry.ts';
-import type { Stroke, Trace } from '#trace/generate.ts';
+import type { CenterShiftThumb, SpaceThumb, Stroke, Trace } from '#trace/generate.ts';
 import { countStates, type StateCounts } from './excess-distribution.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from './structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from './structure/arpeggio.ts';
@@ -213,8 +213,10 @@ export interface MetricConditions {
   windowSize: number;
   /** 同指連続でホームキーの移動を計上するか */
   sfbHomeCost: boolean;
-  /** 親指シフトを出力キーと反対側の親指へ振り替えたか */
-  preferOppositeThumb: boolean;
+  /** センターシフトを押した親指 */
+  centerShiftThumb: CenterShiftThumb;
+  /** 空白の単打を押した親指 */
+  spaceThumb: SpaceThumb;
   /** Analysis Chainを作ったChainInterpretation。 */
   chainInterpretation: ChainInterpretation;
   /** ArpeggioSpanを派生したArpeggioInterpretation。 */
@@ -237,7 +239,8 @@ export interface MetricConditions {
 export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   windowSize: 3,
   sfbHomeCost: true,
-  preferOppositeThumb: false,
+  centerShiftThumb: 'right',
+  spaceThumb: 'right',
   chainInterpretation: { ...DEFAULT_CHAIN_INTERPRETATION },
   arpeggioInterpretation: { ...DEFAULT_ARPEGGIO_INTERPRETATION },
   triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },

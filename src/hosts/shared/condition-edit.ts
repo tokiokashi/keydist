@@ -36,7 +36,8 @@ export type GlobalEditableId = Extract<
   SettingsItemId,
   | 'windowSize'
   | 'sfbHomeCost'
-  | 'preferOppositeThumb'
+  | 'centerShiftThumb'
+  | 'spaceThumb'
   | 'triggerRealizationPolicy'
   | 'actionRealizationPolicy'
   | 'defaultShapeId'
@@ -51,7 +52,8 @@ export type GlobalEditableId = Extract<
 export const GLOBAL_EDITABLE_IDS: readonly GlobalEditableId[] = [
   'windowSize',
   'sfbHomeCost',
-  'preferOppositeThumb',
+  'centerShiftThumb',
+  'spaceThumb',
   'triggerRealizationPolicy',
   'actionRealizationPolicy',
   'defaultShapeId',

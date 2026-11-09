@@ -1,3 +1,4 @@
+import type { CenterShiftThumb } from '#trace/generate.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -65,7 +66,8 @@ test('上書きが無ければ全項目が現行アプリの既定値で解決�
   const resolved = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(asuka));
   assert.equal(resolved.windowSize.value, 3);
   assert.equal(resolved.sfbHomeCost.value, true);
-  assert.equal(resolved.preferOppositeThumb.value, false);
+  assert.equal(resolved.centerShiftThumb.value, 'right');
+  assert.equal(resolved.spaceThumb.value, 'right');
 });
 
 test('windowSize/sfbHomeCostはglobal/layout/setupのみ許可（shape/inputMethodは拒否）', () => {
@@ -192,11 +194,11 @@ test('fingerAssignmentId: 既定は物理配列から決まり（JIS系物理配
   assert.equal(resolved.fingerAssignmentId.value, 'jis-default');
 });
 
-test('preferOppositeThumb: SandSを持たない配列ではnot-applicable、反対の親指キーが無い物理配列ではfallback', () => {
+test('centerShiftThumb: SandSを持たない配列ではnot-applicable、反対の親指キーが無い物理配列ではfallback', () => {
   const resolvedAsuka = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(asuka));
-  assert.equal(resolvedAsuka.preferOppositeThumb.applicable, false);
+  assert.equal(resolvedAsuka.centerShiftThumb.applicable, false);
 
-  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'preferOppositeThumb', true);
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'centerShiftThumb', 'opposite');
   assert.ok(written.ok);
   const shapeNoRightThumb = {
     ...PHYSICAL_SHAPES['row-staggered'],
@@ -210,8 +212,32 @@ test('preferOppositeThumb: SandSを持たない配列ではnot-applicable、反�
     layoutId: naginata.id,
     layout: naginata,
   });
-  assert.equal(resolved.preferOppositeThumb.value, false);
-  assert.ok(resolved.preferOppositeThumb.diagnostics.some((d) => d.kind === 'invalid-fallback'));
+  assert.equal(resolved.centerShiftThumb.value, 'right');
+  assert.ok(resolved.centerShiftThumb.diagnostics.some((d) => d.kind === 'invalid-fallback'));
+});
+
+test('spaceThumb: 左親指キーを他の入力に使う配列ではnot-applicable、左親指キーが無い物理配列ではfallback', () => {
+  assert.equal(resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(naginata)).spaceThumb.applicable, false);
+  const qwerty = LAYOUTS.find((layout) => layout.id === 'qwerty');
+  assert.ok(qwerty);
+  assert.equal(resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwerty)).spaceThumb.applicable, true);
+
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'spaceThumb', 'left');
+  assert.ok(written.ok);
+  const shapeNoLeftThumb = {
+    ...PHYSICAL_SHAPES['row-staggered'],
+    thumbs: PHYSICAL_SHAPES['row-staggered'].thumbs.filter((thumb) => thumb.finger !== 'LT'),
+  };
+  const resolved = resolveSettings(written.overrides, {
+    shapeId: 'shape-no-left-thumb',
+    shape: shapeNoLeftThumb,
+    targetKind: 'layout' as const,
+    inputMethod: 'direct' as const,
+    layoutId: qwerty.id,
+    layout: qwerty,
+  });
+  assert.equal(resolved.spaceThumb.value, 'right');
+  assert.ok(resolved.spaceThumb.diagnostics.some((d) => d.kind === 'invalid-fallback'));
 });
 
 test('リセット: 項目単位・レベル単位が実レジストリでも動く', () => {
@@ -242,7 +268,7 @@ test('上書き無しの解決結果は、全組み込み配列でfixtureに記�
       conditions: {
         windowSize: number;
         sfbHomeCost: boolean;
-        preferOppositeThumb: boolean;
+        centerShiftThumb: CenterShiftThumb;
         triggerRealizationPolicy: unknown;
         actionRealizationPolicy: unknown;
         chainInterpretation: unknown;
@@ -270,7 +296,7 @@ test('上書き無しの解決結果は、全組み込み配列でfixtureに記�
 
     assert.equal(resolved.windowSize.value, scenario.conditions.windowSize, scenario.id);
     assert.equal(resolved.sfbHomeCost.value, scenario.conditions.sfbHomeCost, scenario.id);
-    assert.equal(resolved.preferOppositeThumb.value, scenario.conditions.preferOppositeThumb, scenario.id);
+    assert.equal(resolved.centerShiftThumb.value, scenario.conditions.centerShiftThumb, scenario.id);
     assert.deepEqual(resolved.triggerRealizationPolicy.value, scenario.conditions.triggerRealizationPolicy, scenario.id);
     assert.deepEqual(resolved.actionRealizationPolicy.value, scenario.conditions.actionRealizationPolicy, scenario.id);
     assert.deepEqual(resolved.chainInterpretation.value, scenario.conditions.chainInterpretation, scenario.id);

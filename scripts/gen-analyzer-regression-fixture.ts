@@ -16,7 +16,7 @@ import {
   type Geometry,
   type PresetGeometryKind,
 } from '#input/shapes/geometry.ts';
-import { DEFAULT_TRACE_POLICY, generateTrace, type TracePolicy } from '#trace/generate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, type CenterShiftThumb, type SpaceThumb, type TracePolicy } from '#trace/generate.ts';
 import { analyzeStrokeStructure, type AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
@@ -50,7 +50,8 @@ const OUT_PATH = join(process.cwd(), 'test', 'fixtures', 'analyzer-regression.js
 interface ConditionsSnapshot {
   windowSize: number;
   sfbHomeCost: boolean;
-  preferOppositeThumb: boolean;
+  centerShiftThumb: CenterShiftThumb;
+  spaceThumb: SpaceThumb;
   geometryShapeId: string;
   fingerAssignmentId: string;
   chainInterpretation: ChainInterpretation;
@@ -180,7 +181,8 @@ function analysisSummary(a: AggregatedAnalysisResult): AnalysisSummary {
 interface RunOptions {
   windowSize?: number;
   sfbHomeCost?: boolean;
-  preferOppositeThumb?: boolean;
+  centerShiftThumb?: CenterShiftThumb;
+  spaceThumb?: SpaceThumb;
   shapeId?: PresetGeometryKind;
   fingerAssignment?: FingerAssignment;
   chainInterpretation?: ChainInterpretation;
@@ -218,7 +220,8 @@ function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts:
     ...DEFAULT_TRACE_POLICY,
     windowSize: opts.windowSize ?? DEFAULT_TRACE_POLICY.windowSize,
     sfbHomeCost: opts.sfbHomeCost ?? DEFAULT_TRACE_POLICY.sfbHomeCost,
-    preferOppositeThumb: opts.preferOppositeThumb ?? DEFAULT_TRACE_POLICY.preferOppositeThumb ?? false,
+    centerShiftThumb: opts.centerShiftThumb ?? DEFAULT_TRACE_POLICY.centerShiftThumb ?? 'right',
+    spaceThumb: opts.spaceThumb ?? DEFAULT_TRACE_POLICY.spaceThumb ?? 'right',
     triggerRealizationPolicy,
     actionRealizationPolicy,
   };
@@ -232,7 +235,8 @@ function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts:
   const metrics = computeMetrics(trace, geometry, {
     windowSize: options.windowSize,
     sfbHomeCost: options.sfbHomeCost,
-    preferOppositeThumb: options.preferOppositeThumb ?? false,
+    centerShiftThumb: options.centerShiftThumb ?? 'right',
+    spaceThumb: options.spaceThumb ?? 'right',
     chainInterpretation,
     arpeggioInterpretation,
     triggerRealizationPolicy,
@@ -254,7 +258,8 @@ function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts:
     conditions: {
       windowSize: options.windowSize,
       sfbHomeCost: options.sfbHomeCost,
-      preferOppositeThumb: options.preferOppositeThumb ?? false,
+      centerShiftThumb: options.centerShiftThumb ?? 'right',
+      spaceThumb: options.spaceThumb ?? 'right',
       geometryShapeId: shapeId,
       fingerAssignmentId: fingerAssignment.id,
       chainInterpretation,
@@ -320,8 +325,8 @@ function generate(): Fixture {
   );
   cases.push(
     runCase('ja', naginata, 'modern', {
-      preferOppositeThumb: true,
-      note: 'preferOppositeThumb=true（親指シフトを出力キーと反対側の親指へ振り替えるSandS分岐。naginataは交代打鍵を使うので効果が出る）',
+      centerShiftThumb: 'opposite',
+      note: 'centerShiftThumb=opposite（センターシフトを出力キーと反対側の親指で押す分岐。naginataは交代打鍵を使うので効果が出る）',
     }),
   );
   cases.push(

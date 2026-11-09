@@ -127,7 +127,7 @@ test('overrideWinsNotices: 下のレベルが勝つ行にだけ、配列を問�
   const rows = [
     row('windowSize', { kind: 'layout', layoutId: 'oonishi' }, '上書き: 配列「大西配列」'),
     row('sfbHomeCost', { kind: 'global' }, '上書き: 全体'),
-    row('preferOppositeThumb', { kind: 'default' }, '既定値'),
+    row('centerShiftThumb', { kind: 'default' }, '既定値'),
   ];
   const names = { shapes: new Map(), layouts: new Map([['oonishi', { name: '大西配列' }]]) };
   const notices = overrideWinsNotices(rows, names);
@@ -157,24 +157,24 @@ test('すべて既定値に戻す: 行のある項目の全体の上書きを1�
   for (const command of [
     setGlobalCommand('windowSize', 5, staticDefaultOf('windowSize')),
     setGlobalCommand('sfbHomeCost', false, true),
-    setCascadeOverrideCommand({ kind: 'global' }, 'preferOppositeThumb', true),
+    setCascadeOverrideCommand({ kind: 'global' }, 'centerShiftThumb', 'opposite'),
   ]) {
     const step = applyCommand(assets, history, command);
     assets = step.assets;
     history = step.history;
   }
   const ids = resettableGlobalIds(assets.setupLibrary.overrides);
-  assert.deepEqual(ids, ['windowSize', 'sfbHomeCost', 'preferOppositeThumb']);
+  assert.deepEqual(ids, ['windowSize', 'sfbHomeCost', 'centerShiftThumb']);
   const before = history.undoStack.length;
   const reset = applyCommand(assets, history, resetAllCommand(ids));
   assert.equal(reset.history.undoStack.length, before + 1);
   assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'windowSize'), undefined);
   assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'sfbHomeCost'), undefined);
-  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'preferOppositeThumb'), undefined);
+  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'centerShiftThumb'), undefined);
   const undone = undo(reset.assets, reset.history);
   assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'windowSize'), 5);
   assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'sfbHomeCost'), false);
-  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'preferOppositeThumb'), true);
+  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'centerShiftThumb'), 'opposite');
 });
 
 test('既定の物理配列: 全体のレベルへ書き、既定の物理配列と同じ値を書くと上書きを消す。元に戻すが効く', () => {

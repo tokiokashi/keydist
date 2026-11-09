@@ -49,7 +49,8 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   const directMetrics = computeMetrics(traceResult.trace, resolution.input.geometry, {
     windowSize: resolution.input.tracePolicy.windowSize,
     sfbHomeCost: resolution.input.tracePolicy.sfbHomeCost,
-    preferOppositeThumb: resolution.input.tracePolicy.preferOppositeThumb ?? false,
+    centerShiftThumb: resolution.input.tracePolicy.centerShiftThumb ?? 'right',
+    spaceThumb: resolution.input.tracePolicy.spaceThumb ?? 'right',
     chainInterpretation: resolution.input.chainInterpretation,
     arpeggioInterpretation: resolution.input.arpeggioInterpretation,
     triggerRealizationPolicy: resolution.input.tracePolicy.triggerRealizationPolicy!,

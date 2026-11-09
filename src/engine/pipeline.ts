@@ -69,7 +69,8 @@ export function interpretEngineTrace(traceResult: EngineTraceResult, input: Reso
     {
       windowSize: input.tracePolicy.windowSize,
       sfbHomeCost: input.tracePolicy.sfbHomeCost,
-      preferOppositeThumb: input.tracePolicy.preferOppositeThumb ?? false,
+      centerShiftThumb: input.tracePolicy.centerShiftThumb ?? 'right',
+      spaceThumb: input.tracePolicy.spaceThumb ?? 'right',
       chainInterpretation: input.chainInterpretation,
       arpeggioInterpretation: input.arpeggioInterpretation,
       triggerRealizationPolicy: input.tracePolicy.triggerRealizationPolicy!,

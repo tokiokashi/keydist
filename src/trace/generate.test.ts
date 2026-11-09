@@ -290,8 +290,8 @@ test('prefix配列のシフト単独ステップでも後続出力を見て反�
 
   const fixedLeft = generateTrace('左', prefix, geometry, opts());
   const fixedRight = generateTrace('右', prefix, geometry, opts());
-  const oppositeLeft = generateTrace('左', prefix, geometry, opts({ preferOppositeThumb: true }));
-  const oppositeRight = generateTrace('右', prefix, geometry, opts({ preferOppositeThumb: true }));
+  const oppositeLeft = generateTrace('左', prefix, geometry, opts({ centerShiftThumb: 'opposite' }));
+  const oppositeRight = generateTrace('右', prefix, geometry, opts({ centerShiftThumb: 'opposite' }));
 
   assert.equal(fixedLeft.strokes.length, 2);
   assert.equal(fixedRight.strokes.length, 2);
@@ -309,7 +309,7 @@ test('prefix配列のシフト単独ステップでも後続出力を見て反�
 
 test('新JIS prefixでも振り替え後の親指がtrigger semanticsへ伝播する', () => {
   const shinJis = LAYOUT_BY_ID.get('shin-jis-prefix')!;
-  const trace = generateTrace('お', shinJis, geometry, opts({ preferOppositeThumb: true }));
+  const trace = generateTrace('お', shinJis, geometry, opts({ centerShiftThumb: 'opposite' }));
 
   assert.equal(trace.strokes.length, 2);
   assert.equal(trace.strokes[0].presses[0].keys[0].id, 'thumb-l');
@@ -331,8 +331,8 @@ test('suffix配列も合法alternativeから反対側親指pathを選択する',
     ['thumb-r', 'thumb-l'],
   );
 
-  const left = generateTrace('左', suffix, geometry, opts({ preferOppositeThumb: true }));
-  const right = generateTrace('右', suffix, geometry, opts({ preferOppositeThumb: true }));
+  const left = generateTrace('左', suffix, geometry, opts({ centerShiftThumb: 'opposite' }));
+  const right = generateTrace('右', suffix, geometry, opts({ centerShiftThumb: 'opposite' }));
 
   assert.equal(left.strokes.length, 2);
   assert.equal(right.strokes.length, 2);
@@ -343,7 +343,7 @@ test('suffix配列も合法alternativeから反対側親指pathを選択する',
 test('薙刀式のシフトは設定時に出力キーと反対側の親指へ振り替える', () => {
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
   const fixed = generateTrace('おせ', naginata, geometry, opts());
-  const opposite = generateTrace('おせ', naginata, geometry, opts({ preferOppositeThumb: true }));
+  const opposite = generateTrace('おせ', naginata, geometry, opts({ centerShiftThumb: 'opposite' }));
 
   assert.deepEqual(
     fixed.strokes[0].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id),
@@ -365,9 +365,45 @@ test('薙刀式のシフトは設定時に出力キーと反対側の親指へ�
   assert.deepEqual(opposite.strokes[1].triggerKeys, ['thumb-r']);
 });
 
+test('薙刀式のシフトは左親指を選ぶと出力キーの手に関わらず左親指で押す', () => {
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const trace = generateTrace('おせ', naginata, geometry, opts({ centerShiftThumb: 'left' }));
+
+  assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l']);
+  assert.deepEqual(trace.strokes[1].triggerKeys, ['thumb-l']);
+});
+
+test('空白の親指: 左を選ぶと空白の単打だけを左親指で押し、左親指キーを使う配列は変えない', () => {
+  const qwerty = LAYOUT_BY_ID.get('qwerty')!;
+  const right = generateTrace('a b', qwerty, geometry, opts());
+  const left = generateTrace('a b', qwerty, geometry, opts({ spaceThumb: 'left' }));
+
+  assert.deepEqual(
+    right.strokes[1].presses.map((press) => press.keys[0].id),
+    ['thumb-r'],
+  );
+  assert.deepEqual(
+    left.strokes[1].presses.map((press) => press.keys[0].id),
+    ['thumb-l'],
+  );
+  assert.equal(left.strokes[1].presses[0].finger, 'LT');
+  assert.deepEqual(
+    left.strokes[0].presses.map((press) => press.keys[0].id),
+    ['a'],
+  );
+
+  // 左親指キーをシフトに使う配列では、空白の親指は数値に入らない
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const keysOf = (trace: ReturnType<typeof generateTrace>) => trace.strokes.map((stroke) => stroke.presses.map((press) => press.keys[0].id));
+  assert.deepEqual(
+    keysOf(generateTrace('おせ', naginata, geometry, opts({ spaceThumb: 'left' }))),
+    keysOf(generateTrace('おせ', naginata, geometry, opts())),
+  );
+});
+
 test('薙刀式で同じ側のシフトが連続すると親指が残った扱いになる', () => {
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
-  const trace = generateTrace('おお', naginata, geometry, opts({ preferOppositeThumb: true }));
+  const trace = generateTrace('おお', naginata, geometry, opts({ centerShiftThumb: 'opposite' }));
   const thumbs = trace.strokes.map((stroke) => stroke.presses.find((press) => press.finger === 'LT'));
 
   assert.equal(thumbs[0]?.keys[0].id, 'thumb-l');
@@ -650,7 +686,7 @@ test('classificationはselected canonical alternativeからStrokeまで伝播す
   assert.deepEqual(trace.strokes[0].classifications, ['composition', 'vocabulary-extension']);
 });
 
-test('preferOppositeThumbのpath同一性はFace presentation provenanceに依存しない', () => {
+test('centerShiftThumbのpath同一性はFace presentation provenanceに依存しない', () => {
   const base = withThumbShiftAlternatives(
     fromFaces('thumb-presentation-provenance', 'thumb-presentation-provenance', [
       {
@@ -692,11 +728,11 @@ test('preferOppositeThumbのpath同一性はFace presentation provenanceに依�
   canonicalInputs.set('x', [alternatives[0], provenanceOnlyDifferent]);
   const layout = { ...base, canonicalInputs };
 
-  const trace = generateTrace('x', layout, geometry, opts({ preferOppositeThumb: true }));
+  const trace = generateTrace('x', layout, geometry, opts({ centerShiftThumb: 'opposite' }));
   assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l'], 'presentation provenance差だけで合法なopposite-thumb variantを除外しない');
 });
 
-test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない', () => {
+test('centerShiftThumbはnon-thumb別方式alternativeへ切り替えない', () => {
   const layout = fromFaces('thumb-policy-scope', 'thumb-policy-scope', [
     {
       ...faceFromEntries(['thumb-l'], 'simultaneous', { q: 'x' }),
@@ -711,7 +747,7 @@ test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない',
   layout.thumbShiftKey = 'thumb-l';
   layout.thumbShiftKeys = ['thumb-l', 'thumb-r'];
 
-  const trace = generateTrace('x', layout, geometry, opts({ preferOppositeThumb: true }));
+  const trace = generateTrace('x', layout, geometry, opts({ centerShiftThumb: 'opposite' }));
   assert.deepEqual(trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(), ['q', 'thumb-l']);
 });
 

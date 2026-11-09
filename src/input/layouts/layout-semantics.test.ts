@@ -155,7 +155,7 @@ test('新JISはFaceMode / TriggerPersistence / TriggerOrderを独立して持つ
 
 test('新JIS prefixの親指remap後もsemantic keyが一致する', () => {
   const layout = LAYOUT_BY_ID.get('shin-jis-prefix')!;
-  const trace = generateTrace('お', layout, geometry, opts({ preferOppositeThumb: true }));
+  const trace = generateTrace('お', layout, geometry, opts({ centerShiftThumb: 'opposite' }));
 
   assert.equal(trace.strokes[0].presses[0].keys[0].id, 'thumb-l');
   assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l']);

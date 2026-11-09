@@ -43,7 +43,7 @@ import {
   type ActionCountMode,
   type GlobalEditableId,
 } from './condition-edit.ts';
-import { ACTION_COUNT_TEXT, conditionDiagnosticText, conditionItemLabel, type ConditionSummaryRow } from './condition-summary.ts';
+import { ACTION_COUNT_TEXT, conditionDiagnosticText, conditionItemLabel, THUMB_TEXT, type ConditionSummaryRow } from './condition-summary.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import './condition-editor.css';
@@ -131,6 +131,17 @@ const SCOPE_TEXT: Readonly<Record<EditScope, string>> = {
   layout: 'この配列',
   setup: 'このSetup',
 };
+
+const CENTER_SHIFT_THUMB_CHOICES = [
+  { value: 'right', label: THUMB_TEXT.right },
+  { value: 'left', label: THUMB_TEXT.left },
+  { value: 'opposite', label: THUMB_TEXT.opposite },
+] as const;
+
+const SPACE_THUMB_CHOICES = [
+  { value: 'right', label: THUMB_TEXT.right },
+  { value: 'left', label: THUMB_TEXT.left },
+] as const;
 
 const ON_OFF = [
   { value: 'on', label: 'ON' },
@@ -231,7 +242,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     return scoped(id, globalOverrideOf(overrides, id) ?? defaultValue, defaultValue);
   }
 
-  const boolBinding = (id: 'sfbHomeCost' | 'preferOppositeThumb' | 'keepSymbols'): OptionBinding<'on' | 'off'> => {
+  const boolBinding = (id: 'sfbHomeCost' | 'keepSymbols'): OptionBinding<'on' | 'off'> => {
     const inner = bind(id);
     return {
       value: inner.value ? 'on' : 'off',
@@ -445,8 +456,11 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
           {row('sfbHomeCost', (badge) => (
             <SegmentedOptionField label="同指連続のホーム復帰距離" binding={boolBinding('sfbHomeCost')} choices={ON_OFF} badge={badge} />
           ))}
-          {row('preferOppositeThumb', (badge) => (
-            <SegmentedOptionField label="親指シフトの振り替え" binding={boolBinding('preferOppositeThumb')} choices={ON_OFF} badge={badge} />
+          {row('centerShiftThumb', (badge) => (
+            <SegmentedOptionField label="センターシフトの親指" binding={bind('centerShiftThumb')} choices={CENTER_SHIFT_THUMB_CHOICES} badge={badge} />
+          ))}
+          {row('spaceThumb', (badge) => (
+            <SegmentedOptionField label="空白の親指" binding={bind('spaceThumb')} choices={SPACE_THUMB_CHOICES} badge={badge} />
           ))}
         </section>
 

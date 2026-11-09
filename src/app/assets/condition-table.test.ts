@@ -106,7 +106,7 @@ test('Workspaceの適用範囲は、そのWorkspaceの条件を差し込み、�
 });
 
 test('全体とWorkspaceの適用範囲の行は、対象に依る注記（効かない・診断）を持たない', () => {
-  const result = rowsOf(GLOBAL, { global: { defaultShapeId: 'shape-gone', preferOppositeThumb: true } });
+  const result = rowsOf(GLOBAL, { global: { defaultShapeId: 'shape-gone', centerShiftThumb: 'opposite' } });
   for (const row of result.rows) {
     assert.equal(row.applicable, true, row.id);
     assert.deepEqual(row.diagnostics, [], row.id);
@@ -115,10 +115,10 @@ test('全体とWorkspaceの適用範囲の行は、対象に依る注記（効�
 
 test('配列とSetupの適用範囲は、対象に依る注記を持つ', () => {
   const layout = rowsOf(layoutPlacement('qwerty'), {});
-  assert.equal(rowOf(layout.rows, 'preferOppositeThumb').applicable, false);
+  assert.equal(rowOf(layout.rows, 'centerShiftThumb').applicable, false);
   const setup: Setup = { id: 'setup-a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
   const setupResult = rowsOf({ kind: 'setup', key: 'setup:setup-a', title: 'Setup', setupId: 'setup-a' }, {}, [], [setup]);
-  assert.equal(rowOf(setupResult.rows, 'preferOppositeThumb').applicable, false);
+  assert.equal(rowOf(setupResult.rows, 'centerShiftThumb').applicable, false);
 });
 
 test('Setupの適用範囲は、Setupのレベルの手前までの値を持つ', () => {
