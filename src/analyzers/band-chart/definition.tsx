@@ -86,7 +86,7 @@ interface HoverSegment {
   readonly index: number;
 }
 
-export function BandChartBody({ extracted, order, rowContext, options, copyFigureImage }: BandChartBodyProps) {
+export function BandChartBody({ extracted, order, rowContext, options, onOptionsChange, copyFigureImage }: BandChartBodyProps) {
   const language = useTextLanguage();
   const figureRef = useRef<HTMLElement | null>(null);
   const legendRef = useRef<SVGSVGElement>(null);
@@ -174,6 +174,7 @@ export function BandChartBody({ extracted, order, rowContext, options, copyFigur
           <div className="band-heading">
             <InfoButton name="図の見方" description={BAND_CHART_PANE_META.description} help={help} />
             {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
+            <BandSortControl options={options} onOptionsChange={onOptionsChange} />
           </div>
           <figure ref={measureFigure} className="band-figure" data-band-mode={layout.mode}>
             <div className="band-legend" data-band-legend="">
@@ -424,20 +425,27 @@ export function BandChartSettings({ options, onOptionsChange }: AnalyzerSettings
   );
 }
 
-/**
- * ペインの見出しの行に置く量と並びの選択。項目名は画面に出さず、読み上げ名にだけ使う。解析設定の小窓の「量」「並び」と同じ値を読み書きする。
- * 並びは、選んだ順のままなら札の1つだけで、境目を選んだ時に向きの札が加わる。
- */
+/** ペインの見出しの行に置く量の選択。項目名は画面に出さず、読み上げ名にだけ使う。解析設定の小窓の「量」と同じ値を読み書きする。 */
 export function BandChartHeaderControl({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
-  const boundary = effectiveSortBoundary(options.quantity, options.sortBoundary);
   return (
-    <>
-      <PopoverSelect
-        label="量"
-        value={options.quantity}
-        choices={QUANTITY_CHOICES}
-        onChange={(quantity) => onOptionsChange(withQuantity(options, quantity))}
-      />
+    <PopoverSelect
+      label="量"
+      value={options.quantity}
+      choices={QUANTITY_CHOICES}
+      onChange={(quantity) => onOptionsChange(withQuantity(options, quantity))}
+    />
+  );
+}
+
+/**
+ * 図の上の道具の行に置く並びの選択。見出しの行は狭い幅で札が入りきらないので、ここに置く。
+ * 並びは、境目を選んだ時だけ向きの切り替えが加わる。解析設定の小窓の「並び」「並びの向き」と同じ値を読み書きする。
+ */
+function BandSortControl({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
+  const boundary = effectiveSortBoundary(options.quantity, options.sortBoundary);
+  const directionName = DIRECTION_NAMES[options.sortDirection];
+  return (
+    <div className="band-sort">
       <PopoverSelect
         label="並び"
         value={String(boundary)}
@@ -445,14 +453,17 @@ export function BandChartHeaderControl({ options, onOptionsChange }: AnalyzerSet
         onChange={(next) => onOptionsChange({ ...options, sortBoundary: Number(next) })}
       />
       {boundary === 0 ? null : (
-        <PopoverSelect
-          label="並びの向き"
-          value={options.sortDirection}
-          choices={DIRECTION_CHOICES}
-          onChange={(sortDirection) => onOptionsChange({ ...options, sortDirection })}
-        />
+        <button
+          type="button"
+          className="band-sort-direction"
+          aria-label={directionName}
+          title={directionName}
+          onClick={() => onOptionsChange({ ...options, sortDirection: options.sortDirection === 'desc' ? 'asc' : 'desc' })}
+        >
+          {options.sortDirection === 'desc' ? '↓' : '↑'}
+        </button>
       )}
-    </>
+    </div>
   );
 }
 

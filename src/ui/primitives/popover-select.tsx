@@ -76,6 +76,14 @@ export function PopoverSelect<T extends string>({
     };
   }, [open]);
 
+  // 一覧の幅は開いてから分かるので、右端が画面からはみ出す時は左へ寄せる
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (place === undefined || list === null) return;
+    const overflow = list.getBoundingClientRect().right - (window.innerWidth - EDGE);
+    if (overflow > 0) setPlace({ ...place, left: Math.max(EDGE, place.left - overflow) });
+  }, [place]);
+
   // 位置が決まってから、選んでいる選択肢へフォーカスを移す。
   const focused = useRef(false);
   useEffect(() => {

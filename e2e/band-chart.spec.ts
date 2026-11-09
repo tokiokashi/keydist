@@ -45,18 +45,21 @@ test('配列ごとに帯が出て、行を押すとその配列の4区分の割�
   await feature(page).locator('[data-band-segment="layout:qwerty:1"]').hover();
   await expect(feature(page).locator('[data-band-tooltip]')).toContainText('0.5〜1.5u');
 
-  // 見出しで並びの境目を選ぶと向きの札が加わり、選んだ順へ戻すと消える
-  const sort = page.locator('.pane-frame-target-extra').getByRole('button', { name: /^並び: / });
+  // 図の上の道具の行で並びの境目を選ぶと向きの切り替えが加わり、選んだ順へ戻すと消える
+  const sort = feature(page).getByRole('button', { name: /^並び: / });
+  const direction = feature(page).getByRole('button', { name: /^(大きい順|小さい順)$/ });
   await expect(sort).toHaveAccessibleName('並び: 選んだ順');
-  await expect(page.locator('.pane-frame-target-extra').getByRole('button', { name: /^並びの向き: / })).toHaveCount(0);
+  await expect(direction).toHaveCount(0);
   await sort.click();
   await page.getByRole('listbox').getByRole('option').nth(1).click();
   await expect(sort).not.toHaveAccessibleName('並び: 選んだ順');
-  await expect(page.locator('.pane-frame-target-extra').getByRole('button', { name: '並びの向き: 大きい順' })).toBeVisible();
+  await expect(direction).toHaveAccessibleName('大きい順');
+  await direction.click();
+  await expect(direction).toHaveAccessibleName('小さい順');
   await expect(rows).toHaveCount(3);
   await sort.click();
   await page.getByRole('option', { name: '選んだ順' }).click();
-  await expect(page.locator('.pane-frame-target-extra').getByRole('button', { name: /^並びの向き: / })).toHaveCount(0);
+  await expect(direction).toHaveCount(0);
 
   // 見出しで量を切り替えても、帯と量の選択が出続ける
   // 同じラベルが解析設定の小窓にも出るので、ペインの見出しの欄に絞る
