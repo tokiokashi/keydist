@@ -52,7 +52,6 @@ test('配列ごとに帯が出て、行を押すとその配列の4区分の割�
   await expect(feature(page).locator('[data-band-legend-item="3"]')).not.toHaveAttribute('role', 'button');
   await legendItem.click();
   await expect(legendItem).toHaveAttribute('data-sort', 'desc');
-  await expect(legendItem).toHaveAccessibleName(/小さい順にします/);
   const desc = await labels();
   await legendItem.click();
   await expect(legendItem).toHaveAttribute('data-sort', 'asc');

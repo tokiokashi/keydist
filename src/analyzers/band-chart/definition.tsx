@@ -49,11 +49,11 @@ import './band-chart-view.css';
 export type BandChartRowContext = BandRowContext;
 export type BandChartBodyProps = SetBodyProps<BandChartExtracted, BandChartOptions, BandChartRowContext>;
 
-/** 凡例の項目の読み上げ名。今の並べ方と、押した時に進む先を書く。 */
+/** 凡例の項目の読み上げ名。今の状態だけを書く。 */
 function legendSortLabel(label: string, state: 'desc' | 'asc' | undefined): string {
-  if (state === 'desc') return `${label}までの割合の大きい順に並べています。押すと小さい順にします`;
-  if (state === 'asc') return `${label}までの割合の小さい順に並べています。押すと選んだ順に戻します`;
-  return `${label}までの割合の大きい順に並べます`;
+  if (state === 'desc') return `${label}、大きい順で並べ中`;
+  if (state === 'asc') return `${label}、小さい順で並べ中`;
+  return label;
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -191,7 +191,8 @@ export function BandChartBody({ extracted, order, rowContext, options, onOptions
           </div>
           <figure ref={measureFigure} className="band-figure" data-band-mode={layout.mode}>
             <div className="band-legend" data-band-legend="">
-              <svg ref={legendRef} className="band-legend-svg" viewBox={`0 0 ${width} ${legend.height}`} aria-label="区分の凡例" role="img">
+              {/* biome-ignore lint/a11y/useSemanticElements: SVGの図の中の凡例の項目（button）をまとめる役割で、fieldsetには置き換えられない */}
+              <svg ref={legendRef} className="band-legend-svg" viewBox={`0 0 ${width} ${legend.height}`} aria-label="区分の凡例" role="group">
                 {legend.items.map((item) => {
                   const pressable = item.index !== lastLegendIndex;
                   const boundary = item.index + 1;
