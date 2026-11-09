@@ -95,7 +95,8 @@ function definitionNotes(id: BandQuantityId, unit: string): readonly string[] {
 }
 
 /** 凡例の説明。 */
-const LEGEND_NOTE = '凡例は、表示中の配列に出てくる区分だけを並べます。';
+const LEGEND_NOTE =
+  '凡例は、表示中の配列に出てくる区分だけを並べます。並べ替えは、帯の左端からその区分までの割合の合計で行います。右端の区分は、どの配列も100%になるので、並びを決めません。';
 
 /** 帯の中の数の説明。 */
 const SEGMENT_TEXT_NOTE = '帯の中の数は整数に丸めた割合で、区分の幅が狭く入らない時は書きません。';
@@ -144,7 +145,7 @@ export const BAND_CHART_PANE_META = {
     return {
       notes: [
         '全体を100%にした区分の割合を、配列ごとに1本の帯で並べます。帯に出す量は7つあり、標本・分母・区分は量ごとに違います。',
-        '行の順は対象の順で、値で並べ替えません。特定の配列を色や太さで目立たせません。',
+        '行の順は、既定では対象の順です。並べ替えを選んだ時は、左端から選んだ区分までの割合の合計の順になります。順位や優劣は付けず、特定の配列を色や太さで目立たせません。',
       ],
       listLabel: '量',
       items: BAND_QUANTITY_LIST.map((quantity) => ({ name: quantity.name, description: quantityDescription(quantity.id, unit) })),

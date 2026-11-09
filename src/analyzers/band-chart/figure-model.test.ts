@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FIGURE_INSET, INLINE_MIN_WIDTH } from '../figure-text.ts';
-import { bandNoValueMessage } from './quantities.ts';
+import { bandNoValueMessage, effectiveSortBoundary } from './quantities.ts';
 import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
 import {
   BAND_HEIGHT,
@@ -9,6 +9,7 @@ import {
   bandLayout,
   legendBandIndices,
   legendLayout,
+  nextLegendSort,
   percentText,
   segmentGeometries,
   type BandRowContext,
@@ -37,6 +38,60 @@ test('行の順は対象の順で、抽出の行の順には従わない', () =>
     bandChartModel(extracted, ['layout:c', 'layout:b', 'layout:a'], CONTEXT).rows.map((row) => row.label),
     ['C', 'B', 'A'],
   );
+});
+
+test('並べ替えは、左端から境目までの割合の合計で並べ、同じ割合は対象の順のままにする', () => {
+  const extracted: BandChartExtracted = {
+    quantity: 'distance',
+    rows: [okRow('layout:a', [1, 1, 1, 1]), okRow('layout:b', [0, 3, 1, 0]), okRow('layout:c', [2, 0, 0, 2]), okRow('layout:d', [3, 0, 1, 0])],
+    referenceTargetKey: 'layout:a',
+  };
+  const order = ['layout:a', 'layout:b', 'layout:c', 'layout:d'];
+  const labels = (boundary: number, direction: 'desc' | 'asc') =>
+    bandChartModel(extracted, order, CONTEXT, { boundary, direction }).rows.map((row) => row.label);
+  // 境目1: a=0.25 b=0 c=0.5 d=0.75
+  assert.deepEqual(labels(1, 'desc'), ['D', 'C', 'A', 'B']);
+  assert.deepEqual(labels(1, 'asc'), ['B', 'A', 'C', 'D']);
+  // 境目2: a=0.5 b=0.75 c=0.5 d=0.75。同じ割合（aとc、bとd）は対象の順
+  assert.deepEqual(labels(2, 'desc'), ['B', 'D', 'A', 'C']);
+  assert.deepEqual(labels(2, 'asc'), ['A', 'C', 'B', 'D']);
+  // 境目0は並べ替えない
+  assert.deepEqual(labels(0, 'desc'), ['A', 'B', 'C', 'D']);
+});
+
+test('並べ替えは値を出せない行を動かさず、帯を描く行だけを並べる', () => {
+  const extracted: BandChartExtracted = {
+    quantity: 'distance',
+    rows: [{ kind: 'no-value', targetKey: 'layout:a', skippedChars: [] }, okRow('layout:b', [1, 0, 0, 3]), okRow('layout:c', [3, 0, 0, 1])],
+    referenceTargetKey: 'layout:b',
+  };
+  const model = bandChartModel(extracted, ['layout:a', 'layout:b', 'layout:c'], CONTEXT, { boundary: 1, direction: 'desc' });
+  assert.deepEqual(
+    model.rows.map((row) => row.label),
+    ['C', 'B'],
+  );
+  assert.deepEqual(
+    model.excluded.map((row) => row.label),
+    ['A'],
+  );
+});
+
+test('凡例の項目を押すと、同じ項目は 大きい順 → 小さい順 → 選んだ順 と進み、別の項目は大きい順から始まる', () => {
+  const none = { boundary: 0, direction: 'desc' } as const;
+  const first = nextLegendSort(none, 2);
+  assert.deepEqual(first, { boundary: 2, direction: 'desc' });
+  const second = nextLegendSort(first, 2);
+  assert.deepEqual(second, { boundary: 2, direction: 'asc' });
+  assert.deepEqual(nextLegendSort(second, 2), none);
+  // 小さい順の途中で別の項目を押しても、大きい順から始める
+  assert.deepEqual(nextLegendSort(second, 1), { boundary: 1, direction: 'desc' });
+});
+
+test('量に対して範囲外の境目は並べ替えない扱いにする', () => {
+  assert.equal(effectiveSortBoundary('presses', 2), 2);
+  assert.equal(effectiveSortBoundary('presses', 3), 0);
+  assert.equal(effectiveSortBoundary('fingerPresses', 9), 9);
+  assert.equal(effectiveSortBoundary('hand', 0), 0);
 });
 
 test('値を出せない対象は、帯を描かず、計算中・失敗・値なしの行として対象の順に出る', () => {

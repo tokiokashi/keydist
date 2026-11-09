@@ -5,7 +5,8 @@ import { bandNoValueMessage } from './quantities.ts';
 
 /**
  * 帯グラフの表示モデル（画面に依存しない純粋な関数）。
- * 抽出の行を対象の順に並べ、図の座標を決める。順位・並べ替え・特定の配列の強調は持たない。
+ * 抽出の行を対象の順に並べ、図の座標を決める。利用者が境目を選んだ時だけ、左端からその境目までの割合で行を並べ替える（`sortRows`）。
+ * 順位や優劣は付けず、特定の配列の強調も持たない。
  * 座標の単位は画面のpxで、図は測った幅をそのままSVGの座標の幅にする（文字の大きさを幅で変えない）。
  */
 
@@ -38,7 +39,7 @@ export interface BandSkippedNote extends BandRowContext {
 export interface BandChartModel {
   /** 数えた量 */
   readonly quantity: BandQuantityId;
-  /** 帯を描く行。対象の順 */
+  /** 帯を描く行。対象の順。並べ替えを選んだ時は、境目までの割合の順 */
   readonly rows: readonly BandDisplayRow[];
   /** 帯を描けない行。対象の順 */
   readonly excluded: readonly BandExcludedRow[];
@@ -50,9 +51,46 @@ export interface BandChartModel {
   readonly reference: BandRowContext | undefined;
 }
 
+/** 並べ替えの指定。`boundary` は左端から数えた区分の数で、0は並べ替えない（対象の順のまま）。 */
+export interface BandSort {
+  readonly boundary: number;
+  readonly direction: 'desc' | 'asc';
+}
+
+/**
+ * 凡例の項目を押した時の、次の並べ方。`boundary` は押した項目の右端の境目（左端から数えた区分の数）。
+ * 別の項目なら大きい順から始め、同じ項目なら 大きい順 → 小さい順 → 選んだ順（並べ替えない）と進む。
+ */
+export function nextLegendSort(current: BandSort, boundary: number): BandSort {
+  if (current.boundary !== boundary) return { boundary, direction: 'desc' };
+  return current.direction === 'desc' ? { boundary, direction: 'asc' } : { boundary: 0, direction: 'desc' };
+}
+
+/** 割合が同じかを決める丸めの桁。足し算の誤差で同じ割合の行が入れ替わらないようにする。 */
+const SORT_ROUND = 1e9;
+
+/**
+ * 左端から `boundary` 番目の区分までの割合の合計で行を並べる。
+ * 割合が同じ行は対象の順のまま（安定）。割合の出せない行はここに来ない（`excluded` として別に並べ、並べ替えの対象外）。
+ */
+export function sortRows<Row extends { readonly row: BandChartOkRow }>(rows: readonly Row[], sort: BandSort): readonly Row[] {
+  if (sort.boundary <= 0) return rows;
+  const sign = sort.direction === 'desc' ? -1 : 1;
+  const key = (row: Row) => Math.round(row.row.shares.slice(0, sort.boundary).reduce((sum, share) => sum + share, 0) * SORT_ROUND);
+  return rows
+    .map((row, index) => ({ row, index, key: key(row) }))
+    .sort((a, b) => (a.key === b.key ? a.index - b.index : sign * (a.key - b.key)))
+    .map((entry) => entry.row);
+}
+
 export const COMPUTING_MESSAGE = '計算中…';
 
-export function bandChartModel(extracted: BandChartExtracted, order: readonly string[], rowContext: ReadonlyMap<string, BandRowContext>): BandChartModel {
+export function bandChartModel(
+  extracted: BandChartExtracted,
+  order: readonly string[],
+  rowContext: ReadonlyMap<string, BandRowContext>,
+  sort?: BandSort,
+): BandChartModel {
   const byKey = new Map(extracted.rows.map((row) => [row.targetKey, row] as const));
   const rows: BandDisplayRow[] = [];
   const excluded: BandExcludedRow[] = [];
@@ -84,7 +122,7 @@ export function bandChartModel(extracted: BandChartExtracted, order: readonly st
     referenceKey === undefined
       ? undefined
       : { targetKey: referenceKey, label: rowContext.get(referenceKey)?.label ?? '—', fullName: rowContext.get(referenceKey)?.fullName ?? '' };
-  return { quantity: extracted.quantity, rows, excluded, skipped, differentText, reference };
+  return { quantity: extracted.quantity, rows: sort === undefined ? rows : sortRows(rows, sort), excluded, skipped, differentText, reference };
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +278,8 @@ const LEGEND_SWATCH = 12;
 const LEGEND_SWATCH_GAP = 6;
 const LEGEND_ITEM_GAP = 16;
 const LEGEND_ROW_HEIGHT = 20;
+/** 凡例の項目の右に空ける、並べ替えの印（↓↑）の幅 [px]。 */
+export const LEGEND_MARK_WIDTH = 14;
 
 export interface LegendItem {
   readonly index: number;
@@ -248,6 +288,10 @@ export interface LegendItem {
   readonly textX: number;
   /** 項目の中心の縦位置 */
   readonly y: number;
+  /** 項目の左端から右端までの幅。名前の右に並べ替えの印（`LEGEND_MARK_WIDTH`）の分も含む */
+  readonly width: number;
+  /** 並べ替えの印を置く横位置（名前の右） */
+  readonly markX: number;
 }
 
 export interface LegendLayout {
@@ -272,7 +316,8 @@ export function legendLayout(width: number, labels: readonly string[], indices: 
   let line = 0;
   indices.forEach((index) => {
     const label = labels[index]!;
-    const itemWidth = LEGEND_SWATCH + LEGEND_SWATCH_GAP + textWidth(label, FONT_SIZE);
+    const labelWidth = textWidth(label, FONT_SIZE);
+    const itemWidth = LEGEND_SWATCH + LEGEND_SWATCH_GAP + labelWidth + LEGEND_MARK_WIDTH;
     if (x > FIGURE_INSET && x + itemWidth > width - FIGURE_INSET) {
       x = FIGURE_INSET;
       line++;
@@ -283,6 +328,8 @@ export function legendLayout(width: number, labels: readonly string[], indices: 
       swatchX: x,
       textX: x + LEGEND_SWATCH + LEGEND_SWATCH_GAP,
       y: FIGURE_PADDING + line * LEGEND_ROW_HEIGHT + LEGEND_ROW_HEIGHT / 2,
+      width: itemWidth,
+      markX: x + LEGEND_SWATCH + LEGEND_SWATCH_GAP + labelWidth + 3,
     });
     x += itemWidth + LEGEND_ITEM_GAP;
   });

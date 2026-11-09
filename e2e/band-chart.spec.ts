@@ -45,6 +45,21 @@ test('配列ごとに帯が出て、行を押すとその配列の4区分の割�
   await feature(page).locator('[data-band-segment="layout:qwerty:1"]').hover();
   await expect(feature(page).locator('[data-band-tooltip]')).toContainText('0.5〜1.5u');
 
+  // 凡例の項目を押すと、そこまでの割合の大きい順・小さい順に並び、3回目で選んだ順へ戻る。右端の項目は押せない
+  const labels = () => rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-band-row')));
+  const initial = await labels();
+  const legendItem = feature(page).locator('[data-band-legend-item="0"]');
+  await expect(feature(page).locator('[data-band-legend-item="3"]')).not.toHaveAttribute('role', 'button');
+  await legendItem.click();
+  await expect(legendItem).toHaveAttribute('data-sort', 'desc');
+  const desc = await labels();
+  await legendItem.click();
+  await expect(legendItem).toHaveAttribute('data-sort', 'asc');
+  expect(await labels()).toEqual([...desc].reverse());
+  await legendItem.click();
+  await expect(legendItem).not.toHaveAttribute('data-sort', /.+/);
+  expect(await labels()).toEqual(initial);
+
   // 見出しで量を切り替えても、帯と量の選択が出続ける
   // 同じラベルが解析設定の小窓にも出るので、ペインの見出しの欄に絞る
   const quantity = page.locator('.pane-frame-target-extra').getByRole('button', { name: /^量: / });
