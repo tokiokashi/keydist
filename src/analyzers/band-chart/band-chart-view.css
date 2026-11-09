@@ -34,6 +34,18 @@
   min-width: 0;
 }
 
+/*
+ * Workspaceのペインでは、本体の領域が高さを持つ。図はその高さに収める（帯の太さはJSが決める）ので、
+ * 本体の領域を埋める。個別画面では高さを測れる領域が無く、この規則は効かない。
+ * この規則が効いていることをJSが読むための印が`--band-chart-fit`。
+ */
+@container pane-body (min-height: 1px) {
+  .band-chart-feature {
+    --band-chart-fit: 1;
+    height: 100%;
+  }
+}
+
 .band-heading {
   display: flex;
   flex-wrap: wrap;
