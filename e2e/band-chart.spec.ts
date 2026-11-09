@@ -47,12 +47,23 @@ test('配列ごとに帯が出て、行を押すとその配列の4区分の割�
 
   // 見出しで量を切り替えても、帯と量の選択が出続ける
   // 同じラベルが解析設定の小窓にも出るので、ペインの見出しの欄に絞る
-  const quantity = page.locator('.pane-frame-target-extra').getByLabel('量', { exact: true });
-  await quantity.selectOption('row');
+  const quantity = page.locator('.pane-frame-target-extra').getByRole('button', { name: /^量: / });
+  await quantity.click();
+  await page.getByRole('option', { name: '段' }).click();
   await expect(feature(page).locator('[data-band-caption]')).toHaveText('押したキーの段の割合');
   await expect(rows).toHaveCount(3);
-  await expect(quantity).toHaveValue('row');
+  await expect(quantity).toHaveAccessibleName('量: 段');
   await expect(feature(page).locator('[data-band-segment]').first()).toBeVisible();
+
+  // キーボードで開いて選び、閉じたら札へフォーカスが戻る
+  await quantity.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('option', { name: '段' })).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await expect(quantity).toBeFocused();
+  await expect(quantity).not.toHaveAccessibleName('量: 段');
 });
 
 test('URLの量を読み、開き直しても同じ量が出る', { tag: PAGE_TAG }, async ({ page }) => {

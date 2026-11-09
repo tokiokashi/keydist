@@ -332,7 +332,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **計算部は `interpretation/band-quantities.ts`**（画面に依存しない純粋な関数）。ステップを覆うかなの範囲の重なりで打鍵のまとまりに分け、7つの量を一度に数える。打てない文字（`Trace.skippedPositions`）を覆うまとまりは数えない。手は左手・両手順次・両手同時・右手の4区分で、同時かどうかは1つのステップの押下の手で決める。Traceから数えた7つの量は、メンバーに覚えさせて使い回す（量を切り替えても数え直さない）。追加のTraceは依頼しない
 - **量の名前・区分の名前・区分の色は `band-chart/quantities.ts`**（純粋）。抽出は選んだ量の区分ごとの標本の量・割合・分母を行にし、画面はそれを `figure-model.ts` が決めた座標に置く
 - **配線**: 抽出は `analyzers/band-chart/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/band-chart`
-- **解析設定は量の選択だけ**（`options.ts` の `quantity`。抽出に効く）。このAnalyzerだけが読むので、置き場は帯グラフの解析設定にする。量はペインの見出しの選択（`HeaderControl`）でも変えられ、解析設定の欄と同じ値を読み書きする。選んだ量は他のAnalyzerの解析設定と同じ部品（`SelectOptionField`）と保存・URLの経路を使うので、同じWorkspaceに別の量を選んだペインを並べられる。区分の境目は身体・好みで割れず、要望の実例も無いので固定する
+- **解析設定は量の選択だけ**（`options.ts` の `quantity`。抽出に効く）。このAnalyzerだけが読むので、置き場は帯グラフの解析設定にする。量はペインの見出しの選択（`HeaderControl`。対象の欄と同じ見た目の札で、押すと選択肢の一覧が浮かぶ小窓で開く。`ui/primitives/popover-select.tsx`。項目名は画面に出さず読み上げ名にだけ使う）でも変えられ、解析設定の欄と同じ値を読み書きする。選んだ量は他のAnalyzerの解析設定と同じ部品（`SelectOptionField`）と保存・URLの経路を使うので、同じWorkspaceに別の量を選んだペインを並べられる。区分の境目は身体・好みで割れず、要望の実例も無いので固定する
 - **座標は `band-chart/figure-model.ts`**（純粋）。図は測った領域の幅をそのままSVGの座標の幅にし、文字の大きさを幅で変えない。幅が狭い時（`INLINE_MIN_WIDTH`未満）は名前を帯の上の行に置き、名前と帯が重ならないようにする。名前は幅に収まるよう末尾を省き、完全な名前は `title` に出す
 - **凡例は図の上端に残る**（`position: sticky`）。凡例の項目は、表示している配列のどれかで数が0でない区分だけ（`legendBandIndices`。画像のコピーも同じ）。図が領域に収まらずスクロールしても、区分の色が見える。凡例と帯は別のSVGで、画像のコピーでは1枚にまとめる。凡例・図の見方（ⓘ）・キャプション・行を選んだ時の表は、選んだ量の区分と名前で出す
 - **打てない文字は表で出す**。抽出が評価に渡したテキストの文字ごとの回数を行に持ち（`extract.ts` の `skippedCharCounts`）、打てない文字がある配列だけを図の下の表に並べる。見えない文字の記号と説明は `analyzers/visible-text.ts` に置き、文節ごとの統計と共有する

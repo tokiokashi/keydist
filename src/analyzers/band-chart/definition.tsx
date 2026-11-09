@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { PopoverSelect } from '#ui/primitives/popover-select.tsx';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { CopyImageControl } from '../copy-image-control.tsx';
 import { fitLabel, FONT_SIZE, textWidth } from '../figure-text.ts';
@@ -357,15 +358,10 @@ export function BandChartSettings({ options, onOptionsChange }: AnalyzerSettings
   );
 }
 
-/** ペインの見出しの行に置く量の選択。解析設定の小窓の「量」と同じ値を読み書きする。 */
+/** ペインの見出しの行に置く量の選択。項目名は画面に出さず、読み上げ名にだけ使う。解析設定の小窓の「量」と同じ値を読み書きする。 */
 export function BandChartHeaderControl({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
   return (
-    <SelectOptionField
-      compact
-      label="量"
-      binding={bindOption(options, DEFAULT_BAND_CHART_OPTIONS, onOptionsChange, 'quantity')}
-      choices={QUANTITY_CHOICES}
-    />
+    <PopoverSelect label="量" value={options.quantity} choices={QUANTITY_CHOICES} onChange={(quantity) => onOptionsChange({ ...options, quantity })} />
   );
 }
 
