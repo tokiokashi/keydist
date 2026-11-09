@@ -11,6 +11,7 @@ import {
   LAYOUT_BY_ID,
   type Layout,
   withCombos,
+  withComposedOutputs,
   withRomaji,
   withThumbShiftAlternatives,
 } from '#input/layouts/index.ts';
@@ -392,12 +393,12 @@ test('空白の親指: 左を選ぶと空白の単打だけを左親指で押し
     ['a'],
   );
 
-  // 左親指キーをシフトに使う配列では、空白の親指は数値に入らない
-  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
-  const keysOf = (trace: ReturnType<typeof generateTrace>) => trace.strokes.map((stroke) => stroke.presses.map((press) => press.keys[0].id));
+  // 空白を右親指の単打で打っていても、左親指キーを他の入力に使う配列では、空白は右親指のまま
+  const seoto = LAYOUT_BY_ID.get('seoto')!;
+  const seotoLeft = generateTrace(' ', seoto, geometry, opts({ spaceThumb: 'left' }));
   assert.deepEqual(
-    keysOf(generateTrace('おせ', naginata, geometry, opts({ spaceThumb: 'left' }))),
-    keysOf(generateTrace('おせ', naginata, geometry, opts())),
+    seotoLeft.strokes.map((stroke) => stroke.presses.map((press) => press.keys[0].id)),
+    [['thumb-r']],
   );
 });
 
@@ -749,6 +750,27 @@ test('centerShiftThumbはnon-thumb別方式alternativeへ切り替えない', ()
 
   const trace = generateTrace('x', layout, geometry, opts({ centerShiftThumb: 'opposite' }));
   assert.deepEqual(trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(), ['q', 'thumb-l']);
+});
+
+test('逆の親指: 左右の手の出力が同数で親指が決まらない時は、既定の親指が左でも右親指で押す', () => {
+  // 「y」は左手のqと右手のjを、同じ親指シフトで1つずつ打つ。左右の親指の候補は、逆の親指の数え方で同点になる
+  const composed = withComposedOutputs(
+    fromFaces('thumb-both-hands', 'thumb-both-hands', [
+      {
+        ...faceFromEntries(['thumb-l'], 'prefix', { q: 'x', j: 'z' }),
+        inputRole: 'modifier',
+        triggerPersistence: 'single',
+      },
+    ]),
+    { x: 'y' },
+    'z',
+  );
+  const layout = withThumbShiftAlternatives(composed, 'thumb-l', ['thumb-l', 'thumb-r']);
+  const trace = generateTrace('y', layout, geometry, opts({ centerShiftThumb: 'opposite' }));
+  assert.deepEqual(
+    trace.strokes.flatMap((stroke) => stroke.triggerKeys ?? []),
+    ['thumb-r', 'thumb-r'],
+  );
 });
 
 test('same-output direct alternativeはcomboのyouonOnlyに巻き込まれない', () => {
