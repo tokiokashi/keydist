@@ -187,6 +187,20 @@ export function unselectedVisibleTargets(groups: readonly TargetChoiceGroup[], s
 }
 
 /**
+ * 「表示中を全部外す」で外す対象のキー。絞り込んだ後の一覧（`groups`）に出ている候補のうち、選んでいるもの。
+ * 一覧に出ていない選択中の対象（絞り込みで隠れた対象・候補に無い対象）は含めない。
+ */
+export function selectedVisibleTargetKeys(groups: readonly TargetChoiceGroup[], selectedKeys: ReadonlySet<string>): ReadonlySet<string> {
+  const found = new Set<string>();
+  for (const group of groups) {
+    for (const choice of group.choices) {
+      if (selectedKeys.has(choice.key)) found.add(choice.key);
+    }
+  }
+  return found;
+}
+
+/**
  * 見出しに出す対象の名前。全部が入るなら読点でつなぎ、入らなければ先頭と「他N件」に畳む
  * （docs/architecture.md「対象の選択」）。入るかどうかは画面の実寸で決めるので、呼び出し側が渡す。
  */
