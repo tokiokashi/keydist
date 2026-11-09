@@ -73,6 +73,13 @@ h2.pane-frame-title {
   min-width: 0;
 }
 
+.pane-frame-target-extra {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .pane-frame-target select {
   min-width: 0;
   max-width: 100%;

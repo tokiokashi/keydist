@@ -144,6 +144,33 @@
   background: var(--surface-muted);
 }
 
+/* ペインの見出しの行に置く形。選択の見た目は.option-field-input selectと同じにする。 */
+.option-field-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.option-field-compact select {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+}
+
+.option-field-compact select option {
+  background-color: var(--surface-subtle);
+  color: var(--text);
+}
+
 .option-field-input select,
 .option-field-input input[type="range"] {
   width: 100%;

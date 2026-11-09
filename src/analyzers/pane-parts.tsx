@@ -304,4 +304,9 @@ export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
    * 求めている間だけ、ホストが分割器を読み込み、区切りを入力へ載せる（求めない設定では分割器に触れない）。
    */
   readonly usesSegmentation?: (options: Options) => boolean;
+  /**
+   * ペインの見出しの行に、対象の欄の隣へ足す部品。解析設定のうち、小窓を開かずに変えたい項目だけを置く。
+   * 値の持ち主は解析設定のままで、`Settings` と同じ値と通知を受け取る。持たないAnalyzerは何も足さない。
+   */
+  readonly HeaderControl?: ComponentType<AnalyzerSettingsProps<Options>>;
 }

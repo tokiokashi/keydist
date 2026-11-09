@@ -346,16 +346,26 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
   );
 }
 
+const QUANTITY_CHOICES = BAND_QUANTITY_LIST.map((quantity) => ({ value: quantity.id, label: quantity.name }));
+
 /** 帯に出す量の選択。量ごとの標本と区分の違いは、図の見方（ⓘ）に出す。 */
 export function BandChartSettings({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
   return (
     <div className="option-groups">
-      <SelectOptionField
-        label="量"
-        binding={bindOption(options, DEFAULT_BAND_CHART_OPTIONS, onOptionsChange, 'quantity')}
-        choices={BAND_QUANTITY_LIST.map((quantity) => ({ value: quantity.id, label: quantity.name }))}
-      />
+      <SelectOptionField label="量" binding={bindOption(options, DEFAULT_BAND_CHART_OPTIONS, onOptionsChange, 'quantity')} choices={QUANTITY_CHOICES} />
     </div>
+  );
+}
+
+/** ペインの見出しの行に置く量の選択。解析設定の小窓の「量」と同じ値を読み書きする。 */
+export function BandChartHeaderControl({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
+  return (
+    <SelectOptionField
+      compact
+      label="量"
+      binding={bindOption(options, DEFAULT_BAND_CHART_OPTIONS, onOptionsChange, 'quantity')}
+      choices={QUANTITY_CHOICES}
+    />
   );
 }
 
@@ -365,6 +375,7 @@ export const bandChartAnalyzer = {
   ...BAND_CHART_PANE_META,
   Body: BandChartBody,
   Settings: BandChartSettings,
+  HeaderControl: BandChartHeaderControl,
   defaultOptions: DEFAULT_BAND_CHART_OPTIONS,
   urlOptions: bandChartOptions,
   rowContext: ({ targetKey, label, fullName }) => ({ targetKey, label, fullName }),

@@ -130,35 +130,53 @@ export function SelectOptionField<T extends string>({
   choices,
   hint,
   badge,
+  compact = false,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<T>;
   readonly choices: readonly OptionChoice<T>[];
   readonly hint?: ReactNode;
   readonly badge?: ReactNode;
+  /** ペインの見出しの行のような狭い所に置く形。項目名と選択を横に並べ、既定値へ戻す操作と補足を出さない。 */
+  readonly compact?: boolean;
 }) {
   const { plain, groups } = groupChoices(choices);
-  return (
-    <OptionField label={label} binding={binding} hint={hint} badge={badge}>
-      {(id) => (
-        <select id={id} value={binding.value} onChange={(event) => binding.onChange(event.currentTarget.value as T)}>
-          {plain.map((choice) => (
+  const renderSelect = (id: string) => (
+    <select id={id} value={binding.value} onChange={(event) => binding.onChange(event.currentTarget.value as T)}>
+      {plain.map((choice) => (
+        <option key={choice.value} value={choice.value}>
+          {choice.label}
+        </option>
+      ))}
+      {groups.map(([group, members]) => (
+        <optgroup key={group} label={group}>
+          {members.map((choice) => (
             <option key={choice.value} value={choice.value}>
               {choice.label}
             </option>
           ))}
-          {groups.map(([group, members]) => (
-            <optgroup key={group} label={group}>
-              {members.map((choice) => (
-                <option key={choice.value} value={choice.value}>
-                  {choice.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      )}
+        </optgroup>
+      ))}
+    </select>
+  );
+  return compact ? (
+    <CompactSelect label={label} render={renderSelect} />
+  ) : (
+    <OptionField label={label} binding={binding} hint={hint} badge={badge}>
+      {renderSelect}
     </OptionField>
+  );
+}
+
+function CompactSelect({ label, render }: { readonly label: string; readonly render: (inputId: string) => ReactNode }) {
+  const inputId = useId();
+  return (
+    <div className="option-field-compact">
+      <label className="option-field-label" htmlFor={inputId}>
+        {label}
+      </label>
+      {render(inputId)}
+    </div>
   );
 }
 

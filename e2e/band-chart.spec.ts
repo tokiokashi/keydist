@@ -1,5 +1,4 @@
 import { expect, PAGE_TAG, test } from './fixtures.ts';
-import { openSettings } from './pane-helper.ts';
 import { useShortText } from './short-text-helper.ts';
 
 /**
@@ -46,10 +45,13 @@ test('配列ごとに帯が出て、行を押すとその配列の4区分の割�
   await feature(page).locator('[data-band-segment="layout:qwerty:1"]').hover();
   await expect(feature(page).locator('[data-band-tooltip]')).toContainText('0.5〜1.5u');
 
-  // 量を切り替えても帯が出続ける
-  const settings = await openSettings(page);
-  await settings.getByLabel('量', { exact: true }).selectOption('hand');
+  // 見出しで量を切り替えても、帯と量の選択が出続ける
+  // 同じラベルが解析設定の小窓にも出るので、ペインの見出しの欄に絞る
+  const quantity = page.locator('.pane-frame-target-extra').getByLabel('量', { exact: true });
+  await quantity.selectOption('row');
+  await expect(feature(page).locator('[data-band-caption]')).toHaveText('押したキーの段の割合');
   await expect(rows).toHaveCount(3);
+  await expect(quantity).toHaveValue('row');
   await expect(feature(page).locator('[data-band-segment]').first()).toBeVisible();
 });
 
