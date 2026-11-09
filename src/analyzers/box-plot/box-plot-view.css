@@ -20,6 +20,27 @@
   gap: 0.3rem 1rem;
 }
 
+/* 選んだ配列を外すボタン。押せることは枠・カーソル・フォーカスの枠で示す */
+.box-plot-clear {
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.box-plot-clear:hover {
+  border-color: var(--focus);
+}
+
+.box-plot-clear:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
 /* 図とキャプションを包むブロックは、図の幅とキャプションを1行で置いた幅の大きい方。ペインより広い時だけ折り返す */
 .box-plot-figure {
   min-width: 0;
@@ -76,7 +97,7 @@
 
 .box-plot-column {
   outline: none;
-  cursor: default;
+  cursor: pointer;
 }
 
 /* 名前は箱の下に縦書きで置く。かな・漢字は1字ずつ立て、英字は右へ90度倒す（字の位置は本体が決める） */
