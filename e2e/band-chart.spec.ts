@@ -27,14 +27,23 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('配列ごとに帯が出て、行を押すとその配列の4区分の割合が出る', { tag: PAGE_TAG }, async ({ page }) => {
+test('配列ごとに帯が出て、行を押して選んだ配列だけの図が下に出て、その図の行を押すと4区分の割合が出る', { tag: PAGE_TAG }, async ({ page }) => {
   await page.goto('/analyzer/band-chart');
   const rows = feature(page).locator('[data-band-row]');
   await expect(rows).toHaveCount(3, { timeout: 15_000 });
   await expect(feature(page).locator('[data-band-legend-item]')).toHaveCount(4);
+  await expect(feature(page).locator('[data-band-focus-row]')).toHaveCount(0);
   await expect(feature(page).locator('[data-band-detail]')).toHaveCount(0);
 
-  const jis = feature(page).locator('[data-band-row="layout:jis-kana"]');
+  // 全体の図の行を押すと、選んだ配列だけの図が出る。全体の図の行を押しても表は出ない
+  const row = (key: string) => feature(page).locator(`[data-band-row="${key}"]`);
+  await row('layout:qwerty').click();
+  await row('layout:jis-kana').click();
+  await expect(feature(page).locator('[data-band-focus-row]')).toHaveCount(2);
+  await expect(feature(page).locator('[data-band-detail]')).toHaveCount(0);
+
+  // 選んだ配列の図の行を押すと、その配列の4区分の割合が出る
+  const jis = feature(page).locator('[data-band-focus-row="layout:jis-kana"]');
   await jis.focus();
   await page.keyboard.press('Enter');
   const detail = feature(page).locator('[data-band-detail="layout:jis-kana"]');
@@ -59,6 +68,26 @@ test('配列ごとに帯が出て、行を押すとその配列の4区分の割�
   await legendItem.click();
   await expect(legendItem).not.toHaveAttribute('data-sort', /.+/);
   expect(await labels()).toEqual(initial);
+
+  // 並べ替えは選んだ配列の図にも同じ並びで当たる
+  const focusLabels = () =>
+    feature(page)
+      .locator('[data-band-focus-row]')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-band-focus-row')));
+  await legendItem.click();
+  await expect(legendItem).toHaveAttribute('data-sort', 'desc');
+  const picked = new Set(['layout:qwerty', 'layout:jis-kana']);
+  expect(await focusLabels()).toEqual((await labels()).filter((key) => key !== null && picked.has(key)));
+  await legendItem.click();
+  await legendItem.click();
+  await expect(legendItem).not.toHaveAttribute('data-sort', /.+/);
+
+  // 全体の図で外すと、選んだ配列の図からも表からも消える。まとめて外すと図が消える
+  await row('layout:jis-kana').click();
+  await expect(feature(page).locator('[data-band-focus-row]')).toHaveCount(1);
+  await expect(feature(page).locator('[data-band-detail]')).toHaveCount(0);
+  await feature(page).getByRole('button', { name: '選んだ配列を外す' }).click();
+  await expect(feature(page).locator('[data-band-focus-row]')).toHaveCount(0);
 
   // 見出しで量を切り替えても、帯と量の選択が出続ける
   // 同じラベルが解析設定の小窓にも出るので、ペインの見出しの欄に絞る
