@@ -14,6 +14,7 @@ import {
   BAND_TEXT_SIZE,
   bandChartModel,
   bandLayout,
+  legendBandIndices,
   legendLayout,
   percentText,
   segmentGeometries,
@@ -88,7 +89,8 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
   const quantity = BAND_QUANTITIES[model.quantity];
   const { labels, colors } = quantity;
   const layout = useMemo(() => bandLayout(width, model.rows.length), [width, model.rows.length]);
-  const legend = useMemo(() => legendLayout(width, labels), [width, labels]);
+  const legendIndices = useMemo(() => legendBandIndices(model.rows, labels.length), [model.rows, labels.length]);
+  const legend = useMemo(() => legendLayout(width, labels, legendIndices), [width, labels, legendIndices]);
   const selected = model.rows.find((row) => row.targetKey === selectedKey);
   const hovered = hover === undefined ? undefined : model.rows.findIndex((row) => row.targetKey === hover.targetKey);
   const caption = bandCaption(model.quantity, language);

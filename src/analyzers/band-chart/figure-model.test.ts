@@ -3,7 +3,16 @@ import { test } from 'node:test';
 import { FIGURE_INSET, INLINE_MIN_WIDTH } from '../figure-text.ts';
 import { bandNoValueMessage } from './quantities.ts';
 import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
-import { BAND_HEIGHT, bandChartModel, bandLayout, percentText, segmentGeometries, type BandRowContext } from './figure-model.ts';
+import {
+  BAND_HEIGHT,
+  bandChartModel,
+  bandLayout,
+  legendBandIndices,
+  legendLayout,
+  percentText,
+  segmentGeometries,
+  type BandRowContext,
+} from './figure-model.ts';
 
 function okRow(targetKey: string, counts: readonly number[], options: Partial<BandChartOkRow> = {}): BandChartOkRow {
   const typed = counts.reduce((sum, count) => sum + count, 0);
@@ -114,4 +123,30 @@ test('狭い幅では名前を帯の上の行に置き、名前と帯が重な�
   assert.equal(layout.bandX + layout.bandWidth, layout.width - FIGURE_INSET);
   for (const row of layout.rows) assert.ok(row.labelY + 9 <= row.bandY);
   for (let i = 1; i < layout.rows.length; i++) assert.ok(layout.rows[i]!.top >= layout.rows[i - 1]!.bandY + BAND_HEIGHT);
+});
+
+test('凡例は、表示している配列のどれにも数が0の区分を出さず、並びと区分の番号は変えない', () => {
+  const extracted: BandChartExtracted = {
+    quantity: 'distance',
+    rows: [
+      okRow('layout:a', [3, 0, 1, 0]),
+      okRow('layout:b', [2, 0, 0, 0]),
+      // 値を出せない行は判定に入れない
+      { kind: 'no-value', targetKey: 'layout:c', skippedChars: [] },
+    ],
+    referenceTargetKey: 'layout:a',
+  };
+  const model = bandChartModel(extracted, ['layout:a', 'layout:b', 'layout:c'], CONTEXT);
+  const indices = legendBandIndices(model.rows, 4);
+  assert.deepEqual(indices, [0, 2]);
+  const legend = legendLayout(600, ['一', '二', '三', '四'], indices);
+  assert.deepEqual(
+    legend.items.map((item) => [item.index, item.label]),
+    [
+      [0, '一'],
+      [2, '三'],
+    ],
+  );
+  // 1つの配列でも数が0でない区分は出る
+  assert.deepEqual(legendBandIndices([model.rows[1]!], 4), [0]);
 });

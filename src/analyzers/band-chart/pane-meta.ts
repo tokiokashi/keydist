@@ -93,6 +93,9 @@ function definitionNotes(id: BandQuantityId, unit: string): readonly string[] {
   }
 }
 
+/** 凡例の説明。 */
+const LEGEND_NOTE = '凡例は、表示中の配列に出てくる区分だけを並べます。';
+
 /** 帯の中の数の説明。 */
 const SEGMENT_TEXT_NOTE = '帯の中の数は整数に丸めた割合で、区分の幅が狭く入らない時は書きません。';
 
@@ -125,7 +128,7 @@ export function bandChartHelp(id: BandQuantityId, language: TextLanguage): BandC
   const quantity = BAND_QUANTITIES[id];
   const skippedNote = `打てない文字を覆う打鍵のまとまりは、${unit}も、そのステップの押下と移動距離も数えません。打てない文字は距離が0で、数えると最も小さい区分の割合が大きく見えるためです。ローマ字入力で一部の英字だけ打てた${unit}も、数えません。打てない文字は、配列ごとに文字と回数を図の下の表に出します。`;
   return {
-    notes: [`量は、${bandCaption(id, language)}です。`, ...definitionNotes(id, unit), skippedNote, colorNote(id)],
+    notes: [`量は、${bandCaption(id, language)}です。`, ...definitionNotes(id, unit), skippedNote, colorNote(id), LEGEND_NOTE],
     listLabel: '区分',
     items: quantity.labels.map((name) => ({ name, description: bandDescription(id, name, unit) })),
   };

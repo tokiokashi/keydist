@@ -198,12 +198,21 @@ export interface LegendLayout {
   readonly items: readonly LegendItem[];
 }
 
-/** 凡例の項目（区分の名前）を左から並べ、幅に収まらなければ次の行へ折り返す。 */
-export function legendLayout(width: number, labels: readonly string[]): LegendLayout {
+/**
+ * 凡例に出す区分の番号。表示している配列のどれかで数が0でない区分だけを、区分の順に返す。
+ * 値を出せない行の配列は帯が無いので、判定に入れない（`rows` は帯を描く行だけ）。
+ */
+export function legendBandIndices(rows: readonly BandDisplayRow[], bandCount: number): readonly number[] {
+  return Array.from({ length: bandCount }, (_, index) => index).filter((index) => rows.some((row) => row.row.counts[index]! > 0));
+}
+
+/** 凡例の項目（区分の名前）を左から並べ、幅に収まらなければ次の行へ折り返す。`indices` の区分だけを出し、色は区分の番号で決まる。 */
+export function legendLayout(width: number, labels: readonly string[], indices: readonly number[] = labels.map((_, index) => index)): LegendLayout {
   const items: LegendItem[] = [];
   let x = FIGURE_INSET;
   let line = 0;
-  labels.forEach((label, index) => {
+  indices.forEach((index) => {
+    const label = labels[index]!;
     const itemWidth = LEGEND_SWATCH + LEGEND_SWATCH_GAP + textWidth(label, FONT_SIZE);
     if (x > FIGURE_INSET && x + itemWidth > width - FIGURE_INSET) {
       x = FIGURE_INSET;

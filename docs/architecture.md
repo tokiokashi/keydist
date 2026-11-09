@@ -333,7 +333,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **配線**: 抽出は `analyzers/band-chart/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/band-chart`
 - **解析設定は量の選択だけ**（`options.ts` の `quantity`。抽出に効く）。このAnalyzerだけが読むので、置き場は帯グラフの解析設定にする。選んだ量は他のAnalyzerの解析設定と同じ部品（`SelectOptionField`）と保存・URLの経路を使うので、同じWorkspaceに別の量を選んだペインを並べられる。区分の境目は身体・好みで割れず、要望の実例も無いので固定する
 - **座標は `band-chart/figure-model.ts`**（純粋）。図は測った領域の幅をそのままSVGの座標の幅にし、文字の大きさを幅で変えない。幅が狭い時（`INLINE_MIN_WIDTH`未満）は名前を帯の上の行に置き、名前と帯が重ならないようにする。名前は幅に収まるよう末尾を省き、完全な名前は `title` に出す
-- **凡例は図の上端に残る**（`position: sticky`）。図が領域に収まらずスクロールしても、区分の色が見える。凡例と帯は別のSVGで、画像のコピーでは1枚にまとめる。凡例・図の見方（ⓘ）・キャプション・行を選んだ時の表は、選んだ量の区分と名前で出す
+- **凡例は図の上端に残る**（`position: sticky`）。凡例の項目は、表示している配列のどれかで数が0でない区分だけ（`legendBandIndices`。画像のコピーも同じ）。図が領域に収まらずスクロールしても、区分の色が見える。凡例と帯は別のSVGで、画像のコピーでは1枚にまとめる。凡例・図の見方（ⓘ）・キャプション・行を選んだ時の表は、選んだ量の区分と名前で出す
 - **打てない文字は表で出す**。抽出が評価に渡したテキストの文字ごとの回数を行に持ち（`extract.ts` の `skippedCharCounts`）、打てない文字がある配列だけを図の下の表に並べる。見えない文字の記号と説明は `analyzers/visible-text.ts` に置き、文節ごとの統計と共有する
 - **行の順は対象の順**で、値で並べ替えない。行を押す（Enter・Spaceも）と、その配列の区分の割合と標本の量を図の下に出す。同じ行をもう一度押すと外す
 - **図の画像コピーは、ホストが画像にし、本体はボタンと結果の知らせだけを持つ**（`analyzers/copy-image-control.tsx`。散布図と共有する）
