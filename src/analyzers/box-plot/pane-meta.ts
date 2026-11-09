@@ -14,6 +14,9 @@ const DISTANCE = sharedMetricText('ja').perCharUnits;
 /** 量の名前（図の下のキャプション）。 */
 export const BOX_PLOT_QUANTITY_NAME = `文節ごとの${DISTANCE.label}`;
 
+/** 選んだ配列だけの図のキャプション。 */
+export const BOX_PLOT_FOCUS_CAPTION = `${BOX_PLOT_QUANTITY_NAME}（選んだ配列）`;
+
 /** 縦軸の名前。 */
 export const BOX_PLOT_AXIS_TITLE = `${DISTANCE.label}（${DISTANCE.unit}）`;
 
