@@ -88,7 +88,7 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
   const figureRef = useRef<HTMLDivElement>(null);
   const axisRef = useRef<SVGSVGElement>(null);
   const plotRef = useRef<SVGSVGElement>(null);
-  const measured = useElementWidth(figureRef);
+  const [measured, measureFigure] = useElementWidth(figureRef);
   const width = measured === undefined || measured <= 0 ? FALLBACK_WIDTH : measured;
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
 
@@ -151,7 +151,7 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
             <InfoButton name="図の見方" description={BOX_PLOT_PANE_META.description} help={help} />
             {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
           </div>
-          <div ref={figureRef} className="box-plot-figure-wrap">
+          <div ref={measureFigure} className="box-plot-figure-wrap">
             <figure className="box-plot-figure" style={{ width: blockWidth }}>
               <div className="box-plot-body" style={{ maxWidth: layout.axisWidth + layout.plotWidth }}>
                 {/* 縦軸の列。図が横にスクロールしても残る */}

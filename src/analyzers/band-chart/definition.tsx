@@ -77,10 +77,10 @@ interface HoverSegment {
 
 export function BandChartBody({ extracted, order, rowContext, copyFigureImage }: BandChartBodyProps) {
   const language = useTextLanguage();
-  const figureRef = useRef<HTMLElement>(null);
+  const figureRef = useRef<HTMLElement | null>(null);
   const legendRef = useRef<SVGSVGElement>(null);
   const rowsRef = useRef<SVGSVGElement>(null);
-  const measured = useElementWidth(figureRef);
+  const [measured, measureFigure] = useElementWidth(figureRef);
   const width = measured === undefined || measured <= 0 ? FALLBACK_WIDTH : measured;
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
   const [hover, setHover] = useState<HoverSegment | undefined>(undefined);
@@ -137,7 +137,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
             <InfoButton name="図の見方" description={BAND_CHART_PANE_META.description} help={help} />
             {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
           </div>
-          <figure ref={figureRef} className="band-figure" data-band-mode={layout.mode}>
+          <figure ref={measureFigure} className="band-figure" data-band-mode={layout.mode}>
             <div className="band-legend" data-band-legend="">
               <svg ref={legendRef} className="band-legend-svg" viewBox={`0 0 ${width} ${legend.height}`} aria-label="区分の凡例" role="img">
                 {legend.items.map((item) => (
