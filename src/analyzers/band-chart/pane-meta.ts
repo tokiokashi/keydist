@@ -2,6 +2,7 @@ import type { TextLanguage } from '#input/text/language.ts';
 import type { BandQuantityId } from '#interpretation/band-quantities.ts';
 import { WIDE_RECOMMENDED_WIDTH_REM } from '../recommended-width.ts';
 import { kanaUnitOf } from '../unit-words.ts';
+import { VISIBLE_TEXT_NOTE } from '../visible-text.ts';
 import { BAND_QUANTITIES, BAND_QUANTITY_LIST, bandCaption } from './quantities.ts';
 
 /**
@@ -126,7 +127,7 @@ export interface BandChartHelp {
 export function bandChartHelp(id: BandQuantityId, language: TextLanguage): BandChartHelp {
   const unit = kanaUnitOf(language);
   const quantity = BAND_QUANTITIES[id];
-  const skippedNote = `打てない文字を覆う打鍵のまとまりは、${unit}も、そのステップの押下と移動距離も数えません。打てない文字は距離が0で、数えると最も小さい区分の割合が大きく見えるためです。ローマ字入力で一部の英字だけ打てた${unit}も、数えません。打てない文字は、配列ごとに文字と回数を図の下の表に出します。`;
+  const skippedNote = `打てない文字を覆う打鍵のまとまりは、${unit}も、そのステップの押下と移動距離も数えません。打てない文字は距離が0で、数えると最も小さい区分の割合が大きく見えるためです。ローマ字入力で一部の英字だけ打てた${unit}も、数えません。打てない文字は、配列ごとに文字と回数を図の下の表に出します。${VISIBLE_TEXT_NOTE}`;
   return {
     notes: [`量は、${bandCaption(id, language)}です。`, ...definitionNotes(id, unit), skippedNote, colorNote(id), LEGEND_NOTE],
     listLabel: '区分',

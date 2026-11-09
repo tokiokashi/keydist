@@ -184,7 +184,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   const { ref: frameRef, onScreen } = usePaneOnScreen<HTMLElement>(waitsForScreen);
   const shown = onScreen && chrome.coveredByMaximizedPane !== true;
   const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading && !segmentationLoading && shown);
-  const { Body, Settings, TargetItem } = analyzer;
+  const { Body, Settings, HeaderControl, TargetItem } = analyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
 
@@ -251,6 +251,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
             }
           />
         }
+        {...(HeaderControl === undefined ? {} : { targetExtra: <HeaderControl options={options} onOptionsChange={onOptionsChange} /> })}
         settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
         onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
         conditionRows={conditionSummary.rows}

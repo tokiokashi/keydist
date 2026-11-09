@@ -59,6 +59,8 @@ export interface PaneFrameProps {
   readonly stickyHeader?: boolean | undefined;
   /** 見出しの対象の欄（単一対象の選択、集合の要約とその選択）。 */
   readonly target: ReactNode;
+  /** 見出しの対象の欄の隣に足す部品（Analyzerの`HeaderControl`をホストが値と結んだもの）。 */
+  readonly targetExtra?: ReactNode;
   /** 対象が連動の組に従っているか固定かの表示と選択。Workspaceのペインだけが渡す。 */
   readonly targetBinding?: PaneTargetBindingControl | undefined;
   /** 解析設定が共有に従っているか、このペインだけかの表示と切り替え。小窓の先頭に出す。Workspaceのペインだけが渡す。 */
@@ -173,6 +175,7 @@ export function PaneFrame({
   stickyHeader = false,
   targetName,
   target,
+  targetExtra,
   targetBinding,
   optionsBinding,
   settings,
@@ -301,6 +304,7 @@ export function PaneFrame({
         )}
         <div className="pane-frame-target">
           {target}
+          {targetExtra === undefined ? null : <div className="pane-frame-target-extra">{targetExtra}</div>}
           {targetBinding === undefined ? null : (
             <PaneMenu
               paneName={paneName}

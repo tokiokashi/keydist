@@ -38,7 +38,7 @@ export type BandSample = 'kana' | 'press' | 'distance';
 
 export interface BandQuantity {
   readonly id: BandQuantityId;
-  /** 解析設定の選択肢と、行を押した時の表に出す量の名前 */
+  /** 量の選択肢（ペインの見出しと解析設定）と、行を押した時の表に出す量の名前 */
   readonly name: string;
   readonly sample: BandSample;
   /** 区分の名前。区分の順に左から並べる */
