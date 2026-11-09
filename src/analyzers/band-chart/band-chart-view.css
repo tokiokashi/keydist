@@ -53,6 +53,27 @@
   gap: 0.3rem 1rem;
 }
 
+/* 選んだ配列を外すボタン。押せることは枠・カーソル・フォーカスの枠で示す */
+.band-clear {
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.band-clear:hover {
+  border-color: var(--focus);
+}
+
+.band-clear:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
 .band-figure {
   min-width: 0;
   margin: 0;
@@ -280,7 +301,7 @@
 
 .band-row {
   outline: none;
-  cursor: default;
+  cursor: pointer;
 }
 
 .band-row-label {
