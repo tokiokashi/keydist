@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { PopoverSelect } from '#ui/primitives/popover-select.tsx';
@@ -6,11 +6,11 @@ import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, Se
 import { CopyImageControl } from '../copy-image-control.tsx';
 import { fitLabel, FONT_SIZE, textWidth } from '../figure-text.ts';
 import { useElementWidth } from '../use-element-width.tsx';
+import { useVisibleHeight } from './use-visible-height.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { visibleText } from '../visible-text.ts';
 import { bandChartDefinition, type BandChartExtracted } from './extract.ts';
 import {
-  BAND_HEIGHT,
   BAND_TEXT_SIZE,
   bandChartModel,
   bandLayout,
@@ -77,10 +77,11 @@ interface HoverSegment {
 
 export function BandChartBody({ extracted, order, rowContext, copyFigureImage }: BandChartBodyProps) {
   const language = useTextLanguage();
-  const figureRef = useRef<HTMLElement>(null);
+  const figureRef = useRef<HTMLElement | null>(null);
   const legendRef = useRef<SVGSVGElement>(null);
   const rowsRef = useRef<SVGSVGElement>(null);
-  const measured = useElementWidth(figureRef);
+  const featureRef = useRef<HTMLElement>(null);
+  const [measured, measureFigure] = useElementWidth(figureRef);
   const width = measured === undefined || measured <= 0 ? FALLBACK_WIDTH : measured;
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
   const [hover, setHover] = useState<HoverSegment | undefined>(undefined);
@@ -88,7 +89,12 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
   const model = useMemo(() => bandChartModel(extracted, order, rowContext), [extracted, order, rowContext]);
   const quantity = BAND_QUANTITIES[model.quantity];
   const { labels, colors } = quantity;
-  const layout = useMemo(() => bandLayout(width, model.rows.length), [width, model.rows.length]);
+  const hasRows = model.rows.length > 0;
+  const visibleHeight = useVisibleHeight(featureRef, hasRows);
+  // 図のうち帯の行以外（凡例・キャプション・余白）の高さ。行の高さに依らず、幅と文字で決まる
+  const [chromeHeight, setChromeHeight] = useState<number | undefined>(undefined);
+  const rowsMaxHeight = visibleHeight === undefined || chromeHeight === undefined ? undefined : visibleHeight - chromeHeight;
+  const layout = useMemo(() => bandLayout(width, model.rows.length, rowsMaxHeight), [width, model.rows.length, rowsMaxHeight]);
   const legendIndices = useMemo(() => legendBandIndices(model.rows, labels.length), [model.rows, labels.length]);
   const legend = useMemo(() => legendLayout(width, labels, legendIndices), [width, labels, legendIndices]);
   const selected = model.rows.find((row) => row.targetKey === selectedKey);
@@ -96,6 +102,20 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
   const caption = bandCaption(model.quantity, language);
   const sampleText = bandSampleText(model.quantity, language);
   const help = useMemo(() => bandChartHelp(model.quantity, language), [model.quantity, language]);
+
+  // 帯の行のSVGは幅いっぱいに描くので、図の高さから行のSVGの高さを引くと、行以外の高さになる
+  const legendHeight = legend.height;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 幅・凡例の高さ・キャプション・見出しの行の有無は中で読まないが、行以外の高さが変わる時に測り直すために依存に入れる
+  useLayoutEffect(() => {
+    const figure = figureRef.current;
+    const rows = rowsRef.current;
+    if (figure === null || rows === null) {
+      setChromeHeight(undefined);
+      return;
+    }
+    const next = Math.ceil(figure.getBoundingClientRect().height - rows.getBoundingClientRect().height);
+    setChromeHeight((current) => (current === next ? current : next));
+  }, [width, legendHeight, caption, hasRows]);
 
   // 選んだ配列が対象から外れたら、選ぶのをやめる
   useEffect(() => {
@@ -119,25 +139,27 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
     if (hover === undefined || hovered === undefined || hovered < 0) return undefined;
     const row = model.rows[hovered]!;
     const geometry = layout.rows[hovered]!;
-    const segment = segmentGeometries(row.row.shares, layout.bandX, layout.bandWidth).find((candidate) => candidate.index === hover.index);
+    const segment = segmentGeometries(row.row.shares, layout.bandX, layout.bandWidth, layout.bandHeight).find(
+      (candidate) => candidate.index === hover.index,
+    );
     if (segment === undefined) return undefined;
     const text = `${labels[hover.index]}　${percentText(segment.share, 1)}`;
     const half = (textWidth(text, FONT_SIZE) + 16) / 2;
     const center = Math.min(Math.max(segment.x + segment.width / 2, half), Math.max(half, width - half));
     // 先頭の行は上に余白が無いので帯の下に、それ以外は下の行の割合を隠さないよう帯の上に出す
     const below = hovered === 0;
-    return { text, left: center, top: below ? geometry.bandY + BAND_HEIGHT + 4 : geometry.bandY - 4, below };
+    return { text, left: center, top: below ? geometry.bandY + layout.bandHeight + 4 : geometry.bandY - 4, below };
   })();
 
   return (
-    <section className="band-chart-feature" data-react-feature="band-chart">
+    <section ref={featureRef} className="band-chart-feature" data-react-feature="band-chart">
       {model.rows.length > 0 ? (
         <>
           <div className="band-heading">
             <InfoButton name="図の見方" description={BAND_CHART_PANE_META.description} help={help} />
             {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
           </div>
-          <figure ref={figureRef} className="band-figure" data-band-mode={layout.mode}>
+          <figure ref={measureFigure} className="band-figure" data-band-mode={layout.mode}>
             <div className="band-legend" data-band-legend="">
               <svg ref={legendRef} className="band-legend-svg" viewBox={`0 0 ${width} ${legend.height}`} aria-label="区分の凡例" role="img">
                 {legend.items.map((item) => (
@@ -165,7 +187,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                 {model.rows.map((row, rowIndex) => {
                   const geometry = layout.rows[rowIndex]!;
                   const isSelected = selected?.targetKey === row.targetKey;
-                  const segments = segmentGeometries(row.row.shares, layout.bandX, layout.bandWidth);
+                  const segments = segmentGeometries(row.row.shares, layout.bandX, layout.bandWidth, layout.bandHeight);
                   const fitted = fitLabel(row.label, layout.labelWidth, FONT_SIZE);
                   return (
                     // biome-ignore lint/a11y/useSemanticElements: SVGの<g>はbuttonに置き換えられない。押すと4区分の割合を図の下に出す操作の部品で、役割とキー操作をここで付けている
@@ -181,14 +203,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                       onClick={() => toggle(row.targetKey)}
                       onKeyDown={(event) => onRowKeyDown(event, row.targetKey)}
                     >
-                      <rect
-                        className="band-row-hit"
-                        x={0}
-                        y={geometry.top - 1}
-                        width={width}
-                        height={geometry.bottom - geometry.top - (layout.mode === 'inline' ? 6 : 8)}
-                        rx={4}
-                      />
+                      <rect className="band-row-hit" x={0} y={geometry.top - 1} width={width} height={layout.hitHeight} rx={4} />
                       <text
                         className="band-row-label"
                         x={geometry.labelX}
@@ -210,7 +225,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                             x={segment.x}
                             y={geometry.bandY}
                             width={segment.width}
-                            height={BAND_HEIGHT}
+                            height={layout.bandHeight}
                             onPointerEnter={() => setHover({ targetKey: row.targetKey, index: segment.index })}
                             onPointerLeave={() =>
                               setHover((current) => (current?.targetKey === row.targetKey && current.index === segment.index ? undefined : current))
@@ -222,7 +237,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                               data-band={segment.index}
                               data-band-color={colors[segment.index]}
                               x={segment.x + segment.width / 2}
-                              y={geometry.bandY + BAND_HEIGHT / 2}
+                              y={geometry.bandY + layout.bandHeight / 2}
                               textAnchor="middle"
                               dominantBaseline="central"
                               style={{ fontSize: BAND_TEXT_SIZE }}

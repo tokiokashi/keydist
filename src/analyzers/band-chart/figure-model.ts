@@ -93,13 +93,23 @@ export function bandChartModel(extracted: BandChartExtracted, order: readonly st
 
 /** 帯の中の割合の文字の大きさ [px]。 */
 export const BAND_TEXT_SIZE = 11;
+/** 帯の太さの上限 [px]。行が少ない時はこの太さで描く。 */
 export const BAND_HEIGHT = 24;
+/**
+ * 帯の太さの下限 [px]。行が多くて収まらない時もここまでしか縮めず、これより先は図が下へ伸びる。
+ * 隣の行との間隔の下限（`MIN_ROW_GAP`）と合わせて、名前の文字（12px）が隣の行と重ならない行の高さを残す。
+ */
+export const MIN_BAND_HEIGHT = 10;
+/** 帯の中に割合を書ける最小の太さ [px]。割合の文字の高さに上下の余白を足した値。 */
+const BAND_TEXT_MIN_HEIGHT = BAND_TEXT_SIZE + 4;
 const INLINE_LABEL_MIN = 110;
 const INLINE_LABEL_MAX = 200;
 const INLINE_LABEL_GAP = 12;
-const INLINE_ROW_PITCH = BAND_HEIGHT + 10;
+/** 名前を帯の上に置く行で、名前の行の高さ。帯が細い時は名前の文字（12px）が入る高さまで縮める。 */
 const STACKED_LABEL_HEIGHT = 18;
-const STACKED_ROW_PITCH = STACKED_LABEL_HEIGHT + BAND_HEIGHT + 12;
+const STACKED_LABEL_HEIGHT_MIN = 14;
+/** 行と行の間隔の下限 [px]。 */
+const MIN_ROW_GAP = 4;
 /** 図の上下の余白 [px]。 */
 const FIGURE_PADDING = 2;
 
@@ -122,28 +132,66 @@ export interface BandLayout {
   readonly height: number;
   readonly bandX: number;
   readonly bandWidth: number;
+  /** 帯の太さ */
+  readonly bandHeight: number;
+  /** 行を押せる範囲の高さ。次の行の押せる範囲に重ならない */
+  readonly hitHeight: number;
   /** 名前に使える幅 */
   readonly labelWidth: number;
   readonly rows: readonly BandRowGeometry[];
 }
 
-export function bandLayout(width: number, rowCount: number): BandLayout {
+interface RowMetrics {
+  readonly mode: 'inline' | 'stacked';
+  readonly bandHeight: number;
+  /** 名前を帯の上に置く行の、名前の行の高さ。名前を帯の左に置く時は0 */
+  readonly labelHeight: number;
+  readonly gap: number;
+  readonly pitch: number;
+}
+
+/** 帯の太さから、行の間隔と名前の行の高さを決める。太さが上限の時は、縮める前の値になる（隙間は名前を左に置く時10px、上に置く時12px）。 */
+function rowMetrics(mode: 'inline' | 'stacked', bandHeight: number): RowMetrics {
+  const labelHeight = mode === 'inline' ? 0 : bandHeight >= BAND_HEIGHT - 4 ? STACKED_LABEL_HEIGHT : STACKED_LABEL_HEIGHT_MIN;
+  const gap = Math.max(MIN_ROW_GAP, Math.round((bandHeight * (mode === 'inline' ? 10 : 12)) / BAND_HEIGHT));
+  return { mode, bandHeight, labelHeight, gap, pitch: labelHeight + bandHeight + gap };
+}
+
+function rowsHeight(metrics: RowMetrics, rowCount: number): number {
+  return rowCount === 0 ? 0 : FIGURE_PADDING * 2 + rowCount * metrics.pitch - metrics.gap;
+}
+
+/**
+ * 帯の行の配置。`maxHeight`を渡すと、行の全体がその高さに収まる最も太い帯で描く（上限は`BAND_HEIGHT`）。
+ * 下限（`MIN_BAND_HEIGHT`）まで縮めても収まらない時は、下限の太さで描き、図は`maxHeight`を超えて伸びる。
+ */
+export function bandLayout(width: number, rowCount: number, maxHeight?: number): BandLayout {
   const mode = width >= INLINE_MIN_WIDTH ? 'inline' : 'stacked';
-  const pitch = mode === 'inline' ? INLINE_ROW_PITCH : STACKED_ROW_PITCH;
+  let metrics = rowMetrics(mode, BAND_HEIGHT);
+  if (maxHeight !== undefined) {
+    for (let bandHeight = BAND_HEIGHT; bandHeight >= MIN_BAND_HEIGHT; bandHeight--) {
+      metrics = rowMetrics(mode, bandHeight);
+      if (rowsHeight(metrics, rowCount) <= maxHeight) break;
+    }
+  }
+  const { bandHeight, labelHeight, pitch } = metrics;
   const labelWidth = mode === 'inline' ? Math.min(INLINE_LABEL_MAX, Math.max(INLINE_LABEL_MIN, Math.round(width * 0.3))) : width - FIGURE_INSET * 2;
   const bandX = mode === 'inline' ? FIGURE_INSET + labelWidth + INLINE_LABEL_GAP : FIGURE_INSET;
   const rows = Array.from({ length: rowCount }, (_, index): BandRowGeometry => {
     const top = FIGURE_PADDING + index * pitch;
     return mode === 'inline'
-      ? { labelX: FIGURE_INSET, labelY: top + BAND_HEIGHT / 2, bandY: top, top, bottom: top + pitch }
-      : { labelX: FIGURE_INSET, labelY: top + STACKED_LABEL_HEIGHT / 2, bandY: top + STACKED_LABEL_HEIGHT, top, bottom: top + pitch };
+      ? { labelX: FIGURE_INSET, labelY: top + bandHeight / 2, bandY: top, top, bottom: top + pitch }
+      : { labelX: FIGURE_INSET, labelY: top + labelHeight / 2, bandY: top + labelHeight, top, bottom: top + pitch };
   });
   return {
     mode,
     width,
-    height: rowCount === 0 ? 0 : FIGURE_PADDING * 2 + rowCount * pitch - (mode === 'inline' ? 10 : 12),
+    height: rowsHeight(metrics, rowCount),
     bandX,
     bandWidth: width - bandX - FIGURE_INSET,
+    bandHeight,
+    // 帯と名前の行に上下4pxの余白を足した範囲。隣の行との間隔は4px以上なので、押せる範囲は重ならない
+    hitHeight: labelHeight + bandHeight + MIN_ROW_GAP,
     labelWidth,
     rows,
   };
@@ -154,12 +202,17 @@ export interface SegmentGeometry {
   readonly x: number;
   readonly width: number;
   readonly share: number;
-  /** 帯の中に割合を書くか。区分の幅が文字の入らない狭さの時は書かない */
+  /** 帯の中に割合を書くか。区分の幅か帯の太さが、文字の入らない狭さ・細さの時は書かない */
   readonly showText: boolean;
 }
 
 /** 区分の幅を、境目の位置の累積から求める（端数で隙間や重なりを作らない）。割合が0の区分は含めない。 */
-export function segmentGeometries(shares: readonly number[], bandX: number, bandWidth: number): readonly SegmentGeometry[] {
+export function segmentGeometries(
+  shares: readonly number[],
+  bandX: number,
+  bandWidth: number,
+  bandHeight: number = BAND_HEIGHT,
+): readonly SegmentGeometry[] {
   const segments: SegmentGeometry[] = [];
   let cumulative = 0;
   shares.forEach((share, index) => {
@@ -168,7 +221,13 @@ export function segmentGeometries(shares: readonly number[], bandX: number, band
     const end = index === shares.length - 1 ? bandX + bandWidth : bandX + cumulative * bandWidth;
     const width = end - start;
     if (share <= 0 || width <= 0) return;
-    segments.push({ index, x: start, width, share, showText: width >= textWidth(percentText(share, 0), BAND_TEXT_SIZE) + 8 });
+    segments.push({
+      index,
+      x: start,
+      width,
+      share,
+      showText: bandHeight >= BAND_TEXT_MIN_HEIGHT && width >= textWidth(percentText(share, 0), BAND_TEXT_SIZE) + 8,
+    });
   });
   return segments;
 }

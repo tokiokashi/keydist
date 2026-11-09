@@ -125,6 +125,25 @@ test('狭い幅では名前を帯の上の行に置き、名前と帯が重な�
   for (let i = 1; i < layout.rows.length; i++) assert.ok(layout.rows[i]!.top >= layout.rows[i - 1]!.bandY + BAND_HEIGHT);
 });
 
+test('帯を細くしても、隣の行の名前と帯と押せる範囲が重ならない', () => {
+  for (const width of [INLINE_MIN_WIDTH - 1, INLINE_MIN_WIDTH + 400]) {
+    for (const maxHeight of [0, 200, 400, 10_000]) {
+      const layout = bandLayout(width, 20, maxHeight);
+      for (let i = 0; i < layout.rows.length; i++) {
+        const row = layout.rows[i]!;
+        // 名前の文字は12px
+        if (layout.mode === 'stacked') assert.ok(row.labelY + 6 <= row.bandY);
+        if (i > 0) {
+          const previous = layout.rows[i - 1]!;
+          assert.ok(row.labelY - previous.labelY >= 12);
+          assert.ok(row.top >= previous.bandY + layout.bandHeight);
+          assert.ok(row.top - 1 >= previous.top - 1 + layout.hitHeight);
+        }
+      }
+    }
+  }
+});
+
 test('凡例は、表示している配列のどれにも数が0の区分を出さず、並びと区分の番号は変えない', () => {
   const extracted: BandChartExtracted = {
     quantity: 'distance',
