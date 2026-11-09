@@ -76,6 +76,7 @@ h2.pane-frame-title {
 .pane-frame-target-extra {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   flex: 0 1 auto;
   min-width: 0;
 }

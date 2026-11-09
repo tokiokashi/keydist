@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import type { BandQuantityId } from '#interpretation/band-quantities.ts';
 import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { PopoverSelect } from '#ui/primitives/popover-select.tsx';
@@ -22,15 +23,25 @@ import {
   type BandRowContext,
 } from './figure-model.ts';
 import { BAND_CHART_PANE_META, bandChartHelp } from './pane-meta.ts';
-import { bandChartOptions, DEFAULT_BAND_CHART_OPTIONS, type BandChartOptions } from './options.ts';
-import { BAND_QUANTITIES, BAND_QUANTITY_LIST, bandCaption, bandSampleText, type BandQuantity } from './quantities.ts';
+import { BAND_SORT_DIRECTIONS, bandChartOptions, DEFAULT_BAND_CHART_OPTIONS, type BandChartOptions, type BandSortDirection } from './options.ts';
+import {
+  BAND_QUANTITIES,
+  BAND_QUANTITY_LIST,
+  bandCaption,
+  bandSampleText,
+  effectiveSortBoundary,
+  sortBoundaryCount,
+  sortBoundaryName,
+  type BandQuantity,
+} from './quantities.ts';
 import './band-chart-view.css';
 
 /**
  * 帯グラフの可視化。
  *
  * 抽出の結果（`extract.ts`）の割合を、`figure-model.ts` が決めた座標に置くだけで、計算し直さない。
- * 順位・並べ替え・特定の配列の強調は出さない。行の順は呼び出し側（ホスト）が渡す `order` のまま。
+ * 特定の配列の強調は出さない。行の順は呼び出し側（ホスト）が渡す `order` のまま。利用者が解析設定の「並び」で境目を選んだ時だけ、その境目までの割合で行を並べ替える。
+ * 並び替えは順位や優劣を付けるものではない。
  * 行を押して選ぶのは、利用者が見たい配列の4区分の割合を図の下に出す表示の操作で、ツールが順位を決めるものではない。
  */
 
@@ -75,7 +86,7 @@ interface HoverSegment {
   readonly index: number;
 }
 
-export function BandChartBody({ extracted, order, rowContext, copyFigureImage }: BandChartBodyProps) {
+export function BandChartBody({ extracted, order, rowContext, options, copyFigureImage }: BandChartBodyProps) {
   const language = useTextLanguage();
   const figureRef = useRef<HTMLElement | null>(null);
   const legendRef = useRef<SVGSVGElement>(null);
@@ -86,7 +97,12 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
   const [hover, setHover] = useState<HoverSegment | undefined>(undefined);
 
-  const model = useMemo(() => bandChartModel(extracted, order, rowContext), [extracted, order, rowContext]);
+  const sortBoundary = effectiveSortBoundary(extracted.quantity, options.sortBoundary);
+  const sortDirection = options.sortDirection;
+  const model = useMemo(
+    () => bandChartModel(extracted, order, rowContext, { boundary: sortBoundary, direction: sortDirection }),
+    [extracted, order, rowContext, sortBoundary, sortDirection],
+  );
   const quantity = BAND_QUANTITIES[model.quantity];
   const { labels, colors } = quantity;
   const hasRows = model.rows.length > 0;
@@ -357,19 +373,86 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
 
 const QUANTITY_CHOICES = BAND_QUANTITY_LIST.map((quantity) => ({ value: quantity.id, label: quantity.name }));
 
-/** 帯に出す量の選択。量ごとの標本と区分の違いは、図の見方（ⓘ）に出す。 */
+const DIRECTION_NAMES: Readonly<Record<BandSortDirection, string>> = { desc: '大きい順', asc: '小さい順' };
+const DIRECTION_CHOICES = BAND_SORT_DIRECTIONS.map((direction) => ({ value: direction, label: DIRECTION_NAMES[direction] }));
+const NO_SORT = '0';
+
+/** 並びの選択肢。「選んだ順」（並べ替えない）と、量の区分の境目ごとの「<区分>までの割合」。値は境目の番号の文字列。 */
+function sortChoices(quantity: BandQuantityId) {
+  return [
+    { value: NO_SORT, label: '選んだ順' },
+    ...Array.from({ length: sortBoundaryCount(quantity) }, (_, index) => ({ value: String(index + 1), label: sortBoundaryName(quantity, index + 1) })),
+  ];
+}
+
+/**
+ * 量を替える。並びの境目の意味は量ごとに違うので、並びは「選んだ順」へ戻す。
+ * 向きは量に依らないので持ち越す。
+ */
+function withQuantity(options: BandChartOptions, quantity: BandQuantityId): BandChartOptions {
+  return quantity === options.quantity ? options : { ...options, quantity, sortBoundary: 0 };
+}
+
+/** 帯に出す量と並びの選択。量ごとの標本と区分の違いは、図の見方（ⓘ）に出す。 */
 export function BandChartSettings({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
+  const boundary = effectiveSortBoundary(options.quantity, options.sortBoundary);
+  const sortBinding = bindOption(
+    { sort: String(boundary) },
+    { sort: NO_SORT },
+    (next) => onOptionsChange({ ...options, sortBoundary: Number(next.sort) }),
+    'sort',
+  );
   return (
     <div className="option-groups">
-      <SelectOptionField label="量" binding={bindOption(options, DEFAULT_BAND_CHART_OPTIONS, onOptionsChange, 'quantity')} choices={QUANTITY_CHOICES} />
+      <SelectOptionField
+        label="量"
+        binding={{
+          ...bindOption(options, DEFAULT_BAND_CHART_OPTIONS, onOptionsChange, 'quantity'),
+          onChange: (quantity) => onOptionsChange(withQuantity(options, quantity)),
+        }}
+        choices={QUANTITY_CHOICES}
+      />
+      <SelectOptionField label="並び" binding={sortBinding} choices={sortChoices(options.quantity)} />
+      {boundary === 0 ? null : (
+        <SelectOptionField
+          label="並びの向き"
+          binding={bindOption(options, DEFAULT_BAND_CHART_OPTIONS, onOptionsChange, 'sortDirection')}
+          choices={DIRECTION_CHOICES}
+        />
+      )}
     </div>
   );
 }
 
-/** ペインの見出しの行に置く量の選択。項目名は画面に出さず、読み上げ名にだけ使う。解析設定の小窓の「量」と同じ値を読み書きする。 */
+/**
+ * ペインの見出しの行に置く量と並びの選択。項目名は画面に出さず、読み上げ名にだけ使う。解析設定の小窓の「量」「並び」と同じ値を読み書きする。
+ * 並びは、選んだ順のままなら札の1つだけで、境目を選んだ時に向きの札が加わる。
+ */
 export function BandChartHeaderControl({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
+  const boundary = effectiveSortBoundary(options.quantity, options.sortBoundary);
   return (
-    <PopoverSelect label="量" value={options.quantity} choices={QUANTITY_CHOICES} onChange={(quantity) => onOptionsChange({ ...options, quantity })} />
+    <>
+      <PopoverSelect
+        label="量"
+        value={options.quantity}
+        choices={QUANTITY_CHOICES}
+        onChange={(quantity) => onOptionsChange(withQuantity(options, quantity))}
+      />
+      <PopoverSelect
+        label="並び"
+        value={String(boundary)}
+        choices={sortChoices(options.quantity)}
+        onChange={(next) => onOptionsChange({ ...options, sortBoundary: Number(next) })}
+      />
+      {boundary === 0 ? null : (
+        <PopoverSelect
+          label="並びの向き"
+          value={options.sortDirection}
+          choices={DIRECTION_CHOICES}
+          onChange={(sortDirection) => onOptionsChange({ ...options, sortDirection })}
+        />
+      )}
+    </>
   );
 }
 

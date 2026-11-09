@@ -140,3 +140,21 @@ export function bandSampleText(id: BandQuantityId, language: TextLanguage): Band
 export function bandNoValueMessage(id: BandQuantityId): string {
   return BAND_QUANTITIES[id].sample === 'distance' ? '数えた移動距離が0です' : '打てた文字がありません';
 }
+
+/** 並べ替えに使える境目の数。区分の数より1つ少ない（右端の境目は割合が常に1で、並びが決まらない）。 */
+export function sortBoundaryCount(id: BandQuantityId): number {
+  return BAND_QUANTITIES[id].labels.length - 1;
+}
+
+/**
+ * 量に対して有効な境目。範囲外（量を替えた後に残った値、URLの値）は並べ替えない（0）として扱う。
+ * 境目の意味は量ごとに違うので、同じ数のままで別の量に持ち越さない。
+ */
+export function effectiveSortBoundary(id: BandQuantityId, boundary: number): number {
+  return boundary >= 1 && boundary <= sortBoundaryCount(id) ? boundary : 0;
+}
+
+/** 並びの選択肢の名前。`boundary` は左端から数えた区分の数（1以上）で、その区分までの割合で並べる。 */
+export function sortBoundaryName(id: BandQuantityId, boundary: number): string {
+  return `${BAND_QUANTITIES[id].labels[boundary - 1]}までの割合`;
+}
