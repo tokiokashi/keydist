@@ -45,21 +45,21 @@ test('配列ごとに帯が出て、行を押すとその配列の4区分の割�
   await feature(page).locator('[data-band-segment="layout:qwerty:1"]').hover();
   await expect(feature(page).locator('[data-band-tooltip]')).toContainText('0.5〜1.5u');
 
-  // 図の上の道具の行で並びの境目を選ぶと向きの切り替えが加わり、選んだ順へ戻すと消える
-  const sort = feature(page).getByRole('button', { name: /^並び: / });
-  const direction = feature(page).getByRole('button', { name: /^(大きい順|小さい順)$/ });
-  await expect(sort).toHaveAccessibleName('並び: 選んだ順');
-  await expect(direction).toHaveCount(0);
-  await sort.click();
-  await page.getByRole('listbox').getByRole('option').nth(1).click();
-  await expect(sort).not.toHaveAccessibleName('並び: 選んだ順');
-  await expect(direction).toHaveAccessibleName('大きい順');
-  await direction.click();
-  await expect(direction).toHaveAccessibleName('小さい順');
-  await expect(rows).toHaveCount(3);
-  await sort.click();
-  await page.getByRole('option', { name: '選んだ順' }).click();
-  await expect(direction).toHaveCount(0);
+  // 凡例の項目を押すと、そこまでの割合の大きい順・小さい順に並び、3回目で選んだ順へ戻る。右端の項目は押せない
+  const labels = () => rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-band-row')));
+  const initial = await labels();
+  const legendItem = feature(page).locator('[data-band-legend-item="0"]');
+  await expect(feature(page).locator('[data-band-legend-item="3"]')).not.toHaveAttribute('role', 'button');
+  await legendItem.click();
+  await expect(legendItem).toHaveAttribute('data-sort', 'desc');
+  await expect(legendItem).toHaveAccessibleName(/小さい順にします/);
+  const desc = await labels();
+  await legendItem.click();
+  await expect(legendItem).toHaveAttribute('data-sort', 'asc');
+  expect(await labels()).toEqual([...desc].reverse());
+  await legendItem.click();
+  await expect(legendItem).not.toHaveAttribute('data-sort', /.+/);
+  expect(await labels()).toEqual(initial);
 
   // 見出しで量を切り替えても、帯と量の選択が出続ける
   // 同じラベルが解析設定の小窓にも出るので、ペインの見出しの欄に絞る

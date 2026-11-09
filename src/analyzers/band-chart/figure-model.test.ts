@@ -9,6 +9,7 @@ import {
   bandLayout,
   legendBandIndices,
   legendLayout,
+  nextLegendSort,
   percentText,
   segmentGeometries,
   type BandRowContext,
@@ -73,6 +74,17 @@ test('並べ替えは値を出せない行を動かさず、帯を描く行だ�
     model.excluded.map((row) => row.label),
     ['A'],
   );
+});
+
+test('凡例の項目を押すと、同じ項目は 大きい順 → 小さい順 → 選んだ順 と進み、別の項目は大きい順から始まる', () => {
+  const none = { boundary: 0, direction: 'desc' } as const;
+  const first = nextLegendSort(none, 2);
+  assert.deepEqual(first, { boundary: 2, direction: 'desc' });
+  const second = nextLegendSort(first, 2);
+  assert.deepEqual(second, { boundary: 2, direction: 'asc' });
+  assert.deepEqual(nextLegendSort(second, 2), none);
+  // 小さい順の途中で別の項目を押しても、大きい順から始める
+  assert.deepEqual(nextLegendSort(second, 1), { boundary: 1, direction: 'desc' });
 });
 
 test('量に対して範囲外の境目は並べ替えない扱いにする', () => {

@@ -17,6 +17,7 @@ import {
   bandLayout,
   legendBandIndices,
   legendLayout,
+  nextLegendSort,
   percentText,
   segmentGeometries,
   type BandDisplayRow,
@@ -40,13 +41,20 @@ import './band-chart-view.css';
  * 帯グラフの可視化。
  *
  * 抽出の結果（`extract.ts`）の割合を、`figure-model.ts` が決めた座標に置くだけで、計算し直さない。
- * 特定の配列の強調は出さない。行の順は呼び出し側（ホスト）が渡す `order` のまま。利用者が解析設定の「並び」で境目を選んだ時だけ、その境目までの割合で行を並べ替える。
+ * 特定の配列の強調は出さない。行の順は呼び出し側（ホスト）が渡す `order` のまま。利用者が凡例の項目を押すか解析設定の「並び」で境目を選んだ時だけ、その境目までの割合で行を並べ替える。
  * 並び替えは順位や優劣を付けるものではない。
  * 行を押して選ぶのは、利用者が見たい配列の4区分の割合を図の下に出す表示の操作で、ツールが順位を決めるものではない。
  */
 
 export type BandChartRowContext = BandRowContext;
 export type BandChartBodyProps = SetBodyProps<BandChartExtracted, BandChartOptions, BandChartRowContext>;
+
+/** 凡例の項目の読み上げ名。今の並べ方と、押した時に進む先を書く。 */
+function legendSortLabel(label: string, state: 'desc' | 'asc' | undefined): string {
+  if (state === 'desc') return `${label}までの割合の大きい順に並べています。押すと小さい順にします`;
+  if (state === 'asc') return `${label}までの割合の小さい順に並べています。押すと選んだ順に戻します`;
+  return `${label}までの割合の大きい順に並べます`;
+}
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** まだ幅を測っていない間に描く幅 [px]。 */
@@ -113,6 +121,12 @@ export function BandChartBody({ extracted, order, rowContext, options, onOptions
   const layout = useMemo(() => bandLayout(width, model.rows.length, rowsMaxHeight), [width, model.rows.length, rowsMaxHeight]);
   const legendIndices = useMemo(() => legendBandIndices(model.rows, labels.length), [model.rows, labels.length]);
   const legend = useMemo(() => legendLayout(width, labels, legendIndices), [width, labels, legendIndices]);
+  // 凡例の右端の項目は、左端からそこまでの割合がどの配列でも100%になり、並べ替えが決まらない
+  const lastLegendIndex = legendIndices[legendIndices.length - 1];
+  const pressLegend = (boundary: number) => {
+    const next = nextLegendSort({ boundary: sortBoundary, direction: sortDirection }, boundary);
+    onOptionsChange({ ...options, sortBoundary: next.boundary, sortDirection: next.direction });
+  };
   const selected = model.rows.find((row) => row.targetKey === selectedKey);
   const hovered = hover === undefined ? undefined : model.rows.findIndex((row) => row.targetKey === hover.targetKey);
   const caption = bandCaption(model.quantity, language);
@@ -174,28 +188,67 @@ export function BandChartBody({ extracted, order, rowContext, options, onOptions
           <div className="band-heading">
             <InfoButton name="図の見方" description={BAND_CHART_PANE_META.description} help={help} />
             {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
-            <BandSortControl options={options} onOptionsChange={onOptionsChange} />
           </div>
           <figure ref={measureFigure} className="band-figure" data-band-mode={layout.mode}>
             <div className="band-legend" data-band-legend="">
               <svg ref={legendRef} className="band-legend-svg" viewBox={`0 0 ${width} ${legend.height}`} aria-label="区分の凡例" role="img">
-                {legend.items.map((item) => (
-                  <g key={item.index} data-band-legend-item={item.index}>
-                    <rect
-                      className="band-segment band-swatch"
-                      data-band={item.index}
-                      data-band-color={colors[item.index]}
-                      x={item.swatchX}
-                      y={item.y - legend.swatch / 2}
-                      width={legend.swatch}
-                      height={legend.swatch}
-                      rx={2}
-                    />
-                    <text className="band-legend-text" x={item.textX} y={item.y} dominantBaseline="central">
-                      {item.label}
-                    </text>
-                  </g>
-                ))}
+                {legend.items.map((item) => {
+                  const pressable = item.index !== lastLegendIndex;
+                  const boundary = item.index + 1;
+                  const active = pressable && sortBoundary === boundary;
+                  const state = active ? sortDirection : undefined;
+                  const mark = state === undefined ? '' : state === 'desc' ? '↓' : '↑';
+                  const content = (
+                    <>
+                      {pressable ? (
+                        <rect className="band-legend-hit" x={item.swatchX - 4} y={item.y - 10} width={item.width + 4} height={20} rx={4} />
+                      ) : null}
+                      <rect
+                        className="band-segment band-swatch"
+                        data-band={item.index}
+                        data-band-color={colors[item.index]}
+                        x={item.swatchX}
+                        y={item.y - legend.swatch / 2}
+                        width={legend.swatch}
+                        height={legend.swatch}
+                        rx={2}
+                      />
+                      <text className="band-legend-text" x={item.textX} y={item.y} dominantBaseline="central">
+                        {item.label}
+                      </text>
+                      <text className="band-legend-mark" x={item.markX} y={item.y} dominantBaseline="central">
+                        {mark}
+                      </text>
+                    </>
+                  );
+                  if (!pressable) {
+                    return (
+                      <g key={item.index} data-band-legend-item={item.index}>
+                        {content}
+                      </g>
+                    );
+                  }
+                  return (
+                    // biome-ignore lint/a11y/useSemanticElements: SVGの<g>はbuttonに置き換えられない。押すと並べ替えを進める部品で、役割とキー操作をここで付けている
+                    <g
+                      key={item.index}
+                      className="band-legend-sort"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={legendSortLabel(item.label, state)}
+                      data-band-legend-item={item.index}
+                      data-sort={state}
+                      onClick={() => pressLegend(boundary)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        pressLegend(boundary);
+                      }}
+                    >
+                      {content}
+                    </g>
+                  );
+                })}
               </svg>
             </div>
             <div className="band-rows">
@@ -434,36 +487,6 @@ export function BandChartHeaderControl({ options, onOptionsChange }: AnalyzerSet
       choices={QUANTITY_CHOICES}
       onChange={(quantity) => onOptionsChange(withQuantity(options, quantity))}
     />
-  );
-}
-
-/**
- * 図の上の道具の行に置く並びの選択。見出しの行は狭い幅で札が入りきらないので、ここに置く。
- * 並びは、境目を選んだ時だけ向きの切り替えが加わる。解析設定の小窓の「並び」「並びの向き」と同じ値を読み書きする。
- */
-function BandSortControl({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
-  const boundary = effectiveSortBoundary(options.quantity, options.sortBoundary);
-  const directionName = DIRECTION_NAMES[options.sortDirection];
-  return (
-    <div className="band-sort">
-      <PopoverSelect
-        label="並び"
-        value={String(boundary)}
-        choices={sortChoices(options.quantity)}
-        onChange={(next) => onOptionsChange({ ...options, sortBoundary: Number(next) })}
-      />
-      {boundary === 0 ? null : (
-        <button
-          type="button"
-          className="band-sort-direction"
-          aria-label={directionName}
-          title={directionName}
-          onClick={() => onOptionsChange({ ...options, sortDirection: options.sortDirection === 'desc' ? 'asc' : 'desc' })}
-        >
-          {options.sortDirection === 'desc' ? '↓' : '↑'}
-        </button>
-      )}
-    </div>
   );
 }
 

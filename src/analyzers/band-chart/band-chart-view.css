@@ -53,27 +53,6 @@
   gap: 0.3rem 1rem;
 }
 
-.band-sort {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.band-sort-direction {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  min-height: 2rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-
 .band-figure {
   min-width: 0;
   margin: 0;
@@ -101,6 +80,41 @@
 .band-legend-text {
   fill: var(--text);
   font-size: 12px;
+}
+
+.band-legend-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+
+.band-legend-sort {
+  cursor: pointer;
+  outline: none;
+}
+
+.band-legend-sort:hover .band-legend-hit {
+  fill: color-mix(in srgb, var(--focus) 10%, transparent);
+}
+
+.band-legend-sort:focus-visible .band-legend-hit {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+/* 並べ替えに使っている項目は、名前を太くして、右に向きの印（↓大きい順 ↑小さい順）を出す */
+.band-legend-sort[data-sort] .band-legend-text {
+  font-weight: 700;
+}
+
+.band-legend-sort[data-sort] .band-legend-hit {
+  fill: color-mix(in srgb, var(--focus) 12%, transparent);
+}
+
+.band-legend-mark {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .band-rows {

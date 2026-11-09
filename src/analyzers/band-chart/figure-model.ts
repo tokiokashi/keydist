@@ -57,6 +57,15 @@ export interface BandSort {
   readonly direction: 'desc' | 'asc';
 }
 
+/**
+ * 凡例の項目を押した時の、次の並べ方。`boundary` は押した項目の右端の境目（左端から数えた区分の数）。
+ * 別の項目なら大きい順から始め、同じ項目なら 大きい順 → 小さい順 → 選んだ順（並べ替えない）と進む。
+ */
+export function nextLegendSort(current: BandSort, boundary: number): BandSort {
+  if (current.boundary !== boundary) return { boundary, direction: 'desc' };
+  return current.direction === 'desc' ? { boundary, direction: 'asc' } : { boundary: 0, direction: 'desc' };
+}
+
 /** 割合が同じかを決める丸めの桁。足し算の誤差で同じ割合の行が入れ替わらないようにする。 */
 const SORT_ROUND = 1e9;
 
@@ -269,6 +278,8 @@ const LEGEND_SWATCH = 12;
 const LEGEND_SWATCH_GAP = 6;
 const LEGEND_ITEM_GAP = 16;
 const LEGEND_ROW_HEIGHT = 20;
+/** 凡例の項目の右に空ける、並べ替えの印（↓↑）の幅 [px]。 */
+export const LEGEND_MARK_WIDTH = 14;
 
 export interface LegendItem {
   readonly index: number;
@@ -277,6 +288,10 @@ export interface LegendItem {
   readonly textX: number;
   /** 項目の中心の縦位置 */
   readonly y: number;
+  /** 項目の左端から右端までの幅。名前の右に並べ替えの印（`LEGEND_MARK_WIDTH`）の分も含む */
+  readonly width: number;
+  /** 並べ替えの印を置く横位置（名前の右） */
+  readonly markX: number;
 }
 
 export interface LegendLayout {
@@ -301,7 +316,8 @@ export function legendLayout(width: number, labels: readonly string[], indices: 
   let line = 0;
   indices.forEach((index) => {
     const label = labels[index]!;
-    const itemWidth = LEGEND_SWATCH + LEGEND_SWATCH_GAP + textWidth(label, FONT_SIZE);
+    const labelWidth = textWidth(label, FONT_SIZE);
+    const itemWidth = LEGEND_SWATCH + LEGEND_SWATCH_GAP + labelWidth + LEGEND_MARK_WIDTH;
     if (x > FIGURE_INSET && x + itemWidth > width - FIGURE_INSET) {
       x = FIGURE_INSET;
       line++;
@@ -312,6 +328,8 @@ export function legendLayout(width: number, labels: readonly string[], indices: 
       swatchX: x,
       textX: x + LEGEND_SWATCH + LEGEND_SWATCH_GAP,
       y: FIGURE_PADDING + line * LEGEND_ROW_HEIGHT + LEGEND_ROW_HEIGHT / 2,
+      width: itemWidth,
+      markX: x + LEGEND_SWATCH + LEGEND_SWATCH_GAP + labelWidth + 3,
     });
     x += itemWidth + LEGEND_ITEM_GAP;
   });
