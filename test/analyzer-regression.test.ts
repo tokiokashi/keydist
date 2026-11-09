@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
 import { assignmentWithHomeKeys, buildGeometry, PHYSICAL_SHAPES, type FingerAssignment, type PresetGeometryKind } from '#input/shapes/geometry.ts';
-import { generateTrace, type TracePolicy } from '#trace/generate.ts';
+import { generateTrace, type CenterShiftThumb, type SpaceThumb, type TracePolicy } from '#trace/generate.ts';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
@@ -45,7 +45,8 @@ function findFingerAssignment(id: string): FingerAssignment {
 interface ConditionsSnapshot {
   windowSize: number;
   sfbHomeCost: boolean;
-  preferOppositeThumb: boolean;
+  centerShiftThumb: CenterShiftThumb;
+  spaceThumb: SpaceThumb;
   geometryShapeId: string;
   fingerAssignmentId: string;
   chainInterpretation: ChainInterpretation;
@@ -97,7 +98,7 @@ function findLayout(language: TextLanguage, layoutId: string): Layout {
 /**
  * fixtureに記録された conditions だけを使って、今の実装で1ケースぶん計算し直す。
  * コード側の DEFAULT_* には一切フォールバックしない
- * （windowSize・sfbHomeCost・preferOppositeThumb・triggerRealizationPolicy・
+ * （windowSize・sfbHomeCost・centerShiftThumb・spaceThumb・triggerRealizationPolicy・
  * actionRealizationPolicy・chainInterpretation・arpeggioInterpretation・romajiRuleId・
  * geometryShapeId・fingerAssignmentId は全てfixture.conditionsから取る）。
  * generateTrace → analyzeStrokeStructure → computeMetrics の並びで呼ぶ。
@@ -124,7 +125,8 @@ function recompute(fixtureCase: FixtureCase) {
   const options: TracePolicy = {
     windowSize: fixtureCase.conditions.windowSize,
     sfbHomeCost: fixtureCase.conditions.sfbHomeCost,
-    preferOppositeThumb: fixtureCase.conditions.preferOppositeThumb,
+    centerShiftThumb: fixtureCase.conditions.centerShiftThumb,
+    spaceThumb: fixtureCase.conditions.spaceThumb,
     triggerRealizationPolicy: fixtureCase.conditions.triggerRealizationPolicy,
     actionRealizationPolicy: fixtureCase.conditions.actionRealizationPolicy,
   };
@@ -140,7 +142,8 @@ function recompute(fixtureCase: FixtureCase) {
   const metrics = computeMetrics(trace, geometry, {
     windowSize: options.windowSize,
     sfbHomeCost: options.sfbHomeCost,
-    preferOppositeThumb: options.preferOppositeThumb ?? false,
+    centerShiftThumb: options.centerShiftThumb ?? 'right',
+    spaceThumb: options.spaceThumb ?? 'right',
     chainInterpretation: fixtureCase.conditions.chainInterpretation,
     arpeggioInterpretation: fixtureCase.conditions.arpeggioInterpretation,
     triggerRealizationPolicy: fixtureCase.conditions.triggerRealizationPolicy,
@@ -235,7 +238,7 @@ for (const fixtureCase of fixture.cases) {
       const options: TracePolicy = {
         windowSize: fixtureCase.conditions.windowSize,
         sfbHomeCost: fixtureCase.conditions.sfbHomeCost,
-        preferOppositeThumb: fixtureCase.conditions.preferOppositeThumb,
+        centerShiftThumb: fixtureCase.conditions.centerShiftThumb,
         triggerRealizationPolicy: fixtureCase.conditions.triggerRealizationPolicy,
         actionRealizationPolicy: fixtureCase.conditions.actionRealizationPolicy,
       };

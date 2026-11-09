@@ -14,7 +14,7 @@ import {
   type PhysicalShape,
   type PresetGeometryKind,
 } from '#input/shapes/geometry.ts';
-import { generateTrace, type TracePolicy } from '#trace/generate.ts';
+import { generateTrace, type CenterShiftThumb, type SpaceThumb, type TracePolicy } from '#trace/generate.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 import type { Setup } from '#input/setup/index.ts';
@@ -39,7 +39,8 @@ import { computeKeyDetails } from '#interpretation/key-detail.ts';
 interface ConditionsSnapshot {
   windowSize: number;
   sfbHomeCost: boolean;
-  preferOppositeThumb: boolean;
+  centerShiftThumb: CenterShiftThumb;
+  spaceThumb: SpaceThumb;
   geometryShapeId: string;
   fingerAssignmentId: string;
   chainInterpretation: Record<string, unknown>;
@@ -100,7 +101,8 @@ function directTrace(fixtureCase: FixtureCase) {
   const tracePolicy: TracePolicy = {
     windowSize: fixtureCase.conditions.windowSize,
     sfbHomeCost: fixtureCase.conditions.sfbHomeCost,
-    preferOppositeThumb: fixtureCase.conditions.preferOppositeThumb,
+    centerShiftThumb: fixtureCase.conditions.centerShiftThumb,
+    spaceThumb: fixtureCase.conditions.spaceThumb,
     triggerRealizationPolicy: fixtureCase.conditions.triggerRealizationPolicy as never,
     actionRealizationPolicy: fixtureCase.conditions.actionRealizationPolicy as never,
   };
@@ -132,7 +134,8 @@ function engineTrace(fixtureCase: FixtureCase) {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   overrides = overrideAtSetup(overrides, setupId, 'windowSize', fixtureCase.conditions.windowSize);
   overrides = overrideAtSetup(overrides, setupId, 'sfbHomeCost', fixtureCase.conditions.sfbHomeCost);
-  overrides = overrideAtSetup(overrides, setupId, 'preferOppositeThumb', fixtureCase.conditions.preferOppositeThumb);
+  overrides = overrideAtSetup(overrides, setupId, 'centerShiftThumb', fixtureCase.conditions.centerShiftThumb);
+  overrides = overrideAtSetup(overrides, setupId, 'spaceThumb', fixtureCase.conditions.spaceThumb);
   overrides = overrideAtSetup(overrides, setupId, 'triggerRealizationPolicy', fixtureCase.conditions.triggerRealizationPolicy);
   overrides = overrideAtSetup(overrides, setupId, 'actionRealizationPolicy', fixtureCase.conditions.actionRealizationPolicy);
   overrides = overrideAtSetup(overrides, setupId, 'fingerAssignmentId', fixtureCase.conditions.fingerAssignmentId);

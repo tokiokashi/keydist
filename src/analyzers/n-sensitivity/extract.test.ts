@@ -191,7 +191,8 @@ test('computeMemberSeries: 指間平均・指間σは、全11Nで同条件のcom
       const direct = computeMetrics(cache.getTrace({ ...input, tracePolicy }).trace, input.geometry, {
         windowSize: point.windowSize,
         sfbHomeCost: tracePolicy.sfbHomeCost,
-        preferOppositeThumb: tracePolicy.preferOppositeThumb ?? false,
+        centerShiftThumb: tracePolicy.centerShiftThumb ?? 'right',
+        spaceThumb: tracePolicy.spaceThumb ?? 'right',
         chainInterpretation: input.chainInterpretation,
         arpeggioInterpretation: input.arpeggioInterpretation,
         triggerRealizationPolicy: tracePolicy.triggerRealizationPolicy!,

@@ -965,7 +965,7 @@ test('combo再生はpresentation trigger alternativeで選択済み親指pathを
     presentationTriggerAlternatives: [['thumb-r'], ['thumb-l']] as const,
   };
   const layout = withThumbShiftAlternatives(fromFaces('combo-thumb-presentation', 'combo-thumb-presentation', [face]), 'thumb-r', ['thumb-r', 'thumb-l']);
-  const trace = generateTrace('あ', layout, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true, preferOppositeThumb: true });
+  const trace = generateTrace('あ', layout, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true, centerShiftThumb: 'opposite' });
   const stroke = trace.strokes[0];
 
   assert.equal(stroke.aggregationGroupId, 'combo');

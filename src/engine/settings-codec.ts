@@ -86,7 +86,8 @@ const defaultShapeIdSchema = v.pipe(v.string(), v.minLength(1));
 export const SETTINGS_ITEM_SCHEMAS = {
   windowSize: windowSizeSchema,
   sfbHomeCost: v.boolean(),
-  preferOppositeThumb: v.boolean(),
+  centerShiftThumb: v.picklist(['right', 'left', 'opposite']),
+  spaceThumb: v.picklist(['right', 'left']),
   triggerRealizationPolicy: triggerRealizationPolicySchema,
   actionRealizationPolicy: actionRealizationPolicySchema,
   chainInterpretation: chainInterpretationSchema,

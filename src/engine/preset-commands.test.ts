@@ -146,13 +146,13 @@ test('流し込んだ条件は、同じ値を手で設定した時と実効値�
 
   // 別の値が入っている状態へ、保存したプリセットを流し込む
   const target: KeydistAssets = {
-    ...withOverrides({ global: { windowSize: 8, preferOppositeThumb: true } }),
+    ...withOverrides({ global: { windowSize: 8, centerShiftThumb: 'opposite' } }),
     presetLibrary: saved.assets.presetLibrary,
   };
   const applied = run(target, applyPresetCommand(saved.assets.presetLibrary.presets[0].id, GLOBAL)).assets;
 
   assert.deepEqual(resolveSettings(applied.setupLibrary.overrides, context), resolveSettings(manual.setupLibrary.overrides, context));
-  assert.equal(readOverride(applied.setupLibrary.overrides, GLOBAL, 'preferOppositeThumb'), undefined);
+  assert.equal(readOverride(applied.setupLibrary.overrides, GLOBAL, 'centerShiftThumb'), undefined);
 });
 
 test('renamePresetCommand: 名前を変える。空は拒否、同じ名前は何もしない', () => {

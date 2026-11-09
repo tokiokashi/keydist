@@ -205,7 +205,7 @@ test('比較表・N感度の共通の行: Workspaceの値は全体の値に重�
   const mixed = withWorkspaceConditions({ global: { windowSize: 7, sfbHomeCost: false } }, { windowSize: 5 });
   assert.equal(globalConditionValues(mixed).sfbHomeCost, false);
   assert.equal(globalConditionLevels(mixed).sfbHomeCost, 'global');
-  assert.equal(globalConditionValues(mixed).preferOppositeThumb, undefined);
+  assert.equal(globalConditionValues(mixed).centerShiftThumb, undefined);
   // 単体ページは差し込まないので、全体の値だけ
   assert.equal(globalConditionValues({ global: { windowSize: 7 } }).windowSize, 7);
 

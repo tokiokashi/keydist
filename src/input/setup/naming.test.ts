@@ -200,7 +200,13 @@ test('nameTargets: 配列・物理配列・条件がそれぞれ違う6配列は
     { key: 'layout:qwerty-opt', kind: 'layout', layoutName: 'QWERTY最適化', shapeName: 'ロウスタッガード（ANSI）', overrideSummary: '先読みN: 5' },
     { key: 'layout:dvorak', kind: 'layout', layoutName: 'Dvorak', shapeName: 'ロウスタッガード（ANSI）' },
     { key: 'layout:oonishi', kind: 'layout', layoutName: '大西配列', shapeName: 'ロウスタッガード（ANSI）', overrideSummary: 'ローマ字規則: 標準' },
-    { key: 'layout:naginata', kind: 'layout', layoutName: '薙刀式v18', shapeName: 'オーソリニア（ANSI）', overrideSummary: '親指シフトの振り替え: ON' },
+    {
+      key: 'layout:naginata',
+      kind: 'layout',
+      layoutName: '薙刀式v18',
+      shapeName: 'オーソリニア（ANSI）',
+      overrideSummary: 'センターシフトの親指: 逆の親指',
+    },
     { key: 'layout:shingeta', kind: 'layout', layoutName: '新下駄', shapeName: 'オーソリニア（ANSI）', overrideSummary: '先読みN: 5' },
   ]);
   assert.deepEqual(

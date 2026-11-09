@@ -100,12 +100,12 @@ test('適用範囲はカスケードの順に並び、継承する値と同じ�
 });
 
 test('項目が置けないレベルの値は、使われない印を付けて出す', () => {
-  const [group] = groupsOf({ shape: { 'row-staggered': { windowSize: 5, preferOppositeThumb: true } } });
+  const [group] = groupsOf({ shape: { 'row-staggered': { windowSize: 5, centerShiftThumb: 'opposite' } } });
   assert.deepEqual(
     group!.entries.map((entry) => [entry.itemId, entry.unused]),
     [
       ['windowSize', true],
-      ['preferOppositeThumb', false],
+      ['centerShiftThumb', false],
     ],
   );
 });

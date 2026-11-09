@@ -59,6 +59,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -67,9 +68,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -260,6 +261,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -268,9 +270,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -461,6 +463,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -469,9 +472,9 @@
         },
         "fingerAssignmentId": "angle-mod",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -662,6 +665,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -670,9 +674,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -863,6 +867,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -871,9 +876,9 @@
         },
         "fingerAssignmentId": "angle-mod",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -1064,6 +1069,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -1072,9 +1078,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -1265,6 +1271,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -1273,9 +1280,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -1466,6 +1473,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -1474,9 +1482,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -1667,6 +1675,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -1675,9 +1684,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -1868,6 +1877,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -1876,9 +1886,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -2069,6 +2079,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -2077,9 +2088,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -2270,6 +2281,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -2278,9 +2290,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -2471,6 +2483,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -2479,9 +2492,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -2672,6 +2685,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -2680,9 +2694,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -2873,6 +2887,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -2881,9 +2896,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -3074,6 +3089,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -3082,9 +3098,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -3275,6 +3291,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -3283,9 +3300,9 @@
         },
         "fingerAssignmentId": "qwerty-optimized",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -3476,6 +3493,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -3484,9 +3502,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -3704,6 +3722,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -3712,9 +3731,9 @@
         },
         "fingerAssignmentId": "jis-default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -3906,6 +3925,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -3914,9 +3934,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "ortholinear",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -4108,6 +4128,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -4116,9 +4137,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -4309,6 +4330,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -4317,9 +4339,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -4510,6 +4532,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -4518,9 +4541,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -4716,6 +4739,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -4724,9 +4748,9 @@
         },
         "fingerAssignmentId": "angle-mod",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -4917,6 +4941,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -4925,9 +4950,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -5118,6 +5143,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -5126,9 +5152,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -5319,6 +5345,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -5327,9 +5354,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -5520,6 +5547,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -5528,9 +5556,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -5721,6 +5749,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -5729,9 +5758,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -5922,6 +5951,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -5930,9 +5960,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -6123,6 +6153,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -6131,9 +6162,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -6329,6 +6360,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": true
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -6337,9 +6369,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -6536,6 +6568,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": false,
@@ -6544,9 +6577,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -6743,6 +6776,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -6751,9 +6785,9 @@
         },
         "fingerAssignmentId": "angle-mod",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -6944,6 +6978,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -6952,9 +6987,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -7145,6 +7180,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -7153,9 +7189,9 @@
         },
         "fingerAssignmentId": "angle-mod",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -7346,6 +7382,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -7354,9 +7391,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -7547,6 +7584,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -7555,9 +7593,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -7748,6 +7786,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -7756,9 +7795,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -7949,6 +7988,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -7957,9 +7997,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -8150,6 +8190,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -8158,9 +8199,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -8351,6 +8392,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -8359,9 +8401,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -8557,6 +8599,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -8565,9 +8608,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -8758,6 +8801,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -8766,9 +8810,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -8959,6 +9003,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -8967,9 +9012,9 @@
         },
         "fingerAssignmentId": "jis-default",
         "geometryShapeId": "jis-row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -9165,6 +9210,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -9173,9 +9219,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -9441,6 +9487,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -9449,9 +9496,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -9642,6 +9689,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -9650,9 +9698,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -10020,6 +10068,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "opposite",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -10028,15 +10077,15 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": true,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
         "windowSize": 3
       },
-      "id": "ja:naginata-v18:modern:preferOppositeThumb=true（親指シフトを出力キーと反対側の親指へ振り替えるSandS分岐。naginataは交代打鍵を使うので効果が出る）",
+      "id": "ja:naginata-v18:modern:centerShiftThumb=opposite（センターシフトを出力キーと反対側の親指で押す分岐。naginataは交代打鍵を使うので効果が出る）",
       "language": "ja",
       "layoutId": "naginata-v18",
       "metrics": {
@@ -10308,7 +10357,7 @@
         "totalMm": 22047.998827029747,
         "totalUnits": 1157.375266510748
       },
-      "note": "preferOppositeThumb=true（親指シフトを出力キーと反対側の親指へ振り替えるSandS分岐。naginataは交代打鍵を使うので効果が出る）",
+      "note": "centerShiftThumb=opposite（センターシフトを出力キーと反対側の親指で押す分岐。naginataは交代打鍵を使うので効果が出る）",
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
@@ -10372,6 +10421,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -10380,9 +10430,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": true
         },
@@ -10724,6 +10774,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -10732,9 +10783,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -11076,6 +11127,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -11084,9 +11136,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -11428,6 +11480,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -11436,9 +11489,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -11634,6 +11687,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -11642,9 +11696,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -11835,6 +11889,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -11843,9 +11898,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "oonishi",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -12036,6 +12091,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -12044,9 +12100,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -12237,6 +12293,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -12245,9 +12302,9 @@
         },
         "fingerAssignmentId": "qwerty-optimized",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -12438,6 +12495,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -12446,9 +12504,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -12639,6 +12697,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -12647,9 +12706,9 @@
         },
         "fingerAssignmentId": "qwerty-optimized",
         "geometryShapeId": "column-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -12841,6 +12900,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -12849,9 +12909,9 @@
         },
         "fingerAssignmentId": "qwerty-optimized",
         "geometryShapeId": "split-ortholinear",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -13043,6 +13103,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -13051,9 +13112,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -13244,6 +13305,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -13252,9 +13314,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -13445,6 +13507,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -13453,9 +13516,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "seoto",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -13651,6 +13714,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -13659,9 +13723,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -13852,6 +13916,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -13860,9 +13925,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -14053,6 +14118,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -14061,9 +14127,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -14329,6 +14395,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -14337,9 +14404,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -14545,6 +14612,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -14553,9 +14621,9 @@
         },
         "fingerAssignmentId": "angle-mod",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -14746,6 +14814,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -14754,9 +14823,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -14947,6 +15016,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -14955,9 +15025,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -15148,6 +15218,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -15156,9 +15227,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -15350,6 +15421,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -15358,9 +15430,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "tomisuke",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -15551,6 +15623,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -15559,9 +15632,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -15752,6 +15825,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -15760,9 +15834,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -15963,6 +16037,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -15971,9 +16046,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -16169,6 +16244,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -16177,9 +16253,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -16385,6 +16461,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -16393,9 +16470,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -16606,6 +16683,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -16614,9 +16692,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -16837,6 +16915,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -16845,9 +16924,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -17038,6 +17117,7 @@
           "includeSingleRedirectTail": false,
           "includeThumb": false
         },
+        "centerShiftThumb": "right",
         "chainInterpretation": {
           "breakOnOppositeHandSimultaneous": false,
           "breakOnSameFinger": true,
@@ -17046,9 +17126,9 @@
         },
         "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
         "romajiRuleId": null,
         "sfbHomeCost": true,
+        "spaceThumb": "right",
         "triggerRealizationPolicy": {
           "useHold": false
         },
@@ -17212,6 +17292,6 @@
     }
   ],
   "modelVersion": 15,
-  "sourceCommit": "03a2b563425479778ef4f4149b4c8731a9b6acb9",
+  "sourceCommit": "b23ea8e3d893a7e4ab7e93b1d97ed89c02254efc",
   "version": 1
 }

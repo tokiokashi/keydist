@@ -507,12 +507,12 @@ test('数える時の上書きは、変えた項目にも対象名の差分に�
   );
 });
 
-type SettingWrite = readonly [string, 'windowSize' | 'sfbHomeCost' | 'preferOppositeThumb', number | boolean];
+type SettingWrite = readonly [string, 'windowSize' | 'sfbHomeCost' | 'centerShiftThumb', number | boolean | string];
 
 /** setup-1..n（すべてqwerty）へ、Setupのレベルで上書きを書いた状態の、対象ごとの条件。 */
 function targetsWith(global: readonly SettingWrite[], bySetup: readonly (readonly SettingWrite[])[], language: 'en' | 'ja' = 'en') {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
-  const write = (level: Parameters<typeof setSettingsOverride>[1], id: SettingWrite[1], value: number | boolean) => {
+  const write = (level: Parameters<typeof setSettingsOverride>[1], id: SettingWrite[1], value: number | boolean | string) => {
     const written = setSettingsOverride(overrides, level, id, value as never);
     assert.ok(written.ok, id);
     if (written.ok) overrides = written.overrides;
@@ -565,7 +565,7 @@ test('multiTargetConditionSummary: 別々の項目で違えば、それぞれ違
       [
         [
           ['s', 'windowSize', 2],
-          ['s', 'preferOppositeThumb', true],
+          ['s', 'centerShiftThumb', 'opposite'],
         ],
         [['s', 'sfbHomeCost', false]],
         [],

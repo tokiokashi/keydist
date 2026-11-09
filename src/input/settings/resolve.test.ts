@@ -60,7 +60,7 @@ const TEST_ITEMS = {
     allowedLevels: new Set(['global']),
     defaultValue: true,
   }),
-  // preferOppositeThumb相当: SandSが無い配列では効かず、反対側の親指キーが無い物理配列では実現できない。
+  // centerShiftThumb相当: SandSが無い配列では効かず、反対側の親指キーが無い物理配列では実現できない。
   thumbRequiring: defineItem<boolean>({
     id: 'thumbRequiring',
     allowedLevels: ANY_LEVEL,

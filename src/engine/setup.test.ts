@@ -1,3 +1,4 @@
+import type { CenterShiftThumb } from '#trace/generate.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -112,7 +113,7 @@ test('配列を対象にした解決は、実カタログではfixtureの既定�
       conditions: {
         windowSize: number;
         sfbHomeCost: boolean;
-        preferOppositeThumb: boolean;
+        centerShiftThumb: CenterShiftThumb;
         geometryShapeId: string;
         romajiRuleId: string | null;
       };
@@ -141,7 +142,7 @@ test('配列を対象にした解決は、実カタログではfixtureの既定�
     const resolved = resolveSettings(EMPTY_SETTINGS_OVERRIDES, resolution.context);
     assert.equal(resolved.windowSize.value, scenario.conditions.windowSize, scenario.id);
     assert.equal(resolved.sfbHomeCost.value, scenario.conditions.sfbHomeCost, scenario.id);
-    assert.equal(resolved.preferOppositeThumb.value, scenario.conditions.preferOppositeThumb, scenario.id);
+    assert.equal(resolved.centerShiftThumb.value, scenario.conditions.centerShiftThumb, scenario.id);
     if (scenario.conditions.romajiRuleId !== null) {
       assert.equal(resolved.romajiRuleId.value, scenario.conditions.romajiRuleId, scenario.id);
     } else {

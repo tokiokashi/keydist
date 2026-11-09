@@ -1,8 +1,9 @@
-import { ALL_FINGERS, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, THUMB_KEY, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
 import { commitAction, commitKeyOf, commitStrokeRulesOf, needsCommitStroke } from './commit-stroke.ts';
 import { decidePress, selectFingers, strokeFingerChoices, targetOf, type PlannedInput, type PlannedStroke } from './finger-selection.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyCombos } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
+import { canTypeSpaceWithLeftThumb, isLoneRightThumbPress } from '#input/layouts/space-thumb.ts';
 import { bracketAliasesFor } from '#input/text/bracket-alias.ts';
 import { evaluationCanonicalInputs, normalizeEvaluationChar } from '#input/text/char-alias.ts';
 import { isSymbolChar } from '#input/text/evaluation-text.ts';
@@ -14,6 +15,7 @@ import {
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   inputAlternativeSelectionIdentity,
   isComboFrameAlternative,
+  mapInputAlternativePhysicalKeys,
   realizeTriggerActions,
   type ActionRealizationPolicy,
   type InputAlternative,
@@ -25,6 +27,14 @@ import {
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
 
+/**
+ * センターシフトを押す親指。`opposite` は出力キーの手と逆の親指で、出力キーが両手にまたがる打鍵は右親指で押す。
+ */
+export type CenterShiftThumb = 'right' | 'left' | 'opposite';
+
+/** 空白の単打を押す親指。 */
+export type SpaceThumb = 'right' | 'left';
+
 export interface TracePolicy {
   /** 先読みNかな。テキストのかなの位置でN文字先まで残す候補を比較する（仕様 §7 R3） */
   windowSize: number;
@@ -33,8 +43,10 @@ export interface TracePolicy {
    * falseにすると距離0として扱う。
    */
   sfbHomeCost: boolean;
-  /** 親指シフトを出力キーと反対側の親指へ振り替えるか。 */
-  preferOppositeThumb?: boolean;
+  /** 左右どちらの親指でも押せる親指シフト（センターシフト）を、どの親指で押すか。 */
+  centerShiftThumb?: CenterShiftThumb;
+  /** 左右どちらの親指でも押せる空白の単打を、どの親指で押すか。 */
+  spaceThumb?: SpaceThumb;
   /** hold-capable triggerを実際の連続保持へrealizeする条件。 */
   triggerRealizationPolicy?: TriggerRealizationPolicy;
   /** Trigger realization後のaction grouping。 */
@@ -44,7 +56,8 @@ export interface TracePolicy {
 export const DEFAULT_TRACE_POLICY: TracePolicy = {
   windowSize: 3,
   sfbHomeCost: true,
-  preferOppositeThumb: false,
+  centerShiftThumb: 'right',
+  spaceThumb: 'right',
   triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
   actionRealizationPolicy: { ...DEFAULT_ACTION_REALIZATION_POLICY },
 };
@@ -662,7 +675,7 @@ function normalizeParticipations(
 
 /**
  * logical outputの合法なcanonical path群から今回のphysical realizationを選ぶ。
- * authoring defaultは先頭。preferOppositeThumbはkey rewriteせずpath selectionとして適用する。
+ * authoring defaultは先頭。centerShiftThumbはkey rewriteせずpath selectionとして適用する。
  */
 function thumbVariantSignature(alternative: InputAlternative, thumbKeys: ReadonlySet<string>): string {
   return inputAlternativeSelectionIdentity(alternative, (key) => (thumbKeys.has(resolveKeyId(key)) ? '<thumb>' : resolveKeyId(key)));
@@ -670,7 +683,7 @@ function thumbVariantSignature(alternative: InputAlternative, thumbKeys: Readonl
 
 /**
  * authoring defaultを基準に、同じpathの合法なthumb variantだけを比較する。
- * non-thumb alternativeや別方式alternativeはpreferOppositeThumbでは選ばない。
+ * non-thumb alternativeや別方式alternativeはcenterShiftThumbでは選ばない。
  */
 function shiftVariantSignature(alternative: InputAlternative, shiftKeys: ReadonlySet<string>): string {
   return inputAlternativeSelectionIdentity(alternative, (key) => (shiftKeys.has(resolveKeyId(key)) ? '<shift>' : resolveKeyId(key)));
@@ -699,7 +712,24 @@ function oppositeHandShiftScore(alternative: InputAlternative, shiftKeys: Readon
   return value;
 }
 
+const leftThumbSpaceVariants = new WeakMap<InputAlternative, InputAlternative>();
+
+/**
+ * 空白の単打を左親指で押す設定の時、右親指の単打を左親指の単打へ移した経路を返す。
+ * 左親指キーをどの入力にも使わない配列（`canTypeSpaceWithLeftThumb`）だけが対象で、他は選んだ経路のまま返す。
+ */
 function selectInputAlternative(alternatives: InputAlternativeSet, layout: Layout, geometry: Geometry, options: TracePolicy): InputAlternative {
+  const selected = selectShiftVariant(alternatives, layout, geometry, options);
+  if (options.spaceThumb !== 'left' || !isLoneRightThumbPress(selected) || !canTypeSpaceWithLeftThumb(layout)) return selected;
+  let variant = leftThumbSpaceVariants.get(selected);
+  if (variant === undefined) {
+    variant = mapInputAlternativePhysicalKeys(selected, (key) => (resolveKeyId(key) === THUMB_KEY.RT ? THUMB_KEY.LT : key));
+    leftThumbSpaceVariants.set(selected, variant);
+  }
+  return variant;
+}
+
+function selectShiftVariant(alternatives: InputAlternativeSet, layout: Layout, geometry: Geometry, options: TracePolicy): InputAlternative {
   let fallback = alternatives[0];
   if (!fallback) throw new Error('canonical input alternativeが空');
 
@@ -720,43 +750,47 @@ function selectInputAlternative(alternatives: InputAlternativeSet, layout: Layou
   }
 
   const thumbKeys = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
-  if (!options.preferOppositeThumb || thumbKeys.size < 2) return fallback;
+  if (thumbKeys.size < 2) return fallback;
+  const side = options.centerShiftThumb ?? 'right';
 
-  const score = (alternative: InputAlternative): number => {
-    let value = 0;
+  // 親指シフトのtriggerごとに、選んだ側の親指なら+1、逆なら-1。「逆の親指」で出力の手が1つに決まらない打鍵は数えず、
+  // 同点の時は右親指の多い候補を採る。出力の手が決まらない打鍵を右親指で打つためである。
+  const score = (alternative: InputAlternative): { matched: number; right: number } => {
+    let matched = 0;
+    let right = 0;
     for (const realization of alternative.baseRealizations) {
       const triggerThumbs = (realization.defaultTriggerKeys ?? []).map(resolveKeyId).filter((key) => thumbKeys.has(key));
       if (triggerThumbs.length === 0) continue;
 
-      const outputHands = nonThumbHands(
-        realization.defaultOutputKeys.map(resolveKeyId).filter((key) => !thumbKeys.has(key)),
-        geometry,
-      );
-      if (outputHands.size !== 1) continue;
-      const outputHand = [...outputHands][0];
+      let target: 'left' | 'right' | undefined = side === 'opposite' ? undefined : side;
+      if (side === 'opposite') {
+        const outputHands = nonThumbHands(
+          realization.defaultOutputKeys.map(resolveKeyId).filter((key) => !thumbKeys.has(key)),
+          geometry,
+        );
+        if (outputHands.size === 1) target = [...outputHands][0] === 'left' ? 'right' : 'left';
+      }
 
       for (const thumb of triggerThumbs) {
         const finger = geometry.keys.get(thumb)?.finger;
         if (finger !== 'LT' && finger !== 'RT') continue;
         const thumbHand = finger === 'LT' ? 'left' : 'right';
-        value += thumbHand !== outputHand ? 1 : -1;
+        if (thumbHand === 'right') right += 1;
+        if (target !== undefined) matched += thumbHand === target ? 1 : -1;
       }
     }
-    return value;
+    return { matched, right };
   };
-
-  if (score(fallback) > 0) return fallback;
 
   const fallbackSignature = thumbVariantSignature(fallback, thumbKeys);
   let selected = fallback;
-  let bestOppositeScore = score(fallback);
-
+  let best = score(fallback);
   for (const alternative of alternatives) {
-    if (thumbVariantSignature(alternative, thumbKeys) !== fallbackSignature) continue;
-    const candidateScore = score(alternative);
-    if (candidateScore > bestOppositeScore) {
+    if (alternative === fallback || thumbVariantSignature(alternative, thumbKeys) !== fallbackSignature) continue;
+    const candidate = score(alternative);
+    if (candidate.matched > best.matched || (candidate.matched === best.matched && candidate.right > best.right)) {
       selected = alternative;
-      bestOppositeScore = candidateScore;
+      best = candidate;
     }
   }
   return selected;

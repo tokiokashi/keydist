@@ -1,3 +1,4 @@
+import type { CenterShiftThumb, SpaceThumb } from '#trace/generate.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
@@ -26,7 +27,8 @@ import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 interface ConditionsSnapshot {
   windowSize: number;
   sfbHomeCost: boolean;
-  preferOppositeThumb: boolean;
+  centerShiftThumb: CenterShiftThumb;
+  spaceThumb: SpaceThumb;
   geometryShapeId: string;
   fingerAssignmentId: string;
   chainInterpretation: Record<string, unknown>;
@@ -87,7 +89,8 @@ function overridesFor(setupId: string, conditions: ConditionsSnapshot): Settings
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   overrides = overrideAtSetup(overrides, setupId, 'windowSize', conditions.windowSize);
   overrides = overrideAtSetup(overrides, setupId, 'sfbHomeCost', conditions.sfbHomeCost);
-  overrides = overrideAtSetup(overrides, setupId, 'preferOppositeThumb', conditions.preferOppositeThumb);
+  overrides = overrideAtSetup(overrides, setupId, 'centerShiftThumb', conditions.centerShiftThumb);
+  overrides = overrideAtSetup(overrides, setupId, 'spaceThumb', conditions.spaceThumb);
   overrides = overrideAtSetup(overrides, setupId, 'triggerRealizationPolicy', conditions.triggerRealizationPolicy);
   overrides = overrideAtSetup(overrides, setupId, 'actionRealizationPolicy', conditions.actionRealizationPolicy);
   overrides = overrideAtSetup(overrides, setupId, 'fingerAssignmentId', conditions.fingerAssignmentId);

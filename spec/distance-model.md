@@ -257,6 +257,10 @@ compile時のRequirementは、`order(前置trigger → 出力キー)` と `order
 
 英字の種類の面の形は、空白を右親指（`thumb-r`）の単打で打つ。段の形（`fromRows`）が右親指に空白を置くのと同じ扱いで、
 同じ段を持つ段の形と面の形で、空白を含むテキストの打鍵と数値は一致する。
+空白の単打を押す親指は `spaceThumb` で選ぶ。`left` の時は、右親指の単打の代わりに左親指の単打で空白を打つ。
+選べるのは、空白を右親指の単打で打ち、左親指キーをどの入力にも使わない配列に限る。左親指キーに別の文字や切り替えがある配列では、
+同じ押下が2つの意味を持つためである。`spaceThumb` は空白の単打だけを決め、センターシフトの親指（`centerShiftThumb`）とは独立している。
+確定の打鍵（§4.7）は空白の打鍵ではないので、`spaceThumb` に関わらず右親指で数える。
 どれかの面の `trigger`（入力互換の `space` は `thumb-r` に解決した後で比べる）が `thumb-r` を含む時は、
 右親指がその配列の切り替えのキーなので、空白を足さず、空白は打てない文字のままにする。
 かなの種類の面の形は空白を足さない。取り込みの段の形（`imported`。明示した打鍵列だけを持つ）は空白を足さないので、取り込みの英字の配列は、
@@ -351,10 +355,15 @@ generateTraceのsemantic authorityではない。
 
 左右どちらの親指でも同じshift semanticを成立させられる配列は、
 `thumbShiftKeys` に合法な親指physical keyを持ち、authoring時に左右両pathをcanonical
-alternativeとして生成する。`preferOppositeThumb` はキーを書き換える機能ではなく、
-authoring defaultを基準に、thumb keyだけが異なる合法variantの中からoutputと反対側の
-親指を使うpathを優先するselection policyである。opposite-hand variantが無ければdefaultを
-維持し、同じlogical outputのnon-thumb alternativeや別方式pathへこのPolicyだけで切り替えない。
+alternativeとして生成する。`centerShiftThumb` はキーを書き換える機能ではなく、
+authoring defaultを基準に、thumb keyだけが異なる合法variantの中から、選んだ親指を使うpathを優先する
+selection policyである。値は次の3つで、既定は `right` である。
+
+- `right`: 右親指で押す
+- `left`: 左親指で押す
+- `opposite`: 出力キーと反対側の手の親指で押す。出力キーが両手にまたがる打鍵と、出力キーを伴わない打鍵は、右親指で押す
+
+選んだ親指のvariantが無ければdefaultを維持し、同じlogical outputのnon-thumb alternativeや別方式pathへこのPolicyだけで切り替えない。
 thumb variant生成時の重複判定はaction groupingだけではなくcanonical alternative全体で行い、
 Requirement / Capability / classification / role / layer / context / origin等が異なるpathを失わない。
 
@@ -464,14 +473,14 @@ Shift keyのgeometryは既存PhysicalShapeの保存schemaへ混ぜず、bottom r
 測った時は、そのことも分かるようにする。
 
 入力の候補の選択（上の Input Alternative Selection Policy。通常Shiftの手の判定と
-`preferOppositeThumb` を含む）は、打鍵の列ができる前に行う。この時のキーの手は、基本の指の手で判定する。
+`centerShiftThumb`・`spaceThumb` を含む）は、打鍵の列ができる前に行う。この時のキーの手は、基本の指の手で判定する。
 担当する指の追加の有無で、大文字や親指シフトの選び方が変わらないようにするためである。
 そのため、大文字の `Y` では、基本の指（右人差し指）の反対の左Shiftが選ばれ、その後の指の選び方（§9.1）で
 `y` が左人差し指に決まると、同じ手のShiftとキーになることがある。
 
 ただし、複数の親指alternativeを合法pathとして持つ配列で
-`preferOppositeThumb` を有効にした場合は、Input Alternative Selection Policyが
-output側と反対の手の親指を使うalternativeを優先する。canonical inputのkeyをruntimeで
+`centerShiftThumb` を `left` か `opposite` にした場合は、Input Alternative Selection Policyが
+選んだ側の親指を使うalternativeを優先する。canonical inputのkeyをruntimeで
 別physical keyへ書き換える処理ではない。
 
 同じ親指alternativeが連続して選ばれた場合の距離・`g` は通常のStroke列に対する規則で
@@ -792,7 +801,8 @@ Testerは、この規則の対象に含めない。
 |---|---|---|---|
 | `N` | int | — | 先読みのかな数。テキストのかなの位置（§7 R3）でN文字先まで、指を残す候補とホーム復帰候補を比較する。担当する指が2本以上のキーを打つ指も、同じ範囲で選ぶ（§9.1）。同じ`N`は、どの配列でもテキストの同じ範囲を指す。打ち手ごとに異なるため利用者が設定する |
 | `sfb_home_cost` | bool | `true` | 同指連続でホームキーを打つ場合に距離を加算するか（§8） |
-| `prefer_opposite_thumb` | bool | `false` | 左右の合法な親指alternativeを持つ配列で、出力キーと反対側の親指pathを優先するか |
+| `center_shift_thumb` | `right` / `left` / `opposite` | `right` | 左右の合法な親指alternativeを持つ配列で、センターシフトを押す親指（§4） |
+| `space_thumb` | `right` / `left` | `right` | 空白を右親指の単打で打ち、左親指キーを他の入力に使わない配列で、空白を押す親指（§4） |
 
 ## 6. 状態
 
@@ -1300,7 +1310,7 @@ Roll・Arpeggio・SFBとは排他の分類にしない。同じStrokeが交互�
 - 親指の押下だけのStrokeは、押した親指の手を手の集合にする。左右の親指を同時に押すStrokeは両手になる
 - 押下の無いStrokeは手の集合が空で、どの組にも入れない
 
-親指シフトや同時打鍵の親指は、親指以外のキーと同時に押して出す文字を切り替えるキーで、どちらの手の親指を使うかは配列と設定（`preferOppositeThumb` など）で決まる。
+親指シフトや同時打鍵の親指は、親指以外のキーと同時に押して出す文字を切り替えるキーで、どちらの手の親指を使うかは配列と設定（`centerShiftThumb` など）で決まる。
 親指を手の集合に入れると、親指以外のキーを片手で押すStrokeが両手になり、手の切り替えと継続が親指の選び方で動く。親指を外すと、手の切り替えと継続は親指以外のキーを押す手の並びで決まる。
 親指以外の押下がtriggerだけ（小指で前置シフトを押しながら親指で文字を出すなど）のStrokeにも同じ規則を当てる。この場合の手は、文字を出す親指ではなくtriggerを押す手になる。
 親指だけのStroke（前置シフトの親指キー、`triggerActivation` をsemanticにして親指を独立したアクションにした時など）は、数えないと打鍵の並びと合わなくなる。そのため親指の手で数える。

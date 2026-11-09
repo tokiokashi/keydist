@@ -25,6 +25,8 @@ import {
 } from '#input/semantics/index.ts';
 import { DEFAULT_ROMAJI_RULE_ID, recommendedRomajiRuleId } from '#input/romaji/rules.ts';
 import { defaultFingerAssignmentId, recommendedFingerAssignmentId } from './finger-assignment.ts';
+import type { CenterShiftThumb, SpaceThumb } from '#trace/generate.ts';
+import { canTypeSpaceWithLeftThumb } from '#input/layouts/space-thumb.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 
@@ -58,7 +60,7 @@ const GLOBAL_WORKSPACE_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', '
 const GLOBAL_WORKSPACE_INPUT_METHOD_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'workspace', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_WORKSPACE_SHAPE_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'workspace', 'shape', 'layout', 'setup']);
 
-/** 物理配列のthumbsに指定の手の親指キーがあるか。`preferOppositeThumb`の実現可能性判定に使う。 */
+/** 物理配列のthumbsに指定の手の親指キーがあるか。`centerShiftThumb`・`spaceThumb`の実現可能性判定に使う。 */
 function shapeHasThumb(context: CascadeContext, finger: 'LT' | 'RT'): boolean {
   return context.shape.thumbs.some((thumb) => thumb.finger === finger);
 }
@@ -80,23 +82,34 @@ export const SETTINGS_ITEMS = {
     defaultValue: true,
   }),
   /**
-   * 親指シフトを出力キーと反対側の親指へ振り替えるか（どのレベルでも可）。
-   * 反対側の親指キーが物理配列に無ければ実現できないので `validate` で判定する。
+   * 左右どちらの親指でも押せるセンターシフト（SandS）を押す親指（どのレベルでも可）。
+   * 選んだ側の親指キーが物理配列に無ければ実現できないので `validate` で判定する。
    */
-  preferOppositeThumb: defineItem<boolean>({
-    id: 'preferOppositeThumb',
+  centerShiftThumb: defineItem<CenterShiftThumb>({
+    id: 'centerShiftThumb',
     allowedLevels: ANY_LEVEL,
-    defaultValue: false,
+    defaultValue: 'right',
     isApplicable: (context) => context.layout.thumbShiftKeys !== undefined && context.layout.thumbShiftKeys.length > 0,
     validate: (value, context) => {
-      if (!value) return { ok: true };
-      // 「振り替え先」は出力キー側の反対の手なので、判定には両方の親指キーの有無を見る。
-      // 片方でも無ければ振り替えは実現できない。
-      const realizable = shapeHasThumb(context, 'LT') && shapeHasThumb(context, 'RT');
-      return realizable
-        ? { ok: true }
-        : { ok: false, fallback: false, reason: '物理配列に左右いずれかの親指キーが無く、反対側への振り替えを実現できません' };
+      if (value === 'right') return { ok: true };
+      // 「逆の親指」は出力キーの手で左右どちらも使うので、両方の親指キーが要る。
+      const realizable = shapeHasThumb(context, 'LT') && (value === 'left' || shapeHasThumb(context, 'RT'));
+      return realizable ? { ok: true } : { ok: false, fallback: 'right', reason: '物理配列に親指キーが足りず、選んだ親指でセンターシフトを押せません' };
     },
+  }),
+  /**
+   * 空白の単打を押す親指（どのレベルでも可）。センターシフトの親指とは独立に決める。
+   * 左親指を選べるのは、空白を右親指の単打で打ち、左親指キーを他の入力に使わない配列だけ。
+   */
+  spaceThumb: defineItem<SpaceThumb>({
+    id: 'spaceThumb',
+    allowedLevels: ANY_LEVEL,
+    defaultValue: 'right',
+    isApplicable: (context) => canTypeSpaceWithLeftThumb(context.layout),
+    validate: (value, context) =>
+      value === 'right' || shapeHasThumb(context, 'LT')
+        ? { ok: true }
+        : { ok: false, fallback: 'right', reason: '物理配列に左親指のキーが無く、左親指で空白を押せません' },
   }),
   /**
    * hold-capable triggerの連続保持化。layoutのFace定義（trigger persistence）に依存する
@@ -215,7 +228,7 @@ export const SETTINGS_ITEMS = {
    * 実際に使う物理配列を`DEFAULT_SHAPE_ID`へ前もってfallbackさせた上で`context.shapeId`へ
    * 積む（配列対象の解決自体を失敗させない）。ここでの`validate`は
    * 「生の上書き値」と「実際にその後使われた物理配列（`context.shapeId`）」を突き合わせるだけで、
-   * 食い違っていれば診断を1件積んで`context.shapeId`へ読み替える。`preferOppositeThumb`と
+   * 食い違っていれば診断を1件積んで`context.shapeId`へ読み替える。`centerShiftThumb`と
    * 同じ「実現できない値をfallbackで戻す」役割を、fallback先の決定だけ呼び出し側
    * （`target-resolution.ts`。catalogを持っているのはそちら）に任せる形。
    */

@@ -569,10 +569,10 @@ test('担当する指を足しても、大文字や親指シフトの入力の�
   for (const id of ['naginata-v18', 'shin-jis-prefix']) {
     const layout = LAYOUT_BY_ID.get(id);
     if (layout === undefined) continue;
-    for (const preferOppositeThumb of [false, true]) {
-      const a = generateTrace('左右のこもれび', layout, multi, opts({ preferOppositeThumb }));
-      const b = generateTrace('左右のこもれび', layout, plain, opts({ preferOppositeThumb }));
-      assert.deepEqual(keysOf(a), keysOf(b), `${id} preferOppositeThumb=${preferOppositeThumb}`);
+    for (const centerShiftThumb of ['right', 'left', 'opposite'] as const) {
+      const a = generateTrace('左右のこもれび', layout, multi, opts({ centerShiftThumb }));
+      const b = generateTrace('左右のこもれび', layout, plain, opts({ centerShiftThumb }));
+      assert.deepEqual(keysOf(a), keysOf(b), `${id} centerShiftThumb=${centerShiftThumb}`);
     }
   }
 });

@@ -84,15 +84,15 @@ runtimeではまずcontext requirementを満たすalternativeだけをeligible�
 その見出し自体を不成立として短い見出しへfallbackする。その後にselection policyを適用する。
 `ResolvedComboDefinition.condition` はpresentation provenanceとして保持できるが、generateTrace legalityのauthorityではない。runtime legalityはInputAlternative.contextRequirementsだけを見る。
 
-`preferOppositeThumb` はphysical key rewriteではなくalternative selection policyである。
-左右どちらの親指も合法なpathとしてauthoring時にcanonicalへ入り、policyがoutputと反対側の
-親指を使うpathを優先する。既定ではauthoring上の先頭alternativeを使う。
+`centerShiftThumb` はphysical key rewriteではなくalternative selection policyである。
+左右どちらの親指も合法なpathとしてauthoring時にcanonicalへ入り、policyが選んだ親指（右・左・outputと反対側）を
+使うpathを優先する。既定は右親指で、authoring上の先頭alternativeと同じpathになる。
 このPolicyはauthoring defaultとthumb keyだけが異なる合法variantに候補を限定し、
 thumb alternative派生時のdedupeはaction列だけではなくcanonical alternative全体のidentityで行う。
 Requirement / Capability / classification / role / layer / context / origin等が異なるpathは保持する。
 
 opposite-hand variantが無ければdefaultを維持する。同じoutputのnon-thumb pathや
-別方式alternativeへ `preferOppositeThumb` だけを理由に切り替えない。
+別方式alternativeへ `centerShiftThumb` だけを理由に切り替えない。
 
 Strokeはselected alternativeをrealizeした結果から生成する。
 `stepLayers / stepTriggerKeys / stepSemantics / StepSemantic` はcanonical cutover後に削除済みで、

@@ -33,7 +33,8 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
   const metrics = computeMetrics(trace, geometry, {
     windowSize: 7,
     sfbHomeCost: false,
-    preferOppositeThumb: true,
+    centerShiftThumb: 'opposite',
+    spaceThumb: 'left',
     chainInterpretation: {
       ...DEFAULT_CHAIN_INTERPRETATION,
       breakOnOppositeHandSimultaneous: true,
@@ -52,7 +53,8 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
   assert.deepEqual(metrics.conditions, {
     windowSize: 7,
     sfbHomeCost: false,
-    preferOppositeThumb: true,
+    centerShiftThumb: 'opposite',
+    spaceThumb: 'left',
     chainInterpretation: {
       ...DEFAULT_CHAIN_INTERPRETATION,
       breakOnOppositeHandSimultaneous: true,

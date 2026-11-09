@@ -22,7 +22,8 @@ import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly label: string }[] = [
   { id: 'windowSize', label: '先読みN' },
   { id: 'sfbHomeCost', label: '同指連続のホーム復帰距離' },
-  { id: 'preferOppositeThumb', label: '親指シフトの振り替え' },
+  { id: 'centerShiftThumb', label: 'センターシフトの親指' },
+  { id: 'spaceThumb', label: '空白の親指' },
   { id: 'triggerRealizationPolicy', label: 'シフト系キーの押し続け' },
   // 文字キーと一緒に押したシフト系キーを、別のアクション（Stroke）として数えるか。アクション数の列が変わる。
   { id: 'actionRealizationPolicy', label: 'アクション数の扱い' },
@@ -206,6 +207,9 @@ const MISSING_TEXT: Readonly<Record<'shape' | 'romajiRule' | 'fingerAssignment',
   fingerAssignment: MISSING_FINGER_ASSIGNMENT_NAME,
 };
 
+/** 親指を選ぶ項目の値の文言。条件のモーダルの選択肢と同じ。 */
+export const THUMB_TEXT = { right: '右親指', left: '左親指', opposite: '逆の親指' } as const;
+
 function formatValue(
   id: SettingsItemId,
   value: unknown,
@@ -230,6 +234,9 @@ function formatValue(
     }
     const multi = custom !== undefined && hasMultiFingerKeys(custom);
     return { format: 'primitive', displayValue: `自作の指の割当${multi ? MULTI_FINGER_NOTE : ''}` };
+  }
+  if ((id === 'centerShiftThumb' || id === 'spaceThumb') && typeof value === 'string' && Object.hasOwn(THUMB_TEXT, value)) {
+    return { format: 'primitive', displayValue: THUMB_TEXT[value as keyof typeof THUMB_TEXT] };
   }
   // 実現方式の2項目は、利用者が選べる主な値（する/しない）で出す。例外は中身を並べず、
   // あることだけを示す（例外は打ち方の大分類・キーごとの指定で、短い1行に収まらないため）。

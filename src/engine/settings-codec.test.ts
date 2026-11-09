@@ -46,7 +46,7 @@ test('decode: 妥当な上書きはそのまま読める', () => {
     },
     layout: {
       [LAYOUTS[0].id]: {
-        preferOppositeThumb: true,
+        centerShiftThumb: 'opposite',
         triggerRealizationPolicy: { useHold: true },
         actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationOverrides: [] },
         romajiRuleId: 'kunrei',
@@ -59,7 +59,7 @@ test('decode: 妥当な上書きはそのまま読める', () => {
   if (!result.ok) return;
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.value.global?.windowSize, 4);
-  assert.equal(result.value.layout?.[LAYOUTS[0].id]?.preferOppositeThumb, true);
+  assert.equal(result.value.layout?.[LAYOUTS[0].id]?.centerShiftThumb, 'opposite');
   assert.equal(result.value.layout?.[LAYOUTS[0].id]?.fingerAssignmentId, 'jis-default');
 });
 
@@ -139,7 +139,7 @@ test('decode: 許可されていないレベルの値も型さえ合えば保持
 test('encode→decode: 往復で同じ上書きに戻る（roundtrip）', () => {
   const value = {
     global: { windowSize: 3, sfbHomeCost: false },
-    setup: { 's-1': { preferOppositeThumb: true } },
+    setup: { 's-1': { centerShiftThumb: 'opposite' as const } },
   };
   const encoded = SETTINGS_CASCADE_OVERRIDES_CODEC.encode(value);
   assert.equal(encoded.version, 1);
