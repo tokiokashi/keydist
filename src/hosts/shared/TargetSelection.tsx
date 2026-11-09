@@ -12,6 +12,7 @@ import {
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import {
   filterTargetChoiceGroups,
+  selectedVisibleTargetKeys,
   targetSummaryText,
   unselectedVisibleTargets,
   type TargetChoiceGroup,
@@ -169,6 +170,8 @@ export function TargetSelection({
   const visibleGroups = filterTargetChoiceGroups(groups, query, kindFilter);
   // 一覧に出ている候補のうち、まだ選んでいないもの（一覧の順。同じ対象が複数の区分に出ても1回だけ）。
   const unselectedVisible = useMemo(() => unselectedVisibleTargets(visibleGroups, selectedKeys), [visibleGroups, selectedKeys]);
+  // 一覧に出ていて、選んでいる対象（キーの集合）。「表示中を全部外す」はこれだけを外す。
+  const selectedVisible = useMemo(() => selectedVisibleTargetKeys(visibleGroups, selectedKeys), [visibleGroups, selectedKeys]);
 
   // 全部の名前が入るかを実寸で測る。測る用の要素（見えない・全文）と、ボタンが使える幅を比べる。
   // 使える幅 = 見出しの対象の欄の幅 − ボタンの名前以外の部分の幅。
@@ -305,6 +308,8 @@ export function TargetSelection({
   };
 
   const selectAllVisible = () => onChange([...selected, ...unselectedVisible]);
+  // 一覧に出ていない選択中の対象は残す（絞り込みで隠れた対象を、見えないまま外さないため）。
+  const clearVisible = () => onChange(selected.filter((target) => !selectedVisible.has(analysisTargetKey(target))));
 
   const ariaSummary = names.length === 0 ? '未選択' : names.join('、');
 
@@ -445,8 +450,8 @@ export function TargetSelection({
                 <button type="button" onClick={selectAllVisible} disabled={unselectedVisible.length === 0}>
                   表示中を全部選ぶ
                 </button>
-                <button type="button" onClick={() => onChange([])} disabled={selected.length === 0}>
-                  すべて外す
+                <button type="button" onClick={clearVisible} disabled={selectedVisible.size === 0}>
+                  表示中を全部外す
                 </button>
               </>
             ) : (

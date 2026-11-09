@@ -5,6 +5,7 @@ import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import {
   filterTargetChoiceGroups,
   normalizeSearchText,
+  selectedVisibleTargetKeys,
   sortTargetsByChoices,
   targetChoiceGroups,
   targetSummaryText,
@@ -223,6 +224,29 @@ test('種類の切り替えは名前の絞り込みと同時に使え、自作�
   assert.deepEqual(keys('会社', 'alpha'), []);
   // 「すべて」は種類を問わない。
   assert.equal(filterTargetChoiceGroups(groups, '', 'all'), groups);
+});
+
+test('表示中を全部外すで外す対象は、一覧に出ていて選んでいる候補だけ', () => {
+  const groups = targetChoiceGroups(
+    source({
+      setups: SETUPS,
+      selected: [
+        { kind: 'layout', layoutId: 'qwerty' },
+        { kind: 'setup', setupId: 'gone' },
+      ],
+    }),
+  );
+  const selected = new Set(['layout:qwerty', 'setup:gone']);
+  const keys = (visible: ReturnType<typeof filterTargetChoiceGroups>) => [...selectedVisibleTargetKeys(visible, selected)];
+
+  // 絞り込まない時は、候補に無い対象も「見つからない」区分に出るので、選んでいる両方が外す対象になる
+  assert.deepEqual(keys(groups), ['setup:gone', 'layout:qwerty']);
+
+  // 絞り込み欄で語を絞ると、語に当たらない選択中の対象は一覧から消えるので外さない
+  assert.deepEqual(keys(filterTargetChoiceGroups(groups, 'qwerty')), ['layout:qwerty']);
+
+  // 当てはまる候補が1つも無い時は空
+  assert.deepEqual(keys(filterTargetChoiceGroups(groups, '該当しない名前')), []);
 });
 
 test('表示中を全部選ぶで足す対象は、一覧に出ている未選択の候補だけを一覧の順に返す', () => {
