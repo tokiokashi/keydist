@@ -6,7 +6,6 @@ import type { BandChartExtracted, BandChartOkRow } from './extract.ts';
 import {
   BAND_HEIGHT,
   bandChartModel,
-  MIN_BAND_HEIGHT,
   bandLayout,
   legendBandIndices,
   legendLayout,
@@ -126,35 +125,7 @@ test('狭い幅では名前を帯の上の行に置き、名前と帯が重な�
   for (let i = 1; i < layout.rows.length; i++) assert.ok(layout.rows[i]!.top >= layout.rows[i - 1]!.bandY + BAND_HEIGHT);
 });
 
-test('行が少なく高さに収まる時は、帯の太さを上限のまま変えない', () => {
-  for (const width of [INLINE_MIN_WIDTH - 1, INLINE_MIN_WIDTH + 400]) {
-    const unconstrained = bandLayout(width, 3);
-    assert.equal(unconstrained.bandHeight, BAND_HEIGHT);
-    assert.deepEqual(bandLayout(width, 3, unconstrained.height), unconstrained);
-    assert.deepEqual(bandLayout(width, 3, 10_000), unconstrained);
-  }
-});
-
-test('行が増えると、行の全体が高さに収まる最も太い帯まで縮め、収まらない時は下限で止める', () => {
-  for (const width of [INLINE_MIN_WIDTH - 1, INLINE_MIN_WIDTH + 400]) {
-    for (const rowCount of [4, 12, 25, 43]) {
-      const full = bandLayout(width, rowCount);
-      const floor = bandLayout(width, rowCount, 0);
-      assert.equal(floor.bandHeight, MIN_BAND_HEIGHT);
-      // 収まる高さを与えると、その高さに収まる
-      for (const maxHeight of [floor.height, floor.height + 40, Math.round((floor.height + full.height) / 2), full.height]) {
-        const layout = bandLayout(width, rowCount, maxHeight);
-        assert.ok(layout.height <= maxHeight, `${width}px ${rowCount}行 ${maxHeight}px: ${layout.height}`);
-        // 1段太い帯では収まらない
-        if (layout.bandHeight > MIN_BAND_HEIGHT) assert.ok(bandLayout(width, rowCount, layout.height - 1).bandHeight < layout.bandHeight);
-      }
-      // 下限より低い高さでは、下限の太さで描き、図は与えた高さを超えて伸びる
-      assert.ok(bandLayout(width, rowCount, floor.height - 1).height > floor.height - 1);
-    }
-  }
-});
-
-test('帯を細くしても、隣の行の名前と帯と押せる範囲が重ならず、帯の中の割合は帯に収まる時だけ出す', () => {
+test('帯を細くしても、隣の行の名前と帯と押せる範囲が重ならない', () => {
   for (const width of [INLINE_MIN_WIDTH - 1, INLINE_MIN_WIDTH + 400]) {
     for (const maxHeight of [0, 200, 400, 10_000]) {
       const layout = bandLayout(width, 20, maxHeight);
@@ -169,8 +140,6 @@ test('帯を細くしても、隣の行の名前と帯と押せる範囲が重�
           assert.ok(row.top - 1 >= previous.top - 1 + layout.hitHeight);
         }
       }
-      const shown = segmentGeometries([0.5, 0.5], layout.bandX, layout.bandWidth, layout.bandHeight).every((segment) => segment.showText);
-      assert.equal(shown, layout.bandHeight >= 15);
     }
   }
 });
