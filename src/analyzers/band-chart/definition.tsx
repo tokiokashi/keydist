@@ -7,8 +7,7 @@ import { CopyImageControl } from '../copy-image-control.tsx';
 import { fitLabel, FONT_SIZE, textWidth } from '../figure-text.ts';
 import { useElementWidth } from '../use-element-width.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
-import { kanaUnitOf } from '../unit-words.ts';
-import { VISIBLE_TEXT_NOTE, visibleText } from '../visible-text.ts';
+import { visibleText } from '../visible-text.ts';
 import { bandChartDefinition, type BandChartExtracted } from './extract.ts';
 import {
   BAND_HEIGHT,
@@ -95,8 +94,6 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
   const selected = model.rows.find((row) => row.targetKey === selectedKey);
   const hovered = hover === undefined ? undefined : model.rows.findIndex((row) => row.targetKey === hover.targetKey);
   const caption = bandCaption(model.quantity, language);
-  const skippedCaption = `打てない文字と、その文字を含む打鍵のまとまりの${kanaUnitOf(language)}は、割合に数えていません。`;
-  const skippedHasSymbol = model.skipped.some((row) => row.chars.some((entry) => visibleText(entry.char) !== entry.char));
   const sampleText = bandSampleText(model.quantity, language);
   const help = useMemo(() => bandChartHelp(model.quantity, language), [model.quantity, language]);
 
@@ -306,11 +303,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
       ) : null}
 
       {model.skipped.length > 0 ? (
-        <table className="band-skipped" data-band-skipped="">
-          <caption>
-            {skippedCaption}
-            {skippedHasSymbol ? VISIBLE_TEXT_NOTE : ''}
-          </caption>
+        <table className="band-skipped" data-band-skipped="" aria-label="打てない文字">
           <thead>
             <tr>
               <th scope="col">配列</th>

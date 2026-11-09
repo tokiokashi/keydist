@@ -115,7 +115,7 @@ export function PopoverSelect<T extends string>({
       return;
     }
     const options = [...(listRef.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])];
-    const index = options.findIndex((element) => element === document.activeElement);
+    const index = options.indexOf(document.activeElement as HTMLElement);
     const move = (next: number) => {
       event.preventDefault();
       options[(next + options.length) % options.length]?.focus();
@@ -158,7 +158,6 @@ export function PopoverSelect<T extends string>({
       </button>
       {open
         ? createPortal(
-            // biome-ignore lint/a11y/useKeyWithClickEvents: キーは子の選択肢（button）が受け、矢印キーの移動だけをlistboxで受ける
             <div ref={listRef} id={listId} className="popover-select-list" role="listbox" aria-label={label} style={style} onKeyDown={onListKeyDown}>
               {choices.map((choice) => (
                 <button

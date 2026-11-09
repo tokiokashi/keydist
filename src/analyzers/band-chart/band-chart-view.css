@@ -372,14 +372,6 @@
   font-size: 0.82rem;
 }
 
-.band-skipped caption {
-  margin-bottom: 0.3rem;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  line-height: 1.5;
-  text-align: left;
-}
-
 .band-skipped th,
 .band-skipped td {
   padding: 0.2rem 1rem 0.2rem 0;
