@@ -35,7 +35,7 @@
     "@tanstack/react-start": "^1.169.4",
     "budoux": "0.10.2",
     "lindera-wasm": "6.2.0",
-    "motion": "^14.8.0",
+    "motion": "^14.9.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-grid-layout": "^2.3.0",
