@@ -1,27 +1,29 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { CopyImageControl } from '../copy-image-control.tsx';
 import { fitLabel, FONT_SIZE, textWidth } from '../figure-text.ts';
-import { resolvePaneHelp } from '../pane-help.tsx';
 import { useElementWidth } from '../use-element-width.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
+import { VISIBLE_TEXT_NOTE, visibleText } from '../visible-text.ts';
 import { bandChartDefinition, type BandChartExtracted } from './extract.ts';
 import {
   BAND_HEIGHT,
   BAND_TEXT_SIZE,
   bandChartModel,
-  bandLabels,
   bandLayout,
+  legendBandIndices,
   legendLayout,
   percentText,
   segmentGeometries,
   type BandDisplayRow,
   type BandRowContext,
 } from './figure-model.ts';
-import { BAND_CHART_PANE_META, bandChartQuantityName } from './pane-meta.ts';
+import { BAND_CHART_PANE_META, bandChartHelp } from './pane-meta.ts';
 import { bandChartOptions, DEFAULT_BAND_CHART_OPTIONS, type BandChartOptions } from './options.ts';
+import { BAND_QUANTITIES, BAND_QUANTITY_LIST, bandCaption, bandSampleText, type BandQuantity } from './quantities.ts';
 import './band-chart-view.css';
 
 /**
@@ -63,10 +65,9 @@ function composeImageSvg(legend: SVGSVGElement, rows: SVGSVGElement): SVGSVGElem
   return root;
 }
 
-function rowAriaLabel(row: BandDisplayRow, language: ReturnType<typeof useTextLanguage>): string {
-  const labels = bandLabels();
-  const shares = row.row.shares.map((share, index) => `${labels[index]} ${percentText(share, 1)}`).join('、');
-  return `${row.label}の${bandChartQuantityName(language)}。${shares}`;
+function rowAriaLabel(row: BandDisplayRow, quantity: BandQuantity, caption: string): string {
+  const shares = row.row.shares.map((share, index) => `${quantity.labels[index]} ${percentText(share, 1)}`).join('、');
+  return `${row.label}の${caption}。${shares}`;
 }
 
 interface HoverSegment {
@@ -76,7 +77,6 @@ interface HoverSegment {
 
 export function BandChartBody({ extracted, order, rowContext, copyFigureImage }: BandChartBodyProps) {
   const language = useTextLanguage();
-  const unit = kanaUnitOf(language);
   const figureRef = useRef<HTMLElement>(null);
   const legendRef = useRef<SVGSVGElement>(null);
   const rowsRef = useRef<SVGSVGElement>(null);
@@ -86,13 +86,18 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
   const [hover, setHover] = useState<HoverSegment | undefined>(undefined);
 
   const model = useMemo(() => bandChartModel(extracted, order, rowContext), [extracted, order, rowContext]);
-  const labels = useMemo(() => bandLabels(), []);
+  const quantity = BAND_QUANTITIES[model.quantity];
+  const { labels, colors } = quantity;
   const layout = useMemo(() => bandLayout(width, model.rows.length), [width, model.rows.length]);
-  const legend = useMemo(() => legendLayout(width), [width]);
+  const legendIndices = useMemo(() => legendBandIndices(model.rows, labels.length), [model.rows, labels.length]);
+  const legend = useMemo(() => legendLayout(width, labels, legendIndices), [width, labels, legendIndices]);
   const selected = model.rows.find((row) => row.targetKey === selectedKey);
   const hovered = hover === undefined ? undefined : model.rows.findIndex((row) => row.targetKey === hover.targetKey);
-  const quantityName = bandChartQuantityName(language);
-  const help = resolvePaneHelp(BAND_CHART_PANE_META.help, language)!;
+  const caption = bandCaption(model.quantity, language);
+  const skippedCaption = `打てない文字と、その文字を含む打鍵のまとまりの${kanaUnitOf(language)}は、割合に数えていません。`;
+  const skippedHasSymbol = model.skipped.some((row) => row.chars.some((entry) => visibleText(entry.char) !== entry.char));
+  const sampleText = bandSampleText(model.quantity, language);
+  const help = useMemo(() => bandChartHelp(model.quantity, language), [model.quantity, language]);
 
   // 選んだ配列が対象から外れたら、選ぶのをやめる
   useEffect(() => {
@@ -142,6 +147,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                     <rect
                       className="band-segment band-swatch"
                       data-band={item.index}
+                      data-band-color={colors[item.index]}
                       x={item.swatchX}
                       y={item.y - legend.swatch / 2}
                       width={legend.swatch}
@@ -157,7 +163,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
             </div>
             <div className="band-rows">
               {/* biome-ignore lint/a11y/useSemanticElements: SVGの図の中の行の集まりに付ける役割で、fieldsetには置き換えられない */}
-              <svg ref={rowsRef} className="band-rows-svg" viewBox={`0 0 ${width} ${layout.height}`} role="group" aria-label={quantityName}>
+              <svg ref={rowsRef} className="band-rows-svg" viewBox={`0 0 ${width} ${layout.height}`} role="group" aria-label={caption}>
                 {model.rows.map((row, rowIndex) => {
                   const geometry = layout.rows[rowIndex]!;
                   const isSelected = selected?.targetKey === row.targetKey;
@@ -171,7 +177,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                       role="button"
                       tabIndex={0}
                       aria-pressed={isSelected}
-                      aria-label={rowAriaLabel(row, language)}
+                      aria-label={rowAriaLabel(row, quantity, caption)}
                       data-band-row={row.targetKey}
                       data-selected={isSelected || undefined}
                       onClick={() => toggle(row.targetKey)}
@@ -200,6 +206,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                           <rect
                             className="band-segment"
                             data-band={segment.index}
+                            data-band-color={colors[segment.index]}
                             data-band-segment={`${row.targetKey}:${segment.index}`}
                             data-active={(hover?.targetKey === row.targetKey && hover.index === segment.index) || undefined}
                             x={segment.x}
@@ -215,6 +222,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                             <text
                               className="band-segment-text"
                               data-band={segment.index}
+                              data-band-color={colors[segment.index]}
                               x={segment.x + segment.width / 2}
                               y={geometry.bandY + BAND_HEIGHT / 2}
                               textAnchor="middle"
@@ -243,7 +251,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
               )}
             </div>
             <figcaption className="band-caption" data-band-caption="">
-              {quantityName}
+              {caption}
             </figcaption>
           </figure>
 
@@ -252,7 +260,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
               <p className="band-detail-title">
                 <span title={selected.fullName || selected.label}>{selected.label}</span>
                 <span className="band-detail-total">
-                  打てた{unit}数 {selected.row.typed}
+                  {sampleText.totalLabel} {sampleText.total(selected.row.total)}
                 </span>
               </p>
               <table className="band-detail-table">
@@ -260,7 +268,7 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                   <tr>
                     <th scope="col">区分</th>
                     <th scope="col">割合</th>
-                    <th scope="col">{unit}数</th>
+                    <th scope="col">{sampleText.countHeader}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -268,12 +276,12 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
                     <tr key={label} data-band-detail-row={index}>
                       <th scope="row">
                         <svg className="band-detail-swatch" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
-                          <rect className="band-segment" data-band={index} width="12" height="12" rx="2" />
+                          <rect className="band-segment" data-band={index} data-band-color={colors[index]} width="12" height="12" rx="2" />
                         </svg>
                         {label}
                       </th>
                       <td>{percentText(selected.row.shares[index]!, 1)}</td>
-                      <td>{selected.row.counts[index]}</td>
+                      <td>{sampleText.count(selected.row.counts[index]!)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -297,16 +305,35 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
       ) : null}
 
       {model.skipped.length > 0 ? (
-        <p className="band-notice" data-band-skipped="">
-          打てない文字は、割合に数えていません。数は、
-          {model.skipped.map((row, index) => (
-            <span key={row.targetKey}>
-              {index === 0 ? '' : '、'}
-              <span title={row.fullName || row.label}>{row.label}</span> {row.skipped}文字
-            </span>
-          ))}
-          です。
-        </p>
+        <table className="band-skipped" data-band-skipped="">
+          <caption>
+            {skippedCaption}
+            {skippedHasSymbol ? VISIBLE_TEXT_NOTE : ''}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">配列</th>
+              <th scope="col">打てない文字</th>
+            </tr>
+          </thead>
+          <tbody>
+            {model.skipped.map((row) => (
+              <tr key={row.targetKey} data-band-skipped-row={row.targetKey}>
+                <th scope="row" title={row.fullName || row.label}>
+                  {row.label}
+                </th>
+                <td>
+                  {row.chars.map((entry) => (
+                    <span key={entry.char} className="band-skipped-char" data-band-skipped-char={entry.char}>
+                      {visibleText(entry.char)}
+                      <span className="band-skipped-count">{entry.count}回</span>
+                    </span>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       ) : null}
 
       {model.differentText.length > 0 ? (
@@ -319,9 +346,17 @@ export function BandChartBody({ extracted, order, rowContext, copyFigureImage }:
   );
 }
 
-/** 設定できる項目は無い。 */
-export function BandChartSettings(_props: AnalyzerSettingsProps<BandChartOptions>) {
-  return <p className="band-notice">このAnalyzerに解析設定はありません。</p>;
+/** 帯に出す量の選択。量ごとの標本と区分の違いは、図の見方（ⓘ）に出す。 */
+export function BandChartSettings({ options, onOptionsChange }: AnalyzerSettingsProps<BandChartOptions>) {
+  return (
+    <div className="option-groups">
+      <SelectOptionField
+        label="量"
+        binding={bindOption(options, DEFAULT_BAND_CHART_OPTIONS, onOptionsChange, 'quantity')}
+        choices={BAND_QUANTITY_LIST.map((quantity) => ({ value: quantity.id, label: quantity.name }))}
+      />
+    </div>
+  );
 }
 
 /** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */
