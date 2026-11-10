@@ -15,6 +15,8 @@ import {
   initialWorkspaceLibrary,
   resolveWorkspacePaneTarget,
   workspaceLayoutIds,
+  workspaceReferencedTargets,
+  workspaceTargets,
   renameWorkspace,
   uniqueWorkspaceName,
   withWorkspaceGrid,
@@ -380,4 +382,16 @@ test('duplicateWorkspace: 詰める設定も写る', () => {
   const library = withWorkspaceCompactPanes(libraryWith('a'), 'w1', true);
   const copied = duplicateWorkspace(library, 'w1', 'w2');
   assert.equal(findWorkspace(copied, 'w2')!.compactPanes, true);
+});
+
+test('workspaceReferencedTargets: 従われていない組の対象も含む。workspaceTargetsとworkspaceLayoutIdsは含めない', () => {
+  const SETUP: AnalysisTarget = { kind: 'setup', setupId: 's1' };
+  let library = libraryWith('a');
+  library = withWorkspaceTarget(library, 'w1', G, { kind: 'single', target: COLEMAK });
+  library = withWorkspaceTarget(library, 'w1', G, { kind: 'set', selection: { targets: [QWERTY, SETUP], baseline: undefined } });
+  library = withWorkspacePaneBinding(library, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: QWERTY } });
+  const workspace = findWorkspace(library, 'w1')!;
+  assert.deepEqual(workspaceTargets(workspace), [QWERTY]);
+  assert.deepEqual(workspaceLayoutIds(workspace), ['qwerty']);
+  assert.deepEqual(workspaceReferencedTargets(workspace), [QWERTY, COLEMAK, QWERTY, SETUP]);
 });

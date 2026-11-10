@@ -6,6 +6,7 @@ import {
   PRESET_FILE_FORMAT,
   PRESET_FILE_MAX_PRESETS,
   importResultMessage,
+  missingReferences,
   parsePresetFile,
   presetFileBody,
   presetFileName,
@@ -31,13 +32,13 @@ function fileText(body: Record<string, unknown>): string {
 }
 
 function failed(text: string) {
-  const result = parsePresetFile(text, REFERENCES);
+  const result = parsePresetFile(text);
   assert.equal(result.ok, false);
   return result as Extract<typeof result, { ok: false }>;
 }
 
 test('封筒: 書き出して読み直すと、名前と値が往復する（idは持ち越さない）', () => {
-  const result = parsePresetFile(fileText(presetFileBody(LIBRARY)), REFERENCES);
+  const result = parsePresetFile(fileText(presetFileBody(LIBRARY)));
   assert.ok(result.ok);
   assert.deepEqual(result.presets, [
     { name: '自分用メモ', values: { windowSize: 5 } },
@@ -99,7 +100,6 @@ test('診断: 壊れた値・未知の項目は捨てて残りを読み、項目
         { id: 'b', name: '比較用（N=5）', values: { windowSize: 'x', playbackRateWindow: 9 } },
       ],
     }),
-    REFERENCES,
   );
   assert.ok(result.ok);
   assert.deepEqual(
@@ -122,7 +122,6 @@ test('診断: 条件に無い項目（playbackStepsPerSecondなど）を含む�
       version: 1,
       presets: [{ id: 'a', name: 'A', values: { windowSize: 4, playbackRateWindow: 5, playbackStepsPerSecond: 99, playbackPersonalSpeed: false } }],
     }),
-    REFERENCES,
   );
   assert.ok(result.ok);
   assert.deepEqual(
@@ -134,7 +133,7 @@ test('診断: 条件に無い項目（playbackStepsPerSecondなど）を含む�
 });
 
 test('診断: 壊れたプリセットは件数で伝え、残りは読む', () => {
-  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: {} }, { id: 'b', values: {} }, 3] }), REFERENCES);
+  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: {} }, { id: 'b', values: {} }, 3] }));
   assert.ok(result.ok);
   assert.equal(result.presets.length, 1);
   assert.ok(result.message.includes('1件') && result.message.includes('2件'));
@@ -145,7 +144,7 @@ test('上限: 件数が上限を超えたら丸ごと断る。上限ちょうど
     fileText({ version: 1, presets: Array.from({ length: count }, (_, index) => ({ id: `p${index}`, name: `P${index}`, values: {} })) });
   const over = failed(make(PRESET_FILE_MAX_PRESETS + 1));
   assert.ok(over.message.includes(`${PRESET_FILE_MAX_PRESETS}件`));
-  const exact = parsePresetFile(make(PRESET_FILE_MAX_PRESETS), REFERENCES);
+  const exact = parsePresetFile(make(PRESET_FILE_MAX_PRESETS));
   assert.ok(exact.ok);
   assert.equal(exact.presets.length, PRESET_FILE_MAX_PRESETS);
 });
@@ -160,13 +159,12 @@ test('参照先: この端末にない指の割当・ローマ字規則・物理
         { id: 'c', name: '手元にあるだけ', values: { fingerAssignmentId: 'standard', romajiRuleId: 'qwerty' } },
       ],
     }),
-    REFERENCES,
   );
   assert.ok(result.ok);
   // 値は捨てない
   assert.equal((result.presets[0]!.values as Record<string, unknown>).fingerAssignmentId, 'custom-1');
   const names = result.presets.map((preset) => preset.name);
-  const message = importResultMessage(result.message, result.missingReferences, names);
+  const message = importResultMessage(result.message, missingReferences(result.presets, REFERENCES), names);
   assert.match(message, /「自分用メモ」.*指の割当/);
   assert.match(message, /「比較用（N=5）」.*ローマ字規則/);
   assert.match(message, /「比較用（N=5）」.*物理配列/);
@@ -174,16 +172,13 @@ test('参照先: この端末にない指の割当・ローマ字規則・物理
 });
 
 test('参照先: 手元に同名のプリセットがあっても、注記は番号付きの追加分の名前を指す', () => {
-  const result = parsePresetFile(
-    fileText({ version: 1, presets: [{ id: 'a', name: '比較用（N=5）', values: { fingerAssignmentId: 'custom-1' } }] }),
-    REFERENCES,
-  );
+  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: '比較用（N=5）', values: { fingerAssignmentId: 'custom-1' } }] }));
   assert.ok(result.ok);
   const library: PresetLibrary<SettingsValueMap> = { presets: [{ id: 'own', name: '比較用（N=5）', values: {} }] };
   const added = appendImportedPresets(library, result.presets, () => 'new').presets.slice(library.presets.length);
   const message = importResultMessage(
     result.message,
-    result.missingReferences,
+    missingReferences(result.presets, REFERENCES),
     added.map((preset) => preset.name),
   );
   assert.match(message, /「比較用（N=5） 2」.*指の割当/);
@@ -191,13 +186,13 @@ test('参照先: 手元に同名のプリセットがあっても、注記は番
 });
 
 test('参照先: 手元にある参照先なら注記しない', () => {
-  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: { fingerAssignmentId: 'standard' } }] }), REFERENCES);
+  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: { fingerAssignmentId: 'standard' } }] }));
   assert.ok(result.ok);
-  assert.equal(importResultMessage(result.message, result.missingReferences, ['A']), result.message);
+  assert.equal(importResultMessage(result.message, missingReferences(result.presets, REFERENCES), ['A']), result.message);
 });
 
 test('同名の番号付け: 読み込みは常に追加し、既存と同じ名前は「名前 2」になる', () => {
-  const parsed = parsePresetFile(fileText(presetFileBody(LIBRARY)), REFERENCES);
+  const parsed = parsePresetFile(fileText(presetFileBody(LIBRARY)));
   assert.ok(parsed.ok);
   let counter = 0;
   const once = appendImportedPresets(LIBRARY, parsed.presets, () => `new-${++counter}`);

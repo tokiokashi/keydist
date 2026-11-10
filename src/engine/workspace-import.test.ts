@@ -175,3 +175,8 @@ test('突き合わせ: 空きを残したまま詰める設定をオンにした
   assert.equal(result.library.length, 1);
   assert.equal(result.entries[0]!.outcome.kind, 'skipped-same');
 });
+
+test('参照先: どのペインも従っていない組の対象も、手元に無ければ注記する', () => {
+  const library = withWorkspaceTarget([workspace('w1')], 'w1', INITIAL_LINK_GROUP_ID, { kind: 'single', target: { kind: 'layout', layoutId: 'gone' } });
+  assert.deepEqual(missingWorkspaceReferences(library[0]!, HOLDINGS), ['layout']);
+});

@@ -216,6 +216,19 @@ export function workspaceTargets(workspace: Pick<Workspace, 'groups' | 'panes'>)
 }
 
 /**
+ * Workspaceが指す対象すべて。`workspaceTargets`に加えて、どのペインも従っていない組の対象も含む。
+ * 従われていない組は画面に見えないが、後から足したペインが従うと映すので、書き出しの同梱と読み込みの注記はこちらで集める。
+ */
+export function workspaceReferencedTargets(workspace: Pick<Workspace, 'groups' | 'panes'>): readonly AnalysisTarget[] {
+  const followed = new Set<string>();
+  for (const pane of workspace.panes) {
+    if (pane.binding.mode === 'follow') followed.add(pane.binding.group);
+  }
+  const unfollowed = workspace.groups.filter((group) => !followed.has(group.id));
+  return [...workspaceTargets(workspace), ...unfollowed.flatMap((group) => [effectiveSingleTarget(group.target.single), ...group.target.set.targets])];
+}
+
+/**
  * Workspaceのペインが映しうる配列のid（重複なし）。文脈バーの既定の物理配列のチップが、
  * 配列のレベルの値が勝つ配列を示すのに使う。
  */

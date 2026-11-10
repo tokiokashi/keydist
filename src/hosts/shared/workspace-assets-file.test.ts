@@ -17,6 +17,7 @@ import {
   initialWorkspaceLibrary,
   INITIAL_LINK_GROUP_ID,
   OWN_OPTIONS,
+  resolveWorkspacePaneTarget,
   withWorkspaceTarget,
   type Workspace,
 } from '#engine/workspace.ts';
@@ -376,4 +377,60 @@ test('面で定義する配列: 同じidで中身の違う配列が手元にあ�
   const imported = after.userLayouts.find((item) => item.id === layoutId)!;
   assert.deepEqual(imported.faces, FACE_LAYOUT.faces);
   assert.deepEqual(imported.composition, FACE_LAYOUT.composition);
+});
+
+/** どのペインも従っていない組だけが自作の資産を指すWorkspace。組は2つ（読み込みで入りうる形）。 */
+function unfollowedWorkspace(): Workspace {
+  const base = createWorkspace(initialWorkspaceLibrary(), () => 'w1', '見えない組').created;
+  const first = withWorkspaceTarget([base], 'w1', INITIAL_LINK_GROUP_ID, { kind: 'single', target: { kind: 'layout', layoutId: 'user-a' } })[0]!;
+  const second: Workspace['groups'][number] = {
+    ...first.groups[0]!,
+    id: 'link-2',
+    target: {
+      single: { target: { kind: 'setup', setupId: 's1' } },
+      set: { targets: [{ kind: 'layout', layoutId: 'user-b' }], baseline: undefined },
+    },
+  };
+  return { ...first, groups: [...first.groups, second] };
+}
+
+test('同梱: どのペインも従っていない組の対象も、複数の組にわたって入れる', () => {
+  const bundle = workspaceAssetsOf([unfollowedWorkspace()], EXPORTER);
+  assert.deepEqual(idsOf(bundle.layouts), ['user-a', 'user-b']);
+  assert.deepEqual(idsOf(bundle.setups), ['s1']);
+});
+
+test('読み込み: 従われていない組の対象は同梱した配列を指し、後から足したペインはその配列で計算する', () => {
+  const { after } = importInto(assetsOf([], CLASHING), fileOf(unfollowedWorkspace(), EXPORTER));
+  const added = after.workspaces[0]!;
+  const single = added.groups[0]!.target.single.target;
+  assert.ok(single?.kind === 'layout');
+  if (single?.kind !== 'layout') return;
+  assert.notEqual(single.layoutId, 'user-a');
+  // 手元の同じidの配列は残り、組は同梱した配列（書き出した側の中身）を指す
+  assert.deepEqual(after.userLayouts.find((item) => item.id === 'user-a')?.rows, OTHER_ROWS);
+  assert.deepEqual(after.userLayouts.find((item) => item.id === single.layoutId)?.rows, ROWS);
+  // 後から足したペインが組に従うと、そのペインの対象は同梱した配列になる
+  const library = addWorkspacePane(
+    after.workspaces,
+    added.id,
+    { id: 'late', analyzerId: 'bigram-flow', options: undefined, optionsBinding: OWN_OPTIONS, binding: followBinding(INITIAL_LINK_GROUP_ID) },
+    { w: 6, h: 4 },
+  );
+  const late = library[0]!.panes.find((pane) => pane.id === 'late')!;
+  assert.deepEqual(late.binding, followBinding(INITIAL_LINK_GROUP_ID));
+  assert.deepEqual(resolveWorkspacePaneTarget(late.binding, library[0]!.groups, 'single'), { kind: 'single', target: single });
+  // 2つ目の組の対象も付け替わる
+  const second = added.groups[1]!.target.single.target;
+  assert.ok(second?.kind === 'setup' && second.setupId !== 's1');
+});
+
+test('読み込み: 従われていない組の対象と同じ中身の配列が別のidで手元にあれば、その手元の配列を指す', () => {
+  const local: Holdings = {
+    ...EXPORTER,
+    userLayouts: [layout('user-a', 'rule-a', OTHER_ROWS), { ...layout('mine', 'rule-a'), name: 'user-a' }],
+    setupLibrary: library([]),
+  };
+  const { after } = importInto(assetsOf([], local), fileOf(unfollowedWorkspace(), EXPORTER));
+  assert.deepEqual(after.workspaces[0]!.groups[0]!.target.single.target, { kind: 'layout', layoutId: 'mine' });
 });
