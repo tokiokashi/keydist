@@ -110,7 +110,7 @@ export interface WikipediaCategory {
 
 /**
  * Wikipediaの本文の取得元。Hugging Faceのデータセット `wikimedia/wikipedia` の `20231101.ja`。
- * 本文は datasets-server の `rows` から行の位置を指定して取り、タイトルとページIDを照合してからsha256を照合する。
+ * 本文はdatasets-serverの `rows` から行の位置を指定して取り、タイトルとページIDを照合してからsha256を照合する。
  */
 export const WIKIPEDIA_SOURCE = {
   dataset: 'wikimedia/wikipedia',

@@ -4,7 +4,7 @@ import type { BodyState } from './use-resolved-text-selection.ts';
 /** 出典を一覧にせず、そのまま並べる件数の上限。これを超えたら、開いた時だけ一覧を出す。 */
 const INLINE_ITEM_LIMIT = 3;
 
-/** CC BY-SA のテキストを抜粋して改変したことを伝える文。ライセンスの表示の要件（改変の明示）を満たす。 */
+/** CC BY-SAのテキストを抜粋して改変したことを伝える文。ライセンスの表示の要件（改変の明示）を満たす。 */
 const CC_BY_SA_MODIFIED = '記事や作品から文を抜粋して改変しています。';
 
 function SourceItems({ source }: { readonly source: TextSource }) {

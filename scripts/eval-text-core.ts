@@ -1,5 +1,5 @@
 // 同梱する評価テキストを、原文から作る規則。取得や書き出しは持たない（generate-eval-texts.tsが使う）。
-// 青空文庫の記法の除去は aozora-core.ts が受け持つ。ここは、Wikipediaの記事から本文の段落を選ぶ規則と、
+// 青空文庫の記法の除去はaozora-core.tsが受け持つ。ここは、Wikipediaの記事から本文の段落を選ぶ規則と、
 // 評価に渡す字数を予算にして文の単位で取る規則を持つ。
 import { isAlphanumericChar, isSymbolChar } from '../src/input/text/evaluation-text.ts';
 

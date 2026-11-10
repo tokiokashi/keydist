@@ -276,7 +276,7 @@ test('中身が同じ2つのSetup（配列・物理配列・条件が同じでid
 // ---------------------------------------------------------------------------
 
 /**
- * fixtureの「上書き無しシナリオ」（id末尾が default/kana。
+ * fixtureの「上書き無しシナリオ」（id末尾がdefault/kana。
  * fixture生成規約で、この3種類だけが上書きの無いケース）は、そのままAnalysisTargetの
  * **配列対象**（`{kind:'layout', layoutId}`）でも同じ数値になるはずである
  * （`engine/setup.test.ts`のカスケード項目レベルの確認に加えて、ここではengineの経路

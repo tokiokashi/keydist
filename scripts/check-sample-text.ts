@@ -3,7 +3,7 @@
 //   node --experimental-strip-types scripts/check-sample-text.ts
 //
 // 漢字を含むテキストは、アプリと同じ辞書で読みに直してから、既定の条件で評価に渡す字数を数える。
-// 辞書は .cache/dictionary/ に置く（無ければ取得する）ので、npm test には入れていない。
+// 辞書は .cache/dictionary/ に置く（無ければ取得する）ので、npm testには入れていない。
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';

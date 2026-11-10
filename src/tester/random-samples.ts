@@ -4,7 +4,7 @@ const PHRASE_MIN_LENGTH = 5;
 const PHRASE_MAX_LENGTH = 15;
 
 /**
- * PRACTICE_TEXT_JA はかなだけで書かれているため、Intl.Segmenter の word 境界は
+ * PRACTICE_TEXT_JAはかなだけで書かれているため、Intl.Segmenterのword境界は
  * 「しごと」→「し / ごと」のように一般的な語境界と一致しない場合がある。
  * 単語ボタンは、練習用のかな文に実際に含まれる日常語を短い固定リストで持つ。
  */

@@ -1,7 +1,7 @@
 // 同梱する評価テキスト（src/input/text/corpus/）を、青空文庫の作品とWikipediaの記事から作る。
 //
 //   青空文庫から小説・童話・随筆・講演の4本、Wikipediaから8分野の8本、12の出どころから均等に取った分野を混ぜた1本。
-//   どれも、既定の条件で評価に渡す字数が約1万字になるように、文の単位で取る（規則は scripts/eval-text-core.ts）。
+//   どれも、既定の条件で評価に渡す字数が約1万字になるように、文の単位で取る（規則はscripts/eval-text-core.ts）。
 //
 //   node --experimental-strip-types scripts/generate-eval-texts.ts           本文・出典の一覧・出典の表示用のJSONを作り直して書く
 //   node --experimental-strip-types scripts/generate-eval-texts.ts --check   置いてあるファイルが、固定した原文から作れるものと同じかを確かめる
@@ -136,7 +136,7 @@ export interface TakeRecord {
 function aozoraItem(work: AozoraWork): TextSourceItem {
   return {
     label: `『${work.title}』`,
-    note: `${work.author}（没年 ${work.authorDeathYear}）。青空文庫。${work.colophon}ルビと入力者注を取り除き、一部の文を抜粋した`,
+    note: `${work.author}（没年${work.authorDeathYear}）。青空文庫。${work.colophon}ルビと入力者注を取り除き、一部の文を抜粋した`,
     url: work.cardUrl,
   };
 }
@@ -298,7 +298,7 @@ const SOURCES_HEADER = `# 同梱するテキストの出典とライセンス
 
 - 青空文庫の作品の本文（\`aozora-*.txt\`）: 作者の没後70年を過ぎ、著作権の保護期間が満了している。
   [青空文庫収録ファイルの取り扱い規準](https://www.aozora.gr.jp/guide/kijyunn.html)に従い、ルビと入力者注を取り除いて抜粋した。
-- Wikipediaの文を含む本文（\`wiki-*.txt\` と \`mixed.txt\`）: [Creative Commons 表示-継承 4.0 国際（CC BY-SA 4.0）](https://creativecommons.org/licenses/by-sa/4.0/deed.ja)で配る。
+- Wikipediaの文を含む本文（\`wiki-*.txt\` と \`mixed.txt\`）: [Creative Commons表示-継承4.0国際（CC BY-SA 4.0）](https://creativecommons.org/licenses/by-sa/4.0/deed.ja)で配る。
   Wikipediaの記事の本文は、Wikimedia Foundationの[利用規約](https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use)第7条により、CC BY-SA 4.0とGFDLで許諾されている。
   取得元のデータセットの表記はCC BY-SA 3.0だが、改変した文は「4.0以降」で許諾できる（[Wikipedia:Copyrights](https://en.wikipedia.org/wiki/Wikipedia:Copyrights)の「Reusers' rights and obligations」）。
   CC BY-SA 4.0になるのはこれらのテキストのファイルだけで、リポジトリのほかのファイルはApache-2.0のままである。
