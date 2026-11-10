@@ -4,16 +4,20 @@ import type { UserAssetImportEntry, UserAssetKind } from '#engine/user-assets-fi
  * 書き出しファイルに同梱された資産の読み込み結果の文（DOMを使わない計算）。Workspaceとプリセットのどちらのファイルにも同梱される。
  */
 
+/** テキストに関する種類の呼び名。「データ・設定の管理」の画面の文も同じ語を使う。 */
+export const TEXT_ASSET_NOUNS = { text: 'テキスト', 'builtin-text-reading': '組み込みテキストの読みの直し' } as const;
+
 const ASSET_NOUNS: Readonly<Record<UserAssetKind, string>> = {
   layout: '配列',
   'romaji-rule': 'ローマ字規則',
   'finger-assignment': '指の割当',
   setup: 'Setup',
+  ...TEXT_ASSET_NOUNS,
 };
 
 /** 足した資産の件数の文。足した資産が無ければ空。同じ中身で足さなかった資産は、参照が手元の資産を指すだけなので数えない。 */
 export function addedAssetsText(entries: readonly UserAssetImportEntry[]): readonly string[] {
-  const added = entries.filter((entry) => entry.outcome.kind !== 'skipped-same').length;
+  const added = entries.filter((entry) => entry.outcome.kind === 'added' || entry.outcome.kind === 'added-renamed').length;
   return added > 0 ? [`同梱の資産${added}件を足しました`] : [];
 }
 

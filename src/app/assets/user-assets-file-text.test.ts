@@ -11,13 +11,14 @@ test('ファイル名は日付を入れる', () => {
 
 test('書き出しの文は、0件の種類を出さない', () => {
   const layout = { kind: 'alpha' as const, id: 'a', name: 'A', rows: ['', '', '', ''] as [string, string, string, string], romaji: 'kunrei' };
-  const one = exportedText({ userLayouts: [layout], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS });
+  const one = exportedText({ userLayouts: [layout], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS, textLibrary: { texts: [] } });
   assert.ok(one.includes('配列1件') && !one.includes('ローマ字規則'));
   const two = exportedText({
     userLayouts: [layout, { ...layout, id: 'b' }],
     userRomajiRules: [{ id: 'r', name: 'R', base: 'kunrei', overrides: {}, generateSokuon: true }],
     fingerAssignments: [],
     setupLibrary: NO_SETUPS,
+    textLibrary: { texts: [] },
   });
   assert.ok(two.includes('配列2件') && two.includes('ローマ字規則1件'));
 });
@@ -57,6 +58,7 @@ test('Setupの行と書き出しの文', () => {
       userRomajiRules: [],
       fingerAssignments: [],
       setupLibrary: { setups: [{ id: 's', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' }], overrides: {} },
+      textLibrary: { texts: [] },
     }).includes('Setup1件'),
   );
   assert.ok(

@@ -11,7 +11,8 @@ import { columnFingerAssignment, PHYSICAL_SHAPES, QWERTY_OPTIMIZED_FINGER_ASSIGN
 import type { TextLanguage } from '#input/text/language.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
-import { emptyTextLibrary } from '#input/text/library.ts';
+import { readTextFile } from '#platform/browser-file.ts';
+import { emptyTextLibrary, type TextLibrary } from '#input/text/library.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import type { KeydistAssets } from './commands.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
@@ -24,8 +25,11 @@ import {
   USER_ASSETS_FILE_MAX_ITEMS,
   importUserAssetsCommand,
   mergeUserAssets,
+  mergeUserTexts,
   parseUserAssetsFile,
   userAssetsFileBody,
+  userAssetsFileExportProblem,
+  USER_ASSETS_FILE_MAX_BYTES,
   type UserAssetsBundle,
   type UserAssetsHoldings,
 } from './user-assets-file.ts';
@@ -48,7 +52,7 @@ const FINGER: FingerAssignment = columnFingerAssignment(
 const HOLDINGS: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [RULE], fingerAssignments: [FINGER], setupLibrary: NO_SETUPS };
 
 function fileText(assets: UserAssetsHoldings): string {
-  return JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...userAssetsFileBody(assets) });
+  return JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...userAssetsFileBody({ ...assets, textLibrary: emptyTextLibrary() }) });
 }
 
 function read(assets: UserAssetsHoldings): UserAssetsBundle {
@@ -612,7 +616,7 @@ test('Setup: 書き出しでは、ファイルに入れない自作の資産を�
       },
     ),
   };
-  const body = userAssetsFileBody(holdings) as { setups: { id: string; overrides?: Record<string, unknown> }[] };
+  const body = userAssetsFileBody({ ...holdings, textLibrary: emptyTextLibrary() }) as { setups: { id: string; overrides?: Record<string, unknown> }[] };
   assert.deepEqual(
     body.setups.map((setup) => [setup.id, setup.overrides]),
     [
@@ -799,7 +803,7 @@ test('面で定義する配列の比較: 合成の有無・面の並びのどれ
 });
 
 test('面で定義する配列を含む資産のファイルは、壊れた面の配列だけを捨てて残りを読み、理由を返す', () => {
-  const body = userAssetsFileBody(FACE_HOLDINGS);
+  const body = userAssetsFileBody({ ...FACE_HOLDINGS, textLibrary: emptyTextLibrary() });
   const layouts = body.layouts as Record<string, unknown>[];
   const broken = structuredClone(layouts[1]!);
   broken.id = 'user-broken';
@@ -857,4 +861,119 @@ test('取り込みの診断: JSONとして読めない・版が合わない・�
   assert.match(future, /ファイルの版は99です/);
   assert.match(noVersion, /「version」欄がありません/);
   assert.match(badVersion, /「version」欄が0以上の整数ではありません/);
+});
+
+const BUILTIN_ID = 'builtin:ja.legacy';
+const TEXT_HOLDINGS: TextLibrary = {
+  texts: [
+    { id: 't1', name: '吾輩', text: '吾輩は猫である。', languageOverride: 'ja', readingCorrections: { 吾輩: 'わがはい' }, unseen: true },
+    { id: 't2', name: 'plain', text: 'hello' },
+  ],
+  builtinReadingCorrections: { [BUILTIN_ID]: { 吾輩: 'わがはい' }, 'builtin:gone.id': { 猫: 'ねこ' } },
+};
+
+function readFile(textLibrary: TextLibrary, assets: UserAssetsHoldings = EMPTY) {
+  const parsed = parseUserAssetsFile(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...userAssetsFileBody({ ...assets, textLibrary }) }));
+  assert.ok(parsed.ok, parsed.ok ? '' : parsed.message);
+  if (!parsed.ok) throw new Error('unreachable');
+  return parsed;
+}
+
+test('自作のテキストは、名前・本文・言語の手動指定・直した読みが戻り、「新しい」の印と組み込みに無いidの直しは運ばない', () => {
+  const parsed = readFile(TEXT_HOLDINGS);
+  const merged = mergeUserTexts(emptyTextLibrary(), parsed.userTexts, STAMP);
+  assert.deepEqual(merged.library, {
+    texts: [
+      { id: 't1', name: '吾輩', text: '吾輩は猫である。', languageOverride: 'ja', readingCorrections: { 吾輩: 'わがはい' } },
+      { id: 't2', name: 'plain', text: 'hello' },
+    ],
+    builtinReadingCorrections: { [BUILTIN_ID]: { 吾輩: 'わがはい' } },
+  });
+  assert.ok(parsed.dropped.length === 0);
+});
+
+test('テキストを持たない古いファイルは、テキストが0件のファイルとして読む', () => {
+  const parsed = parseUserAssetsFile(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, version: 1, layouts: [LAYOUT] }));
+  assert.ok(parsed.ok);
+  if (parsed.ok) assert.deepEqual(parsed.userTexts, { texts: [], builtinReadingCorrections: {} });
+});
+
+test('テキストだけのファイルも読め、同じファイルを2回読んでもテキストが増えない', () => {
+  const parsed = readFile(TEXT_HOLDINGS);
+  const first = mergeUserTexts(emptyTextLibrary(), parsed.userTexts, STAMP);
+  const again = mergeUserTexts(first.library, parsed.userTexts, 'stamp2');
+  assert.equal(again.library, first.library);
+  assert.ok(again.entries.every((entry) => entry.outcome.kind === 'skipped-same'));
+});
+
+test('テキストの中身の比較は名前を見ず、同じidで中身が違えば別のidと別名で足す', () => {
+  const parsed = readFile(TEXT_HOLDINGS);
+  const renamedLocal: TextLibrary = { texts: [{ id: 't2', name: '手元の名前', text: 'hello' }] };
+  assert.equal(mergeUserTexts(renamedLocal, { texts: [TEXT_HOLDINGS.texts[1]!], builtinReadingCorrections: {} }, STAMP).library, renamedLocal);
+  const differing: TextLibrary = { texts: [{ id: 't2', name: 'plain', text: 'hello!' }] };
+  const merged = mergeUserTexts(differing, parsed.userTexts, STAMP);
+  const added = merged.library.texts.find((text) => text.text === 'hello');
+  assert.deepEqual(added, { id: 'text-stamp-1', name: 'plain (2)', text: 'hello' });
+  assert.equal(merged.library.texts.length, 3);
+  // 言語の手動指定と直した読みも中身に数える
+  const other: TextLibrary = { texts: [{ id: 't1', name: '吾輩', text: '吾輩は猫である。' }] };
+  assert.equal(mergeUserTexts(other, { texts: [TEXT_HOLDINGS.texts[0]!], builtinReadingCorrections: {} }, STAMP).library.texts.length, 2);
+});
+
+test('組み込みのテキストの読みの直しは、手元に無ければ足し、手元に別の直しがあれば手元を残す', () => {
+  const incoming = readFile(TEXT_HOLDINGS).userTexts;
+  const own: TextLibrary = { texts: [], builtinReadingCorrections: { [BUILTIN_ID]: { 吾輩: 'われわれ' } } };
+  const kept = mergeUserTexts(own, incoming, STAMP);
+  assert.deepEqual(kept.library.builtinReadingCorrections, own.builtinReadingCorrections);
+  assert.ok(kept.entries.some((entry) => entry.assetKind === 'builtin-text-reading' && entry.outcome.kind === 'kept-own'));
+});
+
+test('『吾輩は猫である』の全文と同じ大きさのテキストを、ほかの資産と一緒に書き出して読み込める', () => {
+  const text = 'あ'.repeat(319_416);
+  const bytes = new TextEncoder().encode(text).length;
+  assert.equal(bytes, 958_248);
+  const library: TextLibrary = { texts: [{ id: 'big', name: '全文', text, readingCorrections: { 吾輩: 'わがはい' } }] };
+  const holdings = { ...HOLDINGS, textLibrary: library };
+  const body = userAssetsFileBody(holdings);
+  assert.equal(userAssetsFileExportProblem(body), undefined);
+  const parsed = parseUserAssetsFile(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...body }, null, 2));
+  assert.ok(parsed.ok);
+  if (parsed.ok) {
+    assert.equal(parsed.userTexts.texts[0]?.text, text);
+    assert.equal(parsed.bundle.layouts.length, 1);
+  }
+});
+
+test('上限を超えるファイルと件数は、書き出す前に断る', () => {
+  const huge = 'あ'.repeat(Math.ceil(USER_ASSETS_FILE_MAX_BYTES / 3));
+  const tooBig = userAssetsFileExportProblem(userAssetsFileBody({ ...EMPTY, textLibrary: { texts: [{ id: 'h', name: 'h', text: huge }] } }));
+  assert.notEqual(tooBig, undefined);
+  const many = Array.from({ length: USER_ASSETS_FILE_MAX_ITEMS + 1 }, (_, index) => ({ id: `t${index}`, name: `t${index}`, text: 'a' }));
+  assert.notEqual(userAssetsFileExportProblem(userAssetsFileBody({ ...EMPTY, textLibrary: { texts: many } })), undefined);
+});
+
+test('インポートのコマンドは、資産とテキストを1回の変更で足し、元に戻すと両方が戻る', () => {
+  const parsed = readFile(TEXT_HOLDINGS, HOLDINGS);
+  const step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), importUserAssetsCommand(parsed.bundle, STAMP, parsed.userTexts).command);
+  assert.equal(step.assets.userLayouts.length, 1);
+  assert.equal(step.assets.textLibrary.texts.length, 2);
+  const undone = undo(step.assets, step.history);
+  assert.equal(undone.assets.textLibrary.texts.length, 0);
+  assert.equal(undone.assets.userLayouts.length, 0);
+});
+
+test('1MiBを超え上限以下のファイルを、読み込み口（上限つきの読み取り）を通して読み込める', async () => {
+  const full = 'あ'.repeat(319_416);
+  const library: TextLibrary = { texts: [1, 2, 3].map((n) => ({ id: `big${n}`, name: `全文${n}`, text: `${full}${n}` })) };
+  const body = userAssetsFileBody({ ...EMPTY, textLibrary: library });
+  assert.equal(userAssetsFileExportProblem(body), undefined);
+  const file = `${JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...body }, null, 2)}\n`;
+  const blob = new Blob([file]);
+  assert.ok(blob.size > 1024 * 1024 && blob.size <= USER_ASSETS_FILE_MAX_BYTES);
+  const read = await readTextFile(blob, USER_ASSETS_FILE_MAX_BYTES);
+  assert.equal(read.kind, 'ok');
+  if (read.kind !== 'ok') return;
+  const parsed = parseUserAssetsFile(read.text);
+  assert.ok(parsed.ok);
+  if (parsed.ok) assert.deepEqual(parsed.userTexts.texts, library.texts);
 });
