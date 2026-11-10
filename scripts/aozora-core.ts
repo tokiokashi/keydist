@@ -1,8 +1,13 @@
-// 青空文庫の注記付きテキストを、評価に渡す本文に直す規則。取得や書き出しは持たない（generate-neko-sample.tsが使う）。
+// 青空文庫の注記付きテキストを、評価に渡す本文に直す規則。取得や書き出しは持たない（generate-neko-sample.tsとgenerate-eval-texts.tsが使う）。
 
-/** JIS X 0213の面区点番号（`面-区-点`）からUnicodeの字を引く表。『吾輩は猫である』の本文に現れる外字だけを持つ。 */
+/**
+ * 外字の注の末尾の番号からUnicodeの字を引く表。同梱する作品の本文に現れる外字だけを持つ。
+ * 番号はJIS X 0213の面区点番号（`面-区-点`）。底本のページと行で示す外字（`183-7`）も1件ある。
+ */
 export const GAIJI_TABLE: Readonly<Record<string, string>> = {
+  '183-7': 'ん',
   '1-6-84': 'ㇶ',
+  '1-14-6': '丰',
   '1-14-76': '匇',
   '1-15-24': '噱',
   '1-15-89': '媧',
@@ -10,7 +15,9 @@ export const GAIJI_TABLE: Readonly<Record<string, string>> = {
   '1-84-45': '怳',
   '1-84-54': '惝',
   '1-84-55': '惸',
+  '1-85-86': '楣',
   '1-86-15': '橛',
+  '1-86-29': '欞',
   '1-86-62': '泫',
   '1-87-40': '炷',
   '1-87-64': '燄',
@@ -109,7 +116,7 @@ export function convertAozora(body: string, table: Readonly<Record<string, strin
   let gaijiConverted = 0;
   let gaijiRemoved = 0;
   let text = body.replace(GAIJI_ANY, (note) => {
-    const key = /(\d+-\d+-\d+)］$/.exec(note)?.[1];
+    const key = /(\d+-\d+(?:-\d+)?)］$/.exec(note)?.[1];
     const char = key === undefined ? undefined : table[key];
     if (char === undefined) {
       gaijiRemoved++;

@@ -40,7 +40,6 @@ import { SAMPLE_KINDS, sampleLabel, type SampleKind } from '#engine/sample-works
 import { withWorkspaceConditions } from '#engine/settings-items.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
-import { resolveTextSelection } from '#input/text/resolve.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { KeySelectionContext, useKeySelectionStore } from '#hosts/shared/key-selection-store.tsx';
@@ -48,6 +47,7 @@ import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
 import type { BunsetsuSource } from '#hosts/shared/segmentation.ts';
 import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
+import { useHeldEvaluation, useResolvedTextSelection } from '#hosts/shared/use-resolved-text-selection.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
@@ -190,11 +190,10 @@ export function WorkspacePage({
 
   // Workspaceの保存はどれも`workspace`を作り直す。中身が同じテキストは同じ参照のまま渡して、
   // テキストと関係の無い保存（並び・連動の組の対象）で全ペインが依頼を出し直さないようにする。
-  const resolvedText = useStableResolvedText(
-    useMemo(() => (workspace === undefined ? undefined : resolveTextSelection(workspace.text, assets.textLibrary)), [workspace, assets.textLibrary]),
-  );
+  const { resolved, body: textBody } = useResolvedTextSelection(workspace?.text, assets.textLibrary);
+  const resolvedText = useStableResolvedText(resolved);
   // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
-  const evaluation = useReadingEvaluation(resolvedText, reading);
+  const evaluation = useHeldEvaluation(useReadingEvaluation(resolvedText, reading), textBody);
   // 見出しのⓘの説明の呼び名を、Workspaceのテキストの言語に合わせる（テキストが無い間は日本語）
   const language = resolvedText?.language ?? 'ja';
 

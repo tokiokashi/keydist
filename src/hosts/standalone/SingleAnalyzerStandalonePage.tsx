@@ -3,7 +3,6 @@ import type { Command } from '#input/commands/index.ts';
 import { setMultiTargetsCommand, setReadingCorrectionCommand, setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { analysisTargetKey, layoutIdsOfTargets, type AnalysisTarget } from '#input/setup/index.ts';
-import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -12,6 +11,7 @@ import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
 import type { BunsetsuSource } from '#hosts/shared/segmentation.ts';
 import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
+import { useHeldEvaluation, useResolvedTextSelection } from '#hosts/shared/use-resolved-text-selection.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { ReadingChip } from '#hosts/shared/ReadingChip.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
@@ -111,11 +111,10 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
   // すべて共有部品`TextChip`（文脈バーのテキストのチップ。比較表・N感度と3ページで同じ操作を持つため）。
-  const resolvedText = useStableResolvedText(
-    useMemo(() => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary), [assets.standaloneTextSelection, assets.textLibrary]),
-  );
+  const { resolved, body: textBody } = useResolvedTextSelection(assets.standaloneTextSelection, assets.textLibrary);
+  const resolvedText = useStableResolvedText(resolved);
   // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
-  const evaluation = useReadingEvaluation(resolvedText, reading, assetsReady);
+  const evaluation = useHeldEvaluation(useReadingEvaluation(resolvedText, reading, assetsReady), textBody);
 
   // 解析設定は資産（assets.standaloneAnalyzerOptions）が正で、ページはローカルには持たない。`optionsDraft`はtextDraftと同じ形の
   // UI用の一時状態: 見た目は即座に反映しつつ（controlled）、資産への書き込みは

@@ -1,4 +1,5 @@
-import { sampleTextEntries, type SampleTextEntry, type TextLanguage } from './samples.ts';
+import { corpusEntryOf, sampleTextEntries, type SampleTextEntry, type TextLanguage } from './samples.ts';
+import type { TextSource } from './text-source.ts';
 
 /**
  * 組み込みテキスト（`docs/architecture.md`用語表
@@ -11,9 +12,13 @@ import { sampleTextEntries, type SampleTextEntry, type TextLanguage } from './sa
 export interface BuiltinText {
   readonly id: string;
   readonly name: string;
+  /** 本文。選んだ時に読み込むテキストは、読み込むまで空文字（読むたびに今の状態を返す。`corpus-bodies.ts`）。 */
   readonly text: string;
   /** 組み込みは言語が固定で、利用者が手動で上書きできる入れ物を持たない。 */
   readonly language: TextLanguage;
+  /** 選んだ時に本文を読み込む時の、読み込み先。最初の表示に含める本文は無い。 */
+  readonly lazyBody?: { readonly sampleId: string; readonly fileName: string };
+  readonly source: TextSource;
 }
 
 const BUILTIN_ID_PREFIX = 'builtin:';
@@ -22,12 +27,19 @@ function builtinIdFor(entry: SampleTextEntry): string {
   return `${BUILTIN_ID_PREFIX}${entry.language}.${entry.sampleId}`;
 }
 
-export const BUILTIN_TEXTS: readonly BuiltinText[] = sampleTextEntries().map((entry) => ({
-  id: builtinIdFor(entry),
-  name: entry.name,
-  text: entry.text,
-  language: entry.language,
-}));
+export const BUILTIN_TEXTS: readonly BuiltinText[] = sampleTextEntries().map((entry): BuiltinText => {
+  const corpus = entry.lazy ? corpusEntryOf(entry.sampleId) : undefined;
+  return {
+    id: builtinIdFor(entry),
+    name: entry.name,
+    get text(): string {
+      return entry.text;
+    },
+    language: entry.language,
+    ...(corpus === undefined ? {} : { lazyBody: { sampleId: corpus.sampleId, fileName: corpus.fileName } }),
+    source: entry.source,
+  };
+});
 
 /**
  * 単体ページの既定選択は組み込みのja.legacy（「吾輩は猫である」の第一章の先頭の約1000字）にする。

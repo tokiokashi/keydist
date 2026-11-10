@@ -11,12 +11,13 @@ import {
   type KeydistAssets,
   type TextSelectionHolder,
 } from '#engine/commands.ts';
-import { BUILTIN_TEXTS } from '#input/text/builtin.ts';
+import { BUILTIN_TEXTS, builtinTextById } from '#input/text/builtin.ts';
 import type { TextIdGenerator, TextLibrary } from '#input/text/library.ts';
-import { resolveTextSelection } from '#input/text/resolve.ts';
 import { countTextCharacters } from '#input/text/char-count.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { TextRef, TextSelectionState } from '#input/text/selection.ts';
+import { TextSourceNote } from './TextSourceNote.tsx';
+import { useResolvedTextSelection } from './use-resolved-text-selection.ts';
 import './context-bar.css';
 
 export type TextContentCommit = ((value: { readonly ref: TextRef; readonly text: string }) => void) & {
@@ -76,7 +77,7 @@ export function TextChip(props: TextChipProps) {
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const resolved = resolveTextSelection(props.selection, props.textLibrary);
+  const { resolved, body } = useResolvedTextSelection(props.selection, props.textLibrary);
   // 競合で選ばれずに残ったコピーがまだ見られていない間、チップに点を出す。
   // 文脈バーが狭くてキー名や言語を隠す時も、チップ自体は残るので点は見える。
   const hasUnseen = props.textLibrary.texts.some((text) => text.unseen === true);
@@ -117,7 +118,7 @@ export function TextChip(props: TextChipProps) {
       >
         <span className="context-chip-key">テキスト</span>
         <span className="context-chip-value">{resolved.name}</span>
-        <span className="text-chip-count">{formatTextCount(countTextCharacters(resolved.text))}</span>
+        <span className="text-chip-count">{body === 'loading' ? '読み込み中' : formatTextCount(countTextCharacters(resolved.text))}</span>
         {hasUnseen ? <span className="text-chip-unseen" role="img" aria-label="新しいテキストがあります" title="新しいテキストがあります" /> : null}
         <span className="text-chip-language">{languageLabel(resolved.language)}</span>
         <svg className="context-chip-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
@@ -134,7 +135,8 @@ export function TextChip(props: TextChipProps) {
 }
 
 function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, onTextContentCommit }: TextChipProps) {
-  const resolved = resolveTextSelection(selection, textLibrary);
+  const { resolved, body } = useResolvedTextSelection(selection, textLibrary);
+  const builtinSource = resolved.isBuiltin ? builtinTextById(resolved.ref.id)?.source : undefined;
 
   // 本文は見た目へ即座に反映し（controlled textarea）、資産への反映は間引く。
   // 資産側の値が変わったら下書きを合わせる。effectでなく描画中に合わせるのは、effectだと
@@ -275,10 +277,11 @@ function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, 
           onTextContentCommit({ ref: resolved.ref, text });
         }}
         rows={5}
+        readOnly={body === 'loading'}
         aria-label="テキスト"
       />
       {/* 狭い文脈バーではチップの文字数を見た目から省くので、開いた欄の近くでも同じ数を出す。 */}
-      <p className="text-editor-count">{formatTextCount(countTextCharacters(resolved.text))}</p>
+      <p className="text-editor-count">{body === 'loading' ? '読み込み中' : formatTextCount(countTextCharacters(resolved.text))}</p>
 
       <div className="text-editor-row">
         <label className="text-editor-inline text-editor-name">
@@ -314,6 +317,7 @@ function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, 
           ? 'サンプルを書き換えると、自作のテキストとして新しく保存します。元のサンプルはそのまま残ります。'
           : '自作のテキストはその場で書き換わります。'}
       </p>
+      {builtinSource === undefined ? null : <TextSourceNote source={builtinSource} body={body} />}
     </div>
   );
 }
