@@ -3,8 +3,10 @@ import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent, typ
 import { appendImportedPresets, applyPresetValues, normalizePresetName } from '#input/presets/index.ts';
 import { SETTINGS_ITEMS } from '#engine/settings-items.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
-import { ROMAJI_RULES } from '#input/romaji/rules.ts';
-import { applyPresetCommand, deletePresetCommand, importPresetsCommand, renamePresetCommand, savePresetCommand } from '#engine/preset-commands.ts';
+import { ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
+import type { FingerAssignment } from '#input/shapes/geometry.ts';
+import { applyPresetCommand, deletePresetCommand, renamePresetCommand, savePresetCommand } from '#engine/preset-commands.ts';
+import { importPresetsWithAssetsCommand, mergePresetImport, presetAssetsOf } from '#engine/preset-assets.ts';
 import { GLOBAL_LEVEL, WORKSPACE_LEVEL, setupLevel } from './condition-edit.ts';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
@@ -16,9 +18,11 @@ import {
   PRESET_FILE_TOO_LARGE_MESSAGE,
   PRESET_FILE_UNREADABLE_MESSAGE,
   importResultMessage,
+  missingReferences,
   parsePresetFile,
   presetFileBody,
   presetFileName,
+  presetImportSummary,
   type PresetReferences,
 } from './preset-file.ts';
 import { applyResultText, changedGlobalItemCount, deletedResultText, isSavableName, presetRows, savedResultText } from './preset-panel.ts';
@@ -53,6 +57,11 @@ interface Notice {
  * 読み込みの後は移さない（選択の後もフォーカスは「読み込む…」に残る）。
  */
 type FocusTarget = { readonly kind: 'menu'; readonly id: string } | { readonly kind: 'undo' } | { readonly kind: 'summary' };
+
+/** 新しいidの元にする値。同じ読み込みの中では変わらず、別の読み込みとは重ならない。 */
+function newStamp(): string {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
 
 export function PresetSection({ editor }: { readonly editor: ConditionEditorContext }) {
   const { overrides, presetLibrary, dispatch } = editor;
@@ -101,12 +110,12 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
   });
 
   /** この端末にある参照先。ファイルの値がこれに無いidを指していたら、読み込みの結果で注記する。 */
-  const references = (): PresetReferences => ({
+  const references = (rules: readonly UserRomajiRule[], fingers: readonly FingerAssignment[]): PresetReferences => ({
     fingerAssignmentIds: new Set([
       ...Object.values(FINGER_ASSIGNMENT_REGISTRY).map((assignment) => assignment.id),
-      ...(editor.customFingerAssignments?.keys() ?? []),
+      ...fingers.map((assignment) => assignment.id),
     ]),
-    romajiRuleIds: new Set([...Object.keys(ROMAJI_RULES), ...(editor.customRomajiRules ?? []).map((rule) => rule.id)]),
+    romajiRuleIds: new Set([...Object.keys(ROMAJI_RULES), ...rules.map((rule) => rule.id)]),
     shapeIds: new Set(editor.shapes.keys()),
   });
 
@@ -118,7 +127,11 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
       chosen.length === 1 && ids !== undefined
         ? presetFileName({ kind: 'one', name: chosen[0]!.name })
         : presetFileName({ kind: 'all', date: new Date() });
-    fileIo.saveJson(filename, PRESET_FILE_FORMAT, presetFileBody({ presets: chosen }));
+    const userAssets = presetAssetsOf(chosen, {
+      userRomajiRules: editor.customRomajiRules ?? [],
+      fingerAssignments: [...(editor.customFingerAssignments?.values() ?? [])],
+    });
+    fileIo.saveJson(filename, PRESET_FILE_FORMAT, presetFileBody({ presets: chosen, userAssets }));
     show(chosen.length === 1 && ids !== undefined ? `「${chosen[0]!.name}」を書き出しました` : `${chosen.length}件のプリセットを書き出しました`, false);
   };
 
@@ -133,21 +146,30 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
       show(read.kind === 'too-large' ? PRESET_FILE_TOO_LARGE_MESSAGE : PRESET_FILE_UNREADABLE_MESSAGE, false);
       return;
     }
-    const parsed = parsePresetFile(read.text, references());
+    const parsed = parsePresetFile(read.text);
     if (!parsed.ok) {
       show(parsed.message, false, parsed.details);
       return;
     }
-    // 追加後の名前（同名は番号付き）で注記するため、コマンドと同じ計算を先に行う。追加分は末尾に並ぶ
-    const added = appendImportedPresets(presetLibrary, parsed.presets, () => '').presets.slice(presetLibrary.presets.length);
-    dispatch(importPresetsCommand(parsed.presets, editor.generatePresetId));
+    // 追加後の名前（同名は番号付き）と手元に足した後の参照先で注記するため、コマンドと同じ計算を先に行う。追加分は末尾に並ぶ
+    const stamp = newStamp();
+    const rules = editor.customRomajiRules ?? [];
+    const fingers = [...(editor.customFingerAssignments?.values() ?? [])];
+    const merge = mergePresetImport(
+      { userRomajiRules: rules, fingerAssignments: fingers, presets: presetLibrary.presets },
+      parsed.presets,
+      parsed.userAssets,
+      stamp,
+    );
+    const added = appendImportedPresets(presetLibrary, merge.presets, () => '').presets.slice(presetLibrary.presets.length);
+    dispatch(importPresetsWithAssetsCommand(parsed.presets, parsed.userAssets, editor.generatePresetId, stamp));
     show(
       importResultMessage(
-        parsed.message,
-        parsed.missingReferences,
+        presetImportSummary({ added: added.length, skipped: merge.skipped, assetEntries: merge.assetEntries, dropped: parsed.dropped }),
+        missingReferences(merge.presets, references(merge.assets.userRomajiRules, merge.assets.fingerAssignments)),
         added.map((preset) => preset.name),
       ),
-      true,
+      added.length > 0 || merge.assetEntries.some((entry) => entry.outcome.kind !== 'skipped-same'),
       parsed.details,
     );
   };

@@ -8,9 +8,10 @@ import {
 } from '#input/codec/index.ts';
 import type { LevelOverrides } from '#input/settings/index.ts';
 import { PRESET_FILE_CODEC, type PresetFileContents } from '#engine/preset-file-codec.ts';
-import { EMPTY_USER_ASSETS_BUNDLE, USER_ASSETS_FILE_MAX_ITEMS, type UserAssetsBundle } from '#engine/user-assets-file.ts';
+import { EMPTY_USER_ASSETS_BUNDLE, USER_ASSETS_FILE_MAX_ITEMS, type UserAssetImportEntry, type UserAssetsBundle } from '#engine/user-assets-file.ts';
 import type { Workspace } from '#engine/workspace.ts';
 import { SETTINGS_ITEMS, type SettingsValueMap } from '#engine/settings-items.ts';
+import { addedAssetsText, droppedAssetsText, renamedAssetLines } from './asset-import-text.ts';
 import { conditionItemLabel } from './condition-summary.ts';
 
 /**
@@ -97,10 +98,12 @@ export type PresetFileReadResult =
   | {
       readonly ok: true;
       readonly presets: readonly ImportedPreset[];
-      /** 結果の行に出す文。一部を読めなかった時の注記を含む。参照先の注記は追加後の名前が要るので含めない（`importResultMessage`）。 */
+      /** プリセットの値が指す自作の資産としてファイルに同梱されていたもの。無ければ空。 */
+      readonly userAssets: UserAssetsBundle;
+      /** ファイルのプリセットの件数と、一部を読めなかった時の注記。 */
       readonly message: string;
-      /** 参照先がこの端末に無いプリセット（`presets`の添字）。名前は番号付けの後で決まるので、添字で返す。 */
-      readonly missingReferences: readonly MissingReference[];
+      /** 読めなかった部分の文（捨てた値・プリセット・同梱の資産の項目の数）。無ければ空。 */
+      readonly dropped: readonly string[];
       /** 不具合報告用の原文（捨てた値の診断）。 */
       readonly details: readonly string[];
     };
@@ -168,11 +171,11 @@ const REFERENCE_KINDS: readonly {
 ];
 
 /**
- * 参照先の資産がこの端末に無いプリセット。プリセットのファイルには参照先を同梱しないので、他の端末で作った
- * 自作の指の割当などを指す値が入ってくる。値は捨てずに残し、流し込むと既定へ戻ることを先に伝える。
+ * 参照先の資産がこの端末に無いプリセット。同梱されなかった資産（同梱するものが無かった自作の資産、物理配列）を指す値が入ってくる。
+ * 値は捨てずに残し、流し込むと既定へ戻ることを先に伝える。`references`は同梱の資産を手元に足した後の参照先。
  * 読み込みは同名に番号を付けるので、名前ではなく添字で返す（手元の同名のプリセットを指さないため）。
  */
-function missingReferences(presets: readonly ImportedPreset[], references: PresetReferences): readonly MissingReference[] {
+export function missingReferences(presets: readonly ImportedPreset[], references: PresetReferences): readonly MissingReference[] {
   const found: MissingReference[] = [];
   for (const kind of REFERENCE_KINDS) {
     const known = kind.known(references);
@@ -194,6 +197,30 @@ export function importResultMessage(message: string, missing: readonly MissingRe
     return `${names}はこの端末にない${noun}を使っています。流し込むと既定に戻ります`;
   });
   return [message, ...notes].join('。');
+}
+
+/** 読み込みの内訳。 */
+export interface PresetImportOutcome {
+  /** 足したプリセットの数。 */
+  readonly added: number;
+  /** 手元に同じ名前と値のものがあり、足さなかったプリセットの数。 */
+  readonly skipped: number;
+  /** 同梱の資産の突き合わせの結果。 */
+  readonly assetEntries: readonly UserAssetImportEntry[];
+  /** `parsePresetFile`の`dropped`。 */
+  readonly dropped: readonly string[];
+}
+
+/**
+ * 結果の行に出す文の前半（参照先の注記を除く）。足したプリセットの数を見出しにし、足した資産の件数と、
+ * 重なって別の名前で足した資産の理由を加える。同じ中身で足さなかった資産は、プリセットが手元の資産を指すだけなので出さない。
+ */
+export function presetImportSummary({ added, skipped, assetEntries, dropped }: PresetImportOutcome): string {
+  const head =
+    added > 0
+      ? [`${added}件のプリセットを読み込みました`, ...(skipped > 0 ? [`${skipped}件は同じ名前と値のものが既にあるため、追加しませんでした`] : [])]
+      : ['読み込んだプリセットはありません。同じ名前と値のものが既にあります'];
+  return [...head, ...addedAssetsText(assetEntries), ...renamedAssetLines(assetEntries), ...dropped].join('。');
 }
 
 const ENVELOPE_KEYS: ReadonlySet<string> = new Set(['format', 'version', 'presets', 'workspaces', 'userAssets']);
@@ -289,12 +316,13 @@ function readEnvelope(text: string): EnvelopeRead {
 /**
  * ファイルの中身を分類し、読めるプリセットを取り出す。大きさは読む前に`platform`が断るので、ここでは
  * 件数だけを見る。壊れた値・未知の項目は捨てて残りを読み、捨てたものは文と原文で伝える。
- * Workspaceは扱わない（同じファイルのWorkspaceは`parseWorkspaceFile`が読む）。
+ * 同梱された資産（`userAssets`）はそのまま返し、手元の資産への突き合わせと、参照先が手元にあるかの確認は、手元に足す時に行う
+ * （`engine/preset-assets.ts`）。Workspaceは扱わない（同じファイルのWorkspaceは`parseWorkspaceFile`が読む）。
  */
-export function parsePresetFile(text: string, references: PresetReferences): PresetFileReadResult {
+export function parsePresetFile(text: string): PresetFileReadResult {
   const envelope = readEnvelope(text);
   if (!envelope.ok) return envelope;
-  const details = [...envelope.presetDiagnostics.map(diagnosticLine), ...envelope.unknownKeys];
+  const details = [...envelope.presetDiagnostics.map(diagnosticLine), ...envelope.assetDiagnostics.map(diagnosticLine), ...envelope.unknownKeys];
   const presets = envelope.contents.presets.map((preset) => ({ name: preset.name, values: preset.values }));
   if (presets.length === 0) {
     return failure(
@@ -303,8 +331,10 @@ export function parsePresetFile(text: string, references: PresetReferences): Pre
       ...(details.length === 0 ? ['presets: 0'] : []),
     );
   }
-  const message = [`${presets.length}件のプリセットを読み込みました`, ...droppedTexts(envelope.presetDiagnostics)].join('。');
-  return { ok: true, presets, message, missingReferences: missingReferences(presets, references), details };
+  const droppedAssets = envelope.assetDiagnostics.length;
+  const dropped = [...droppedTexts(envelope.presetDiagnostics), ...droppedAssetsText(droppedAssets)];
+  const message = [`${presets.length}件のプリセットを読み込みました`, ...dropped].join('。');
+  return { ok: true, presets, userAssets: envelope.contents.userAssets, message, dropped, details };
 }
 
 export type WorkspaceFileReadResult =
@@ -343,10 +373,7 @@ export function parseWorkspaceFile(text: string): WorkspaceFileReadResult {
     ok: true,
     workspaces,
     userAssets,
-    dropped: [
-      ...workspaceDroppedTexts(envelope.workspaceDiagnostics),
-      ...(droppedAssets > 0 ? [`${droppedAssets}件の同梱の資産の項目は読み込めませんでした`] : []),
-    ],
+    dropped: [...workspaceDroppedTexts(envelope.workspaceDiagnostics), ...droppedAssetsText(droppedAssets)],
     details,
   };
 }

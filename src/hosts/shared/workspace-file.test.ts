@@ -5,26 +5,12 @@ import { emptyTextLibrary } from '#input/text/library.ts';
 import { createSampleWorkspace } from '#engine/sample-workspace.ts';
 import { initialWorkspaceLibrary, withWorkspaceText, type Workspace, type WorkspaceLibrary } from '#engine/workspace.ts';
 import { mergeWorkspaces, type WorkspaceReferenceHoldings } from '#engine/workspace-import.ts';
-import {
-  PRESET_FILE_FORMAT,
-  PRESET_FILE_MAX_WORKSPACES,
-  parsePresetFile,
-  parseWorkspaceFile,
-  presetFileBody,
-  workspaceFileName,
-  type PresetReferences,
-} from './preset-file.ts';
+import { PRESET_FILE_FORMAT, PRESET_FILE_MAX_WORKSPACES, parsePresetFile, parseWorkspaceFile, presetFileBody, workspaceFileName } from './preset-file.ts';
 
 /**
  * Workspaceの書き出しファイルの、書き手（`presetFileBody`）から読み手（`parseWorkspaceFile`）までの往復と、
  * 読み込んだ後の突き合わせ（`mergeWorkspaces`）。書き手は本物を通す。
  */
-
-const REFERENCES: PresetReferences = {
-  fingerAssignmentIds: new Set(['standard']),
-  romajiRuleIds: new Set(['qwerty']),
-  shapeIds: new Set(['row-staggered']),
-};
 
 const HOLDINGS: WorkspaceReferenceHoldings = {
   setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
@@ -88,7 +74,7 @@ test('封筒: プリセットとWorkspaceの両方を持つファイルは、そ
       workspaces: [sampleWorkspace('w1')],
     }),
   );
-  const presets = parsePresetFile(text, REFERENCES);
+  const presets = parsePresetFile(text);
   assert.ok(presets.ok);
   assert.deepEqual(
     presets.presets.map((preset) => preset.name),
@@ -103,13 +89,13 @@ test('封筒: 一方だけを持つファイルを、もう一方の読み手が
   const workspaceOnly = written([sampleWorkspace('w1')]);
   const noWorkspace = parseWorkspaceFile(presetOnly);
   assert.ok(!noWorkspace.ok);
-  const noPreset = parsePresetFile(workspaceOnly, REFERENCES);
+  const noPreset = parsePresetFile(workspaceOnly);
   assert.ok(!noPreset.ok);
   assert.equal(parseWorkspaceFile(fileText({ version: 2 })).ok, false);
 });
 
 test('版: 版1（プリセットだけ）のファイルも読める', () => {
-  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: {} }] }), REFERENCES);
+  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: {} }] }));
   assert.ok(result.ok);
   assert.equal(result.presets.length, 1);
 });
@@ -121,7 +107,7 @@ test('未知のキー: 最上位とプリセットの中の未知のキーは読
     presets: [{ id: 'a', name: 'A', values: { windowSize: 5 }, note: 'x' }],
     workspaces: [],
   });
-  const result = parsePresetFile(text, REFERENCES);
+  const result = parsePresetFile(text);
   assert.ok(result.ok);
   assert.ok(result.message.includes('1件') && !result.message.includes('futureField'));
   assert.deepEqual(result.presets, [{ name: 'A', values: { windowSize: 5 } }]);

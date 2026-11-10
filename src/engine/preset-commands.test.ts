@@ -1,3 +1,5 @@
+import { importPresetsWithAssetsCommand } from './preset-assets.ts';
+import { EMPTY_USER_ASSETS_BUNDLE } from './user-assets-file.ts';
 import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -13,14 +15,7 @@ import { emptyPresetLibrary } from '#input/presets/index.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import { initialWorkspaceLibrary } from './workspace.ts';
-import {
-  applyPresetCommand,
-  deletePresetCommand,
-  importPresetsCommand,
-  planPresetApplication,
-  renamePresetCommand,
-  savePresetCommand,
-} from './preset-commands.ts';
+import { applyPresetCommand, deletePresetCommand, planPresetApplication, renamePresetCommand, savePresetCommand } from './preset-commands.ts';
 import { resolveSettings, type SettingsCascadeOverrides } from './settings-items.ts';
 import { setCascadeOverrideCommand } from './commands.ts';
 
@@ -170,19 +165,21 @@ test('deletePresetCommand: 消す。存在しないidは何もしない。undo�
   assert.equal(run(start, deletePresetCommand('none')).outcome.kind, 'no-op');
 });
 
-test('importPresetsCommand: 新しいidで追加し、同名は番号を付ける。setupLibraryは触らない', () => {
+test('importPresetsWithAssetsCommand: 資産が無い時、新しいidで追加し、同名は番号を付ける。setupLibraryは触らない', () => {
   const start: KeydistAssets = {
     ...withOverrides({ global: { windowSize: 4 } }),
     presetLibrary: { presets: [{ id: 'p', name: 'A', values: { windowSize: 7 } }] },
   };
   const step = run(
     start,
-    importPresetsCommand(
+    importPresetsWithAssetsCommand(
       [
         { name: 'A', values: { windowSize: 5 } },
         { name: 'A', values: {} },
       ],
+      EMPTY_USER_ASSETS_BUNDLE,
       generateId,
+      'stamp',
     ),
   );
   assert.deepEqual(
@@ -191,5 +188,5 @@ test('importPresetsCommand: 新しいidで追加し、同名は番号を付け�
   );
   assert.deepEqual(step.assets.presetLibrary.presets[0], start.presetLibrary.presets[0]);
   assert.equal(step.assets.setupLibrary, start.setupLibrary);
-  assert.equal(run(start, importPresetsCommand([], generateId)).outcome.kind, 'no-op');
+  assert.equal(run(start, importPresetsWithAssetsCommand([], EMPTY_USER_ASSETS_BUNDLE, generateId, 'stamp')).outcome.kind, 'no-op');
 });

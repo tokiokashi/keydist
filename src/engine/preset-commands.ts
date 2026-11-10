@@ -1,13 +1,5 @@
 import type { Command } from '#input/commands/index.ts';
-import {
-  addPreset,
-  appendImportedPresets,
-  applyPresetValues,
-  deletePreset,
-  renamePreset,
-  type PresetIdGenerator,
-  type PresetLibrary,
-} from '#input/presets/index.ts';
+import { addPreset, applyPresetValues, deletePreset, renamePreset, type PresetIdGenerator, type PresetLibrary } from '#input/presets/index.ts';
 import { levelOverrides, type CascadeLevel, type LevelOverrides } from '#input/settings/index.ts';
 import { cascadeCommand, cascadeOverridesView, type KeydistAssets } from './commands.ts';
 import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsValueMap } from './settings-items.ts';
@@ -80,21 +72,6 @@ export function renamePresetCommand(id: string, name: string): Command<KeydistAs
 
 export function deletePresetCommand(id: string): Command<KeydistAssets> {
   return presetLibraryCommand('プリセットを削除する', (library) => ({ ok: true, library: deletePreset(library, id) }));
-}
-
-/**
- * 読み込み（追加のみ）。常に新しいidで足し、同名は「名前 2」のように番号を付ける。
- * 既存のプリセットを上書きせず、流し込みもしない。ファイルの入口（読み取り・診断）は別で、
- * ここへ渡るのはcodecを通った値。
- */
-export function importPresetsCommand(
-  incoming: readonly { readonly name: string; readonly values: LevelOverrides<SettingsValueMap> }[],
-  generateId: PresetIdGenerator,
-): Command<KeydistAssets> {
-  return presetLibraryCommand('プリセットを読み込む', (library) => ({
-    ok: true,
-    library: appendImportedPresets(library, incoming, generateId),
-  }));
 }
 
 /** 流し込みの計算結果。画面が「入れなかった項目」を読むために、コマンドと同じ計算を公開する。 */
