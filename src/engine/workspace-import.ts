@@ -7,7 +7,7 @@ import { isEmptyUserAssetsBundle, mergeUserAssets, userAssetChanges, type UserAs
 import { remapWorkspaceAssets } from './workspace-assets.ts';
 import { stableStringify } from './cache-key.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
-import { workspaceTargets, type Workspace, type WorkspaceIdGenerator, type WorkspaceLibrary } from './workspace.ts';
+import { workspaceReferencedTargets, type Workspace, type WorkspaceIdGenerator, type WorkspaceLibrary } from './workspace.ts';
 
 /**
  * ファイルから読んだWorkspaceを手元へ足す計算（DOMを使わない）。
@@ -76,7 +76,7 @@ export function missingWorkspaceReferences(workspace: Workspace, holdings: Works
   const missing = new Set<WorkspaceMissingKind>();
   const setupIds = new Set(holdings.setupLibrary.setups.map((setup) => setup.id));
   const userLayoutIds = new Set(holdings.userLayouts.map((layout) => layout.id));
-  for (const target of workspaceTargets(workspace)) {
+  for (const target of workspaceReferencedTargets(workspace)) {
     if (target.kind === 'layout') {
       if (!LAYOUT_BY_ID.has(target.layoutId) && !userLayoutIds.has(target.layoutId)) missing.add('layout');
     } else if (!setupIds.has(target.setupId)) {
