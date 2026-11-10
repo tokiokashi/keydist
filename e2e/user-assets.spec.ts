@@ -57,3 +57,47 @@ test('配列を削除すると保存先から消え、その配列を対象に�
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toContainText('配列が見つかりません', { timeout: 10_000 });
 });
+
+const ROWS = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
+
+/** 配列を1つだけ持つ書き出しのファイル。 */
+function layoutFile(id: string, name: string, rows: string[]): { name: string; mimeType: string; buffer: Buffer } {
+  const body = { format: 'keydist-user-assets', version: 1, layouts: [{ kind: 'alpha', id, name, rows, romaji: 'kunrei' }] };
+  return { name: 'assets.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(body)) };
+}
+
+/** 配列「自作A」を1つだけ、保存先へ入れる。 */
+async function seedLayout(page: Page): Promise<void> {
+  await page.addInitScript((rows) => {
+    if (sessionStorage.getItem('seeded') !== null) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem(
+      'keydist:user-layouts',
+      JSON.stringify({ version: 1, layouts: [{ kind: 'alpha', id: 'user-a', name: '自作A', rows, romaji: 'kunrei' }] }),
+    );
+  }, ROWS);
+}
+
+test('保存: 容量が足りず保存できなかった時、保存できなかった資産と保存データの大きさを知らせる', async ({ page }) => {
+  await seedLayout(page);
+  await page.goto('/assets');
+  await waitForHydration(page);
+  // 保存の枠を、1文字も入らなくなるまで別のキーで埋める
+  await page.evaluate(() => {
+    for (let size = 1 << 20; size >= 1; size = Math.floor(size / 2)) {
+      for (;;) {
+        try {
+          localStorage.setItem(`filler:${size}:${localStorage.length}`, 'x'.repeat(size));
+        } catch {
+          break;
+        }
+      }
+    }
+  });
+  // 配列を1つ増やす読み込みは、配列の保存が枠を超えて失敗する
+  await page.getByLabel('読み込む自作の資産のファイル').setInputFiles(layoutFile('user-b', '自作B', ROWS));
+  const notice = page.locator('[data-storage-write-notice]');
+  await expect(notice).toBeVisible();
+  await notice.getByRole('button', { name: '知らせを閉じる' }).click();
+  await expect(notice).toBeHidden();
+});

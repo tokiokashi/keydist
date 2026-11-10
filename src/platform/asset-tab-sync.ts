@@ -1,5 +1,6 @@
 import type { AssetCodec, DecodeFailure, CodecDiagnostic } from '#input/codec/index.ts';
 import type { KeyValueStorage } from './persistence/storage.ts';
+import { guardedSetItem } from './persistence/storage-write.ts';
 import { notifyKeydistStorageChange, subscribeKeydistStorageChanges } from './browser-storage-events.ts';
 
 /**
@@ -154,12 +155,9 @@ export function createAssetTabSync<T>(options: AssetTabSyncOptions<T>): AssetTab
   function save(value: T): void {
     if (!storage) return;
     const raw = JSON.stringify(options.codec.encode(value));
-    try {
-      storage.setItem(options.storageKey, raw);
-    } catch {
-      // 保存できなくても、その場の編集と評価は成立する（既存の資産storageと同じ方針）。
-      return;
-    }
+    // 保存できなくても、その場の編集と評価は成立する（既存の資産storageと同じ方針）。
+    // 容量の超過は`guardedSetItem`が記録し、画面が知らせる。
+    if (!guardedSetItem(storage, options.storageKey, raw)) return;
     // 書き込みの直後に自分の直列化結果を記録してから通知する。通知がこのタブの購読者
     // （このsync自身を含む）へ届いた時点でstorageの中身は必ずこの値になっている
     // （同期的な書き込みのため）ので、反響の判定に使える。

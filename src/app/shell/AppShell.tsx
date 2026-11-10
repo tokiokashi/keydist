@@ -8,6 +8,7 @@ import { AddedToWorkspaceNotice } from '../workspace/AddedToWorkspaceNotice.tsx'
 import { DeletedWorkspaceNotice } from '../workspace/DeletedWorkspaceNotice.tsx';
 import { ImportedWorkspacesNotice } from '../workspace/ImportedWorkspacesNotice.tsx';
 import { AssetLoadNotices } from './AssetLoadNotices.tsx';
+import { StorageWriteNotice } from './StorageWriteNotice.tsx';
 import { HistoryConflictNotice } from './HistoryConflictNotice.tsx';
 import { PRESET_FILE_IO } from './preset-file-io.ts';
 import { Sidebar } from './Sidebar.tsx';
@@ -231,6 +232,7 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
         <ImportedWorkspacesNotice />
         <AddedToWorkspaceNotice />
         <AssetLoadNotices />
+        <StorageWriteNotice />
         <HistoryConflictNotice />
       </div>
     </div>

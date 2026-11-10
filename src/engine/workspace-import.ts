@@ -58,7 +58,7 @@ export type WorkspaceReferenceHoldings = Pick<KeydistAssets, 'setupLibrary' | 'u
  * 「中身が同じ」の判定に使う値。idと名前は比べない（idは突き合わせの鍵で、名前は数値に関わらない）。
  * 色の番号も比べない（対象から配り直せる表示だけの値で、読み込みのたびに同じ配り方になる）。
  */
-function workspaceContent(workspace: Workspace): string {
+export function workspaceContent(workspace: Workspace): string {
   const { id: _id, name: _name, colorSlots: _colorSlots, ...content } = workspace;
   return stableStringify(content);
 }

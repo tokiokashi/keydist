@@ -153,3 +153,14 @@ export function remapWorkspaceAssets(workspace: Workspace, maps: UserAssetIdMaps
     ...(conditions === undefined ? {} : { conditions }),
   });
 }
+
+/**
+ * ファイルのWorkspaceが選んでいる自作のテキストのidを、読み込み後のidへ付け替える。付け替えるのは対応表にあるidだけ
+ * （組み込みのテキストと、ファイルに無いテキストは触らない）。
+ */
+export function remapWorkspaceTexts(workspace: Workspace, textIds: ReadonlyMap<string, string>): Workspace {
+  const ref = workspace.text.ref;
+  if (ref.kind !== 'user') return workspace;
+  const id = textIds.get(ref.id);
+  return id === undefined || id === ref.id ? workspace : { ...workspace, text: { ref: { kind: 'user', id } } };
+}
