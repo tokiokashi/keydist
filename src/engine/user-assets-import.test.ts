@@ -472,3 +472,17 @@ test('読み込まない: 組み込みと同じidの配列を読み込まなく�
   assert.deepEqual(assets.userLayouts, []);
   assert.deepEqual(assets.setupLibrary.overrides.layout, { qwerty: { windowSize: 6 } });
 });
+
+test('上書き: 配列を上書きし、条件の種類を読み込まない時も、上書きした配列の条件はファイルの値になり、全体の条件は手元のまま', () => {
+  const hand = {
+    ...emptyAssets(),
+    userLayouts: [HAND_LAYOUT],
+    setupLibrary: { setups: [], overrides: { global: { windowSize: 3 }, layout: { [LAYOUT.id]: { windowSize: 2 } } } },
+  };
+  const file = layoutWithConditions({ ...LAYOUT, romaji: 'kunrei' });
+  const withGlobal = { ...file, extras: { ...file.extras, conditions: { ...file.extras.conditions, global: { windowSize: 4 } } } };
+  const { assets, entries } = importInto(hand, withGlobal, { layout: 'overwrite' });
+  assert.deepEqual(assets.setupLibrary.overrides.global, { windowSize: 3 });
+  assert.deepEqual(assets.setupLibrary.overrides.layout, { [LAYOUT.id]: { windowSize: 6 } });
+  assert.equal(entries.find((entry) => entry.assetKind === 'conditions')?.outcome.kind, 'kept-own');
+});

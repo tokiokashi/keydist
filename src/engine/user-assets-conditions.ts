@@ -134,13 +134,14 @@ export function mergeConditionLevels(
   let same = 0;
   let conflicted = 0;
   const forced = (entry: ConditionEntry): boolean => entry.level.kind === 'layout' && overwrittenLayoutIds.has(entry.level.layoutId);
+  const mapped = mapEntries(relayered, maps);
+  // 上書きした配列の条件は、条件の種類の扱いに関わらず先に書く。種類を読み込まない時に戻る先（base）にも含めるため
+  for (const entry of mapped.filter(forced)) {
+    value = withLevelOverrides(value, entry.level, entry.overrides);
+    added += 1;
+  }
   const base = value;
-  for (const entry of mapEntries(relayered, maps)) {
-    if (forced(entry)) {
-      value = withLevelOverrides(value, entry.level, entry.overrides);
-      added += 1;
-      continue;
-    }
+  for (const entry of mapped.filter((candidate) => !forced(candidate))) {
     const own = levelOverrides(value, entry.level);
     if (own === undefined || Object.keys(own).length === 0) {
       value = withLevelOverrides(value, entry.level, entry.overrides);
