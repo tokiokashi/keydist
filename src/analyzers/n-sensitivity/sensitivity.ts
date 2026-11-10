@@ -43,6 +43,7 @@ export function nSensitivity(
       },
       romajiRuleId,
       keepSymbols: false,
+      keepAlphanumerics: false,
       reading: null,
     });
     return { windowSize, totalUnits: m.totalUnits, totalMm: m.totalMm };

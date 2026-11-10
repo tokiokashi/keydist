@@ -229,6 +229,8 @@ export interface MetricConditions {
   romajiRuleId: string | null;
   /** 日本語のテキストで、かなと `、` `。` 以外の記号も評価に渡したか（仕様 §4.6）。 */
   keepSymbols: boolean;
+  /** 日本語のテキストで、英字と数字も評価に渡したか（仕様 §4.6）。 */
+  keepAlphanumerics: boolean;
   /**
    * 漢字を含む日本語のテキストを、読みに直して評価したか（仕様 §4.6・§12.3）。
    * 読みに直す対象でないテキスト（漢字を含まない・英語）はnull。
@@ -247,6 +249,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   actionRealizationPolicy: { ...DEFAULT_ACTION_REALIZATION_POLICY },
   romajiRuleId: null,
   keepSymbols: false,
+  keepAlphanumerics: false,
   reading: null,
 };
 

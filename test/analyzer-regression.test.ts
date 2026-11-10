@@ -150,6 +150,7 @@ function recompute(fixtureCase: FixtureCase) {
     actionRealizationPolicy: fixtureCase.conditions.actionRealizationPolicy,
     romajiRuleId: fixtureCase.conditions.romajiRuleId,
     keepSymbols: false,
+    keepAlphanumerics: false,
     reading: null,
   });
 

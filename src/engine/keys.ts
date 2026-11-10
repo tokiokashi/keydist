@@ -61,8 +61,9 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
     traceKey,
     chainInterpretation: input.chainInterpretation,
     arpeggioInterpretation: input.arpeggioInterpretation,
-    // テキストは前処理の後の値でTraceのキーに入る。同じ前処理後のテキストでも、記号の範囲の条件は数値の出どころとして運ぶ
+    // テキストは前処理の後の値でTraceのキーに入る。同じ前処理後のテキストでも、記号と英数字の範囲の条件は数値の出どころとして運ぶ
     keepSymbols: input.keepSymbols,
+    keepAlphanumerics: input.keepAlphanumerics,
     // 読みに直した後のテキストが同じでも、直した辞書の版や直せなかった事実は数値の出どころとして運ぶ
     reading: input.reading,
     // 読みが同じでも、読みに置き換えた語の表記の字数が違えば文字数Wが変わる（`今日` と `京`）

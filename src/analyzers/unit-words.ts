@@ -27,7 +27,7 @@ export function kanaUnitOf(language: TextLanguage, script: KanaScript = 'hiragan
 export function inputUnitNoteOf(language: TextLanguage, script: KanaScript = 'hiragana'): string {
   const unit = kanaUnitOf(language, script);
   return language === 'ja'
-    ? `${unit}数は、漢字を読みに直し、評価しない記号を取り除いた後のテキストの字の数です。大半はかなですが、「、」「。」「ー」・英数字・空白・改行なども数えます。`
+    ? `${unit}数は、漢字を読みに直し、評価しない記号と英数字を取り除いた後のテキストの字の数です。大半はかなですが、「、」「。」「ー」・空白・改行なども数えます。英数字は、日本語の英数字の評価がONの時だけ数えます。`
     : `${unit}数は、テキストの字の数です。空白と句読点も数えます。`;
 }
 

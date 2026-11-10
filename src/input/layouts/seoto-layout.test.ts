@@ -20,6 +20,7 @@ const prepare = (text: string, layout: Layout) =>
   prepareEvaluationText(text, {
     language: 'ja',
     keepSymbols: false,
+    keepAlphanumerics: false,
     layoutHasChar: (char) => layout.map.has(char),
     uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });
