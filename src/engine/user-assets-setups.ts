@@ -5,6 +5,7 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { isBuiltin } from '#input/romaji/rules.ts';
 import { effectiveLabel, nextSetupNumber, type Setup, type SetupLibrary } from '#input/setup/index.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
+import type { ImportPolicy } from './import-policy.ts';
 import { SETTINGS_ITEM_SCHEMAS } from './settings-codec.ts';
 import { SETTINGS_ITEMS, type SettingsValueMap } from './settings-items.ts';
 import { MISSING_LAYOUT_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
@@ -12,7 +13,7 @@ import { MISSING_LAYOUT_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 /**
  * 資産のファイルに入れるSetupと、読み込み時の突き合わせ。ファイルが運ぶのは、Setupの配列・物理配列・ラベルと、
  * そのSetupのレベルの条件だけ。番号は持たない（読み込んだ側が手持ちの最大＋1から振る）。
- * 全体・配列などのレベルの条件は資産のファイルに入れない（Setupだけが運ぶ）。
+ * 全体・配列などのレベルの条件は別の項目（`user-assets-conditions.ts`）が運ぶ。
  */
 
 export type SetupLibraryOfSettings = SetupLibrary<SettingsValueMap>;
@@ -124,7 +125,9 @@ export interface SetupImportEntry {
         readonly addedId: string;
         readonly overlap: { readonly with: 'own'; readonly name: string };
       }
-    | { readonly kind: 'skipped-same'; readonly existingName: string };
+    | { readonly kind: 'skipped-same'; readonly existingName: string }
+    | { readonly kind: 'kept-own' }
+    | { readonly kind: 'overwritten'; readonly previousName: string };
 }
 
 /** 画面に出すSetupの名前。ラベルがあればそれ、無ければ配列と物理配列の名前。 */
@@ -173,27 +176,33 @@ export interface SetupIdMaps {
  * （手元の同じidの別の資産に結び付けず、継承する値で解決させるため）。
  * 中身の比較より前に行うので、外した参照の有無だけで別のSetupと判定されない。
  */
-function remapSetup(setup: UserAssetSetup, maps: SetupIdMaps): UserAssetSetup {
-  const overrides = setup.overrides;
-  const mapped: Record<string, unknown> | undefined = overrides === undefined ? undefined : { ...overrides };
-  if (mapped !== undefined) {
-    if (typeof mapped.romajiRuleId === 'string') {
-      const id = isBuiltin(mapped.romajiRuleId) ? mapped.romajiRuleId : maps.rules.get(mapped.romajiRuleId);
-      if (id === undefined) delete mapped.romajiRuleId;
-      else mapped.romajiRuleId = id;
-    }
-    if (typeof mapped.fingerAssignmentId === 'string') {
-      const id = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, mapped.fingerAssignmentId)
-        ? mapped.fingerAssignmentId
-        : maps.fingers.get(mapped.fingerAssignmentId);
-      if (id === undefined) delete mapped.fingerAssignmentId;
-      else mapped.fingerAssignmentId = id;
-    }
+export function remapOverrideReferences(
+  overrides: LevelOverrides<SettingsValueMap> | undefined,
+  maps: Pick<SetupIdMaps, 'rules' | 'fingers'>,
+): LevelOverrides<SettingsValueMap> | undefined {
+  if (overrides === undefined) return undefined;
+  const mapped: Record<string, unknown> = { ...overrides };
+  if (typeof mapped.romajiRuleId === 'string') {
+    const id = isBuiltin(mapped.romajiRuleId) ? mapped.romajiRuleId : maps.rules.get(mapped.romajiRuleId);
+    if (id === undefined) delete mapped.romajiRuleId;
+    else mapped.romajiRuleId = id;
   }
+  if (typeof mapped.fingerAssignmentId === 'string') {
+    const id = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, mapped.fingerAssignmentId)
+      ? mapped.fingerAssignmentId
+      : maps.fingers.get(mapped.fingerAssignmentId);
+    if (id === undefined) delete mapped.fingerAssignmentId;
+    else mapped.fingerAssignmentId = id;
+  }
+  return mapped as LevelOverrides<SettingsValueMap>;
+}
+
+function remapSetup(setup: UserAssetSetup, maps: SetupIdMaps): UserAssetSetup {
+  const mapped = remapOverrideReferences(setup.overrides, maps);
   return {
     ...setup,
     layoutId: maps.layouts.get(setup.layoutId) ?? setup.layoutId,
-    ...(mapped === undefined ? {} : { overrides: mapped as LevelOverrides<SettingsValueMap> }),
+    ...(mapped === undefined ? {} : { overrides: mapped }),
   };
 }
 
@@ -209,6 +218,8 @@ function freshSetupId(stamp: string, used: ReadonlySet<string>): string {
  * - 中身（配列・物理配列・Setupのレベルの条件）が同じSetupは、idが同じでも違っても足さない。同じファイルを二度読んでも増えない
  * - 手持ちに無いidはそのまま足す。同じidで中身が違うSetupは、手持ちを残して新しいidで足す。ラベルはそのまま持ってくる
  * - 足したSetupには、手持ちの番号の最大＋1から順に番号を振る
+ * 同じidで中身が違う時の扱いは`policy`が決める（既定は新しいidで足す）。置き換えは、手持ちのSetupのid・番号を残し、
+ * 配列・物理配列・ラベル・Setupのレベルの条件をファイルのもので置き換える。読み込まない時は、参照を手持ちの同じidのSetupへ向ける。
  * 配列・指の割り当て・ローマ字規則が読み込みで別のidになったものは、`maps`で付け替えてから比べる。
  */
 export function mergeUserAssetSetups(
@@ -217,6 +228,7 @@ export function mergeUserAssetSetups(
   maps: SetupIdMaps,
   layoutNames: ReadonlyMap<string, string>,
   stamp: string,
+  policy: ImportPolicy = 'rename',
 ): {
   readonly library: SetupLibraryOfSettings;
   readonly entries: readonly SetupImportEntry[];
@@ -230,6 +242,7 @@ export function mergeUserAssetSetups(
   );
   const entries: SetupImportEntry[] = [];
   const idMap = new Map<string, string>();
+  let overwritten = false;
   for (const file of incoming) {
     const remapped = remapSetup(file, maps);
     const content = setupContent(remapped, remapped.overrides);
@@ -241,6 +254,31 @@ export function mergeUserAssetSetups(
       continue;
     }
     const collision = setups.find((setup) => setup.id === file.id);
+    if (collision !== undefined && policy === 'skip') {
+      idMap.set(file.id, collision.id);
+      entries.push({ name, outcome: { kind: 'kept-own' } });
+      continue;
+    }
+    if (collision !== undefined && policy === 'overwrite') {
+      const replaced: Setup = {
+        id: collision.id,
+        number: collision.number,
+        layoutId: remapped.layoutId,
+        shapeId: remapped.shapeId,
+        ...(remapped.label === undefined ? {} : { label: remapped.label }),
+      };
+      setups[setups.indexOf(collision)] = replaced;
+      overrides = withLevelOverrides(
+        overrides,
+        { kind: 'setup', setupId: collision.id },
+        remapped.overrides !== undefined && Object.keys(remapped.overrides).length > 0 ? remapped.overrides : undefined,
+      );
+      idMap.set(file.id, collision.id);
+      contents.set(collision.id, content);
+      overwritten = true;
+      entries.push({ name, outcome: { kind: 'overwritten', previousName: setupName(collision, layoutNames) } });
+      continue;
+    }
     const id = collision === undefined ? file.id : freshSetupId(stamp, new Set(setups.map((setup) => setup.id)));
     const added: Setup = {
       id,
@@ -263,6 +301,6 @@ export function mergeUserAssetSetups(
           : { kind: 'added-renamed', addedName: name, addedId: id, overlap: { with: 'own', name: setupName(collision, layoutNames) } },
     });
   }
-  if (setups.length === current.setups.length) return { library: current, entries, idMap };
+  if (setups.length === current.setups.length && !overwritten) return { library: current, entries, idMap };
   return { library: { setups, overrides }, entries, idMap };
 }

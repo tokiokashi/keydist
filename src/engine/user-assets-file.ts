@@ -8,7 +8,6 @@ import {
   type AssetCodec,
   type CodecDiagnostic,
 } from '#input/codec/index.ts';
-import type { Command } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { decodeUserRomajiRules, isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
@@ -19,6 +18,9 @@ import type { ReadingCorrections } from '#input/text/reading.ts';
 import { completeLeftColumnKeys, decodeUserFingerAssignments } from '#input/shapes/user-finger-assignments.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from './commands.ts';
+import type { ImportPolicy } from './import-policy.ts';
+import { conditionLevelsOf } from './user-assets-conditions.ts';
+import { decodeUserAssetsExtras, encodeUserAssetsExtras, isEmptyUserAssetsExtras, type UserAssetsExtras } from './user-assets-extras.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
 import {
   decodeUserAssetSetups,
@@ -30,9 +32,10 @@ import {
 } from './user-assets-setups.ts';
 
 /**
- * 自作の配列・ローマ字規則・指の割り当て・Setup・テキストの書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
+ * 「データ・設定の管理」の書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
  *
- * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, setups, texts, builtinReadingCorrections }`。
+ * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, setups, texts, builtinReadingCorrections,
+ * presets, workspaces, personalSpeed, analyzerOptions }`。後ろの4つは`UserAssetsExtras`（`user-assets-extras.ts`）で、無ければ空として読む。
  * 配列・規則・指の割り当て・Setupの4つは、プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsBundle`）と共通で、
  * テキストはこのファイルだけが持つ（`UserTextsBundle`。ほかのファイルはテキストを参照（id）でしか持たない）。`format` は書く直前に
  * `platform/browser-download.ts` が付け、読む時は `format` を見てからこのcodecへ渡す（プリセットのファイルと同じ封筒）。
@@ -42,10 +45,12 @@ import {
 export const USER_ASSETS_FILE_FORMAT = 'keydist-user-assets';
 
 /**
- * 読み込めるファイルの大きさ（バイト）。目安は、手元に保存できるテキストの量。自作のテキストはlocalStorageに保存され、
- * Chromiumでは1つのサイトで約524万字（UTF-16の単位。2026-10-20に測った）まで入る。かな・漢字1字はファイルのUTF-8で3バイトなので、
- * 524万字は約15.7MBになり、16MiBはそれを収める最小の2のべきである。ただしこれはかな・漢字だけの時の目安で、
- * 1バイトの字（英文など）なら16MiBは約1,677万字になりlocalStorageの量を超えるので、上限以下でも手元に保存できるとは限らない。
+ * 読み込めるファイルの大きさ（バイト）。目安は、手元に保存できる最大のファイルの大きさ。
+ * 資産はlocalStorageに保存され、Chromiumでは1つのサイトで約524万字（UTF-16の単位）まで入る。全キーがこの枠を分け合う。
+ * ファイルは全キーの中身をJSONにして書く。最大になるのは枠をテキストで使い切った時で、かな・漢字1字がUTF-8で3バイトなので約15.7MBになる。
+ * 配列などの構造を持つ資産は、字数の約2倍のバイト数（インデントを含む）でテキストの3倍より小さいので、全データを入れても最大は変わらない。
+ * 16MiBはこれを収める最小の2のべきである（`docs/architecture.md`「保存容量の見積もり」）。
+ * 英文のように1バイトの字なら、上限以下でも手元に保存できるとは限らない。
  */
 export const USER_ASSETS_FILE_MAX_BYTES = 16 * 1024 * 1024;
 
@@ -80,6 +85,7 @@ export function isEmptyUserTextsBundle(bundle: UserTextsBundle): boolean {
 export interface UserAssetsFileValue {
   readonly bundle: UserAssetsBundle;
   readonly userTexts: UserTextsBundle;
+  readonly extras: UserAssetsExtras;
 }
 
 function withoutUnseen(text: UserText): UserText {
@@ -146,14 +152,39 @@ export const EMPTY_USER_ASSETS_BUNDLE: UserAssetsBundle = { layouts: [], romajiR
 export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsFileValue> = defineAssetCodec({
   currentVersion: 1,
   decodePayload: (payload, diagnostics) =>
-    isRecord(payload) ? { bundle: decodeUserAssetsBundle(payload, '', diagnostics), userTexts: decodeUserTextsBundle(payload, diagnostics) } : undefined,
-  encodePayload: (value) => ({ ...encodeUserAssetsBundle(value.bundle), ...encodeUserTextsBundle(value.userTexts) }),
+    isRecord(payload)
+      ? {
+          bundle: decodeUserAssetsBundle(payload, '', diagnostics),
+          userTexts: decodeUserTextsBundle(payload, diagnostics),
+          extras: decodeUserAssetsExtras(payload, diagnostics),
+        }
+      : undefined,
+  encodePayload: (value) => ({
+    ...encodeUserAssetsBundle(value.bundle),
+    ...encodeUserTextsBundle(value.userTexts),
+    ...encodeUserAssetsExtras(value.extras),
+  }),
 });
 
 export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
 
-/** このファイルが持つ手元の資産。プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsHoldings`）にテキストを足したもの。 */
-export type UserAssetsFileHoldings = UserAssetsHoldings & Pick<KeydistAssets, 'textLibrary'>;
+/** このファイルが持つ手元の資産。プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsHoldings`）にテキストなどを足したもの。 */
+export type UserAssetsFileHoldings = UserAssetsHoldings &
+  Pick<KeydistAssets, 'textLibrary' | 'presetLibrary' | 'workspaces' | 'personalSpeed' | 'standaloneAnalyzerOptions'>;
+
+/** 手元の資産から、ファイルに入れるプリセット・Workspace・個人速度・解析設定を取り出す。 */
+export function userAssetsExtrasOf(assets: UserAssetsFileHoldings): UserAssetsExtras {
+  return {
+    presets: assets.presetLibrary.presets,
+    workspaces: assets.workspaces,
+    personalSpeed: assets.personalSpeed,
+    analyzerOptions: assets.standaloneAnalyzerOptions,
+    conditions: conditionLevelsOf(assets.setupLibrary.overrides, {
+      ruleIds: new Set(assets.userRomajiRules.map((rule) => rule.id)),
+      fingerAssignmentIds: new Set(assets.fingerAssignments.map((assignment) => assignment.id)),
+    }),
+  };
+}
 
 /**
  * 推奨の規則を、解決できるものだけ残した配列にする。組み込みでも`resolve`が返す先でもない規則を指す配列は、
@@ -173,7 +204,11 @@ function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => strin
  * Setupのレベルの条件が指す指の割り当て・ローマ字規則も同じで、ファイルに入れない自作の資産への参照は外す。
  */
 export function userAssetsFileBody(assets: UserAssetsFileHoldings): Record<string, unknown> {
-  return USER_ASSETS_FILE_CODEC.encode({ bundle: userAssetsBundleOf(assets), userTexts: userTextsBundleOf(assets.textLibrary) });
+  return USER_ASSETS_FILE_CODEC.encode({
+    bundle: userAssetsBundleOf(assets),
+    userTexts: userTextsBundleOf(assets.textLibrary),
+    extras: userAssetsExtrasOf(assets),
+  });
 }
 
 /** 手元のテキストを、ファイルに入れる形にする。組み込みのテキストに無いidの読みの直しは入れない。 */
@@ -188,6 +223,8 @@ const FILE_KEY_LABELS: Readonly<Record<string, string>> = {
   fingerAssignments: '指の割り当て',
   setups: 'Setup',
   texts: 'テキスト',
+  presets: 'プリセット',
+  workspaces: 'Workspace',
 };
 
 /** 書き出す件数（種類ごと）と、書き出すファイルの大きさを確かめる。読み込めない形なら、書き出さずに利用者へ伝える文を返す。 */
@@ -221,7 +258,42 @@ export function userAssetsBundleOf(assets: UserAssetsHoldings): UserAssetsBundle
   };
 }
 
-export type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'setup' | 'text' | 'builtin-text-reading';
+export type UserAssetKind =
+  | 'layout'
+  | 'romaji-rule'
+  | 'finger-assignment'
+  | 'setup'
+  | 'text'
+  | 'builtin-text-reading'
+  | 'preset'
+  | 'workspace'
+  | 'personal-speed'
+  | 'analyzer-options'
+  | 'conditions';
+
+export type { ImportPolicy };
+
+/** 種類ごとの扱い。書かない種類は`defaultImportPolicy`。 */
+export type ImportPolicies = Readonly<Partial<Record<UserAssetKind, ImportPolicy>>>;
+
+/** 別のidで足せない種類。この種類では`rename`を選べない。 */
+export const ASSET_KINDS_WITHOUT_RENAME: ReadonlySet<UserAssetKind> = new Set<UserAssetKind>([
+  'builtin-text-reading',
+  'personal-speed',
+  'analyzer-options',
+  'conditions',
+]);
+
+/** 既定の扱い。ファイルの読み込みが元からしていた動き（別名で足す。別名で足せない種類は手元を残す）。 */
+export function defaultImportPolicy(kind: UserAssetKind): ImportPolicy {
+  return ASSET_KINDS_WITHOUT_RENAME.has(kind) ? 'skip' : 'rename';
+}
+
+/** `policies`が決めた扱い。別名で足せない種類の`rename`は`skip`にする。 */
+export function importPolicyOf(policies: ImportPolicies | undefined, kind: UserAssetKind): ImportPolicy {
+  const policy = policies?.[kind] ?? defaultImportPolicy(kind);
+  return policy === 'rename' && ASSET_KINDS_WITHOUT_RENAME.has(kind) ? 'skip' : policy;
+}
 
 /** 突き合わせの結果の1件。 */
 export type UserAssetImportOutcome =
@@ -237,8 +309,12 @@ export type UserAssetImportOutcome =
     }
   /** 手元に同じidで中身が同じものがあり、何も足さなかった。`existingName` は手元の名前（ファイルの名前と違いうる）。 */
   | { readonly kind: 'skipped-same'; readonly existingName: string }
-  /** 組み込みのテキストの読みの直しだけが取る。手元に同じテキストの別の直しがあり、組み込みのテキストは別のidで足せないため、手元のものを残して何も足さなかった。 */
-  | { readonly kind: 'kept-own' };
+  /** 手元に同じidで中身の違うものがあり、手元のものを残して何も足さなかった（読み込まない選択か、組み込みのテキストの読みの直しのように別のidで足せない種類）。 */
+  | { readonly kind: 'kept-own' }
+  /** 組み込みと同じidで、読み込まない選択のため何も足さなかった。名前は組み込みの名前。 */
+  | { readonly kind: 'skipped-builtin'; readonly builtinName: string }
+  /** 手元に同じidで中身の違うものがあり、読み込んだ側で置き換えた。名前は置き換える前の手元の名前。 */
+  | { readonly kind: 'overwritten'; readonly previousName: string };
 
 export interface UserAssetImportEntry {
   readonly assetKind: UserAssetKind;
@@ -301,12 +377,12 @@ const fingerContent = (assignment: FingerAssignment): string =>
     homeKey: assignment.homeKey,
   });
 
-interface Item {
+export interface Item {
   readonly id: string;
   readonly name: string;
 }
 
-interface MergeKind<T extends Item> {
+export interface MergeKind<T extends Item> {
   readonly assetKind: UserAssetKind;
   readonly idPrefix: string;
   readonly current: readonly T[];
@@ -318,6 +394,8 @@ interface MergeKind<T extends Item> {
   readonly content: (item: T) => string;
   /** 別名で足す時の組み替え（新しいidと名前）。 */
   readonly rebuild: (item: T, id: string, name: string) => T;
+  /** 同じidで中身が違う時の扱い。省くと別名で足す。 */
+  readonly policy?: ImportPolicy;
 }
 
 /** 重ならない新しいid。`stamp` は1回の読み込みで固定の値で、同じ入力なら同じidになる。 */
@@ -336,7 +414,7 @@ function freshName(name: string, used: ReadonlySet<string>): string {
   }
 }
 
-function mergeKind<T extends Item>(
+export function mergeKind<T extends Item>(
   kind: MergeKind<T>,
   stamp: string,
 ): {
@@ -346,6 +424,9 @@ function mergeKind<T extends Item>(
   readonly idMap: ReadonlyMap<string, string>;
 } {
   const items = [...kind.current];
+  const policy = kind.policy ?? 'rename';
+  // 追加か置き換えがあった時だけ新しい配列を返す（何も変わらなければ手元の配列そのもの）
+  let changed = false;
   const byId = new Map(items.map((item) => [item.id, item] as const));
   const names = new Set(items.map((item) => item.name));
   const entries: UserAssetImportEntry[] = [];
@@ -353,6 +434,7 @@ function mergeKind<T extends Item>(
   for (const incoming of kind.incoming) {
     const existing = byId.get(incoming.id);
     if (existing === undefined && !kind.builtinIds(incoming.id)) {
+      changed = true;
       items.push(incoming);
       byId.set(incoming.id, incoming);
       names.add(incoming.name);
@@ -370,6 +452,26 @@ function mergeKind<T extends Item>(
       continue;
     }
     const builtinName = kind.builtinIds(incoming.id) ? kind.builtinName(incoming.id) : undefined;
+    if (policy === 'skip') {
+      // 読み込まない。参照は手元の同じidのものを指したままにする
+      idMap.set(incoming.id, incoming.id);
+      entries.push({
+        assetKind: kind.assetKind,
+        name: incoming.name,
+        outcome: builtinName !== undefined ? { kind: 'skipped-builtin', builtinName } : { kind: 'kept-own' },
+      });
+      continue;
+    }
+    if (policy === 'overwrite' && existing !== undefined && !kind.builtinIds(incoming.id)) {
+      changed = true;
+      items[items.indexOf(existing)] = incoming;
+      byId.set(incoming.id, incoming);
+      names.add(incoming.name);
+      idMap.set(incoming.id, incoming.id);
+      entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'overwritten', previousName: existing.name } });
+      continue;
+    }
+    changed = true;
     const overlap =
       builtinName !== undefined ? ({ with: 'builtin', name: builtinName } as const) : ({ with: 'own', name: existing?.name ?? incoming.name } as const);
     const addedId = freshId(kind.idPrefix, stamp, new Set(byId.keys()), kind.builtinIds);
@@ -381,7 +483,7 @@ function mergeKind<T extends Item>(
     idMap.set(incoming.id, addedId);
     entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'added-renamed', addedName, addedId, overlap } });
   }
-  return { items, entries, idMap };
+  return { items: changed ? items : kind.current, entries, idMap };
 }
 
 /**
@@ -393,7 +495,7 @@ function mergeKind<T extends Item>(
  * 組み込みと同じidは中身を問わず別のidで足す。ローマ字規則を先に突き合わせ、配列の推奨の規則が別のidになったら
  * 配列の参照も振り直す（振り直した後の参照で配列の中身を比べる）。ファイルの中に無く組み込みでもない規則を指す配列は参照を外す。
  */
-export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAssetsBundle, stamp: string): UserAssetsMerge {
+export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAssetsBundle, stamp: string, policies?: ImportPolicies): UserAssetsMerge {
   const rules = mergeKind<UserRomajiRule>(
     {
       assetKind: 'romaji-rule',
@@ -404,6 +506,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
       builtinName: (id) => (isBuiltin(id) ? ROMAJI_RULES[id].name : undefined),
       content: ruleContent,
       rebuild: (rule, id, name) => ({ ...rule, id, name }),
+      policy: importPolicyOf(policies, 'romaji-rule'),
     },
     stamp,
   );
@@ -421,6 +524,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
       builtinName: (id) => LAYOUT_BY_ID.get(id)?.name,
       content: (layout) => layoutContent(withResolvableRomaji(layout, resolveKnown)),
       rebuild: (layout, id, name) => ({ ...layout, id, name }),
+      policy: importPolicyOf(policies, 'layout'),
     },
     stamp,
   );
@@ -434,6 +538,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
       builtinName: (id) => FINGER_ASSIGNMENT_REGISTRY[id]?.name,
       content: fingerContent,
       rebuild: (assignment, id, name) => ({ ...assignment, id, name }),
+      policy: importPolicyOf(policies, 'finger-assignment'),
     },
     stamp,
   );
@@ -444,6 +549,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     { layouts: layouts.idMap, rules: rules.idMap, fingers: fingers.idMap },
     new Map(layouts.items.map((layout) => [layout.id, layout.name] as const)),
     stamp,
+    importPolicyOf(policies, 'setup'),
   );
   return {
     assets: { userLayouts: layouts.items, userRomajiRules: rules.items, fingerAssignments: fingers.items, setupLibrary: setups.library },
@@ -482,7 +588,7 @@ export interface UserTextsMerge {
  * 中身は本文・言語の手動指定・直した読みで比べ、名前は比べない）。組み込みのテキストの読みの直しは、組み込みのテキストを別のidで足せないので、
  * 手元にその直しが無ければ足し、同じなら足さず、違えば手元を残す。組み込みのテキストに無いidは、読み込む時に捨てている。
  */
-export function mergeUserTexts(current: TextLibrary, incoming: UserTextsBundle, stamp: string): UserTextsMerge {
+export function mergeUserTexts(current: TextLibrary, incoming: UserTextsBundle, stamp: string, policies?: ImportPolicies): UserTextsMerge {
   const texts = mergeKind<UserText>(
     {
       assetKind: 'text',
@@ -494,11 +600,13 @@ export function mergeUserTexts(current: TextLibrary, incoming: UserTextsBundle, 
       builtinName: () => undefined,
       content: textContent,
       rebuild: (text, id, name) => ({ ...text, id, name }),
+      policy: importPolicyOf(policies, 'text'),
     },
     stamp,
   );
   const entries = [...texts.entries];
   let builtinCorrections = current.builtinReadingCorrections;
+  const overwriteCorrections = importPolicyOf(policies, 'builtin-text-reading') === 'overwrite';
   for (const [id, corrections] of Object.entries(incoming.builtinReadingCorrections)) {
     const name = builtinTextById(id)?.name;
     if (name === undefined) continue;
@@ -508,11 +616,14 @@ export function mergeUserTexts(current: TextLibrary, incoming: UserTextsBundle, 
       entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'added' } });
     } else if (canonical(own) === canonical(corrections)) {
       entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'skipped-same', existingName: name } });
+    } else if (overwriteCorrections) {
+      builtinCorrections = { ...builtinCorrections, [id]: corrections };
+      entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'overwritten', previousName: name } });
     } else {
       entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'kept-own' } });
     }
   }
-  if (texts.items.length === current.texts.length && builtinCorrections === current.builtinReadingCorrections) {
+  if (texts.items === current.texts && builtinCorrections === current.builtinReadingCorrections) {
     return { library: current, idMap: texts.idMap, entries };
   }
   const { builtinReadingCorrections: _old, ...base } = current;
@@ -523,53 +634,26 @@ export function mergeUserTexts(current: TextLibrary, incoming: UserTextsBundle, 
   };
 }
 
-/**
- * ファイルから読んだ自作の資産を手元へ足す。足すものが無ければ何もしない。
- * 4つの資産を1回の変更で書くので、元に戻すと全部が戻る。
- */
-export interface UserAssetsImportPlan {
-  readonly command: Command<KeydistAssets>;
-  /**
-   * `command`が最後に適用された時の突き合わせの結果（画面に出す内訳）。書き込みと同じ突き合わせから作るので、
-   * 読み込みの途中で別のタブが資産を書き換えても、出した内訳と書いた中身は食い違わない。適用前は`undefined`。
-   */
-  entries(): readonly UserAssetImportEntry[] | undefined;
-}
-
 /** 突き合わせで変わった資産だけの変更。何も変わらなければ空。 */
 export function userAssetChanges(current: UserAssetsHoldings, merged: UserAssetsHoldings): Partial<KeydistAssets> {
   return {
-    ...(merged.userLayouts.length === current.userLayouts.length ? {} : { userLayouts: merged.userLayouts }),
-    ...(merged.userRomajiRules.length === current.userRomajiRules.length ? {} : { userRomajiRules: merged.userRomajiRules }),
-    ...(merged.fingerAssignments.length === current.fingerAssignments.length ? {} : { fingerAssignments: merged.fingerAssignments }),
+    ...(merged.userLayouts === current.userLayouts ? {} : { userLayouts: merged.userLayouts }),
+    ...(merged.userRomajiRules === current.userRomajiRules ? {} : { userRomajiRules: merged.userRomajiRules }),
+    ...(merged.fingerAssignments === current.fingerAssignments ? {} : { fingerAssignments: merged.fingerAssignments }),
     ...(merged.setupLibrary === current.setupLibrary ? {} : { setupLibrary: merged.setupLibrary }),
   };
-}
-
-export function importUserAssetsCommand(
-  incoming: UserAssetsBundle,
-  stamp: string,
-  incomingTexts: UserTextsBundle = EMPTY_USER_TEXTS_BUNDLE,
-): UserAssetsImportPlan {
-  let entries: readonly UserAssetImportEntry[] | undefined;
-  const command: Command<KeydistAssets> = (current) => {
-    const merge = mergeUserAssets(current, incoming, stamp);
-    const texts = mergeUserTexts(current.textLibrary, incomingTexts, stamp);
-    entries = [...merge.entries, ...texts.entries];
-    const changes: Partial<KeydistAssets> = {
-      ...userAssetChanges(current, merge.assets),
-      ...(texts.library === current.textLibrary ? {} : { textLibrary: texts.library }),
-    };
-    if (Object.keys(changes).length === 0) return { kind: 'no-op' };
-    return { kind: 'applied', label: '自作の資産を読み込む', changes };
-  };
-  return { command, entries: () => entries };
 }
 
 /** 読み取り結果。 */
 export type UserAssetsFileReadResult =
   | { readonly ok: false; readonly message: string; readonly details: readonly string[] }
-  | { readonly ok: true; readonly bundle: UserAssetsBundle; readonly userTexts: UserTextsBundle; readonly dropped: readonly CodecDiagnostic[] };
+  | {
+      readonly ok: true;
+      readonly bundle: UserAssetsBundle;
+      readonly userTexts: UserTextsBundle;
+      readonly extras: UserAssetsExtras;
+      readonly dropped: readonly CodecDiagnostic[];
+    };
 
 const fail = (message: string, ...details: string[]): UserAssetsFileReadResult => ({ ok: false, message, details });
 
@@ -600,9 +684,9 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
     const failure = describeFileDecodeFailure(decoded.reason);
     return fail(failure.message, failure.detail);
   }
-  const { bundle, userTexts } = decoded.value;
-  if (isEmptyUserAssetsBundle(bundle) && isEmptyUserTextsBundle(userTexts)) {
+  const { bundle, userTexts, extras } = decoded.value;
+  if (isEmptyUserAssetsBundle(bundle) && isEmptyUserTextsBundle(userTexts) && isEmptyUserAssetsExtras(extras)) {
     return fail('読み込める資産がありませんでした', ...decoded.diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`));
   }
-  return { ok: true, bundle, userTexts, dropped: decoded.diagnostics };
+  return { ok: true, bundle, userTexts, extras, dropped: decoded.diagnostics };
 }

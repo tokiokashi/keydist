@@ -6,7 +6,7 @@ import {
   deleteUserLayoutCommand,
   deleteUserRomajiRuleCommand,
 } from '#engine/commands.ts';
-import { importUserAssetsCommand } from '#engine/user-assets-file.ts';
+import { importUserAssetsCommand } from '#engine/user-assets-import.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { usePaneCatalog } from '../standalone/use-pane-catalog.ts';
@@ -78,8 +78,8 @@ export function UserAssetsApp() {
       }
       overrideGroups={overrideGroups}
       onResetOverride={(group, itemId) => dispatch(resetCascadeItemCommand(group.level, itemId, group.workspaceId))}
-      onImport={(bundle, userTexts, stamp) => {
-        const plan = importUserAssetsCommand(bundle, stamp, userTexts);
+      onImport={(file, stamp, policies) => {
+        const plan = importUserAssetsCommand(file.bundle, stamp, { userTexts: file.userTexts, extras: file.extras, policies });
         dispatch(plan.command);
         return plan.entries();
       }}
