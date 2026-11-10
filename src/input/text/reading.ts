@@ -1,4 +1,4 @@
-import { countCharsAfterPreparation } from './evaluation-text.ts';
+import { countCharsAfterPreparation, type PreparationScope } from './evaluation-text.ts';
 import type { TextLanguage } from './language.ts';
 
 /**
@@ -97,20 +97,25 @@ export const TOKEN_SURFACE_MISMATCH = '語の表記が原文と合わない';
 
 /**
  * 読みに置き換えた語の、表記の字数から読みの字数を引いた数の合計（仕様 §11.5の `W` = 入力かな数 + この値）。
- * 表記の字数は、記号の範囲の処理（仕様 §4.6の3.）の後に残る字だけを数えるので、記号の範囲の条件ごとに持つ。
+ * 表記の字数は、記号と英数字の範囲の処理（仕様 §4.6の3.と4.）の後に残る字だけを数えるので、範囲の条件（`keepSymbols`・`keepAlphanumerics`）の組ごとに持つ。
  */
 export interface NotationExcess {
-  /** 既定の範囲（`keepSymbols`が偽） */
-  readonly defaultSymbols: number;
-  /** 記号をすべて残す範囲（`keepSymbols`が真） */
-  readonly allSymbols: number;
+  /** 既定の範囲（どちらも偽） */
+  readonly base: number;
+  /** 記号をすべて残す範囲（`keepSymbols`だけが真） */
+  readonly symbols: number;
+  /** 英字と数字を残す範囲（`keepAlphanumerics`だけが真） */
+  readonly alphanumerics: number;
+  /** 記号をすべて残し、英字と数字も残す範囲（どちらも真） */
+  readonly both: number;
 }
 
-export const NO_NOTATION_EXCESS: NotationExcess = Object.freeze({ defaultSymbols: 0, allSymbols: 0 });
+export const NO_NOTATION_EXCESS: NotationExcess = Object.freeze({ base: 0, symbols: 0, alphanumerics: 0, both: 0 });
 
-/** 記号の範囲の条件に合う方の値。 */
-export function notationExcessFor(excess: NotationExcess, keepSymbols: boolean): number {
-  return keepSymbols ? excess.allSymbols : excess.defaultSymbols;
+/** 範囲の条件に合う値。 */
+export function notationExcessFor(excess: NotationExcess, scope: PreparationScope): number {
+  if (scope.keepSymbols) return scope.keepAlphanumerics ? excess.both : excess.symbols;
+  return scope.keepAlphanumerics ? excess.alphanumerics : excess.base;
 }
 
 export interface ReadingConversion {
@@ -162,8 +167,7 @@ export function convertToReading(
   let out = '';
   let position = 0;
   let replacedWords = 0;
-  let defaultSymbols = 0;
-  let allSymbols = 0;
+  const excess = { base: 0, symbols: 0, alphanumerics: 0, both: 0 };
   const applied = new Set<string>();
   for (const token of tokens) {
     if (token.byteStart < position || token.byteEnd < token.byteStart || token.byteEnd > bytes.length) {
@@ -178,8 +182,10 @@ export function convertToReading(
     } else {
       out += replacement.text;
       const readingLength = [...replacement.text].length;
-      defaultSymbols += countCharsAfterPreparation(original, false) - readingLength;
-      allSymbols += countCharsAfterPreparation(original, true) - readingLength;
+      excess.base += countCharsAfterPreparation(original, { keepSymbols: false, keepAlphanumerics: false }) - readingLength;
+      excess.symbols += countCharsAfterPreparation(original, { keepSymbols: true, keepAlphanumerics: false }) - readingLength;
+      excess.alphanumerics += countCharsAfterPreparation(original, { keepSymbols: false, keepAlphanumerics: true }) - readingLength;
+      excess.both += countCharsAfterPreparation(original, { keepSymbols: true, keepAlphanumerics: true }) - readingLength;
       if (replacement.corrected) applied.add(token.surface);
       replacedWords++;
     }
@@ -187,7 +193,7 @@ export function convertToReading(
   }
   out += decoder.decode(bytes.subarray(position));
   const appliedCorrections = [...applied].sort().map((surface) => ({ surface, reading: corrections[surface]! }));
-  return { text: out, replacedWords, appliedCorrections, notationExcess: { defaultSymbols, allSymbols } };
+  return { text: out, replacedWords, appliedCorrections, notationExcess: excess };
 }
 
 /** 読みを見て直す対象の語（表記ごと）。 */

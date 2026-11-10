@@ -93,6 +93,7 @@ export const SETTINGS_ITEM_SCHEMAS = {
   chainInterpretation: chainInterpretationSchema,
   arpeggioInterpretation: arpeggioInterpretationSchema,
   keepSymbols: v.boolean(),
+  keepAlphanumerics: v.boolean(),
   romajiRuleId: romajiRuleIdSchema,
   fingerAssignmentId: fingerAssignmentIdSchema,
   defaultShapeId: defaultShapeIdSchema,

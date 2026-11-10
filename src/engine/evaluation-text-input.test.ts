@@ -21,10 +21,16 @@ function resolve(
   keepSymbols = false,
   reading?: ReadingConditions | null,
   notationExcess?: NotationExcess,
+  keepAlphanumerics = false,
 ) {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   if (keepSymbols) {
     const written = setSettingsOverride(overrides, { kind: 'global' }, 'keepSymbols', true);
+    assert.ok(written.ok);
+    overrides = written.overrides;
+  }
+  if (keepAlphanumerics) {
+    const written = setSettingsOverride(overrides, { kind: 'global' }, 'keepAlphanumerics', true);
     assert.ok(written.ok);
     overrides = written.overrides;
   }
@@ -50,8 +56,9 @@ function measure(
   keepSymbols = false,
   reading?: ReadingConditions | null,
   notationExcess?: NotationExcess,
+  keepAlphanumerics = false,
 ) {
-  const input = resolve(layoutId, text, language, keepSymbols, reading, notationExcess);
+  const input = resolve(layoutId, text, language, keepSymbols, reading, notationExcess, keepAlphanumerics);
   const traceResult = generateEngineTrace(input);
   return { input, trace: traceResult.trace, metrics: interpretEngineTrace(traceResult, input).metrics };
 }
@@ -94,6 +101,57 @@ test('範囲を広げると、打てない記号はskippedに数え、打てる�
   const typable = measure('jis-kana', 'あ「い」', 'ja', true);
   assert.equal(typable.trace.skipped, 0);
   assert.equal(typable.trace.inputChars, 4);
+});
+
+test('既定では英字と数字を取り除き、かな配列のskippedにも入力かな数にも数えない', () => {
+  const text = 'あaＢ1２い';
+  for (const layoutId of ['nicola', 'jis-kana', 'qwerty']) {
+    const { input, trace, metrics } = measure(layoutId, text, 'ja');
+    assert.equal(input.text, 'あい', layoutId);
+    assert.equal(trace.skipped, 0, layoutId);
+    assert.equal(trace.inputChars, 2, layoutId);
+    assert.equal(metrics.conditions.keepAlphanumerics, false, layoutId);
+  }
+});
+
+test('英字と数字を残す条件では、かな配列は打てない文字としてskippedに数え、ローマ字配列は打つ', () => {
+  const kana = measure('nicola', 'あaＢ1２い', 'ja', false, undefined, undefined, true);
+  assert.equal(kana.input.text, 'あaＢ1２い');
+  assert.equal(kana.trace.inputChars, 6);
+  assert.equal(kana.trace.skipped, 4);
+  assert.equal(kana.metrics.conditions.keepAlphanumerics, true);
+
+  const romaji = measure('qwerty', 'あaい', 'ja', false, undefined, undefined, true);
+  assert.equal(romaji.trace.skipped, 0);
+  assert.equal(romaji.trace.inputChars, 3);
+});
+
+test('英字と数字の条件は、英語のテキストでは何も変えない', () => {
+  const text = 'It is 2024 ok';
+  const base = measure('qwerty', text, 'en');
+  const on = measure('qwerty', text, 'en', false, undefined, undefined, true);
+  assert.equal(base.input.text, text);
+  assert.equal(on.input.text, text);
+  assert.equal(base.metrics.totalUnits, on.metrics.totalUnits);
+});
+
+test('英字と数字の条件は、前処理の後のテキストが同じでも解釈のキーを分ける', () => {
+  const base = resolve('nicola', 'あい', 'ja');
+  const on = resolve('nicola', 'あい', 'ja', false, undefined, undefined, true);
+  assert.equal(traceKeyOf(base), traceKeyOf(on));
+  assert.notEqual(interpretationKeyOf(base, traceKeyOf(base)), interpretationKeyOf(on, traceKeyOf(on)));
+});
+
+test('英字と数字の条件を変えると、表記のうち残る字だけを数えた差を使う', () => {
+  const surface = '今日A1';
+  const conversion = convertToReading(surface, [
+    { surface, byteStart: 0, byteEnd: new TextEncoder().encode(surface).length, reading: 'キョウ', isUnknown: false },
+  ]);
+  assert.deepEqual(conversion.notationExcess, { base: -1, symbols: -1, alphanumerics: 1, both: 1 });
+  const base = measure('qwerty', conversion.text, 'ja', false, READING, conversion.notationExcess);
+  const on = measure('qwerty', conversion.text, 'ja', false, READING, conversion.notationExcess, true);
+  assert.equal(base.input.notationExcess, -1);
+  assert.equal(on.input.notationExcess, 1);
 });
 
 test('取り除いた後のテキストが、Traceの入力の文字数と打鍵の入力の文字列に一致する', () => {
@@ -299,7 +357,7 @@ test('記号の範囲を変えると、表記のうち残る字だけを数え�
   const conversion = convertToReading(surface, [
     { surface, byteStart: 0, byteEnd: new TextEncoder().encode(surface).length, reading: 'キョウ', isUnknown: false },
   ]);
-  assert.deepEqual(conversion.notationExcess, { defaultSymbols: -1, allSymbols: 0 });
+  assert.deepEqual(conversion.notationExcess, { base: -1, symbols: 0, alphanumerics: -1, both: 0 });
   const base = measure('qwerty', conversion.text, 'ja', false, READING, conversion.notationExcess);
   const wide = measure('qwerty', conversion.text, 'ja', true, READING, conversion.notationExcess);
   assert.equal(base.input.notationExcess, -1);
@@ -317,7 +375,7 @@ test('示す文をそのまま打つ場面は、文字数の差を渡しても0�
     overrides: EMPTY_SETTINGS_OVERRIDES,
     text: 'きょう',
     language: 'ja',
-    notationExcess: { defaultSymbols: -1, allSymbols: -1 },
+    notationExcess: { base: -1, symbols: -1, alphanumerics: -1, both: -1 },
     verbatimText: true,
   });
   assert.ok(result.ok);

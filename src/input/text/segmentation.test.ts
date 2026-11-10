@@ -92,7 +92,7 @@ test('サロゲートペアを含む原文でも、UTF-16の区切りをコー�
 });
 
 test('評価に渡すテキストへの写しは、取り除いた記号の数だけ前へ詰め、重なった区切りと端の区切りを除く', () => {
-  const options = { language: 'ja', keepSymbols: false } as const;
+  const options = { language: 'ja', keepSymbols: false, keepAlphanumerics: false } as const;
   const text = 'あ「い」う、え';
   const prepared = prepareEvaluationText(text, { ...options, layoutHasChar: () => false, uncoveredPositions: () => [] });
   assert.equal(prepared, 'あいう、え');
@@ -101,7 +101,7 @@ test('評価に渡すテキストへの写しは、取り除いた記号の数�
   // 取り除いた記号の直後が末尾なら、その区切りは末尾に当たって除く
   assert.deepEqual(evaluationBoundaries('あい」', [2, 3], options), []);
   // 記号をすべて残す設定では位置は変わらない
-  assert.deepEqual(evaluationBoundaries(text, [2, 3, 4], { language: 'ja', keepSymbols: true }), [2, 3, 4]);
+  assert.deepEqual(evaluationBoundaries(text, [2, 3, 4], { language: 'ja', keepSymbols: true, keepAlphanumerics: false }), [2, 3, 4]);
   // 区切りの位置までの前処理後の文字数と一致する
   for (const boundary of [1, 2, 3, 4, 5, 6]) {
     const head = prepareEvaluationText([...text].slice(0, boundary).join(''), {
@@ -115,6 +115,6 @@ test('評価に渡すテキストへの写しは、取り除いた記号の数�
 });
 
 test('半角の , . は1文字を1文字に書き換えるので、位置が変わらない。英語のテキストは何も変えない', () => {
-  assert.deepEqual(evaluationBoundaries('あ,い.う', [2, 4], { language: 'ja', keepSymbols: false }), [2, 4]);
-  assert.deepEqual(evaluationBoundaries('a「b', [2], { language: 'en', keepSymbols: false }), [2]);
+  assert.deepEqual(evaluationBoundaries('あ,い.う', [2, 4], { language: 'ja', keepSymbols: false, keepAlphanumerics: false }), [2, 4]);
+  assert.deepEqual(evaluationBoundaries('a「b', [2], { language: 'en', keepSymbols: false, keepAlphanumerics: false }), [2]);
 });

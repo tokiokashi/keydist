@@ -38,10 +38,12 @@ export interface ResolvedInput {
   readonly arpeggioInterpretation: ArpeggioInterpretation;
   /** 日本語のテキストで、かなと `、` `。` 以外の記号も評価に渡したか。`text` は既にこの値で前処理済み。 */
   readonly keepSymbols: boolean;
+  /** 日本語のテキストで、英字と数字も評価に渡したか。`text` は既にこの値で前処理済み。 */
+  readonly keepAlphanumerics: boolean;
   /** `text` を作った読みの変換の条件。数値の出どころとして運ぶ（仕様 §12.3）。直す対象でないテキストはnull。 */
   readonly reading: ReadingConditions | null;
   /**
-   * `text` を作る時に読みに置き換えた語の、表記の字数から読みの字数を引いた数の合計（記号の範囲 `keepSymbols` の条件に合う方）。
+   * `text` を作る時に読みに置き換えた語の、表記の字数から読みの字数を引いた数の合計（記号と英数字の範囲 `keepSymbols`・`keepAlphanumerics` の条件に合う値）。
    * 文字数 `W` = 入力かな数 + この値（仕様 §11.5）。`text` は読みに直した後なので、`text` だけからは求まらない。
    * 読みに直していなければ0。
    */
@@ -119,7 +121,7 @@ export interface ResolveEngineInputOptions {
   readonly notationExcess?: NotationExcess | undefined;
   /**
    * 文節の区切り（読みのテキストの位置）。区切りを使うペインだけが渡す。評価に渡すテキストの位置へは、
-   * この対象の記号の範囲（`keepSymbols`）で写し直して `extractionAssets.segmentation` に載せる。
+   * この対象の記号と英数字の範囲（`keepSymbols`・`keepAlphanumerics`）で写し直して `extractionAssets.segmentation` に載せる。
    */
   readonly segmentation?: SegmentationInput | undefined;
   /**
@@ -261,6 +263,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       : prepareEvaluationText(options.text, {
           language: options.language,
           keepSymbols: cascade.keepSymbols.value,
+          keepAlphanumerics: cascade.keepAlphanumerics.value,
           layoutHasChar: (char) => layout.canonicalInputs.has(char),
           uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
         });
@@ -287,9 +290,15 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       chainInterpretation: cascade.chainInterpretation.value,
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
       keepSymbols: cascade.keepSymbols.value,
+      keepAlphanumerics: cascade.keepAlphanumerics.value,
       reading: options.verbatimText === true ? null : (options.reading ?? null),
       notationExcess:
-        options.verbatimText === true || options.notationExcess === undefined ? 0 : notationExcessFor(options.notationExcess, cascade.keepSymbols.value),
+        options.verbatimText === true || options.notationExcess === undefined
+          ? 0
+          : notationExcessFor(options.notationExcess, {
+              keepSymbols: cascade.keepSymbols.value,
+              keepAlphanumerics: cascade.keepAlphanumerics.value,
+            }),
       extractionAssets: {
         personalSpeed: options.personalSpeed,
         textLanguage: options.language,
@@ -300,6 +309,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
                 boundaries: evaluationBoundaries(options.text, options.segmentation.boundaries, {
                   language: options.language,
                   keepSymbols: cascade.keepSymbols.value,
+                  keepAlphanumerics: cascade.keepAlphanumerics.value,
                 }),
                 origin: options.segmentation.origin,
                 splitter: options.segmentation.splitter,

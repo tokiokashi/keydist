@@ -21,7 +21,7 @@ import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride } from '#engine/settings-
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
-import { isSymbolChar } from '#input/text/evaluation-text.ts';
+import { isAlphanumericChar, isSymbolChar } from '#input/text/evaluation-text.ts';
 import { convertToReading, type ReadingToken } from '#input/text/reading.ts';
 import { SAMPLE_TEXT_JA_NEKO } from '#input/text/sample-ja-neko.ts';
 import { mapBoundariesToReading, offsetsOfChunks } from '#input/text/segmentation.ts';
@@ -149,8 +149,9 @@ interface Unit {
   readonly tokens: readonly ReadingToken[];
 }
 
-/** 前処理（仕様 §4.6）が1文字を残すか。残す文字は、記号でない文字と `、` `。`、および `、` `。` に書き換わるか配列が直接持つ半角の `,` `.` */
+/** 前処理（仕様 §4.6）が1文字を残すか。残す文字は、記号でも英字と数字でもない文字と `、` `。`、および `、` `。` に書き換わるか配列が直接持つ半角の `,` `.` */
 function keptByPreprocess(char: string): boolean {
+  if (isAlphanumericChar(char)) return false;
   return !isSymbolChar(char) || char === '、' || char === '。' || char === ',' || char === '.';
 }
 
@@ -380,7 +381,7 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
   out.push(
     `- コーパス: 青空文庫『${AOZORA_SOURCE.title}』（作品789）。zip ${AOZORA_SOURCE.fileName}（sha256 ${AOZORA_SOURCE.sha256}）。除去後の全文のsha256 ${corpusSha}（${cpLength(corpus)}文字、${units.length}段落）`,
     `- 読みの辞書: ${DICTIONARY_SPEC.name} ${DICTIONARY_SPEC.version}、解析器${LIBRARY_SPEC.name} ${LIBRARY_SPEC.version}。利用者の読みの直しは無し。全文を段落ごとに読みに直してつないだ文字列は${wholeChars.length}文字、評価に渡す文字列は${totalEvalChars}文字（全配列で一致を確かめた）`,
-    `- 前処理: 仕様 §4.6の1〜4段（既定の記号の範囲）`,
+    `- 前処理: 仕様 §4.6の1〜5段（既定の記号と英数字の範囲）`,
     `- 文節の区切り: ${BUNSETSU_SPLITTER.name} ${BUNSETSU_SPLITTER.version}を、改行を含む原文の全文に1回当て、アプリと同じ経路で評価に渡すテキストの位置へ写した。原文の上で${bunsetsuSource.length}個、読みの上で${bunsetsuInReading.length}個。段落の先頭（改行の直後）に載った区切りは読みの上で${atParagraphStart}個`,
     `- 改行に関わる区切り（評価に渡すテキストの上。全${boundaryTotal}個）: 改行の直後に載った区切り${newlineCounts?.afterNewline}個、区切りの直後の1文字が改行になる区切り${newlineCounts?.beforeNewline}個（${percent((newlineCounts?.beforeNewline ?? 0) / boundaryTotal)}）、改行の前後の両方に区切りがあり改行1文字が1つの文節になるもの${newlineCounts?.lone}個。改行に帰属する距離は0（回した全配列で、境目の文字になった改行に帰属する距離の最大値は${newlineDistance}）なので、改行の直前に載った区切りでは改行が境目の文字になり、境目の文字の1文字あたりの距離はその分小さく出る。除かずに数えた`,
     `- 配列: ${conditions.join('、')}`,
@@ -689,7 +690,7 @@ async function main(): Promise<void> {
   out.push(
     `- コーパス: 青空文庫『${AOZORA_SOURCE.title}』（作品789）。zip ${AOZORA_SOURCE.fileName}（sha256 ${AOZORA_SOURCE.sha256}）。取得と除去はscripts/generate-neko-sample.tsと同じ。除去後の全文のsha256 ${corpusSha}（${cpLength(corpus)}文字、${units.length}段落）`,
     `- 読みの辞書: ${DICTIONARY_SPEC.name} ${DICTIONARY_SPEC.version}、解析器${LIBRARY_SPEC.name} ${LIBRARY_SPEC.version}。利用者の読みの直しは無し。全文を段落ごとに読みに直してつないだ文字列は${wholeChars.length}文字`,
-    `- 前処理: 仕様 §4.6の1〜4段（既定の記号の範囲）。全体の文字列にある半角の \`,\` \`.\` は${halfwidthPunctuation}個で、前処理の2段目は1文字を1文字に直すだけなので文字数は変わらない。全体の評価に渡す文字数が配列によらず${totalEvalChars}文字であることと、範囲の評価に渡すテキストが全体の評価に渡す文字列の同じ部分に一致することを、範囲×配列ごとに確かめた`,
+    `- 前処理: 仕様 §4.6の1〜5段（既定の記号と英数字の範囲）。全体の文字列にある半角の \`,\` \`.\` は${halfwidthPunctuation}個で、前処理の2段目は1文字を1文字に直すだけなので文字数は変わらない。全体の評価に渡す文字数が配列によらず${totalEvalChars}文字であることと、範囲の評価に渡すテキストが全体の評価に渡す文字列の同じ部分に一致することを、範囲×配列ごとに確かめた`,
     `- 範囲: 段落（改行）の境目から、評価に渡すテキストの文字数が${RANGE_MIN_CHARS}を超える最初の段落の境目まで。既定の日本語サンプル（第一章の先頭、原文の${sampleStart}〜${sampleEnd}文字目）と重なる範囲と、互いに重なる範囲は除く。乱数${PRNG_NAME}、範囲の種${args.rangeSeed}、${ranges.length}範囲`,
     ...ranges.map(
       (range, i) =>

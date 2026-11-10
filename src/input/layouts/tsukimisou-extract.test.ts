@@ -148,6 +148,7 @@ test('日本語サンプルは、確定の打鍵が入らずに打てる', () =>
   const text = prepareEvaluationText(SAMPLE_TEXT_JA, {
     language: 'ja',
     keepSymbols: false,
+    keepAlphanumerics: false,
     layoutHasChar: (char) => layout.canonicalInputs.has(char),
     uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });

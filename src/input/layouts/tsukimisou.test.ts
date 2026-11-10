@@ -176,6 +176,7 @@ test('確定の打鍵: 前置の側。っの後に、前置jの面の出力キ�
   const goodbye = prepareEvaluationText('グッバイ', {
     language: 'ja',
     keepSymbols: false,
+    keepAlphanumerics: false,
     layoutHasChar: (char) => layout.canonicalInputs.has(char),
     uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });

@@ -199,6 +199,7 @@ test('computeMemberSeries: 指間平均・指間σは、全11Nで同条件のcom
         actionRealizationPolicy: tracePolicy.actionRealizationPolicy!,
         romajiRuleId: input.romajiRuleId,
         keepSymbols: input.keepSymbols,
+        keepAlphanumerics: input.keepAlphanumerics,
         reading: input.reading,
       });
       const expected = adjacentMeanStdDev(direct.adjacent);

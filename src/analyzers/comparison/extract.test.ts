@@ -57,6 +57,7 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
     actionRealizationPolicy: resolution.input.tracePolicy.actionRealizationPolicy!,
     romajiRuleId: resolution.input.romajiRuleId,
     keepSymbols: resolution.input.keepSymbols,
+    keepAlphanumerics: resolution.input.keepAlphanumerics,
     reading: resolution.input.reading,
   });
 
