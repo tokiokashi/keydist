@@ -371,23 +371,24 @@ if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(
   const check = process.argv.includes('--check');
   const built = buildTexts(await loadOriginals(), await createNodeToReading());
   const files = outputFiles(built);
-  if (check) {
-    let failed = false;
-    for (const file of files) {
-      const stored = await readFile(file.path, 'utf8').catch(() => undefined);
-      if (stored !== file.content) {
-        console.error(`[eval-texts] ${file.path} が、固定した原文から作ったものと違う`);
-        failed = true;
-      }
-    }
-    if (failed) process.exit(1);
-    console.log(`[eval-texts] 置いてある${files.length}ファイルは、固定した原文から作ったものと同じ`);
-  } else {
-    for (const file of files) await writeAtomically(file.path, file.content);
-    console.log(`[eval-texts] ${files.length}ファイルを書いた`);
-  }
   for (const text of orderedEntries(built)) {
     const total = text.takes.reduce((sum, take) => sum + take.evalChars, 0);
     console.log(`  ${text.entry.sampleId}: 評価に渡す字数の見積もり ${total}、${text.takes.length}箇所`);
+  }
+  if (check) {
+    const mismatched: string[] = [];
+    for (const file of files) {
+      const stored = await readFile(file.path, 'utf8').catch(() => undefined);
+      if (stored !== file.content) mismatched.push(file.path);
+    }
+    if (mismatched.length > 0) {
+      for (const path of mismatched) console.error(`[eval-texts] 不一致: ${path}`);
+      console.error(`[eval-texts] 置いてある${files.length}ファイルのうち${mismatched.length}ファイルが、固定した原文から作ったものと違う`);
+      process.exit(1);
+    }
+    console.log(`[eval-texts] 一致: 置いてある${files.length}ファイルすべてが、固定した原文から作ったものと同じ`);
+  } else {
+    for (const file of files) await writeAtomically(file.path, file.content);
+    console.log(`[eval-texts] ${files.length}ファイルを書いた`);
   }
 }
