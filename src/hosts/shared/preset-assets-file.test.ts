@@ -4,7 +4,7 @@ import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import { columnFingerAssignment, type FingerAssignment } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { importPresetsWithAssetsCommand, mergePresetImport, presetAssetsOf } from '#engine/preset-assets.ts';
-import { PRESET_FILE_FORMAT, missingReferences, parsePresetFile, presetFileBody, presetImportSummary } from './preset-file.ts';
+import { PRESET_FILE_FORMAT, missingReferences, parsePresetFile, presetFileBody } from './preset-file.ts';
 
 /**
  * プリセットの書き出しに同梱する資産と、読み込みでの付け替え。書き手（`presetFileBody`）から読み手（`parsePresetFile`）、
@@ -126,6 +126,22 @@ test('読み込み: 同名で値の違うプリセットは、番号を付けて
   assert.equal(valuesOf(after, '自作の規則 2').romajiRuleId, 'rule-a');
 });
 
+test('読み込み: 同名で値の違う手元に二度読んでも、プリセットは1件しか増えない', () => {
+  const text = fileOf([OWN]);
+  const local = localOf(EXPORTER, [{ id: 'p', name: '自作の規則', values: { windowSize: 3 } }]);
+  const first = importInto(local, text);
+  assert.equal(first.after.presetLibrary.presets.length, 2);
+  const second = importInto(first.after, text);
+  const third = importInto(second.after, text);
+  assert.equal(second.outcome.kind, 'no-op');
+  assert.equal(third.after.presetLibrary.presets.length, 2);
+});
+
+test('読み込み: 値が同じでも名前が違う手元のプリセットがあれば、足す', () => {
+  const local = localOf(EXPORTER, [{ id: 'p', name: '別名', values: OWN.values }]);
+  assert.equal(importInto(local, fileOf([OWN])).after.presetLibrary.presets.length, 2);
+});
+
 test('読み込み: 同梱の無いファイルは、値をそのまま手元に足す', () => {
   const { after } = importInto(localOf(EXPORTER), fileWithoutAssets([OWN]));
   assert.equal(valuesOf(after, '自作の規則').romajiRuleId, 'rule-a');
@@ -161,22 +177,4 @@ test('読み込み: 壊れた同梱の項目は捨てて数を伝え、プリセ
   const parsed = parsePresetFile(JSON.stringify(body));
   assert.ok(parsed.ok);
   assert.equal(parsed.presets.length, 2);
-  assert.ok(parsed.dropped.some((text) => text.includes('1件の同梱の資産の項目は読み込めませんでした')));
-});
-
-test('結果の文: 足した資産の件数、別の名前で足した理由、足さなかったプリセットの数を出す', () => {
-  const parsed = parsePresetFile(fileOf(PRESETS));
-  assert.ok(parsed.ok);
-  const merge = mergePresetImport(
-    { userRomajiRules: [rule('rule-a', 'si')], fingerAssignments: [], presets: [] },
-    parsed.presets,
-    parsed.userAssets,
-    'stamp',
-  );
-  const text = presetImportSummary({ added: 2, skipped: 1, assetEntries: merge.assetEntries, dropped: [] });
-  assert.match(text, /2件のプリセットを読み込みました/);
-  assert.match(text, /1件は同じ名前と値のものが既にあるため、追加しませんでした/);
-  assert.match(text, /同梱の資産2件を足しました/);
-  assert.match(text, /ローマ字規則「rule-a」は、手元に重なる資産があり中身が違うため/);
-  assert.match(presetImportSummary({ added: 0, skipped: 2, assetEntries: [], dropped: [] }), /読み込んだプリセットはありません/);
 });

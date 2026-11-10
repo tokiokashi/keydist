@@ -1,5 +1,5 @@
 import type { Command } from '#input/commands/index.ts';
-import { appendImportedPresets, type PresetIdGenerator } from '#input/presets/index.ts';
+import { appendImportedPresets, normalizePresetName, type PresetIdGenerator } from '#input/presets/index.ts';
 import { isBuiltin } from '#input/romaji/rules.ts';
 import { emptyCascadeOverrides, type LevelOverrides } from '#input/settings/index.ts';
 import { stableStringify } from './cache-key.ts';
@@ -69,15 +69,23 @@ function remapValues(
   return next as PresetValues;
 }
 
-/** 同じ名前と値のプリセットが手元にあるかを比べる鍵。idは比べない。 */
-function presetKey(preset: ImportedPresetValues): string {
-  return stableStringify([preset.name, preset.values]);
+/**
+ * 手元のプリセットが、読み込むプリセットと同じ名前と値かを比べる。読み込みは同名に番号を付けて足す（`appendImportedPresets`）ので、
+ * 手元の名前は、読み込む名前そのものか、それに番号を付けた「名前 N」（Nは2以上）のどちらでもよい。idは比べない。
+ */
+function isSamePreset(existing: ImportedPresetValues, incoming: ImportedPresetValues, incomingValues: string): boolean {
+  if (stableStringify(existing.values) !== incomingValues) return false;
+  const base = normalizePresetName(incoming.name) ?? incoming.name;
+  if (existing.name === base) return true;
+  if (!existing.name.startsWith(`${base} `)) return false;
+  const suffix = existing.name.slice(base.length + 1);
+  return /^\d+$/.test(suffix) && Number(suffix) >= 2;
 }
 
 export interface PresetImportMerge {
   /** 手元に足すプリセット。資産の対応を当てた後で、手元に同じ名前と値のものがあるものは除く。 */
   readonly presets: readonly ImportedPresetValues[];
-  /** 手元に同じ名前と値のものがあり、足さなかったプリセットの数。 */
+  /** 手元に同じ名前（番号付きの別名を含む）と値のものがあり、足さなかったプリセットの数。 */
   readonly skipped: number;
   /** 突き合わせた後の、手元の自作のローマ字規則と指の割り当て。 */
   readonly assets: PresetAssetHoldings;
@@ -110,8 +118,10 @@ export function mergePresetImport(
         stamp,
       );
   const remapped = merged === undefined ? incoming : incoming.map((preset) => ({ ...preset, values: remapValues(preset.values, merged.idMaps) }));
-  const existing = new Set(holdings.presets.map(presetKey));
-  const presets = remapped.filter((preset) => !existing.has(presetKey(preset)));
+  const presets = remapped.filter((preset) => {
+    const values = stableStringify(preset.values);
+    return !holdings.presets.some((existing) => isSamePreset(existing, preset, values));
+  });
   return {
     presets,
     skipped: remapped.length - presets.length,
