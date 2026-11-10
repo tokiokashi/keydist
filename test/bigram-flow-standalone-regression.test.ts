@@ -16,7 +16,8 @@ import {
 } from '#input/shapes/geometry.ts';
 import { generateTrace, type CenterShiftThumb, type SpaceThumb, type TracePolicy } from '#trace/generate.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
-import { sampleText, type TextLanguage } from '#input/text/samples.ts';
+import type { TextLanguage } from '#input/text/samples.ts';
+import { regressionText } from '../scripts/analyzer-regression-cases.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
@@ -69,7 +70,7 @@ const fixture: Fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8'));
 // 全ケース回す必要は無い（Trace生成の数値一致はengine-regression.test.tsが既に見ている）。
 // ここで見たいのは「Bigram Flowの抽出まで含めて、直接経路とengine経路が一致するか」なので、
 // 英語直接入力・日本語ローマ字入力・日本語かな直接入力の3通りを代表させる。
-const CASE_IDS = ['en:colemak-dh:default', 'ja:colemak-dh:modern', 'ja:asuka:modern'];
+const CASE_IDS = ['en:colemak-dh:default', 'ja:colemak-dh:kana', 'ja:asuka:kana'];
 
 function findFixtureCase(id: string): FixtureCase {
   const found = fixture.cases.find((candidate) => candidate.id === id);
@@ -90,7 +91,7 @@ function allLayouts(language: TextLanguage): readonly Layout[] {
 function directTrace(fixtureCase: FixtureCase) {
   const layout = allLayouts(fixtureCase.language).find((candidate) => candidate.id === fixtureCase.layoutId);
   assert.ok(layout);
-  const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+  const text = regressionText(fixtureCase.language, fixtureCase.sampleId);
 
   const resolvedLayout = fixtureCase.conditions.romajiRuleId !== null ? withRomaji(layout!, tableForRule(fixtureCase.conditions.romajiRuleId)) : layout!;
 
@@ -143,7 +144,7 @@ function engineTrace(fixtureCase: FixtureCase) {
     overrides = overrideAtSetup(overrides, setupId, 'romajiRuleId', fixtureCase.conditions.romajiRuleId);
   }
 
-  const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+  const text = regressionText(fixtureCase.language, fixtureCase.sampleId);
   const resolved = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),

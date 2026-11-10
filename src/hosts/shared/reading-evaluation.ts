@@ -92,15 +92,21 @@ export interface SegmentationBasis {
  * `none` は読みに直す対象でない（漢字を含まない・英語）。`loading` は辞書を読み込み中で、評価に渡すテキストがまだ無い。
  * `failed` は辞書を読み込めず、漢字を読みに直さずに評価している。
  */
-export type PaneReadingState = { readonly kind: 'none' } | { readonly kind: 'loading' } | { readonly kind: 'failed' } | { readonly kind: 'converted' };
+export type PaneReadingState =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'failed' }
+  | { readonly kind: 'bodyFailed' }
+  | { readonly kind: 'converted' };
 
 /**
  * 辞書の読み込みが済むまで、ペインは計算を依頼せず、数値も出さない。
  * 評価に渡すテキストは原文のままなので、漢字を打てない文字に数えた暫定の数値になってしまうため。
- * 読みの状態を持たない画面（`undefined`）と、読みを要さないテキスト・読み込みに失敗したテキストは待たない。
+ * 組み込みテキストの本文を読み込めなかった時（`bodyFailed`）も、本文が空のまま数値を出さないよう、計算を依頼しない。
+ * 読みの状態を持たない画面（`undefined`）と、読みを要さないテキスト・辞書の読み込みに失敗したテキストは待たない。
  */
 export function isWaitingForReading(reading: PaneReadingState | undefined): boolean {
-  return reading?.kind === 'loading';
+  return reading?.kind === 'loading' || reading?.kind === 'bodyFailed';
 }
 
 export interface ReadingEvaluation {

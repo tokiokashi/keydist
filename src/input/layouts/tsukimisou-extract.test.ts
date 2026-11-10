@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 import { prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace, uncoveredTextPositions, type Stroke } from '#trace/generate.ts';
 import { buildGeometry } from '../shapes/geometry.ts';

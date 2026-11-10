@@ -1,12 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BUILTIN_TEXTS, builtinTextById, DEFAULT_BUILTIN_TEXT_ID, deriveEditedTextName } from './builtin.ts';
-
-test('BUILTIN_TEXTS: 既存のサンプル（en.default / ja.modern / ja.legacy）が3件揃っている', () => {
-  assert.equal(BUILTIN_TEXTS.length, 3);
-  const ids = BUILTIN_TEXTS.map((entry) => entry.id).sort();
-  assert.deepEqual(ids, ['builtin:en.default', 'builtin:ja.legacy', 'builtin:ja.modern']);
-});
+import { builtinTextById, DEFAULT_BUILTIN_TEXT_ID, deriveEditedTextName } from './builtin.ts';
 
 test('DEFAULT_BUILTIN_TEXT_ID: ja.legacyを指す', () => {
   assert.equal(DEFAULT_BUILTIN_TEXT_ID, 'builtin:ja.legacy');
@@ -22,5 +16,5 @@ test('deriveEditedTextName: 「（既定）」注記を落としてから「（�
 });
 
 test('deriveEditedTextName: 「（既定）」が無い名前にはそのまま足す', () => {
-  assert.equal(deriveEditedTextName('現代文'), '現代文（編集）');
+  assert.equal(deriveEditedTextName('かな文'), 'かな文（編集）');
 });

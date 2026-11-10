@@ -5766,7 +5766,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:aptv3:modern",
+      "id": "ja:aptv3:kana",
       "language": "ja",
       "layoutId": "aptv3",
       "metrics": {
@@ -5888,7 +5888,7 @@
         "totalMm": 21235.026344638878,
         "totalUnits": 1114.6995456503348
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -5968,7 +5968,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:astarte:modern",
+      "id": "ja:astarte:kana",
       "language": "ja",
       "layoutId": "astarte",
       "metrics": {
@@ -6090,7 +6090,7 @@
         "totalMm": 19429.974668017214,
         "totalUnits": 1019.9461767988039
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -6170,7 +6170,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:asuka:modern",
+      "id": "ja:asuka:kana",
       "language": "ja",
       "layoutId": "asuka",
       "metrics": {
@@ -6297,7 +6297,7 @@
         "totalMm": 17031.994117005517,
         "totalUnits": 894.0679326512081
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -6377,7 +6377,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:asuka:modern:arpeggioInterpretation.includeThumb=true（ArpeggioSpanに親指を含める分岐）",
+      "id": "ja:asuka:kana:arpeggioInterpretation.includeThumb=true（ArpeggioSpanに親指を含める分岐）",
       "language": "ja",
       "layoutId": "asuka",
       "metrics": {
@@ -6505,7 +6505,7 @@
         "totalUnits": 894.0679326512081
       },
       "note": "arpeggioInterpretation.includeThumb=true（ArpeggioSpanに親指を含める分岐）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -6585,7 +6585,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:asuka:modern:chainInterpretation.breakOnSameFinger=false（Analysis Chainの区切り方が変わる分岐）",
+      "id": "ja:asuka:kana:chainInterpretation.breakOnSameFinger=false（Analysis Chainの区切り方が変わる分岐）",
       "language": "ja",
       "layoutId": "asuka",
       "metrics": {
@@ -6713,7 +6713,7 @@
         "totalUnits": 894.0679326512081
       },
       "note": "chainInterpretation.breakOnSameFinger=false（Analysis Chainの区切り方が変わる分岐）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -6793,7 +6793,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:canary-ansi:modern",
+      "id": "ja:canary-ansi:kana",
       "language": "ja",
       "layoutId": "canary-ansi",
       "metrics": {
@@ -6915,7 +6915,7 @@
         "totalMm": 23286.050645498715,
         "totalUnits": 1222.3648632807724
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -6995,7 +6995,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:canary:modern",
+      "id": "ja:canary:kana",
       "language": "ja",
       "layoutId": "canary",
       "metrics": {
@@ -7117,7 +7117,7 @@
         "totalMm": 24017.266875929654,
         "totalUnits": 1260.7489173716353
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -7197,7 +7197,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:colemak-dh-ansi:modern",
+      "id": "ja:colemak-dh-ansi:kana",
       "language": "ja",
       "layoutId": "colemak-dh-ansi",
       "metrics": {
@@ -7319,7 +7319,7 @@
         "totalMm": 19105.89500196434,
         "totalUnits": 1002.9341208380231
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -7399,7 +7399,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:colemak-dh:modern",
+      "id": "ja:colemak-dh:kana",
       "language": "ja",
       "layoutId": "colemak-dh",
       "metrics": {
@@ -7521,7 +7521,7 @@
         "totalMm": 18788.041010709185,
         "totalUnits": 986.248871953238
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -7601,7 +7601,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:colemak:modern",
+      "id": "ja:colemak:kana",
       "language": "ja",
       "layoutId": "colemak",
       "metrics": {
@@ -7723,7 +7723,7 @@
         "totalMm": 19109.3580284626,
         "totalUnits": 1003.1159070059108
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -7803,7 +7803,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:dvorak:modern",
+      "id": "ja:dvorak:kana",
       "language": "ja",
       "layoutId": "dvorak",
       "metrics": {
@@ -7925,7 +7925,7 @@
         "totalMm": 21729.38102910856,
         "totalUnits": 1140.649922787851
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -8005,7 +8005,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:eucalyn:modern",
+      "id": "ja:eucalyn:kana",
       "language": "ja",
       "layoutId": "eucalyn",
       "metrics": {
@@ -8127,7 +8127,7 @@
         "totalMm": 20258.868860773855,
         "totalUnits": 1063.4576829802547
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -8207,7 +8207,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:gallium:modern",
+      "id": "ja:gallium:kana",
       "language": "ja",
       "layoutId": "gallium",
       "metrics": {
@@ -8329,7 +8329,7 @@
         "totalMm": 20912.022770521024,
         "totalUnits": 1097.7439774551717
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -8409,7 +8409,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:gekkou:modern",
+      "id": "ja:gekkou:kana",
       "language": "ja",
       "layoutId": "gekkou",
       "metrics": {
@@ -8536,7 +8536,7 @@
         "totalMm": 26882.980205667798,
         "totalUnits": 1411.1800632896482
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -8616,7 +8616,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:graphite:modern",
+      "id": "ja:graphite:kana",
       "language": "ja",
       "layoutId": "graphite",
       "metrics": {
@@ -8738,7 +8738,7 @@
         "totalMm": 20483.0924318639,
         "totalUnits": 1075.2279491792074
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -8818,7 +8818,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:halmak:modern",
+      "id": "ja:halmak:kana",
       "language": "ja",
       "layoutId": "halmak",
       "metrics": {
@@ -8940,7 +8940,7 @@
         "totalMm": 21520.44861709429,
         "totalUnits": 1129.6823421046872
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -9020,7 +9020,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:jis-kana:modern",
+      "id": "ja:jis-kana:kana",
       "language": "ja",
       "layoutId": "jis-kana",
       "metrics": {
@@ -9147,7 +9147,7 @@
         "totalMm": 41588.14123089975,
         "totalUnits": 2183.1045265564176
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -9227,7 +9227,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:kawasemi-plus:modern",
+      "id": "ja:kawasemi-plus:kana",
       "language": "ja",
       "layoutId": "kawasemi-plus",
       "metrics": {
@@ -9424,7 +9424,7 @@
         "totalMm": 24286.22983926891,
         "totalUnits": 1274.8677080981056
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -9504,7 +9504,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:mtgap:modern",
+      "id": "ja:mtgap:kana",
       "language": "ja",
       "layoutId": "mtgap",
       "metrics": {
@@ -9626,7 +9626,7 @@
         "totalMm": 22273.158109988708,
         "totalUnits": 1169.1946514429767
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -9706,7 +9706,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:naginata-v18:modern",
+      "id": "ja:naginata-v18:kana",
       "language": "ja",
       "layoutId": "naginata-v18",
       "metrics": {
@@ -10005,7 +10005,7 @@
           "windowSize": 7
         }
       ],
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -10085,7 +10085,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:naginata-v18:modern:centerShiftThumb=opposite（センターシフトを出力キーと反対側の親指で押す分岐。naginataは交代打鍵を使うので効果が出る）",
+      "id": "ja:naginata-v18:kana:centerShiftThumb=opposite（センターシフトを出力キーと反対側の親指で押す分岐。naginataは交代打鍵を使うので効果が出る）",
       "language": "ja",
       "layoutId": "naginata-v18",
       "metrics": {
@@ -10358,7 +10358,7 @@
         "totalUnits": 1157.375266510748
       },
       "note": "centerShiftThumb=opposite（センターシフトを出力キーと反対側の親指で押す分岐。naginataは交代打鍵を使うので効果が出る）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -10438,7 +10438,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:naginata-v18:modern:triggerRealizationPolicy.useHold=true（hold-capable triggerを連続保持として実現する分岐）",
+      "id": "ja:naginata-v18:kana:triggerRealizationPolicy.useHold=true（hold-capable triggerを連続保持として実現する分岐）",
       "language": "ja",
       "layoutId": "naginata-v18",
       "metrics": {
@@ -10711,7 +10711,7 @@
         "totalUnits": 1157.375266510748
       },
       "note": "triggerRealizationPolicy.useHold=true（hold-capable triggerを連続保持として実現する分岐）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -10791,7 +10791,7 @@
         },
         "windowSize": 1
       },
-      "id": "ja:naginata-v18:modern:windowSize=1（既定3より狭い先読み。同指連続の判定が変わる分岐）",
+      "id": "ja:naginata-v18:kana:windowSize=1（既定3より狭い先読み。同指連続の判定が変わる分岐）",
       "language": "ja",
       "layoutId": "naginata-v18",
       "metrics": {
@@ -11064,7 +11064,7 @@
         "totalUnits": 1225.0763994288138
       },
       "note": "windowSize=1（既定3より狭い先読み。同指連続の判定が変わる分岐）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -11144,7 +11144,7 @@
         },
         "windowSize": 6
       },
-      "id": "ja:naginata-v18:modern:windowSize=6（既定3より広い先読み）",
+      "id": "ja:naginata-v18:kana:windowSize=6（既定3より広い先読み）",
       "language": "ja",
       "layoutId": "naginata-v18",
       "metrics": {
@@ -11417,7 +11417,7 @@
         "totalUnits": 1085.9843203068308
       },
       "note": "windowSize=6（既定3より広い先読み）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -11497,7 +11497,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:nicola:modern",
+      "id": "ja:nicola:kana",
       "language": "ja",
       "layoutId": "nicola",
       "metrics": {
@@ -11624,7 +11624,7 @@
         "totalMm": 20411.340480005205,
         "totalUnits": 1071.4614425199582
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -11704,7 +11704,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:norman:modern",
+      "id": "ja:norman:kana",
       "language": "ja",
       "layoutId": "norman",
       "metrics": {
@@ -11826,7 +11826,7 @@
         "totalMm": 23785.386049270834,
         "totalUnits": 1248.5766954997812
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -11906,7 +11906,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:oonishi:modern",
+      "id": "ja:oonishi:kana",
       "language": "ja",
       "layoutId": "oonishi",
       "metrics": {
@@ -12028,7 +12028,7 @@
         "totalMm": 19830.85961389272,
         "totalUnits": 1040.9900059786205
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -12108,7 +12108,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:qgmlwy:modern",
+      "id": "ja:qgmlwy:kana",
       "language": "ja",
       "layoutId": "qgmlwy",
       "metrics": {
@@ -12230,7 +12230,7 @@
         "totalMm": 26124.89484988817,
         "totalUnits": 1371.3855564245757
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -12310,7 +12310,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:qwerty-optimized:modern",
+      "id": "ja:qwerty-optimized:kana",
       "language": "ja",
       "layoutId": "qwerty-optimized",
       "metrics": {
@@ -12432,7 +12432,7 @@
         "totalMm": 35773.84050390075,
         "totalUnits": 1877.8918899685432
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -12512,7 +12512,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:qwerty:modern",
+      "id": "ja:qwerty:kana",
       "language": "ja",
       "layoutId": "qwerty",
       "metrics": {
@@ -12634,7 +12634,7 @@
         "totalMm": 36483.47740180462,
         "totalUnits": 1915.1431706984054
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -12714,7 +12714,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:qwerty:modern:物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "id": "ja:qwerty:kana:物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
       "language": "ja",
       "layoutId": "qwerty",
       "metrics": {
@@ -12837,7 +12837,7 @@
         "totalUnits": 1889.3011680555596
       },
       "note": "物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -12917,7 +12917,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:qwerty:modern:物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "id": "ja:qwerty:kana:物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
       "language": "ja",
       "layoutId": "qwerty",
       "metrics": {
@@ -13040,7 +13040,7 @@
         "totalUnits": 1890.9199708510052
       },
       "note": "物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -13120,7 +13120,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:recurva:modern",
+      "id": "ja:recurva:kana",
       "language": "ja",
       "layoutId": "recurva",
       "metrics": {
@@ -13242,7 +13242,7 @@
         "totalMm": 24106.006880930505,
         "totalUnits": 1265.4071853506825
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -13322,7 +13322,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:semimak-jq:modern",
+      "id": "ja:semimak-jq:kana",
       "language": "ja",
       "layoutId": "semimak-jq",
       "metrics": {
@@ -13444,7 +13444,7 @@
         "totalMm": 20645.94779632953,
         "totalUnits": 1083.7767872088991
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -13524,7 +13524,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:seoto:modern",
+      "id": "ja:seoto:kana",
       "language": "ja",
       "layoutId": "seoto",
       "metrics": {
@@ -13651,7 +13651,7 @@
         "totalMm": 20049.94302942946,
         "totalUnits": 1052.4904477390794
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -13731,7 +13731,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:shin-jis-prefix:modern",
+      "id": "ja:shin-jis-prefix:kana",
       "language": "ja",
       "layoutId": "shin-jis-prefix",
       "metrics": {
@@ -13853,7 +13853,7 @@
         "totalMm": 22953.25929088307,
         "totalUnits": 1204.8955008337568
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -13933,7 +13933,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:shin-jis-simultaneous:modern",
+      "id": "ja:shin-jis-simultaneous:kana",
       "language": "ja",
       "layoutId": "shin-jis-simultaneous",
       "metrics": {
@@ -14055,7 +14055,7 @@
         "totalMm": 23228.476015652763,
         "totalUnits": 1219.342573000145
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -14135,7 +14135,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:shin-koume:modern",
+      "id": "ja:shin-koume:kana",
       "language": "ja",
       "layoutId": "shin-koume",
       "metrics": {
@@ -14332,7 +14332,7 @@
         "totalMm": 19410.495700418454,
         "totalUnits": 1018.9236588146169
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -14412,7 +14412,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:shingeta:modern",
+      "id": "ja:shingeta:kana",
       "language": "ja",
       "layoutId": "shingeta",
       "metrics": {
@@ -14549,7 +14549,7 @@
         "totalMm": 21389.0198263872,
         "totalUnits": 1122.7831929862048
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -14629,7 +14629,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:sturdy-ansi:modern",
+      "id": "ja:sturdy-ansi:kana",
       "language": "ja",
       "layoutId": "sturdy-ansi",
       "metrics": {
@@ -14751,7 +14751,7 @@
         "totalMm": 21139.827056904203,
         "totalUnits": 1109.7022077115066
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -14831,7 +14831,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:sturdy:modern",
+      "id": "ja:sturdy:kana",
       "language": "ja",
       "layoutId": "sturdy",
       "metrics": {
@@ -14953,7 +14953,7 @@
         "totalMm": 21355.86798270932,
         "totalUnits": 1121.0429387248985
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -15033,7 +15033,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tk-onchoku:modern",
+      "id": "ja:tk-onchoku:kana",
       "language": "ja",
       "layoutId": "tk-onchoku",
       "metrics": {
@@ -15155,7 +15155,7 @@
         "totalMm": 20071.223706993227,
         "totalUnits": 1053.607543674185
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -15235,7 +15235,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tk-onchoku:modern:triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
+      "id": "ja:tk-onchoku:kana:triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
       "language": "ja",
       "layoutId": "tk-onchoku",
       "metrics": {
@@ -15358,7 +15358,7 @@
         "totalUnits": 1053.607543674185
       },
       "note": "triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -15438,7 +15438,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tomisuke:modern",
+      "id": "ja:tomisuke:kana",
       "language": "ja",
       "layoutId": "tomisuke",
       "metrics": {
@@ -15560,7 +15560,7 @@
         "totalMm": 17772.049206120628,
         "totalUnits": 932.9159688252298
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -15640,7 +15640,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tsuki-2-263:modern",
+      "id": "ja:tsuki-2-263:kana",
       "language": "ja",
       "layoutId": "tsuki-2-263",
       "metrics": {
@@ -15762,7 +15762,7 @@
         "totalMm": 25090.657982072564,
         "totalUnits": 1317.09490719541
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -15842,7 +15842,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tsuki-ex:modern",
+      "id": "ja:tsuki-ex:kana",
       "language": "ja",
       "layoutId": "tsuki-ex",
       "metrics": {
@@ -15974,7 +15974,7 @@
         "totalMm": 22109.475107531525,
         "totalUnits": 1160.602367849424
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -16054,7 +16054,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tsuki-ringo:modern",
+      "id": "ja:tsuki-ringo:kana",
       "language": "ja",
       "layoutId": "tsuki-ringo",
       "metrics": {
@@ -16181,7 +16181,7 @@
         "totalMm": 27365.9743983476,
         "totalUnits": 1436.534089152105
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -16261,7 +16261,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tsuki-u9:modern",
+      "id": "ja:tsuki-u9:kana",
       "language": "ja",
       "layoutId": "tsuki-u9",
       "metrics": {
@@ -16398,7 +16398,7 @@
         "totalMm": 25419.951623592202,
         "totalUnits": 1334.3806626557587
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -16478,7 +16478,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tsukimisou-extract:modern",
+      "id": "ja:tsukimisou-extract:kana",
       "language": "ja",
       "layoutId": "tsukimisou-extract",
       "metrics": {
@@ -16620,7 +16620,7 @@
         "totalMm": 28814.80247339165,
         "totalUnits": 1512.5880563460182
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -16700,7 +16700,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:tsukimisou:modern",
+      "id": "ja:tsukimisou:kana",
       "language": "ja",
       "layoutId": "tsukimisou",
       "metrics": {
@@ -16852,7 +16852,7 @@
         "totalMm": 23162.358735792503,
         "totalUnits": 1215.8718496479003
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -16932,7 +16932,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:workman:modern",
+      "id": "ja:workman:kana",
       "language": "ja",
       "layoutId": "workman",
       "metrics": {
@@ -17054,7 +17054,7 @@
         "totalMm": 19917.07176444419,
         "totalUnits": 1045.5155781860467
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
@@ -17134,7 +17134,7 @@
         },
         "windowSize": 3
       },
-      "id": "ja:yumi:modern",
+      "id": "ja:yumi:kana",
       "language": "ja",
       "layoutId": "yumi",
       "metrics": {
@@ -17286,12 +17286,12 @@
         "totalMm": 20525.329020084562,
         "totalUnits": 1077.4450929178247
       },
-      "sampleId": "modern",
+      "sampleId": "kana",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
   "modelVersion": 16,
-  "sourceCommit": "4d15e962c00036d241145f2bc80e5059eb234ce2",
+  "sourceCommit": "d56c9ab6178a5e9a905fc2760db32057f0711c54",
   "version": 1
 }

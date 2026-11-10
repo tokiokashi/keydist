@@ -2,6 +2,8 @@ import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ContextBarLeadingSlot } from '#hosts/shared/ContextBar.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
+import { CorpusBodyLoaderContext } from '#hosts/shared/use-resolved-text-selection.ts';
+import { fetchCorpusBody } from '#platform/corpus/corpus-loader.ts';
 import { SetupLinkContext, type SetupLinkProps } from '#hosts/shared/setup-link.tsx';
 import { PersonalSpeedLinkContext, type PersonalSpeedLinkProps } from '#ui/primitives/personal-speed-link.tsx';
 import { AddedToWorkspaceNotice } from '../workspace/AddedToWorkspaceNotice.tsx';
@@ -217,14 +219,16 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
 
       <ContextBarLeadingSlot.Provider value={toggle}>
         <PresetFileIoContext.Provider value={PRESET_FILE_IO}>
-          <PersonalSpeedLinkContext.Provider value={PersonalSpeedRouterLink}>
-            <SetupLinkContext.Provider value={SetupRouterLink}>
-              <div className="shell-body" inert={bodyInert}>
-                {hasContextBar ? null : <div className="shell-bar">{toggle}</div>}
-                <main className="app-shell">{children}</main>
-              </div>
-            </SetupLinkContext.Provider>
-          </PersonalSpeedLinkContext.Provider>
+          <CorpusBodyLoaderContext.Provider value={fetchCorpusBody}>
+            <PersonalSpeedLinkContext.Provider value={PersonalSpeedRouterLink}>
+              <SetupLinkContext.Provider value={SetupRouterLink}>
+                <div className="shell-body" inert={bodyInert}>
+                  {hasContextBar ? null : <div className="shell-bar">{toggle}</div>}
+                  <main className="app-shell">{children}</main>
+                </div>
+              </SetupLinkContext.Provider>
+            </PersonalSpeedLinkContext.Provider>
+          </CorpusBodyLoaderContext.Provider>
         </PresetFileIoContext.Provider>
       </ContextBarLeadingSlot.Provider>
       <div className="shell-notices">

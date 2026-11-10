@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../test/kana-sample-text.ts';
 import { generateTrace } from '#trace/generate.ts';
 import {
   buildSegmentationReport,

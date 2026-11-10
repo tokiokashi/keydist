@@ -1,12 +1,12 @@
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { PRACTICE_TEXT_JA } from './practice-text-ja.ts';
 
 const PHRASE_MIN_LENGTH = 5;
 const PHRASE_MAX_LENGTH = 15;
 
 /**
- * SAMPLE_TEXT_JA はかなだけで書かれているため、Intl.Segmenter の word 境界は
+ * PRACTICE_TEXT_JAはかなだけで書かれているため、Intl.Segmenterのword境界は
  * 「しごと」→「し / ごと」のように一般的な語境界と一致しない場合がある。
- * 単語ボタンは、元サンプルに実際に含まれる日常語を短い固定リストで持つ。
+ * 単語ボタンは、練習用のかな文に実際に含まれる日常語を短い固定リストで持つ。
  */
 export const COMMON_WORD_SAMPLES_JA = [
   'あさ',
@@ -74,7 +74,7 @@ export function buildJapaneseInputSamplePools(text: string): JapaneseInputSample
   const words = COMMON_WORD_SAMPLES_JA.filter((word) => normalized.includes(word));
 
   // 「文章」は長文を機械的に途中で切らず、元テキストの句読点・改行境界だけを使う。
-  // 5〜15文字に収まる節だけでも既定サンプルから十分な候補数を得られる。
+  // 5〜15文字に収まる節だけでも練習用のかな文から十分な候補数を得られる。
   const phrases = [
     ...new Set(
       text
@@ -97,4 +97,4 @@ export function pickRandomSample(samples: readonly string[], current = '', rando
   return candidates[index] ?? '';
 }
 
-export const JAPANESE_INPUT_SAMPLE_POOLS = buildJapaneseInputSamplePools(SAMPLE_TEXT_JA);
+export const JAPANESE_INPUT_SAMPLE_POOLS = buildJapaneseInputSamplePools(PRACTICE_TEXT_JA);

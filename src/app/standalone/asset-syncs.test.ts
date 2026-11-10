@@ -221,7 +221,7 @@ test('commitCommand: 単一値の資産は最後に書いたタブの値にな�
   const tabA = createTab(storage);
   const tabB = createTab(storage);
 
-  tabA.dispatch(selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.modern' }));
+  tabA.dispatch(selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.mixed' }));
   tabB.dispatch(selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.legacy' }));
 
   const stored = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
@@ -242,16 +242,16 @@ test('commitHistoryStep: Undoで戻した値をstorageへ書き、Redoでやり�
   const tab = createTab(storage);
   const read = () => loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
 
-  tab.dispatch(selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.modern' }));
-  assert.deepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.modern' });
+  tab.dispatch(selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.mixed' }));
+  assert.deepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.mixed' });
 
   tab.step('undo');
-  assert.notDeepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.modern' });
+  assert.notDeepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.mixed' });
   assert.deepEqual(read().standaloneTextSelection, tab.state.assets.standaloneTextSelection);
   assert.equal(tab.history.redoStack.length, 1);
 
   tab.step('redo');
-  assert.deepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.modern' });
+  assert.deepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.mixed' });
 });
 
 test('commitHistoryStep: 他タブが書き換えた資産はUndoで巻き戻さない', () => {

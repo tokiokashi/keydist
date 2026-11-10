@@ -34,8 +34,8 @@ import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import { recommendedFingerAssignmentId, resolveFingerAssignment } from '#engine/finger-assignment.ts';
 import { MODEL_VERSION } from '#engine/model-version.ts';
 import { modelVersionBumpError, stableStringify } from './model-version-guard.ts';
-import { sampleText, type TextLanguage } from '#input/text/samples.ts';
-import { defaultConditionCases } from './analyzer-regression-cases.ts';
+import type { TextLanguage } from '#input/text/samples.ts';
+import { defaultConditionCases, regressionText } from './analyzer-regression-cases.ts';
 
 // このスクリプトが再現する経路は、条件の決定 → generateTrace → analyzeStrokeStructure → computeMetrics の並び
 // （配列ごとの上書きが無い既定の条件で、画面に出す数値と同じ呼び出し）。
@@ -198,7 +198,7 @@ function sha256(text: string): string {
 }
 
 function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts: RunOptions = {}): FixtureCase {
-  const text = sampleText(language, sampleId);
+  const text = regressionText(language, sampleId);
   // JISの物理配列が要る配列（JISかな配列）は、アプリと同じく、選んだ物理配列（既定のrow-staggered）と同じ形のJISの物理配列で測る
   const baseShapeId = opts.shapeId ?? 'row-staggered';
   const shapeId =
@@ -294,8 +294,8 @@ function generate(): Fixture {
   for (const { language, layout, sampleId } of defaultConditionCases()) {
     cases.push(
       runCase(language, layout, sampleId, {
-        // 窓幅Nの感度は安いので、代表として最初のEN配列と、日本語のnaginata-v18の現代文にだけ添える
-        withNSensitivity: language === 'en' ? layout.id === LAYOUTS[0]!.id : layout.id === 'naginata-v18' && sampleId === 'modern',
+        // 窓幅Nの感度は安いので、代表として最初のEN配列と、日本語のnaginata-v18のかな文にだけ添える
+        withNSensitivity: language === 'en' ? layout.id === LAYOUTS[0]!.id : layout.id === 'naginata-v18' && sampleId === 'kana',
       }),
     );
   }
@@ -307,13 +307,13 @@ function generate(): Fixture {
   const asuka = byId(LAYOUTS_JA, 'asuka'); // hold-capable trigger + 親指シフトを持つ
 
   cases.push(
-    runCase('ja', naginata, 'modern', {
+    runCase('ja', naginata, 'kana', {
       windowSize: 1,
       note: 'windowSize=1（既定3より狭い先読み。同指連続の判定が変わる分岐）',
     }),
   );
   cases.push(
-    runCase('ja', naginata, 'modern', {
+    runCase('ja', naginata, 'kana', {
       windowSize: 6,
       note: 'windowSize=6（既定3より広い先読み）',
     }),
@@ -325,19 +325,19 @@ function generate(): Fixture {
     }),
   );
   cases.push(
-    runCase('ja', naginata, 'modern', {
+    runCase('ja', naginata, 'kana', {
       centerShiftThumb: 'opposite',
       note: 'centerShiftThumb=opposite（センターシフトを出力キーと反対側の親指で押す分岐。naginataは交代打鍵を使うので効果が出る）',
     }),
   );
   cases.push(
-    runCase('ja', naginata, 'modern', {
+    runCase('ja', naginata, 'kana', {
       triggerRealizationPolicy: { useHold: true },
       note: 'triggerRealizationPolicy.useHold=true（hold-capable triggerを連続保持として実現する分岐）',
     }),
   );
   cases.push(
-    runCase('ja', oonishiCombo, 'modern', {
+    runCase('ja', oonishiCombo, 'kana', {
       actionRealizationPolicy: {
         triggerActivation: 'semantic',
         triggerActivationClassOverrides: {},
@@ -347,13 +347,13 @@ function generate(): Fixture {
     }),
   );
   cases.push(
-    runCase('ja', asuka, 'modern', {
+    runCase('ja', asuka, 'kana', {
       chainInterpretation: { ...DEFAULT_CHAIN_INTERPRETATION, breakOnSameFinger: false },
       note: 'chainInterpretation.breakOnSameFinger=false（Analysis Chainの区切り方が変わる分岐）',
     }),
   );
   cases.push(
-    runCase('ja', asuka, 'modern', {
+    runCase('ja', asuka, 'kana', {
       arpeggioInterpretation: { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: true },
       note: 'arpeggioInterpretation.includeThumb=true（ArpeggioSpanに親指を含める分岐）',
     }),
@@ -369,7 +369,7 @@ function generate(): Fixture {
   const qwertyJa = byId(LAYOUTS_JA, 'qwerty');
   for (const shapeId of ['split-ortholinear', 'column-staggered'] as const) {
     cases.push(
-      runCase('ja', qwertyJa, 'modern', {
+      runCase('ja', qwertyJa, 'kana', {
         shapeId,
         fingerAssignment: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
         note: `物理配列=${shapeId}・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）`,

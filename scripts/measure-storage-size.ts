@@ -10,6 +10,7 @@
  * 写しは各資産のcodecで読み直し、読めた件数が写した件数と等しいことを確かめる（読めない写しで測らない）。
  * 組み込みのローマ字規則は、訓令式の表のうち綴りが違うものを上書きに持つ形に写す（`UserRomajiRule`）。
  */
+import { readFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import { LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
 import { USER_LAYOUTS_CODEC } from '#input/layouts/user-layouts.ts';
@@ -17,6 +18,8 @@ import { faceCells } from '#input/layouts/face-geometry.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
 import { USER_ROMAJI_RULES_CODEC } from '#input/romaji/user-rules-codec.ts';
 import { BUILTIN_TEXTS } from '#input/text/builtin.ts';
+import { setCorpusBody } from '#input/text/corpus-bodies.ts';
+import { CORPUS_ENTRIES } from '#input/text/samples.ts';
 import { TEXT_LIBRARY_CODEC } from '#input/text/library-codec.ts';
 import { USER_FINGER_ASSIGNMENTS_CODEC, USER_FINGER_ASSIGNMENT_ID_PREFIX } from '#input/shapes/user-finger-assignments.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
@@ -130,7 +133,11 @@ const setups = userLayouts.flatMap((layout, index) =>
 assertReadable('Setup', SETUP_LIBRARY_CODEC, SETUP_LIBRARY_CODEC.encode({ setups, overrides: {} }), setups.length, (value) => value.setups.length);
 add('Setup（写した配列ごとに物理配列3つ）', sizeOf(SETUP_LIBRARY_CODEC.encode({ setups, overrides: {} })), `${setups.length}件`);
 
-// テキスト: 組み込みの全テキストを自作に写す
+// テキスト: 組み込みの全テキストを自作に写す。同梱の評価テキストの本文は選んだ時に取得する作りで、Nodeでは空のままなので、
+// 写す前に `src/input/text/corpus/` の本文を、アプリが読み込んだ後と同じ前処理で置く
+for (const entry of CORPUS_ENTRIES) {
+  setCorpusBody(entry.sampleId, readFileSync(new URL(`../src/input/text/corpus/${entry.fileName}`, import.meta.url), 'utf8'));
+}
 const builtinTexts = BUILTIN_TEXTS.map((text) => ({ id: `text-${text.id}`, name: text.name, text: text.text }));
 assertReadable('テキスト', TEXT_LIBRARY_CODEC, TEXT_LIBRARY_CODEC.encode({ texts: builtinTexts }), builtinTexts.length, (value) => value.texts.length);
 add(

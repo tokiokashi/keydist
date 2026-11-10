@@ -6,7 +6,7 @@ import { buildGeometry } from '../shapes/geometry.ts';
 import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
-import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 
 const geometry = buildGeometry('row-staggered');
 const options = { windowSize: 3, sfbHomeCost: true };

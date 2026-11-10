@@ -273,6 +273,32 @@ button.context-chip:hover:not(:disabled),
   line-height: 1.6;
 }
 
+/* 組み込みテキストの出典とライセンス。一覧は記事・作品ごとに1行。 */
+.text-source {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.text-source-items {
+  margin: 0.2rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.text-source-note {
+  display: block;
+  color: var(--text-muted);
+}
+
+.text-source-details {
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.text-source-details summary {
+  cursor: pointer;
+}
+
 /* バーが狭い時だけ見せるアイコン（広い時は文字のラベルを見せる）。 */
 .context-chip-icon {
   display: none;

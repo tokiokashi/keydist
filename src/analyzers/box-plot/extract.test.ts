@@ -4,7 +4,7 @@ import { computeBunsetsuStatsExtraction } from '#analyzers/bunsetsu-stats/extrac
 import { DEFAULT_EXTRACTION_ASSETS, noRemember, type AnalyzerSetMember, type AnalyzerSetMemberFailure } from '#analyzers/contract.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 import { quantileNearestRank } from '#interpretation/segments.ts';
 import { generateTrace } from '#trace/generate.ts';
 import { boxPlotDefinition, computeBoxPlotExtraction, type BoxPlotOkRow } from './extract.ts';

@@ -67,7 +67,7 @@ test('履歴は画面ごと: 離れても残り、別の画面の元に戻すで
 
 test('別の画面で書き換わった資産に触れる項目は、戻せなかった知らせを出して捨てる', () => {
   const store = newStore();
-  store.dispatch('/analyzer/heatmap', selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.modern' }));
+  store.dispatch('/analyzer/heatmap', selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.mixed' }));
   store.dispatch('/analyzer/keymap', selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.legacy' }));
   const before = store.getAssets();
 

@@ -15,8 +15,8 @@ import type { ActionRealizationPolicy, TriggerRealizationPolicy } from '#input/s
 import { tableForRule } from '#input/romaji/rules.ts';
 import { resolveFingerAssignment } from '#engine/finger-assignment.ts';
 import { MODEL_VERSION } from '#engine/model-version.ts';
-import { sampleText, type TextLanguage } from '#input/text/samples.ts';
-import { defaultConditionCaseId, defaultConditionCases } from '../scripts/analyzer-regression-cases.ts';
+import type { TextLanguage } from '#input/text/samples.ts';
+import { defaultConditionCaseId, defaultConditionCases, regressionText } from '../scripts/analyzer-regression-cases.ts';
 
 /**
  * 組み込みの指割り当て。fixtureに記録した fingerAssignmentId から実体を引き直す
@@ -109,7 +109,7 @@ function findLayout(language: TextLanguage, layoutId: string): Layout {
  */
 function recompute(fixtureCase: FixtureCase) {
   const layout = findLayout(fixtureCase.language, fixtureCase.layoutId);
-  const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+  const text = regressionText(fixtureCase.language, fixtureCase.sampleId);
   assert.equal(
     sha256(text),
     fixtureCase.textSha256,
@@ -230,7 +230,7 @@ for (const fixtureCase of fixture.cases) {
     test(`回帰(N感度): ${fixtureCase.id}`, async () => {
       const { nSensitivity } = await import('#analyzers/n-sensitivity/sensitivity.ts');
       const layout = findLayout(fixtureCase.language, fixtureCase.layoutId);
-      const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+      const text = regressionText(fixtureCase.language, fixtureCase.sampleId);
       const resolvedLayout =
         fixtureCase.conditions.romajiRuleId !== null ? withRomaji(layout, tableForRule(fixtureCase.conditions.romajiRuleId)) : layout;
       const shapeId = fixtureCase.conditions.geometryShapeId as PresetGeometryKind;

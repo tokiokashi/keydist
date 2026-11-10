@@ -12,7 +12,8 @@ import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOver
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { createInterpretationRequest, type InterpretationRequestState } from '#engine/engine-requests.ts';
-import { sampleText, type TextLanguage } from '#input/text/samples.ts';
+import type { TextLanguage } from '#input/text/samples.ts';
+import { regressionText } from '../scripts/analyzer-regression-cases.ts';
 
 // engineのfixture回帰テスト。
 //
@@ -157,7 +158,7 @@ function analysisSummary(a: ReturnType<typeof computeFor>['analysis']) {
  * 受け取れる形にしている。
  */
 function computeFor(fixtureCase: FixtureCase, cache = createEngineCache()) {
-  const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+  const text = regressionText(fixtureCase.language, fixtureCase.sampleId);
   assert.equal(sha256(text), fixtureCase.textSha256, `${fixtureCase.id}: サンプルテキストのハッシュがfixture生成時と違う`);
   assert.equal([...text].length, fixtureCase.textLength, `${fixtureCase.id}: サンプルテキストの文字数が違う`);
 
@@ -193,7 +194,7 @@ function computeFor(fixtureCase: FixtureCase, cache = createEngineCache()) {
  * 経路自体は`computeFor`と同じで、その手前に依頼・購読の層が挟まっても同じ数値が出ることを見る。
  */
 async function computeForAsync(fixtureCase: FixtureCase, cache = createEngineCache()) {
-  const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+  const text = regressionText(fixtureCase.language, fixtureCase.sampleId);
   const setupId = `setup-async:${fixtureCase.id}`;
   const setup: Setup = {
     number: 1,
@@ -275,7 +276,7 @@ test('中身が同じ2つのSetup（配列・物理配列・条件が同じでid
 // ---------------------------------------------------------------------------
 
 /**
- * fixtureの「上書き無しシナリオ」（id末尾が default/modern。
+ * fixtureの「上書き無しシナリオ」（id末尾がdefault/kana。
  * fixture生成規約で、この3種類だけが上書きの無いケース）は、そのままAnalysisTargetの
  * **配列対象**（`{kind:'layout', layoutId}`）でも同じ数値になるはずである
  * （`engine/setup.test.ts`のカスケード項目レベルの確認に加えて、ここではengineの経路
@@ -284,7 +285,7 @@ test('中身が同じ2つのSetup（配列・物理配列・条件が同じでid
 const DEFAULT_SCENARIOS = fixture.cases.filter((c) => c.id.split(':').length === 3);
 
 function computeForLayoutTarget(fixtureCase: FixtureCase, cache = createEngineCache()) {
-  const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+  const text = regressionText(fixtureCase.language, fixtureCase.sampleId);
   const resolution = resolveEngineInput({
     target: { kind: 'layout', layoutId: fixtureCase.layoutId },
     setups: new Map(),

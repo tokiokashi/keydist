@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { PRACTICE_TEXT_JA } from './practice-text-ja.ts';
 import { buildJapaneseInputSamplePools, COMMON_WORD_SAMPLES_JA, pickRandomSample } from './random-samples.ts';
 
 const codePointLength = (value: string): number => [...value].length;
 
-test('日本語入力サンプルは既定本文中の単語と5〜15文字の節を使う', () => {
-  const pools = buildJapaneseInputSamplePools(SAMPLE_TEXT_JA);
-  const normalized = SAMPLE_TEXT_JA.replace(/\s+/gu, '');
+test('日本語入力サンプルは練習用のかな文中の単語と5〜15文字の節を使う', () => {
+  const pools = buildJapaneseInputSamplePools(PRACTICE_TEXT_JA);
+  const normalized = PRACTICE_TEXT_JA.replace(/\s+/gu, '');
 
   assert.equal(pools.words.length, COMMON_WORD_SAMPLES_JA.length);
   assert.ok(pools.phrases.length > 50);
