@@ -10,6 +10,7 @@ import { assignKeyFinger } from '#input/shapes/finger-assignment-edit.ts';
 import { columnFingerAssignment, PHYSICAL_SHAPES, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, type FingerAssignment } from '#input/shapes/geometry.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
+import { emptyPresetLibrary } from '#input/presets/index.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
 import { readTextFile } from '#platform/browser-file.ts';
 import { emptyTextLibrary, type TextLibrary } from '#input/text/library.ts';
@@ -23,7 +24,6 @@ import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOver
 import {
   USER_ASSETS_FILE_FORMAT,
   USER_ASSETS_FILE_MAX_ITEMS,
-  importUserAssetsCommand,
   mergeUserAssets,
   mergeUserTexts,
   parseUserAssetsFile,
@@ -33,12 +33,20 @@ import {
   type UserAssetsBundle,
   type UserAssetsHoldings,
 } from './user-assets-file.ts';
+import { importUserAssetsCommand } from './user-assets-import.ts';
 
 const SHAPES = new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const));
 const ROWS: UserLayout['rows'] = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
 const NO_SETUPS: SetupLibrary<SettingsValueMap> = { setups: [], overrides: emptyCascadeOverrides() };
 const EMPTY: UserAssetsHoldings = { userLayouts: [], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS };
 const STAMP = 'stamp';
+/** ファイルに入れる、配列などの資産以外の項目が空の手元。 */
+const FILE_EXTRAS = {
+  presetLibrary: emptyPresetLibrary<SettingsValueMap>(),
+  workspaces: [],
+  personalSpeed: EMPTY_PERSONAL_SPEED,
+  standaloneAnalyzerOptions: {},
+};
 
 const RULE: UserRomajiRule = { id: 'rule-a', name: 'し・ちをshi・chiで打つ', base: 'kunrei', overrides: { し: 'shi', ち: 'chi' }, generateSokuon: true };
 const LAYOUT: UserLayout = { kind: 'alpha', id: 'user-a', name: '自作A', rows: ['', 'poiuytrewq[]', "asdfghjkl;'", 'zxcvbnm,./'], romaji: 'rule-a' };
@@ -52,7 +60,7 @@ const FINGER: FingerAssignment = columnFingerAssignment(
 const HOLDINGS: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [RULE], fingerAssignments: [FINGER], setupLibrary: NO_SETUPS };
 
 function fileText(assets: UserAssetsHoldings): string {
-  return JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...userAssetsFileBody({ ...assets, textLibrary: emptyTextLibrary() }) });
+  return JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...userAssetsFileBody({ ...assets, ...FILE_EXTRAS, textLibrary: emptyTextLibrary() }) });
 }
 
 function read(assets: UserAssetsHoldings): UserAssetsBundle {
@@ -616,7 +624,9 @@ test('Setup: 書き出しでは、ファイルに入れない自作の資産を�
       },
     ),
   };
-  const body = userAssetsFileBody({ ...holdings, textLibrary: emptyTextLibrary() }) as { setups: { id: string; overrides?: Record<string, unknown> }[] };
+  const body = userAssetsFileBody({ ...holdings, ...FILE_EXTRAS, textLibrary: emptyTextLibrary() }) as {
+    setups: { id: string; overrides?: Record<string, unknown> }[];
+  };
   assert.deepEqual(
     body.setups.map((setup) => [setup.id, setup.overrides]),
     [
@@ -803,7 +813,7 @@ test('面で定義する配列の比較: 合成の有無・面の並びのどれ
 });
 
 test('面で定義する配列を含む資産のファイルは、壊れた面の配列だけを捨てて残りを読み、理由を返す', () => {
-  const body = userAssetsFileBody({ ...FACE_HOLDINGS, textLibrary: emptyTextLibrary() });
+  const body = userAssetsFileBody({ ...FACE_HOLDINGS, ...FILE_EXTRAS, textLibrary: emptyTextLibrary() });
   const layouts = body.layouts as Record<string, unknown>[];
   const broken = structuredClone(layouts[1]!);
   broken.id = 'user-broken';
@@ -873,7 +883,9 @@ const TEXT_HOLDINGS: TextLibrary = {
 };
 
 function readFile(textLibrary: TextLibrary, assets: UserAssetsHoldings = EMPTY) {
-  const parsed = parseUserAssetsFile(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...userAssetsFileBody({ ...assets, textLibrary }) }));
+  const parsed = parseUserAssetsFile(
+    JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...userAssetsFileBody({ ...assets, ...FILE_EXTRAS, textLibrary }) }),
+  );
   assert.ok(parsed.ok, parsed.ok ? '' : parsed.message);
   if (!parsed.ok) throw new Error('unreachable');
   return parsed;
@@ -933,7 +945,7 @@ test('『吾輩は猫である』の全文と同じ大きさのテキストを�
   const bytes = new TextEncoder().encode(text).length;
   assert.equal(bytes, 958_248);
   const library: TextLibrary = { texts: [{ id: 'big', name: '全文', text, readingCorrections: { 吾輩: 'わがはい' } }] };
-  const holdings = { ...HOLDINGS, textLibrary: library };
+  const holdings = { ...HOLDINGS, ...FILE_EXTRAS, textLibrary: library };
   const body = userAssetsFileBody(holdings);
   assert.equal(userAssetsFileExportProblem(body), undefined);
   const parsed = parseUserAssetsFile(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...body }, null, 2));
@@ -946,15 +958,21 @@ test('『吾輩は猫である』の全文と同じ大きさのテキストを�
 
 test('上限を超えるファイルと件数は、書き出す前に断る', () => {
   const huge = 'あ'.repeat(Math.ceil(USER_ASSETS_FILE_MAX_BYTES / 3));
-  const tooBig = userAssetsFileExportProblem(userAssetsFileBody({ ...EMPTY, textLibrary: { texts: [{ id: 'h', name: 'h', text: huge }] } }));
+  const tooBig = userAssetsFileExportProblem(
+    userAssetsFileBody({ ...EMPTY, ...FILE_EXTRAS, textLibrary: { texts: [{ id: 'h', name: 'h', text: huge }] } }),
+  );
   assert.notEqual(tooBig, undefined);
   const many = Array.from({ length: USER_ASSETS_FILE_MAX_ITEMS + 1 }, (_, index) => ({ id: `t${index}`, name: `t${index}`, text: 'a' }));
-  assert.notEqual(userAssetsFileExportProblem(userAssetsFileBody({ ...EMPTY, textLibrary: { texts: many } })), undefined);
+  assert.notEqual(userAssetsFileExportProblem(userAssetsFileBody({ ...EMPTY, ...FILE_EXTRAS, textLibrary: { texts: many } })), undefined);
 });
 
 test('インポートのコマンドは、資産とテキストを1回の変更で足し、元に戻すと両方が戻る', () => {
   const parsed = readFile(TEXT_HOLDINGS, HOLDINGS);
-  const step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), importUserAssetsCommand(parsed.bundle, STAMP, parsed.userTexts).command);
+  const step = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    importUserAssetsCommand(parsed.bundle, STAMP, { userTexts: parsed.userTexts }).command,
+  );
   assert.equal(step.assets.userLayouts.length, 1);
   assert.equal(step.assets.textLibrary.texts.length, 2);
   const undone = undo(step.assets, step.history);
@@ -965,7 +983,7 @@ test('インポートのコマンドは、資産とテキストを1回の変更�
 test('1MiBを超え上限以下のファイルを、読み込み口（上限つきの読み取り）を通して読み込める', async () => {
   const full = 'あ'.repeat(319_416);
   const library: TextLibrary = { texts: [1, 2, 3].map((n) => ({ id: `big${n}`, name: `全文${n}`, text: `${full}${n}` })) };
-  const body = userAssetsFileBody({ ...EMPTY, textLibrary: library });
+  const body = userAssetsFileBody({ ...EMPTY, ...FILE_EXTRAS, textLibrary: library });
   assert.equal(userAssetsFileExportProblem(body), undefined);
   const file = `${JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...body }, null, 2)}\n`;
   const blob = new Blob([file]);

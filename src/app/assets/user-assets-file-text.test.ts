@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
 
 const NO_SETUPS = { setups: [], overrides: emptyCascadeOverrides() };
+const NO_EXTRAS = { presetLibrary: { presets: [] }, workspaces: [], personalSpeed: EMPTY_PERSONAL_SPEED, standaloneAnalyzerOptions: {} };
 
 test('ファイル名は日付を入れる', () => {
   assert.equal(userAssetsFileName(new Date(2026, 0, 5)), 'keydist-自作の資産-2026-01-05.json');
@@ -11,7 +13,14 @@ test('ファイル名は日付を入れる', () => {
 
 test('書き出しの文は、0件の種類を出さない', () => {
   const layout = { kind: 'alpha' as const, id: 'a', name: 'A', rows: ['', '', '', ''] as [string, string, string, string], romaji: 'kunrei' };
-  const one = exportedText({ userLayouts: [layout], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS, textLibrary: { texts: [] } });
+  const one = exportedText({
+    userLayouts: [layout],
+    userRomajiRules: [],
+    fingerAssignments: [],
+    setupLibrary: NO_SETUPS,
+    textLibrary: { texts: [] },
+    ...NO_EXTRAS,
+  });
   assert.ok(one.includes('配列1件') && !one.includes('ローマ字規則'));
   const two = exportedText({
     userLayouts: [layout, { ...layout, id: 'b' }],
@@ -19,6 +28,7 @@ test('書き出しの文は、0件の種類を出さない', () => {
     fingerAssignments: [],
     setupLibrary: NO_SETUPS,
     textLibrary: { texts: [] },
+    ...NO_EXTRAS,
   });
   assert.ok(two.includes('配列2件') && two.includes('ローマ字規則1件'));
 });
@@ -59,6 +69,7 @@ test('Setupの行と書き出しの文', () => {
       fingerAssignments: [],
       setupLibrary: { setups: [{ id: 's', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' }], overrides: {} },
       textLibrary: { texts: [] },
+      ...NO_EXTRAS,
     }).includes('Setup1件'),
   );
   assert.ok(

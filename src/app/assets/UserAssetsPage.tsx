@@ -5,19 +5,23 @@ import {
   USER_ASSETS_FILE_FORMAT,
   USER_ASSETS_FILE_MAX_BYTES,
   USER_ASSETS_FILE_MAX_LABEL,
+  defaultImportPolicy,
   parseUserAssetsFile,
   userAssetsFileBody,
   userAssetsFileExportProblem,
   userTextsBundleOf,
+  type ImportPolicies,
+  type ImportPolicy,
   type UserAssetImportEntry,
-  type UserAssetsBundle,
-  type UserTextsBundle,
+  type UserAssetKind as ImportKind,
 } from '#engine/user-assets-file.ts';
+import { userAssetsImportConflicts, type UserAssetsFileContents, type UserAssetsImportConflict } from '#engine/user-assets-import.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
+import { getStorageWriteFailuresSnapshot } from '#platform/persistence/storage-write.ts';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE } from '#hosts/shared/preset-file.ts';
-import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
+import { assetKindLabel, exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
 import { deleteConfirmText, userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
 import type { OverrideEntry, OverrideGroup } from './cascade-override-groups.ts';
@@ -26,7 +30,18 @@ import type { OverrideEntry, OverrideGroup } from './cascade-override-groups.ts'
 export const USER_ASSETS_LABEL = 'データ・設定の管理';
 
 export interface UserAssetsPageProps {
-  readonly assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary' | 'textLibrary'>;
+  readonly assets: Pick<
+    KeydistAssets,
+    | 'userLayouts'
+    | 'userRomajiRules'
+    | 'fingerAssignments'
+    | 'setupLibrary'
+    | 'textLibrary'
+    | 'presetLibrary'
+    | 'workspaces'
+    | 'personalSpeed'
+    | 'standaloneAnalyzerOptions'
+  >;
   /** 手持ちのSetup全部に対して付けた名前。 */
   readonly setupItems: readonly SetupListItem[];
   /** 保存の読み込みが済むまでは、空の一覧を出さない。 */
@@ -47,9 +62,18 @@ export interface UserAssetsPageProps {
   readonly onResetOverride: (group: OverrideGroup, itemId: OverrideEntry['itemId']) => void;
   /**
    * 読み込んだ資産を手元へ足し、書き込みに使った突き合わせの内訳を返す（書き込めなかった時は`undefined`）。
-   * `stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。
+   * `stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。`policies`は、手元と重なる資産の種類ごとの扱い。
    */
-  readonly onImport: (bundle: UserAssetsBundle, userTexts: UserTextsBundle, stamp: string) => readonly UserAssetImportEntry[] | undefined;
+  readonly onImport: (file: UserAssetsFileContents, stamp: string, policies: ImportPolicies) => readonly UserAssetImportEntry[] | undefined;
+}
+
+/** 手元と重なる資産があるファイルを読んだ後、扱いを選んでもらう間の状態。 */
+interface PendingImport {
+  readonly file: UserAssetsFileContents;
+  readonly dropped: readonly string[];
+  readonly stamp: string;
+  readonly conflicts: readonly UserAssetsImportConflict[];
+  readonly policies: ImportPolicies;
 }
 
 interface ImportResult {
@@ -151,6 +175,76 @@ function ConfirmDelete({
   );
 }
 
+const POLICY_LABELS: Readonly<Record<ImportPolicy, string>> = { rename: '別名で追加', overwrite: '上書き', skip: '読み込まない' };
+
+/** 手元と重なる資産の読み込み方を、種類ごとに選ぶ。キャンセルにフォーカスを置き、Escでもキャンセルになる。 */
+function ImportChoiceDialog({
+  pending,
+  onChange,
+  onConfirm,
+  onCancel,
+}: {
+  readonly pending: PendingImport;
+  readonly onChange: (kind: ImportKind, policy: ImportPolicy) => void;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog !== null && !dialog.open) dialog.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className="user-assets-confirm user-assets-import-choice"
+      aria-labelledby="user-assets-import-choice-title"
+      data-user-assets-import-choice="true"
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
+    >
+      <h2 id="user-assets-import-choice-title">手元と重なる資産があります</h2>
+      <p>中身が違うものの読み込み方を、種類ごとに選んでください。上書きすると、手元のものは読み込んだ中身に置き換わります。</p>
+      {pending.conflicts.map((conflict) => {
+        const options: ImportPolicy[] = [
+          ...(conflict.canRename ? (['rename'] as const) : []),
+          ...(conflict.canOverwrite ? (['overwrite'] as const) : []),
+          'skip',
+        ];
+        return (
+          <fieldset key={conflict.kind} className="user-assets-import-choice-kind" data-user-assets-import-kind={conflict.kind}>
+            <legend>
+              {assetKindLabel(conflict.kind)}（{conflict.count}件）
+            </legend>
+            {options.map((policy) => (
+              <label key={policy}>
+                <input
+                  type="radio"
+                  name={`user-assets-import-${conflict.kind}`}
+                  value={policy}
+                  checked={(pending.policies[conflict.kind] ?? defaultImportPolicy(conflict.kind)) === policy}
+                  onChange={() => onChange(conflict.kind, policy)}
+                />
+                {POLICY_LABELS[policy]}
+              </label>
+            ))}
+          </fieldset>
+        );
+      })}
+      <div className="user-assets-confirm-actions">
+        <button type="button" ref={focusOnMount} onClick={onCancel}>
+          キャンセル
+        </button>
+        <button type="button" onClick={onConfirm}>
+          読み込む
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
 /** 保存してある条件の上書きの一覧。適用範囲ごとに、項目の名前と値を並べ、項目ごとに消せる。 */
 function OverrideSection({
   groups,
@@ -224,6 +318,7 @@ export function UserAssetsPage({
   const [message, setMessage] = useState('');
   const [importResult, setImportResult] = useState<ImportResult | undefined>(undefined);
   const [pending, setPending] = useState<PendingDelete | undefined>(undefined);
+  const [pendingImport, setPendingImport] = useState<PendingImport | undefined>(undefined);
   const fileIo = useContext(PresetFileIoContext);
   const fileInput = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLElement>(null);
@@ -237,8 +332,12 @@ export function UserAssetsPage({
       assets.fingerAssignments.length +
       assets.setupLibrary.setups.length +
       assets.textLibrary.texts.length +
-      Object.keys(userTextsBundleOf(assets.textLibrary).builtinReadingCorrections).length >
-    0;
+      Object.keys(userTextsBundleOf(assets.textLibrary).builtinReadingCorrections).length +
+      assets.presetLibrary.presets.length +
+      assets.workspaces.length >
+      0 ||
+    assets.personalSpeed.calibration !== undefined ||
+    Object.keys(assets.standaloneAnalyzerOptions).length > 0;
 
   /** 上書きを消した後、一覧が書き換わってからフォーカスを移す。消した項目のボタンは無くなり、「元に戻す」は書き込みの後に押せるようになるため。 */
   const focusUndoAfterReset = useRef(false);
@@ -307,17 +406,42 @@ export function UserAssetsPage({
       setImportResult({ summary: parsed.message, lines: [], details: parsed.details });
       return;
     }
+    const contents: UserAssetsFileContents = { bundle: parsed.bundle, userTexts: parsed.userTexts, extras: parsed.extras };
     const stamp = newStamp();
-    // 画面に出す内訳は、書き込みを決めた突き合わせそのものから取る。ファイルを読む間に別のタブが資産を書き換えても食い違わない
-    const entries = onImport(parsed.bundle, parsed.userTexts, stamp);
+    const dropped = parsed.dropped.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`);
+    // 手元と重なる資産があれば、読み込み方を選んでもらう。重なりが無ければそのまま読み込む
+    const conflicts = userAssetsImportConflicts(assets, contents, stamp);
+    if (conflicts.length > 0) {
+      setPendingImport({
+        file: contents,
+        dropped,
+        stamp,
+        conflicts,
+        policies: Object.fromEntries(conflicts.map((conflict) => [conflict.kind, defaultImportPolicy(conflict.kind)])) as ImportPolicies,
+      });
+      return;
+    }
+    runImport(contents, stamp, {}, dropped);
+  };
+
+  /** 画面に出す内訳は、書き込みを決めた突き合わせそのものから取る。ファイルを読む間に別のタブが資産を書き換えても食い違わない。 */
+  const runImport = (file: UserAssetsFileContents, stamp: string, policies: ImportPolicies, dropped: readonly string[]) => {
+    const failuresBefore = getStorageWriteFailuresSnapshot();
+    const entries = onImport(file, stamp, policies);
     if (entries === undefined) {
       setMessage(PRESET_FILE_IMPORT_FAILED_MESSAGE);
       return;
     }
-    const dropped = parsed.dropped.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`);
     const lines = entries.map(importEntryText);
     if (dropped.length > 0) lines.push(`${dropped.length}件は読み込めませんでした`);
-    setImportResult({ summary: importSummaryText(entries), lines, details: dropped });
+    // 容量が足りず保存できなかった時は、足したと伝えない（再読み込みで読み込む前に戻る）
+    const failuresAfter = getStorageWriteFailuresSnapshot();
+    const notSaved = failuresAfter.length > 0 && failuresAfter !== failuresBefore;
+    setImportResult({
+      summary: notSaved ? '容量が足りず保存できませんでした。再読み込みすると、読み込む前に戻ります' : importSummaryText(entries),
+      lines: notSaved ? [] : lines,
+      details: dropped,
+    });
   };
   const layouts = userLayoutRows(assets.userLayouts, assets.userRomajiRules);
   const rules = userRomajiRuleRows(assets.userLayouts, assets.userRomajiRules);
@@ -448,6 +572,17 @@ export function UserAssetsPage({
           />
         </>
       ) : null}
+      {pendingImport === undefined ? null : (
+        <ImportChoiceDialog
+          pending={pendingImport}
+          onChange={(kind, policy) => setPendingImport({ ...pendingImport, policies: { ...pendingImport.policies, [kind]: policy } })}
+          onCancel={() => setPendingImport(undefined)}
+          onConfirm={() => {
+            runImport(pendingImport.file, pendingImport.stamp, pendingImport.policies, pendingImport.dropped);
+            setPendingImport(undefined);
+          }}
+        />
+      )}
       {pending === undefined ? null : (
         <ConfirmDelete
           pending={pending}

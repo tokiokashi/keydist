@@ -1,3 +1,4 @@
+import { guardedSetItem } from '#platform/persistence/storage-write.ts';
 import type { BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import type { PhysicalKeyEvent } from './engine/index.ts';
 
@@ -103,7 +104,7 @@ export function loadThumbKeyBindings(storage?: Pick<Storage, 'getItem'>): ThumbK
 
 export function saveThumbKeyBindings(bindings: ThumbKeyBindings, storage?: Pick<Storage, 'setItem'>): void {
   if (storage === undefined) return;
-  storage.setItem(LEGACY_THUMB_STORAGE_KEY, JSON.stringify(sanitizeThumbKeyBindings(bindings)));
+  guardedSetItem(storage, LEGACY_THUMB_STORAGE_KEY, JSON.stringify(sanitizeThumbKeyBindings(bindings)));
 }
 
 const sanitizeBindingValue = (value: unknown): PhysicalKeyEvent['key'] | null | undefined =>
@@ -151,5 +152,5 @@ export function loadBrowserKeyBindingOverrides(storage?: Pick<Storage, 'getItem'
 
 export function saveBrowserKeyBindingOverrides(overrides: BrowserKeyBindingOverrides, storage?: Pick<Storage, 'setItem'>): void {
   if (storage === undefined) return;
-  storage.setItem(STORAGE_KEY, JSON.stringify(sanitizeBrowserKeyBindingOverrides(overrides)));
+  guardedSetItem(storage, STORAGE_KEY, JSON.stringify(sanitizeBrowserKeyBindingOverrides(overrides)));
 }

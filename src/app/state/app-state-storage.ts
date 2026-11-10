@@ -2,6 +2,7 @@ import { APP_STATE_VERSION, type AppStateSliceKey, type AppStateV2 } from './app
 import { notifyKeydistStorageChange } from '#platform/browser-storage-events.ts';
 import { createDebouncedPersistenceScheduler, type DebouncedPersistenceScheduler } from '#platform/persistence/debounced-scheduler.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
+import { guardedSetItem } from '#platform/persistence/storage-write.ts';
 
 export const APP_STATE_STORAGE_KEY = 'keydist:app-state';
 
@@ -30,20 +31,12 @@ export function loadAppStateDocument(storage: KeyValueStorage): AppStateV2 {
   }
 }
 
+/** 書けたら`true`。容量の超過で書けなかった時は、`guardedSetItem`が記録して画面が知らせる。 */
 export function saveAppStateDocument(storage: KeyValueStorage, state: AppStateV2): boolean {
-  try {
-    storage.setItem(
-      APP_STATE_STORAGE_KEY,
-      JSON.stringify({
-        ...state,
-        version: APP_STATE_VERSION,
-      }),
-    );
-    notifyKeydistStorageChange(APP_STATE_STORAGE_KEY);
-    return true;
-  } catch {
-    return false;
-  }
+  const raw = JSON.stringify({ ...state, version: APP_STATE_VERSION });
+  if (!guardedSetItem(storage, APP_STATE_STORAGE_KEY, raw)) return false;
+  notifyKeydistStorageChange(APP_STATE_STORAGE_KEY);
+  return true;
 }
 
 export function patchAppState(storage: KeyValueStorage, patch: Partial<Omit<AppStateV2, 'version'>>): boolean {

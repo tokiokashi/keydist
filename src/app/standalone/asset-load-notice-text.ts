@@ -6,7 +6,7 @@ import type { AssetLoadNotice } from './asset-syncs.ts';
  * 知らせに出す資産の名前。`KeydistAssets`のキーが増えた時にここへ足し忘れると型検査で落ちる。
  * 利用者が見ている名前（用語集の語・画面の名前）に揃える。
  */
-const ASSET_NOTICE_LABELS: { readonly [K in keyof KeydistAssets]: string } = {
+export const ASSET_NOTICE_LABELS: { readonly [K in keyof KeydistAssets]: string } = {
   setupLibrary: 'Setup',
   fingerAssignments: '自作の指の割り当て',
   textLibrary: 'テキスト',

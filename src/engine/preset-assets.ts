@@ -58,7 +58,7 @@ export interface ImportedPresetValues {
 }
 
 /** 突き合わせた資産の対応を、プリセットの値の2つの項目に当てる。対応に無いid（組み込み・同梱されなかったもの）は触らない。 */
-function remapValues(
+export function remapPresetValues(
   values: PresetValues,
   maps: { readonly rules: ReadonlyMap<string, string>; readonly fingers: ReadonlyMap<string, string> },
 ): PresetValues {
@@ -117,7 +117,7 @@ export function mergePresetImport(
         own,
         stamp,
       );
-  const remapped = merged === undefined ? incoming : incoming.map((preset) => ({ ...preset, values: remapValues(preset.values, merged.idMaps) }));
+  const remapped = merged === undefined ? incoming : incoming.map((preset) => ({ ...preset, values: remapPresetValues(preset.values, merged.idMaps) }));
   const presets = remapped.filter((preset) => {
     const values = stableStringify(preset.values);
     return !holdings.presets.some((existing) => isSamePreset(existing, preset, values));
