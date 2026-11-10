@@ -12,6 +12,10 @@ import type { Command } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { decodeUserRomajiRules, isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
+import { builtinTextById } from '#input/text/builtin.ts';
+import type { TextLibrary, UserText } from '#input/text/library.ts';
+import { decodeBuiltinReadingCorrections, decodeUserTexts } from '#input/text/library-codec.ts';
+import type { ReadingCorrections } from '#input/text/reading.ts';
 import { completeLeftColumnKeys, decodeUserFingerAssignments } from '#input/shapes/user-finger-assignments.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from './commands.ts';
@@ -26,19 +30,28 @@ import {
 } from './user-assets-setups.ts';
 
 /**
- * 自作の配列・ローマ字規則・指の割り当て・Setupの書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
+ * 自作の配列・ローマ字規則・指の割り当て・Setup・テキストの書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
  *
- * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, setups }`。`format` は書く直前に
+ * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, setups, texts, builtinReadingCorrections }`。
+ * 配列・規則・指の割り当て・Setupの4つは、プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsBundle`）と共通で、
+ * テキストはこのファイルだけが持つ（`UserTextsBundle`。ほかのファイルはテキストを参照（id）でしか持たない）。`format` は書く直前に
  * `platform/browser-download.ts` が付け、読む時は `format` を見てからこのcodecへ渡す（プリセットのファイルと同じ封筒）。
  * 自作の物理配列は扱わない。
  */
 
 export const USER_ASSETS_FILE_FORMAT = 'keydist-user-assets';
 
-/** 読み込めるファイルの大きさ。自作の資産は1件が数KBで、これは誤って別の大きなファイルを選んだ時にだけ働く。 */
-export const USER_ASSETS_FILE_MAX_BYTES = 1024 * 1024;
+/**
+ * 読み込めるファイルの大きさ（バイト）。目安は、手元に保存できるテキストの量。自作のテキストはlocalStorageに保存され、
+ * Chromiumでは1つのサイトで約524万字（UTF-16の単位。2026-10-20に測った）まで入る。かな・漢字1字はファイルのUTF-8で3バイトなので、
+ * 524万字は約15.7MBになり、16MiBはそれを収める最小の2のべきである。これを超えるファイルは、手元に保存できる量を超えている。
+ */
+export const USER_ASSETS_FILE_MAX_BYTES = 16 * 1024 * 1024;
 
-/** 1つのファイルから読み込める件数（種類ごと）。人が手で管理できる量を大きく超えたら取り違えとみなして断る。 */
+/** 上限を利用者に伝える時の表記。 */
+export const USER_ASSETS_FILE_MAX_LABEL = '16MB';
+
+/** 1つのファイルから読み込める件数（種類ごと。テキストも）。人が手で管理できる量を大きく超えたら取り違えとみなして断る。 */
 export const USER_ASSETS_FILE_MAX_ITEMS = 100;
 
 export interface UserAssetsBundle {
@@ -47,6 +60,54 @@ export interface UserAssetsBundle {
   readonly fingerAssignments: readonly FingerAssignment[];
   /** Setupと、そのSetupのレベルの条件。`setups`の無い古いファイルは空になる。 */
   readonly setups: readonly UserAssetSetup[];
+}
+
+/** ファイルに入れる自作のテキストと、組み込みのテキストに紐づけた読みの直し。「新しい」の印（`UserText.unseen`）は手元で見たかの印なので持たない。 */
+export interface UserTextsBundle {
+  readonly texts: readonly UserText[];
+  /** 組み込みのテキストのid → 表記 → 読み。組み込みのテキストは本文を写さず、直しだけを持つ。 */
+  readonly builtinReadingCorrections: Readonly<Record<string, ReadingCorrections>>;
+}
+
+export const EMPTY_USER_TEXTS_BUNDLE: UserTextsBundle = { texts: [], builtinReadingCorrections: {} };
+
+export function isEmptyUserTextsBundle(bundle: UserTextsBundle): boolean {
+  return bundle.texts.length === 0 && Object.keys(bundle.builtinReadingCorrections).length === 0;
+}
+
+/** 書き出しファイルの中身。 */
+export interface UserAssetsFileValue {
+  readonly bundle: UserAssetsBundle;
+  readonly userTexts: UserTextsBundle;
+}
+
+function withoutUnseen(text: UserText): UserText {
+  const { unseen: _drop, ...rest } = text;
+  return rest;
+}
+
+function decodeUserTextsBundle(payload: Record<string, unknown>, diagnostics: CodecDiagnostic[]): UserTextsBundle {
+  const texts = decodeUserTexts(payload.texts, 'texts', diagnostics).map(withoutUnseen);
+  const decoded = decodeBuiltinReadingCorrections(payload.builtinReadingCorrections, 'builtinReadingCorrections', diagnostics) ?? {};
+  const builtinReadingCorrections: Record<string, ReadingCorrections> = {};
+  for (const [id, corrections] of Object.entries(decoded)) {
+    if (builtinTextById(id) === undefined) {
+      diagnostics.push({ path: `builtinReadingCorrections.${id}`, message: '組み込みのテキストに無いidの読みの直しを捨てました' });
+      continue;
+    }
+    builtinReadingCorrections[id] = corrections;
+  }
+  return { texts, builtinReadingCorrections };
+}
+
+function encodeUserTextsBundle(value: UserTextsBundle): Record<string, unknown> {
+  return {
+    texts: value.texts.map((text) => ({
+      ...withoutUnseen(text),
+      ...(text.readingCorrections === undefined ? {} : { readingCorrections: { ...text.readingCorrections } }),
+    })),
+    builtinReadingCorrections: Object.fromEntries(Object.entries(value.builtinReadingCorrections).map(([id, corrections]) => [id, { ...corrections }])),
+  };
 }
 
 /**
@@ -81,13 +142,17 @@ export function isEmptyUserAssetsBundle(bundle: UserAssetsBundle): boolean {
 
 export const EMPTY_USER_ASSETS_BUNDLE: UserAssetsBundle = { layouts: [], romajiRules: [], fingerAssignments: [], setups: [] };
 
-export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsBundle> = defineAssetCodec({
+export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsFileValue> = defineAssetCodec({
   currentVersion: 1,
-  decodePayload: (payload, diagnostics) => (isRecord(payload) ? decodeUserAssetsBundle(payload, '', diagnostics) : undefined),
-  encodePayload: encodeUserAssetsBundle,
+  decodePayload: (payload, diagnostics) =>
+    isRecord(payload) ? { bundle: decodeUserAssetsBundle(payload, '', diagnostics), userTexts: decodeUserTextsBundle(payload, diagnostics) } : undefined,
+  encodePayload: (value) => ({ ...encodeUserAssetsBundle(value.bundle), ...encodeUserTextsBundle(value.userTexts) }),
 });
 
 export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
+
+/** このファイルが持つ手元の資産。プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsHoldings`）にテキストを足したもの。 */
+export type UserAssetsFileHoldings = UserAssetsHoldings & Pick<KeydistAssets, 'textLibrary'>;
 
 /**
  * 推奨の規則を、解決できるものだけ残した配列にする。組み込みでも`resolve`が返す先でもない規則を指す配列は、
@@ -106,8 +171,37 @@ function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => strin
  * 指す配列は、参照を外して書く。読み込む側が手元の同じidの規則に結び付けないようにするため。
  * Setupのレベルの条件が指す指の割り当て・ローマ字規則も同じで、ファイルに入れない自作の資産への参照は外す。
  */
-export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, unknown> {
-  return USER_ASSETS_FILE_CODEC.encode(userAssetsBundleOf(assets));
+export function userAssetsFileBody(assets: UserAssetsFileHoldings): Record<string, unknown> {
+  return USER_ASSETS_FILE_CODEC.encode({ bundle: userAssetsBundleOf(assets), userTexts: userTextsBundleOf(assets.textLibrary) });
+}
+
+/** 手元のテキストを、ファイルに入れる形にする。組み込みのテキストに無いidの読みの直しは入れない。 */
+export function userTextsBundleOf(library: TextLibrary): UserTextsBundle {
+  const corrections = Object.entries(library.builtinReadingCorrections ?? {}).filter(([id]) => builtinTextById(id) !== undefined);
+  return { texts: library.texts, builtinReadingCorrections: Object.fromEntries(corrections) };
+}
+
+const FILE_KEY_LABELS: Readonly<Record<string, string>> = {
+  layouts: '配列',
+  romajiRules: 'ローマ字規則',
+  fingerAssignments: '指の割り当て',
+  setups: 'Setup',
+  texts: 'テキスト',
+};
+
+/** 書き出す件数（種類ごと）と、書き出すファイルの大きさを確かめる。読み込めない形なら、書き出さずに利用者へ伝える文を返す。 */
+export function userAssetsFileExportProblem(body: Readonly<Record<string, unknown>>): string | undefined {
+  for (const [key, label] of Object.entries(FILE_KEY_LABELS)) {
+    const list = body[key];
+    if (Array.isArray(list) && list.length > USER_ASSETS_FILE_MAX_ITEMS) {
+      return `${label}が多すぎて書き出せません（${USER_ASSETS_FILE_MAX_ITEMS}件まで）。減らしてから書き出してください`;
+    }
+  }
+  // 保存する形（`platform/browser-download.ts`の`downloadJson`）と同じ直列化で、読み込む側が数えるバイト数を測る
+  const bytes = new TextEncoder().encode(`${JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...body }, null, 2)}\n`).length;
+  return bytes > USER_ASSETS_FILE_MAX_BYTES
+    ? `ファイルが大きすぎて書き出せません（${USER_ASSETS_FILE_MAX_LABEL}まで）。長いテキストを削除するか短くしてから書き出してください`
+    : undefined;
 }
 
 /** 手元の資産を、ファイルに入れる形にする。入れない自作の規則・指の割り当てへの参照は外す。 */
@@ -126,7 +220,7 @@ export function userAssetsBundleOf(assets: UserAssetsHoldings): UserAssetsBundle
   };
 }
 
-export type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'setup';
+export type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'setup' | 'text' | 'builtin-text-reading';
 
 /** 突き合わせの結果の1件。 */
 export type UserAssetImportOutcome =
@@ -141,7 +235,9 @@ export type UserAssetImportOutcome =
       readonly overlap: { readonly with: 'own' | 'builtin'; readonly name: string };
     }
   /** 手元に同じidで中身が同じものがあり、何も足さなかった。`existingName` は手元の名前（ファイルの名前と違いうる）。 */
-  | { readonly kind: 'skipped-same'; readonly existingName: string };
+  | { readonly kind: 'skipped-same'; readonly existingName: string }
+  /** 組み込みのテキストの読みの直しだけが取る。手元に同じテキストの別の直しがあり、組み込みのテキストは別のidで足せないため、手元のものを残して何も足さなかった。 */
+  | { readonly kind: 'kept-own' };
 
 export interface UserAssetImportEntry {
   readonly assetKind: UserAssetKind;
@@ -360,6 +456,72 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
   };
 }
 
+const textContentCache = new WeakMap<UserText, string>();
+
+/** 「中身が同じ」の判定に使う項目。本文は長いので、同じテキストを何度も比べても1回だけ直列化する。 */
+function textContent(text: UserText): string {
+  const cached = textContentCache.get(text);
+  if (cached !== undefined) return cached;
+  const corrections = text.readingCorrections !== undefined && Object.keys(text.readingCorrections).length > 0 ? text.readingCorrections : undefined;
+  const content = canonical({ text: text.text, languageOverride: text.languageOverride, readingCorrections: corrections });
+  textContentCache.set(text, content);
+  return content;
+}
+
+export interface UserTextsMerge {
+  readonly library: TextLibrary;
+  /** ファイルのテキストのid → 読み込み後に指すid。 */
+  readonly idMap: ReadonlyMap<string, string>;
+  /** 自作のテキスト、組み込みのテキストの読みの直しの順で、ファイルの並びのまま。 */
+  readonly entries: readonly UserAssetImportEntry[];
+}
+
+/**
+ * 読み込んだテキストを手元に突き合わせる。自作のテキストは`mergeUserAssets`と同じ規則（idが同じで中身が違えば別のidと別名で足す。
+ * 中身は本文・言語の手動指定・直した読みで比べ、名前は比べない）。組み込みのテキストの読みの直しは、組み込みのテキストを別のidで足せないので、
+ * 手元にその直しが無ければ足し、同じなら足さず、違えば手元を残す。組み込みのテキストに無いidは、読み込む時に捨てている。
+ */
+export function mergeUserTexts(current: TextLibrary, incoming: UserTextsBundle, stamp: string): UserTextsMerge {
+  const texts = mergeKind<UserText>(
+    {
+      assetKind: 'text',
+      idPrefix: 'text-',
+      current: current.texts,
+      incoming: incoming.texts,
+      // 自作のテキストのidは組み込みのid（`builtin:`で始まる）と重ならない
+      builtinIds: () => false,
+      builtinName: () => undefined,
+      content: textContent,
+      rebuild: (text, id, name) => ({ ...text, id, name }),
+    },
+    stamp,
+  );
+  const entries = [...texts.entries];
+  let builtinCorrections = current.builtinReadingCorrections;
+  for (const [id, corrections] of Object.entries(incoming.builtinReadingCorrections)) {
+    const name = builtinTextById(id)?.name;
+    if (name === undefined) continue;
+    const own = builtinCorrections?.[id];
+    if (own === undefined) {
+      builtinCorrections = { ...builtinCorrections, [id]: corrections };
+      entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'added' } });
+    } else if (canonical(own) === canonical(corrections)) {
+      entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'skipped-same', existingName: name } });
+    } else {
+      entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'kept-own' } });
+    }
+  }
+  if (texts.items.length === current.texts.length && builtinCorrections === current.builtinReadingCorrections) {
+    return { library: current, idMap: texts.idMap, entries };
+  }
+  const { builtinReadingCorrections: _old, ...base } = current;
+  return {
+    library: { ...base, texts: texts.items, ...(builtinCorrections === undefined ? {} : { builtinReadingCorrections: builtinCorrections }) },
+    idMap: texts.idMap,
+    entries,
+  };
+}
+
 /**
  * ファイルから読んだ自作の資産を手元へ足す。足すものが無ければ何もしない。
  * 4つの資産を1回の変更で書くので、元に戻すと全部が戻る。
@@ -383,12 +545,20 @@ export function userAssetChanges(current: UserAssetsHoldings, merged: UserAssets
   };
 }
 
-export function importUserAssetsCommand(incoming: UserAssetsBundle, stamp: string): UserAssetsImportPlan {
+export function importUserAssetsCommand(
+  incoming: UserAssetsBundle,
+  stamp: string,
+  incomingTexts: UserTextsBundle = EMPTY_USER_TEXTS_BUNDLE,
+): UserAssetsImportPlan {
   let entries: readonly UserAssetImportEntry[] | undefined;
   const command: Command<KeydistAssets> = (current) => {
     const merge = mergeUserAssets(current, incoming, stamp);
-    entries = merge.entries;
-    const changes = userAssetChanges(current, merge.assets);
+    const texts = mergeUserTexts(current.textLibrary, incomingTexts, stamp);
+    entries = [...merge.entries, ...texts.entries];
+    const changes: Partial<KeydistAssets> = {
+      ...userAssetChanges(current, merge.assets),
+      ...(texts.library === current.textLibrary ? {} : { textLibrary: texts.library }),
+    };
     if (Object.keys(changes).length === 0) return { kind: 'no-op' };
     return { kind: 'applied', label: '自作の資産を読み込む', changes };
   };
@@ -398,7 +568,7 @@ export function importUserAssetsCommand(incoming: UserAssetsBundle, stamp: strin
 /** 読み取り結果。 */
 export type UserAssetsFileReadResult =
   | { readonly ok: false; readonly message: string; readonly details: readonly string[] }
-  | { readonly ok: true; readonly bundle: UserAssetsBundle; readonly dropped: readonly CodecDiagnostic[] };
+  | { readonly ok: true; readonly bundle: UserAssetsBundle; readonly userTexts: UserTextsBundle; readonly dropped: readonly CodecDiagnostic[] };
 
 const fail = (message: string, ...details: string[]): UserAssetsFileReadResult => ({ ok: false, message, details });
 
@@ -418,7 +588,7 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
         : '「format」欄の値が自作の資産のファイルのものと違います';
     return fail('keydistの自作の資産のファイルではありません', detail);
   }
-  for (const key of ['layouts', 'romajiRules', 'fingerAssignments', 'setups']) {
+  for (const key of Object.keys(FILE_KEY_LABELS)) {
     const list = parsed[key];
     if (Array.isArray(list) && list.length > USER_ASSETS_FILE_MAX_ITEMS) {
       return fail(`件数が多すぎます（${USER_ASSETS_FILE_MAX_ITEMS}件まで）`, `${key}: ${list.length}`);
@@ -429,9 +599,9 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
     const failure = describeFileDecodeFailure(decoded.reason);
     return fail(failure.message, failure.detail);
   }
-  const { layouts, romajiRules, fingerAssignments, setups } = decoded.value;
-  if (layouts.length + romajiRules.length + fingerAssignments.length + setups.length === 0) {
+  const { bundle, userTexts } = decoded.value;
+  if (isEmptyUserAssetsBundle(bundle) && isEmptyUserTextsBundle(userTexts)) {
     return fail('読み込める資産がありませんでした', ...decoded.diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`));
   }
-  return { ok: true, bundle: decoded.value, dropped: decoded.diagnostics };
+  return { ok: true, bundle, userTexts, dropped: decoded.diagnostics };
 }

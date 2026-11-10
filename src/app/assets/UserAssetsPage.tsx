@@ -4,15 +4,18 @@ import type { KeydistAssets } from '#engine/commands.ts';
 import {
   USER_ASSETS_FILE_FORMAT,
   USER_ASSETS_FILE_MAX_BYTES,
+  USER_ASSETS_FILE_MAX_LABEL,
   parseUserAssetsFile,
   userAssetsFileBody,
+  userAssetsFileExportProblem,
   type UserAssetImportEntry,
   type UserAssetsBundle,
+  type UserTextsBundle,
 } from '#engine/user-assets-file.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
-import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_TOO_LARGE_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE } from '#hosts/shared/preset-file.ts';
+import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE } from '#hosts/shared/preset-file.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
 import { deleteConfirmText, userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
@@ -22,7 +25,7 @@ import type { OverrideEntry, OverrideGroup } from './cascade-override-groups.ts'
 export const USER_ASSETS_LABEL = 'データ・設定の管理';
 
 export interface UserAssetsPageProps {
-  readonly assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
+  readonly assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary' | 'textLibrary'>;
   /** 手持ちのSetup全部に対して付けた名前。 */
   readonly setupItems: readonly SetupListItem[];
   /** 保存の読み込みが済むまでは、空の一覧を出さない。 */
@@ -45,7 +48,7 @@ export interface UserAssetsPageProps {
    * 読み込んだ資産を手元へ足し、書き込みに使った突き合わせの内訳を返す（書き込めなかった時は`undefined`）。
    * `stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。
    */
-  readonly onImport: (bundle: UserAssetsBundle, stamp: string) => readonly UserAssetImportEntry[] | undefined;
+  readonly onImport: (bundle: UserAssetsBundle, userTexts: UserTextsBundle, stamp: string) => readonly UserAssetImportEntry[] | undefined;
 }
 
 interface ImportResult {
@@ -53,6 +56,8 @@ interface ImportResult {
   readonly lines: readonly string[];
   readonly details: readonly string[];
 }
+
+const USER_ASSETS_FILE_TOO_LARGE_MESSAGE = `ファイルが大きすぎます（${USER_ASSETS_FILE_MAX_LABEL}まで）`;
 
 /** 新しいidの元にする値。同じ読み込みの中では変わらず、別の読み込みとは重ならない。 */
 function newStamp(): string {
@@ -225,7 +230,14 @@ export function UserAssetsPage({
   const opener = useRef<HTMLElement | null>(null);
   /** 確認を閉じた後にフォーカスを移す先。削除した行のボタンは消えるので、続けて戻せる「元に戻す」へ移す。 */
   const focusAfterClose = useRef<'opener' | 'undo' | undefined>(undefined);
-  const hasAssets = assets.userLayouts.length + assets.userRomajiRules.length + assets.fingerAssignments.length + assets.setupLibrary.setups.length > 0;
+  const hasAssets =
+    assets.userLayouts.length +
+      assets.userRomajiRules.length +
+      assets.fingerAssignments.length +
+      assets.setupLibrary.setups.length +
+      assets.textLibrary.texts.length +
+      Object.keys(assets.textLibrary.builtinReadingCorrections ?? {}).length >
+    0;
 
   /** 上書きを消した後、一覧が書き換わってからフォーカスを移す。消した項目のボタンは無くなり、「元に戻す」は書き込みの後に押せるようになるため。 */
   const focusUndoAfterReset = useRef(false);
@@ -265,8 +277,15 @@ export function UserAssetsPage({
 
   const exportAssets = () => {
     if (fileIo === undefined || !hasAssets) return;
-    fileIo.saveJson(userAssetsFileName(new Date()), USER_ASSETS_FILE_FORMAT, userAssetsFileBody(assets));
+    const body = userAssetsFileBody(assets);
     clearResults();
+    // 読み込めないファイルを作らないよう、読み込みと同じ上限を超える時は書き出さない
+    const problem = userAssetsFileExportProblem(body);
+    if (problem !== undefined) {
+      setMessage(problem);
+      return;
+    }
+    fileIo.saveJson(userAssetsFileName(new Date()), USER_ASSETS_FILE_FORMAT, body);
     setMessage(exportedText(assets));
   };
 
@@ -279,7 +298,7 @@ export function UserAssetsPage({
     clearResults();
     const read = await fileIo.readText(file, USER_ASSETS_FILE_MAX_BYTES);
     if (read.kind !== 'ok') {
-      setMessage(read.kind === 'too-large' ? PRESET_FILE_TOO_LARGE_MESSAGE : PRESET_FILE_UNREADABLE_MESSAGE);
+      setMessage(read.kind === 'too-large' ? USER_ASSETS_FILE_TOO_LARGE_MESSAGE : PRESET_FILE_UNREADABLE_MESSAGE);
       return;
     }
     const parsed = parseUserAssetsFile(read.text);
@@ -289,7 +308,7 @@ export function UserAssetsPage({
     }
     const stamp = newStamp();
     // 画面に出す内訳は、書き込みを決めた突き合わせそのものから取る。ファイルを読む間に別のタブが資産を書き換えても食い違わない
-    const entries = onImport(parsed.bundle, stamp);
+    const entries = onImport(parsed.bundle, parsed.userTexts, stamp);
     if (entries === undefined) {
       setMessage(PRESET_FILE_IMPORT_FAILED_MESSAGE);
       return;

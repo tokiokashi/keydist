@@ -78,8 +78,8 @@ export function UserAssetsApp() {
       }
       overrideGroups={overrideGroups}
       onResetOverride={(group, itemId) => dispatch(resetCascadeItemCommand(group.level, itemId, group.workspaceId))}
-      onImport={(bundle, stamp) => {
-        const plan = importUserAssetsCommand(bundle, stamp);
+      onImport={(bundle, userTexts, stamp) => {
+        const plan = importUserAssetsCommand(bundle, stamp, userTexts);
         dispatch(plan.command);
         return plan.entries();
       }}
