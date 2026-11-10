@@ -16,7 +16,7 @@ import type { SettingsValueMap } from './settings-items.ts';
 import { remapOverrideReferences, type SetupIdMaps } from './user-assets-setups.ts';
 
 /**
- * 書き出しファイルが運ぶ、Setup以外のレベルの条件（全体・物理配列・入力方式・配列）。
+ * 書き出しファイルが運ぶ、Setup以外のレベルの条件（全体・物理配列・打ち方・配列）。
  * Setupのレベルの条件は各Setupが運び、Workspaceのレベルの条件は各Workspaceが運ぶ。
  */
 export type ConditionLevels = Pick<CascadeOverrides<SettingsValueMap>, 'global' | 'shape' | 'inputMethod' | 'layout'>;
@@ -107,7 +107,9 @@ export interface ConditionsMerge {
 
 /**
  * ファイルの条件を手元へ足す。配列のレベルの条件は、読み込みで別のidになった配列へ付け替え、指の割り当て・ローマ字規則への参照も付け替える。
- * `droppedLayoutIds`は、読み込まずに手元の配列を残した（または組み込みと同じidで足さなかった）ファイルの配列のid。その配列のレベルの条件は運ばない。
+ * 配列のレベルの条件は、その配列の読み込みの扱いに従う。`droppedLayoutIds`は読み込まずに手元の配列を残したファイルの配列のid（条件は運ばない）、
+ * `overwrittenLayoutIds`は手元の配列を上書きしたid（手元の配列のレベルの条件を、ファイルの値で置き換える。ファイルに無ければ消す）。
+ * この2つの配列の条件は、条件の種類の扱い（`policy`）に関わらず上の通りにする。
  * 手元に無いレベルは足し、同じ中身は足さず、違う中身は`policy`が`overwrite`なら置き換え、そうでなければ手元を残す。
  */
 export function mergeConditionLevels(
@@ -116,6 +118,7 @@ export function mergeConditionLevels(
   maps: SetupIdMaps,
   policy: ImportPolicy,
   droppedLayoutIds: ReadonlySet<string> = new Set(),
+  overwrittenLayoutIds: ReadonlySet<string> = new Set(),
 ): ConditionsMerge {
   const relayered = flatten(incoming)
     .filter((entry) => entry.level.kind !== 'layout' || !droppedLayoutIds.has(entry.level.layoutId))
@@ -126,10 +129,18 @@ export function mergeConditionLevels(
           : entry,
     );
   let value = current;
+  for (const layoutId of overwrittenLayoutIds) value = withLevelOverrides(value, { kind: 'layout', layoutId }, undefined);
   let added = 0;
   let same = 0;
   let conflicted = 0;
+  const forced = (entry: ConditionEntry): boolean => entry.level.kind === 'layout' && overwrittenLayoutIds.has(entry.level.layoutId);
+  const base = value;
   for (const entry of mapEntries(relayered, maps)) {
+    if (forced(entry)) {
+      value = withLevelOverrides(value, entry.level, entry.overrides);
+      added += 1;
+      continue;
+    }
     const own = levelOverrides(value, entry.level);
     if (own === undefined || Object.keys(own).length === 0) {
       value = withLevelOverrides(value, entry.level, entry.overrides);
@@ -142,6 +153,6 @@ export function mergeConditionLevels(
     }
   }
   // 手元と違う中身で重なった時に上書きを選ばなければ、この種類は丸ごと読み込まない（足せるものだけ足す、とはしない）
-  if (conflicted > 0 && policy !== 'overwrite') return { value: current, added: 0, same, conflicted };
+  if (conflicted > 0 && policy !== 'overwrite') return { value: base, added: 0, same, conflicted };
   return { value, added, same, conflicted };
 }

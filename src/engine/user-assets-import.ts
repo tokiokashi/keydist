@@ -191,18 +191,23 @@ function mergeConditions(
 ): { readonly library: KeydistAssets['setupLibrary']; readonly entries: readonly UserAssetImportEntry[] } {
   const name = CONDITIONS_LABEL;
   const policy = importPolicyOf(policies, 'conditions');
-  // 配列の読み込みが手元の配列を残した・組み込みと同じidで足さなかった時は、その配列のレベルの条件を運ばない。
-  // 組み込みと同じidで別名で足した配列の条件は、組み込みの配列の条件のまま付け替えない
+  // 配列のレベルの条件は、その配列の読み込みの扱いに従う。手元の配列を残した配列の条件は運ばず、上書きした配列の条件はファイルの値で置き換える。
+  // 組み込みと同じidの配列（別名で足した・足さなかった）の条件は、組み込みの配列向けのまま付け替えない
   const dropped = new Set<string>();
+  const overwritten = new Set<string>();
   const remap = new Map(maps.layouts);
   layoutEntries.ids.forEach((id, index) => {
     const outcome = layoutEntries.entries[index]?.outcome;
-    if (outcome?.kind === 'kept-own' || outcome?.kind === 'skipped-builtin') dropped.add(id);
-    else if (outcome?.kind === 'added-renamed' && outcome.overlap.with === 'builtin') remap.set(id, id);
+    if (outcome?.kind === 'kept-own') dropped.add(id);
+    else if (outcome?.kind === 'overwritten') overwritten.add(id);
+    else if (outcome?.kind === 'skipped-builtin' || (outcome?.kind === 'added-renamed' && outcome.overlap.with === 'builtin')) remap.set(id, id);
   });
-  const merged = mergeConditionLevels(current.overrides, incoming, { ...maps, layouts: remap }, policy, dropped);
+  const merged = mergeConditionLevels(current.overrides, incoming, { ...maps, layouts: remap }, policy, dropped, overwritten);
   const kind = merged.conflicted > 0 ? (policy === 'overwrite' ? 'overwritten' : 'kept-own') : merged.added > 0 ? 'added' : 'skipped-same';
-  if (merged.conflicted === 0 && merged.added === 0 && merged.same === 0) return { library: current, entries: [] };
+  if (merged.conflicted === 0 && merged.added === 0 && merged.same === 0) {
+    // 上書きした配列の条件がファイルに無く、手元の条件を消しただけの時
+    return { library: merged.value === current.overrides ? current : { ...current, overrides: merged.value }, entries: [] };
+  }
   const outcome: UserAssetImportEntry['outcome'] =
     kind === 'overwritten' ? { kind, previousName: name } : kind === 'skipped-same' ? { kind, existingName: name } : { kind };
   return {

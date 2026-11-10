@@ -440,3 +440,35 @@ test('全体・配列などの条件: 組み込みと同じidの配列を別名�
   assert.notEqual(assets.userLayouts[0]!.id, 'qwerty');
   assert.deepEqual(Object.keys(assets.setupLibrary.overrides.layout ?? {}), ['qwerty']);
 });
+
+test('上書き: 配列を上書きすると、その配列のレベルの条件もファイルの値で置き換わる。条件の種類の選択は配列のレベルの重なりでは出ない', () => {
+  const hand = {
+    ...emptyAssets(),
+    userLayouts: [HAND_LAYOUT],
+    setupLibrary: { setups: [], overrides: { layout: { [LAYOUT.id]: { windowSize: 2 } } } },
+  };
+  const file = layoutWithConditions({ ...LAYOUT, romaji: 'kunrei' });
+  const withGlobal = { ...file, extras: { ...file.extras, conditions: { ...file.extras.conditions, global: { windowSize: 4 } } } };
+  const kinds = userAssetsImportConflicts(hand, withGlobal, STAMP).map((conflict) => conflict.kind);
+  assert.deepEqual(kinds, ['layout']);
+  const { assets } = importInto(hand, withGlobal, { layout: 'overwrite' });
+  assert.deepEqual(assets.setupLibrary.overrides.layout, { [LAYOUT.id]: { windowSize: 6 } });
+  assert.deepEqual(assets.setupLibrary.overrides.global, { windowSize: 4 });
+});
+
+test('上書き: ファイルに配列のレベルの条件が無ければ、上書きした配列の手元の条件は消える', () => {
+  const hand = {
+    ...emptyAssets(),
+    userLayouts: [HAND_LAYOUT],
+    setupLibrary: { setups: [], overrides: { layout: { [LAYOUT.id]: { windowSize: 2 } } } },
+  };
+  const { assets } = importInto(hand, layoutOnlyFile({ ...LAYOUT, romaji: 'kunrei' }), { layout: 'overwrite' });
+  assert.equal(assets.setupLibrary.overrides.layout, undefined);
+});
+
+test('読み込まない: 組み込みと同じidの配列を読み込まなくても、組み込みの配列向けの条件は組み込みのidのまま運ぶ', () => {
+  const file = layoutWithConditions({ ...LAYOUT, id: 'qwerty', romaji: 'kunrei' });
+  const { assets } = importInto(emptyAssets(), file, { layout: 'skip' });
+  assert.deepEqual(assets.userLayouts, []);
+  assert.deepEqual(assets.setupLibrary.overrides.layout, { qwerty: { windowSize: 6 } });
+});
