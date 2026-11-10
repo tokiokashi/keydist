@@ -9,15 +9,18 @@ import {
   parseUserAssetsFile,
   userAssetsFileBody,
   userAssetsFileExportProblem,
+  userAssetsExtrasOf,
   userTextsBundleOf,
   type ImportPolicies,
   type ImportPolicy,
   type UserAssetImportEntry,
   type UserAssetKind as ImportKind,
 } from '#engine/user-assets-file.ts';
+import { isEmptyConditionLevels } from '#engine/user-assets-conditions.ts';
 import { userAssetsImportConflicts, type UserAssetsFileContents, type UserAssetsImportConflict } from '#engine/user-assets-import.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
+import { importNotSavedText } from '../shell/storage-write-notice-text.ts';
 import { getStorageWriteFailuresSnapshot } from '#platform/persistence/storage-write.ts';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE } from '#hosts/shared/preset-file.ts';
@@ -206,7 +209,7 @@ function ImportChoiceDialog({
       }}
     >
       <h2 id="user-assets-import-choice-title">手元と重なる資産があります</h2>
-      <p>中身が違うものの読み込み方を、種類ごとに選んでください。上書きすると、手元のものは読み込んだ中身に置き換わります。</p>
+      <p>上書きすると、手元のものは読み込んだ中身に置き換わります。</p>
       {pending.conflicts.map((conflict) => {
         const options: ImportPolicy[] = [
           ...(conflict.canRename ? (['rename'] as const) : []),
@@ -337,7 +340,8 @@ export function UserAssetsPage({
       assets.workspaces.length >
       0 ||
     assets.personalSpeed.calibration !== undefined ||
-    Object.keys(assets.standaloneAnalyzerOptions).length > 0;
+    Object.keys(assets.standaloneAnalyzerOptions).length > 0 ||
+    !isEmptyConditionLevels(userAssetsExtrasOf(assets).conditions);
 
   /** 上書きを消した後、一覧が書き換わってからフォーカスを移す。消した項目のボタンは無くなり、「元に戻す」は書き込みの後に押せるようになるため。 */
   const focusUndoAfterReset = useRef(false);
@@ -434,11 +438,11 @@ export function UserAssetsPage({
     }
     const lines = entries.map(importEntryText);
     if (dropped.length > 0) lines.push(`${dropped.length}件は読み込めませんでした`);
-    // 容量が足りず保存できなかった時は、足したと伝えない（再読み込みで読み込む前に戻る）
-    const failuresAfter = getStorageWriteFailuresSnapshot();
-    const notSaved = failuresAfter.length > 0 && failuresAfter !== failuresBefore;
+    // 容量が足りず保存できなかった保存データがある時は、足したと伝えない
+    const failed = getStorageWriteFailuresSnapshot().filter((failure) => !failuresBefore.includes(failure));
+    const notSaved = failed.length > 0;
     setImportResult({
-      summary: notSaved ? '容量が足りず保存できませんでした。再読み込みすると、読み込む前に戻ります' : importSummaryText(entries),
+      summary: notSaved ? importNotSavedText(failed) : importSummaryText(entries),
       lines: notSaved ? [] : lines,
       details: dropped,
     });

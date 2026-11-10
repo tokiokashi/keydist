@@ -2,13 +2,7 @@ import assert from 'node:assert/strict';
 import test, { afterEach } from 'node:test';
 import { defineAssetCodec, isRecord } from '#input/codec/index.ts';
 import { createAssetTabSync } from '../asset-tab-sync.ts';
-import {
-  dismissStorageWriteFailures,
-  getStorageWriteFailuresSnapshot,
-  guardedSetItem,
-  measureStorageUsage,
-  type WritableStorage,
-} from './storage-write.ts';
+import { dismissStorageWriteFailures, getStorageWriteFailuresSnapshot, guardedSetItem, type WritableStorage } from './storage-write.ts';
 
 afterEach(() => dismissStorageWriteFailures());
 
@@ -40,7 +34,7 @@ class LimitedStorage implements WritableStorage {
   }
 }
 
-test('容量の超過で書けなかった時、書こうとした大きさと保存データの内訳（大きい順）を記録する', () => {
+test('容量の超過で書けなかった時、書こうとしたキーと大きさを記録する', () => {
   const storage = new LimitedStorage(100);
   storage.data.set('keydist:text-library', 'x'.repeat(60));
   storage.data.set('keydist:user-layouts', 'y'.repeat(10));
@@ -49,22 +43,13 @@ test('容量の超過で書けなかった時、書こうとした大きさと�
   const [failure] = getStorageWriteFailuresSnapshot();
   assert.equal(failure!.key, 'keydist:workspaces');
   assert.equal(failure!.attemptedLength, 50);
-  assert.deepEqual(
-    failure!.usage.map((entry) => [entry.key, entry.length]),
-    [
-      ['keydist:text-library', 60],
-      ['keydist:workspaces', 50],
-      ['keydist:user-layouts', 10],
-    ],
-  );
   assert.equal(storage.getItem('keydist:workspaces'), null);
 });
 
-test('失敗したキーは、保存済みの値ではなく書こうとした値の大きさで数える。同じキーの書き込みが成功したら記録を外す', () => {
+test('同じキーの書き込みが成功したら、失敗の記録を外す', () => {
   const storage = new LimitedStorage(100);
   storage.data.set('keydist:text-library', 'x'.repeat(30));
   assert.equal(guardedSetItem(storage, 'keydist:text-library', 'x'.repeat(200)), false);
-  assert.deepEqual(getStorageWriteFailuresSnapshot()[0]!.usage, [{ key: 'keydist:text-library', length: 200 }]);
   assert.equal(guardedSetItem(storage, 'keydist:text-library', 'x'.repeat(20)), true);
   assert.deepEqual(getStorageWriteFailuresSnapshot(), []);
 });
@@ -75,15 +60,14 @@ test('容量の超過以外の失敗は記録しない', () => {
   assert.deepEqual(getStorageWriteFailuresSnapshot(), []);
 });
 
-test('大きさを数えられない保存先でも、失敗の記録は残る（内訳は書こうとしたキーだけ）', () => {
+test('大きさを数えられない保存先でも、失敗の記録は残る', () => {
   const storage: WritableStorage = {
     setItem() {
       throw new DOMException('quota', 'QuotaExceededError');
     },
   };
   assert.equal(guardedSetItem(storage, 'keydist:presets', 'abc'), false);
-  assert.deepEqual(getStorageWriteFailuresSnapshot()[0]!.usage, [{ key: 'keydist:presets', length: 3 }]);
-  assert.deepEqual(measureStorageUsage(storage), []);
+  assert.equal(getStorageWriteFailuresSnapshot()[0]!.key, 'keydist:presets');
 });
 
 test('資産の保存が容量の超過で失敗したら記録され、保存データは書き換わらない', () => {

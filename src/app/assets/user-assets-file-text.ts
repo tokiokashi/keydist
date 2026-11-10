@@ -1,5 +1,12 @@
 import { TEXT_ASSET_NOUNS } from '#hosts/shared/asset-import-text.ts';
-import { userTextsBundleOf, type UserAssetImportEntry, type UserAssetKind, type UserAssetsFileHoldings } from '#engine/user-assets-file.ts';
+import { CONDITIONS_LABEL, isEmptyConditionLevels } from '#engine/user-assets-conditions.ts';
+import {
+  userAssetsExtrasOf,
+  userTextsBundleOf,
+  type UserAssetImportEntry,
+  type UserAssetKind,
+  type UserAssetsFileHoldings,
+} from '#engine/user-assets-file.ts';
 
 /** 書き出しのファイル名。日付を入れて、ダウンロード先で見分けられるようにする。 */
 export function userAssetsFileName(date: Date): string {
@@ -16,6 +23,7 @@ const KIND_LABELS: Readonly<Record<UserAssetKind, string>> = {
   workspace: 'Workspace',
   'personal-speed': '個人速度',
   'analyzer-options': '解析設定',
+  conditions: CONDITIONS_LABEL,
   ...TEXT_ASSET_NOUNS,
 };
 
@@ -39,13 +47,16 @@ export function exportedText(assets: UserAssetsFileHoldings): string {
   const listed = counts.filter(([, count]) => count > 0).map(([kind, count]) => `${KIND_LABELS[kind]}${count}件`);
   if (assets.personalSpeed.calibration !== undefined) listed.push(KIND_LABELS['personal-speed']);
   if (Object.keys(assets.standaloneAnalyzerOptions).length > 0) listed.push(KIND_LABELS['analyzer-options']);
+  if (!isEmptyConditionLevels(userAssetsExtrasOf(assets).conditions)) listed.push(KIND_LABELS.conditions);
   return `${listed.join('、')}を書き出しました`;
 }
 
 /** 個人速度と解析設定は、名前そのものが種類の名前なので「個人速度「個人速度」」としない。 */
 function subject(entry: UserAssetImportEntry): string {
   const label = KIND_LABELS[entry.assetKind];
-  return entry.assetKind === 'personal-speed' || entry.assetKind === 'analyzer-options' ? label : `${label}「${entry.name}」`;
+  return entry.assetKind === 'personal-speed' || entry.assetKind === 'analyzer-options' || entry.assetKind === 'conditions'
+    ? label
+    : `${label}「${entry.name}」`;
 }
 
 /** 読み込みの結果の1行。足した・別名で足した・置き換えた・足さなかったを言い分ける。 */

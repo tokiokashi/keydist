@@ -19,6 +19,7 @@ import { completeLeftColumnKeys, decodeUserFingerAssignments } from '#input/shap
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from './commands.ts';
 import type { ImportPolicy } from './import-policy.ts';
+import { conditionLevelsOf } from './user-assets-conditions.ts';
 import { decodeUserAssetsExtras, encodeUserAssetsExtras, isEmptyUserAssetsExtras, type UserAssetsExtras } from './user-assets-extras.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
 import {
@@ -178,6 +179,10 @@ export function userAssetsExtrasOf(assets: UserAssetsFileHoldings): UserAssetsEx
     workspaces: assets.workspaces,
     personalSpeed: assets.personalSpeed,
     analyzerOptions: assets.standaloneAnalyzerOptions,
+    conditions: conditionLevelsOf(assets.setupLibrary.overrides, {
+      ruleIds: new Set(assets.userRomajiRules.map((rule) => rule.id)),
+      fingerAssignmentIds: new Set(assets.fingerAssignments.map((assignment) => assignment.id)),
+    }),
   };
 }
 
@@ -263,7 +268,8 @@ export type UserAssetKind =
   | 'preset'
   | 'workspace'
   | 'personal-speed'
-  | 'analyzer-options';
+  | 'analyzer-options'
+  | 'conditions';
 
 export type { ImportPolicy };
 
@@ -275,6 +281,7 @@ export const ASSET_KINDS_WITHOUT_RENAME: ReadonlySet<UserAssetKind> = new Set<Us
   'builtin-text-reading',
   'personal-speed',
   'analyzer-options',
+  'conditions',
 ]);
 
 /** 既定の扱い。ファイルの読み込みが元からしていた動き（別名で足す。別名で足せない種類は手元を残す）。 */

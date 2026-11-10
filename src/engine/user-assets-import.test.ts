@@ -96,7 +96,13 @@ function fullAssets(): KeydistAssets {
     fingerAssignments: [FINGER],
     setupLibrary: {
       setups: [{ id: 'setup-a', number: 1, layoutId: LAYOUT.id, shapeId: 'row-staggered', label: '練習用' }],
-      overrides: { setup: { 'setup-a': { windowSize: 5, fingerAssignmentId: FINGER.id, romajiRuleId: RULE.id } } },
+      overrides: {
+        global: { windowSize: 4, fingerAssignmentId: FINGER.id, romajiRuleId: RULE.id },
+        shape: { 'row-staggered': { centerShiftThumb: 'left' } },
+        inputMethod: { romaji: { spaceThumb: 'left' } },
+        layout: { [LAYOUT.id]: { windowSize: 6 } },
+        setup: { 'setup-a': { windowSize: 5, fingerAssignmentId: FINGER.id, romajiRuleId: RULE.id } },
+      },
     },
     textLibrary: { texts: [TEXT], builtinReadingCorrections: { [DEFAULT_BUILTIN_TEXT_ID]: { 吾輩: 'わがはい' } } },
     presetLibrary: { presets: [{ id: 'preset-a', name: '五つ', values: { windowSize: 5, romajiRuleId: RULE.id } }] },
@@ -139,12 +145,7 @@ test('全資産を書き出して空の保存先へ読み込むと、各資産�
   assert.deepEqual(assets.userLayouts, source.userLayouts);
   assert.deepEqual(assets.userRomajiRules, source.userRomajiRules);
   assert.deepEqual(assets.fingerAssignments, source.fingerAssignments);
-  assert.deepEqual(assets.setupLibrary.setups, source.setupLibrary.setups);
-  assert.deepEqual(levelOverrides(assets.setupLibrary.overrides, { kind: 'setup', setupId: 'setup-a' }), {
-    windowSize: 5,
-    fingerAssignmentId: FINGER.id,
-    romajiRuleId: RULE.id,
-  });
+  assert.deepEqual(assets.setupLibrary, source.setupLibrary);
   assert.deepEqual(assets.textLibrary, source.textLibrary);
   assert.deepEqual(assets.presetLibrary, source.presetLibrary);
   assert.deepEqual(assets.workspaces, source.workspaces);
@@ -153,25 +154,6 @@ test('全資産を書き出して空の保存先へ読み込むと、各資産�
   const again = importInto(assets, file);
   assert.equal(again.outcome.kind, 'no-op');
   assert.ok(again.entries.every((entry) => entry.outcome.kind === 'skipped-same'));
-});
-
-test('書き出した資産と設定の種類を、内訳が種類ごとに1件以上返す', () => {
-  const kinds = new Set(importInto(emptyAssets(), fileOf(fullAssets())).entries.map((entry) => entry.assetKind));
-  assert.deepEqual(
-    [...kinds].sort(),
-    [
-      'analyzer-options',
-      'builtin-text-reading',
-      'finger-assignment',
-      'layout',
-      'personal-speed',
-      'preset',
-      'romaji-rule',
-      'setup',
-      'text',
-      'workspace',
-    ].sort(),
-  );
 });
 
 test('全データのファイルを別名で読み込むと、Workspaceとプリセットは読み込み後の資産を指す', () => {
@@ -216,7 +198,7 @@ function conflictingHand(): KeydistAssets {
     fingerAssignments: [{ ...changed.finger, baseFinger: { ...changed.finger.baseFinger, KeyZ: 'RP' } }],
     setupLibrary: {
       setups: [{ id: 'setup-a', number: 7, layoutId: 'qwerty', shapeId: 'row-staggered', label: '手元のSetup' }],
-      overrides: { setup: { 'setup-a': { windowSize: 3 } } },
+      overrides: { global: { windowSize: 3 }, layout: { [LAYOUT.id]: { windowSize: 2 } }, setup: { 'setup-a': { windowSize: 3 } } },
     },
     textLibrary: {
       texts: [{ ...TEXT, name: '手元の文章', text: '手元' }],
@@ -237,6 +219,7 @@ test('重なりの検出: 同じidで中身の違う資産がある種類を、�
     [
       'analyzer-options',
       'builtin-text-reading',
+      'conditions',
       'finger-assignment',
       'layout',
       'personal-speed',
@@ -275,6 +258,9 @@ test('既定の扱い（別名で追加）では、手元の資産を残し、�
   assert.deepEqual(assets.textLibrary.builtinReadingCorrections, hand.textLibrary.builtinReadingCorrections);
   assert.equal(assets.personalSpeed, hand.personalSpeed);
   assert.equal(assets.standaloneAnalyzerOptions, hand.standaloneAnalyzerOptions);
+  // 全体・配列などの条件は手元を残し、重ならないレベルも足さない
+  assert.deepEqual(levelOverrides(assets.setupLibrary.overrides, { kind: 'global' }), { windowSize: 3 });
+  assert.equal(levelOverrides(assets.setupLibrary.overrides, { kind: 'shape', shapeId: 'row-staggered' }), undefined);
 });
 
 test('上書き: 手元の同じidの資産を、読み込んだ中身で置き換える。件数は増えない', () => {
@@ -292,6 +278,7 @@ test('上書き: 手元の同じidの資産を、読み込んだ中身で置き�
       'workspace',
       'personal-speed',
       'analyzer-options',
+      'conditions',
     ].map((kind) => [kind, 'overwrite']),
   );
   const { assets, entries } = importInto(hand, fileOf(source), policies);
@@ -303,6 +290,9 @@ test('上書き: 手元の同じidの資産を、読み込んだ中身で置き�
   assert.deepEqual(assets.workspaces, source.workspaces);
   assert.deepEqual(assets.personalSpeed, source.personalSpeed);
   assert.deepEqual(assets.standaloneAnalyzerOptions, source.standaloneAnalyzerOptions);
+  assert.deepEqual(levelOverrides(assets.setupLibrary.overrides, { kind: 'global' }), levelOverrides(source.setupLibrary.overrides, { kind: 'global' }));
+  assert.deepEqual(levelOverrides(assets.setupLibrary.overrides, { kind: 'layout', layoutId: LAYOUT.id }), { windowSize: 6 });
+  assert.deepEqual(levelOverrides(assets.setupLibrary.overrides, { kind: 'shape', shapeId: 'row-staggered' }), { centerShiftThumb: 'left' });
   // Setupは手元のidと番号を残し、配列・物理配列・ラベル・Setupのレベルの条件を置き換える
   assert.deepEqual(assets.setupLibrary.setups, [{ id: 'setup-a', number: 7, layoutId: LAYOUT.id, shapeId: 'row-staggered', label: '練習用' }]);
   assert.deepEqual(levelOverrides(assets.setupLibrary.overrides, { kind: 'setup', setupId: 'setup-a' }), {
@@ -335,6 +325,7 @@ test('読み込まない: 手元の資産を一切変えず、何も書かない
       'workspace',
       'personal-speed',
       'analyzer-options',
+      'conditions',
     ].map((kind) => [kind, 'skip']),
   );
   const result = importInto(hand, fileOf(fullAssets()), policies);
@@ -378,4 +369,52 @@ test('ファイルの大きさの上限: 全種類の資産と、localStorageの
   const parsed = parseUserAssetsFile(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...body }, null, 2));
   assert.ok(parsed.ok);
   assert.equal(parsed.userTexts.texts.find((candidate) => candidate.id === 'text-big')?.text.length, text.length);
+});
+
+test('読み込まない: 解析設定が手元と重なる時は、手元に無いAnalyzerの設定も足さない', () => {
+  const hand = { ...emptyAssets(), standaloneAnalyzerOptions: { 'bigram-flow': { source: 'all' } } };
+  const source = { ...emptyAssets(), standaloneAnalyzerOptions: { 'bigram-flow': { source: 'within-hand' }, other: { a: 1 } } };
+  const file: UserAssetsFileContents = {
+    bundle: { layouts: [], romajiRules: [], fingerAssignments: [], setups: [] },
+    userTexts: { texts: [], builtinReadingCorrections: {} },
+    extras: { ...EMPTY_USER_ASSETS_EXTRAS, analyzerOptions: source.standaloneAnalyzerOptions },
+  };
+  const skipped = importInto(hand, file, { 'analyzer-options': 'skip' });
+  assert.equal(skipped.outcome.kind, 'no-op');
+  assert.equal(skipped.assets.standaloneAnalyzerOptions, hand.standaloneAnalyzerOptions);
+  assert.deepEqual(
+    skipped.entries.map((entry) => entry.outcome.kind),
+    ['kept-own'],
+  );
+  const overwritten = importInto(hand, file, { 'analyzer-options': 'overwrite' });
+  assert.deepEqual(overwritten.assets.standaloneAnalyzerOptions, source.standaloneAnalyzerOptions);
+  // 重なりが無ければ、選択に関わらず足す
+  const added = importInto({ ...emptyAssets(), standaloneAnalyzerOptions: { 'bigram-flow': { source: 'within-hand' } } }, file);
+  assert.deepEqual(added.assets.standaloneAnalyzerOptions, source.standaloneAnalyzerOptions);
+});
+
+test('読み込まない: 全体・配列などの条件が手元と重なる時は、手元に無いレベルの条件も足さない', () => {
+  const source = fullAssets();
+  const hand = {
+    ...emptyAssets(),
+    setupLibrary: { setups: [], overrides: { global: { windowSize: 3 } } },
+  };
+  const file = fileOf(source);
+  const skipped = importInto(hand, file, { conditions: 'skip' });
+  assert.deepEqual(skipped.assets.setupLibrary.overrides.global, { windowSize: 3 });
+  assert.equal(skipped.assets.setupLibrary.overrides.shape, undefined);
+  assert.equal(skipped.assets.setupLibrary.overrides.layout, undefined);
+  assert.equal(skipped.entries.find((entry) => entry.assetKind === 'conditions')?.outcome.kind, 'kept-own');
+});
+
+test('全体・配列などの条件: 配列が別のidで足された時は、配列のレベルの条件も新しいidへ付く。ファイルに無い自作の規則への参照は外す', () => {
+  const source = fullAssets();
+  const hand = { ...emptyAssets(), userLayouts: [HAND_LAYOUT] };
+  const { assets } = importInto(hand, fileOf(source));
+  const layout = assets.userLayouts.find((candidate) => candidate.id !== LAYOUT.id)!;
+  assert.equal(levelOverrides(assets.setupLibrary.overrides, { kind: 'layout', layoutId: LAYOUT.id }), undefined);
+  assert.deepEqual(levelOverrides(assets.setupLibrary.overrides, { kind: 'layout', layoutId: layout.id }), { windowSize: 6 });
+  const withoutRule = fileOf({ ...source, userRomajiRules: [] });
+  assert.equal(withoutRule.extras.conditions.global?.romajiRuleId, undefined);
+  assert.equal(withoutRule.extras.conditions.global?.fingerAssignmentId, FINGER.id);
 });

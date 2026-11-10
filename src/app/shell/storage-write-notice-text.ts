@@ -17,6 +17,12 @@ export function storageKeyLabel(key: string): string {
   return STORAGE_KEY_LABELS.get(key) ?? 'その他の保存データ';
 }
 
+/** 読み込みで保存できなかった保存データを知らせる文。キーごとに別の文字列として書くので、失敗した保存データだけが保存されていない。 */
+export function importNotSavedText(failures: readonly StorageWriteFailure[]): string {
+  const labels = [...new Set(failures.map((failure) => storageKeyLabel(failure.key)))];
+  return `${labels.join('、')}は、容量が足りず保存できませんでした。ほかの種類の読み込みは保存されています`;
+}
+
 /** 文字数の表記。1万字以上は万字で丸める。 */
 export function characterCountText(length: number): string {
   return length >= 10_000 ? `${(length / 10_000).toFixed(1)}万字` : `${length}字`;

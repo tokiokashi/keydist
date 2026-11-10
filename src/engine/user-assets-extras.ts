@@ -5,6 +5,13 @@ import { SETTINGS_ITEM_SCHEMAS } from './settings-codec.ts';
 import type { SettingsValueMap } from './settings-items.ts';
 import { STANDALONE_ANALYZER_OPTIONS_CODEC } from './standalone-analyzer-options-codec.ts';
 import { initialStandaloneAnalyzerOptions, type StandaloneAnalyzerOptionsState } from './standalone-analyzer-options.ts';
+import {
+  decodeConditionLevels,
+  EMPTY_CONDITION_LEVELS,
+  encodeConditionLevels,
+  isEmptyConditionLevels,
+  type ConditionLevels,
+} from './user-assets-conditions.ts';
 import { decodeWorkspaces, encodeWorkspaces } from './workspace-codec.ts';
 import type { WorkspaceLibrary } from './workspace.ts';
 
@@ -20,6 +27,8 @@ export interface UserAssetsExtras {
   readonly personalSpeed: PersonalSpeed;
   /** Analyzerごとの最後に使った解析設定。 */
   readonly analyzerOptions: StandaloneAnalyzerOptionsState;
+  /** Setupとワークスペース以外のレベル（全体・物理配列・入力方式・配列）の条件。 */
+  readonly conditions: ConditionLevels;
 }
 
 export const EMPTY_USER_ASSETS_EXTRAS: UserAssetsExtras = {
@@ -27,6 +36,7 @@ export const EMPTY_USER_ASSETS_EXTRAS: UserAssetsExtras = {
   workspaces: [],
   personalSpeed: EMPTY_PERSONAL_SPEED,
   analyzerOptions: initialStandaloneAnalyzerOptions(),
+  conditions: EMPTY_CONDITION_LEVELS,
 };
 
 export function isEmptyUserAssetsExtras(extras: UserAssetsExtras): boolean {
@@ -34,7 +44,8 @@ export function isEmptyUserAssetsExtras(extras: UserAssetsExtras): boolean {
     extras.presets.length === 0 &&
     extras.workspaces.length === 0 &&
     extras.personalSpeed.calibration === undefined &&
-    Object.keys(extras.analyzerOptions).length === 0
+    Object.keys(extras.analyzerOptions).length === 0 &&
+    isEmptyConditionLevels(extras.conditions)
   );
 }
 
@@ -64,6 +75,7 @@ export function decodeUserAssetsExtras(payload: Record<string, unknown>, diagnos
       initialStandaloneAnalyzerOptions(),
       diagnostics,
     ),
+    conditions: decodeConditionLevels(payload.conditions, 'conditions', diagnostics),
   };
 }
 
@@ -74,5 +86,6 @@ export function encodeUserAssetsExtras(extras: UserAssetsExtras): Record<string,
     ...(extras.workspaces.length === 0 ? {} : { workspaces: encodeWorkspaces(extras.workspaces) }),
     ...(extras.personalSpeed.calibration === undefined ? {} : { personalSpeed: PERSONAL_SPEED_CODEC.encode(extras.personalSpeed) }),
     ...(Object.keys(extras.analyzerOptions).length === 0 ? {} : { analyzerOptions: STANDALONE_ANALYZER_OPTIONS_CODEC.encode(extras.analyzerOptions) }),
+    ...(isEmptyConditionLevels(extras.conditions) ? {} : { conditions: encodeConditionLevels(extras.conditions) }),
   };
 }

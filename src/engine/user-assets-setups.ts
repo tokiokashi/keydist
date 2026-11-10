@@ -13,7 +13,7 @@ import { MISSING_LAYOUT_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 /**
  * 資産のファイルに入れるSetupと、読み込み時の突き合わせ。ファイルが運ぶのは、Setupの配列・物理配列・ラベルと、
  * そのSetupのレベルの条件だけ。番号は持たない（読み込んだ側が手持ちの最大＋1から振る）。
- * 全体・配列などのレベルの条件は資産のファイルに入れない（Setupだけが運ぶ）。
+ * 全体・配列などのレベルの条件は別の項目（`user-assets-conditions.ts`）が運ぶ。
  */
 
 export type SetupLibraryOfSettings = SetupLibrary<SettingsValueMap>;
@@ -176,27 +176,33 @@ export interface SetupIdMaps {
  * （手元の同じidの別の資産に結び付けず、継承する値で解決させるため）。
  * 中身の比較より前に行うので、外した参照の有無だけで別のSetupと判定されない。
  */
-function remapSetup(setup: UserAssetSetup, maps: SetupIdMaps): UserAssetSetup {
-  const overrides = setup.overrides;
-  const mapped: Record<string, unknown> | undefined = overrides === undefined ? undefined : { ...overrides };
-  if (mapped !== undefined) {
-    if (typeof mapped.romajiRuleId === 'string') {
-      const id = isBuiltin(mapped.romajiRuleId) ? mapped.romajiRuleId : maps.rules.get(mapped.romajiRuleId);
-      if (id === undefined) delete mapped.romajiRuleId;
-      else mapped.romajiRuleId = id;
-    }
-    if (typeof mapped.fingerAssignmentId === 'string') {
-      const id = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, mapped.fingerAssignmentId)
-        ? mapped.fingerAssignmentId
-        : maps.fingers.get(mapped.fingerAssignmentId);
-      if (id === undefined) delete mapped.fingerAssignmentId;
-      else mapped.fingerAssignmentId = id;
-    }
+export function remapOverrideReferences(
+  overrides: LevelOverrides<SettingsValueMap> | undefined,
+  maps: Pick<SetupIdMaps, 'rules' | 'fingers'>,
+): LevelOverrides<SettingsValueMap> | undefined {
+  if (overrides === undefined) return undefined;
+  const mapped: Record<string, unknown> = { ...overrides };
+  if (typeof mapped.romajiRuleId === 'string') {
+    const id = isBuiltin(mapped.romajiRuleId) ? mapped.romajiRuleId : maps.rules.get(mapped.romajiRuleId);
+    if (id === undefined) delete mapped.romajiRuleId;
+    else mapped.romajiRuleId = id;
   }
+  if (typeof mapped.fingerAssignmentId === 'string') {
+    const id = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, mapped.fingerAssignmentId)
+      ? mapped.fingerAssignmentId
+      : maps.fingers.get(mapped.fingerAssignmentId);
+    if (id === undefined) delete mapped.fingerAssignmentId;
+    else mapped.fingerAssignmentId = id;
+  }
+  return mapped as LevelOverrides<SettingsValueMap>;
+}
+
+function remapSetup(setup: UserAssetSetup, maps: SetupIdMaps): UserAssetSetup {
+  const mapped = remapOverrideReferences(setup.overrides, maps);
   return {
     ...setup,
     layoutId: maps.layouts.get(setup.layoutId) ?? setup.layoutId,
-    ...(mapped === undefined ? {} : { overrides: mapped as LevelOverrides<SettingsValueMap> }),
+    ...(mapped === undefined ? {} : { overrides: mapped }),
   };
 }
 

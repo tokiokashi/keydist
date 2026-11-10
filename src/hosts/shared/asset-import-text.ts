@@ -1,4 +1,5 @@
 import type { UserAssetImportEntry, UserAssetKind } from '#engine/user-assets-file.ts';
+import { CONDITIONS_LABEL } from '#engine/user-assets-conditions.ts';
 
 /**
  * 書き出しファイルに同梱された資産の読み込み結果の文（DOMを使わない計算）。Workspaceとプリセットのどちらのファイルにも同梱される。
@@ -16,6 +17,7 @@ const ASSET_NOUNS: Readonly<Record<UserAssetKind, string>> = {
   workspace: 'Workspace',
   'personal-speed': '個人速度',
   'analyzer-options': '解析設定',
+  conditions: CONDITIONS_LABEL,
   ...TEXT_ASSET_NOUNS,
 };
 

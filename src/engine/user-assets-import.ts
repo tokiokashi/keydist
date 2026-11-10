@@ -2,6 +2,7 @@ import type { Command } from '#input/commands/index.ts';
 import type { Preset } from '#input/presets/index.ts';
 import type { KeydistAssets } from './commands.ts';
 import { stableStringify } from './cache-key.ts';
+import { CONDITIONS_LABEL, mergeConditionLevels } from './user-assets-conditions.ts';
 import { remapPresetValues } from './preset-assets.ts';
 import type { SettingsValueMap } from './settings-items.ts';
 import { EMPTY_USER_ASSETS_EXTRAS, type UserAssetsExtras } from './user-assets-extras.ts';
@@ -20,6 +21,7 @@ import {
   type UserAssetsFileHoldings,
   type UserTextsBundle,
 } from './user-assets-file.ts';
+import type { SetupIdMaps } from './user-assets-setups.ts';
 import { remapWorkspaceAssets, remapWorkspaceTexts } from './workspace-assets.ts';
 import { mergeWorkspaces, workspaceContent } from './workspace-import.ts';
 import type { Workspace, WorkspaceLibrary } from './workspace.ts';
@@ -50,7 +52,7 @@ export interface UserAssetsImportPlan {
 
 export interface UserAssetsImportMerge {
   readonly changes: Partial<KeydistAssets>;
-  /** 配列、ローマ字規則、指の割り当て、Setup、テキスト、組み込みテキストの読みの直し、プリセット、Workspace、個人速度、解析設定の順。 */
+  /** 配列、ローマ字規則、指の割り当て、Setup、テキスト、組み込みテキストの読みの直し、プリセット、Workspace、全体・配列などの条件、個人速度、解析設定の順。 */
   readonly entries: readonly UserAssetImportEntry[];
 }
 
@@ -167,6 +169,8 @@ function mergeAnalyzerOptions(
       if (overwrite) value = { ...value, [id]: incoming[id] };
     }
   }
+  // 手元と違う設定があり上書きを選ばなかった時は、この種類を丸ごと読み込まない（手元に無いAnalyzerの設定も足さない）
+  if (conflicted && !overwrite) return { value: current, entries: [{ assetKind: 'analyzer-options', name, outcome: { kind: 'kept-own' } }] };
   const outcome: UserAssetImportEntry['outcome'] = conflicted
     ? overwrite
       ? { kind: 'overwritten', previousName: name }
@@ -175,6 +179,26 @@ function mergeAnalyzerOptions(
       ? { kind: 'added' }
       : { kind: 'skipped-same', existingName: name };
   return { value, entries: [{ assetKind: 'analyzer-options', name, outcome }] };
+}
+
+/** Setupのレベル以外の条件を突き合わせる。内訳は1行にまとめる。 */
+function mergeConditions(
+  current: KeydistAssets['setupLibrary'],
+  incoming: UserAssetsExtras['conditions'],
+  maps: SetupIdMaps,
+  policies: ImportPolicies | undefined,
+): { readonly library: KeydistAssets['setupLibrary']; readonly entries: readonly UserAssetImportEntry[] } {
+  const name = CONDITIONS_LABEL;
+  const policy = importPolicyOf(policies, 'conditions');
+  const merged = mergeConditionLevels(current.overrides, incoming, maps, policy);
+  const kind = merged.conflicted > 0 ? (policy === 'overwrite' ? 'overwritten' : 'kept-own') : merged.added > 0 ? 'added' : 'skipped-same';
+  if (merged.conflicted === 0 && merged.added === 0 && merged.same === 0) return { library: current, entries: [] };
+  const outcome: UserAssetImportEntry['outcome'] =
+    kind === 'overwritten' ? { kind, previousName: name } : kind === 'skipped-same' ? { kind, existingName: name } : { kind };
+  return {
+    library: merged.value === current.overrides ? current : { ...current, overrides: merged.value },
+    entries: [{ assetKind: 'conditions', name, outcome }],
+  };
 }
 
 /** ファイルの中身を手元へ突き合わせた結果。何も変わらなければ`changes`は空。 */
@@ -195,10 +219,11 @@ export function mergeUserAssetsFile(
     stamp,
     policies,
   );
+  const conditions = mergeConditions(assets.assets.setupLibrary, extras.conditions, assets.idMaps, policies);
   const personalSpeed = mergePersonalSpeed(current.personalSpeed, extras.personalSpeed, policies);
   const analyzerOptions = mergeAnalyzerOptions(current.standaloneAnalyzerOptions, extras.analyzerOptions, policies);
   const changes: Partial<KeydistAssets> = {
-    ...userAssetChanges(current, assets.assets),
+    ...userAssetChanges(current, { ...assets.assets, setupLibrary: conditions.library }),
     ...(texts.library === current.textLibrary ? {} : { textLibrary: texts.library }),
     ...(presets.library === current.presetLibrary ? {} : { presetLibrary: presets.library }),
     ...(workspaces.library === current.workspaces ? {} : { workspaces: workspaces.library }),
@@ -207,7 +232,15 @@ export function mergeUserAssetsFile(
   };
   return {
     changes,
-    entries: [...assets.entries, ...texts.entries, ...presets.entries, ...workspaces.entries, ...personalSpeed.entries, ...analyzerOptions.entries],
+    entries: [
+      ...assets.entries,
+      ...texts.entries,
+      ...presets.entries,
+      ...workspaces.entries,
+      ...conditions.entries,
+      ...personalSpeed.entries,
+      ...analyzerOptions.entries,
+    ],
   };
 }
 

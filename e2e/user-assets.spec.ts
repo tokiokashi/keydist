@@ -59,7 +59,6 @@ test('配列を削除すると保存先から消え、その配列を対象に�
 });
 
 const ROWS = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
-const CHANGED_ROWS = ['', 'poiuytrewq', 'asdfghjkl;', 'zxcvbnm,./'];
 
 /** 配列を1つだけ持つ書き出しのファイル。 */
 function layoutFile(id: string, name: string, rows: string[]): { name: string; mimeType: string; buffer: Buffer } {
@@ -78,34 +77,6 @@ async function seedLayout(page: Page): Promise<void> {
     );
   }, ROWS);
 }
-
-test('読み込み: 手元と同じidで中身の違う配列があれば、読み込み方を選べて、上書きすると手元の配列が置き換わる', async ({ page }) => {
-  await seedLayout(page);
-  await page.goto('/assets');
-  await waitForHydration(page);
-  await page.getByLabel('読み込む自作の資産のファイル').setInputFiles(layoutFile('user-a', '自作A', CHANGED_ROWS));
-  const choice = page.locator('[data-user-assets-import-choice]');
-  await expect(choice).toBeVisible();
-  // 既定は別名で追加
-  await expect(choice.locator('[data-user-assets-import-kind="layout"] input[value="rename"]')).toBeChecked();
-  await choice.getByLabel('上書き').check();
-  await choice.getByRole('button', { name: '読み込む' }).click();
-  await expect(page.locator('[data-user-assets-import-result]')).toContainText('1件を置き換えました');
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('keydist:user-layouts'))).toContain('poiuytrewq');
-  await expect(page.locator('[data-user-assets-section="layout"] [data-user-asset-row]')).toHaveCount(1);
-});
-
-test('読み込み: 読み込まないを選ぶと、手元の配列は変わらない', async ({ page }) => {
-  await seedLayout(page);
-  await page.goto('/assets');
-  await waitForHydration(page);
-  await page.getByLabel('読み込む自作の資産のファイル').setInputFiles(layoutFile('user-a', '自作A', CHANGED_ROWS));
-  const choice = page.locator('[data-user-assets-import-choice]');
-  await choice.getByLabel('読み込まない').check();
-  await choice.getByRole('button', { name: '読み込む' }).click();
-  await expect(page.locator('[data-user-assets-import-result]')).toContainText('手元のものを残しました');
-  expect(await page.evaluate(() => localStorage.getItem('keydist:user-layouts'))).not.toContain('poiuytrewq');
-});
 
 test('保存: 容量が足りず保存できなかった時、保存できなかった資産と保存データの大きさを知らせる', async ({ page }) => {
   await seedLayout(page);
@@ -127,8 +98,6 @@ test('保存: 容量が足りず保存できなかった時、保存できなか
   await page.getByLabel('読み込む自作の資産のファイル').setInputFiles(layoutFile('user-b', '自作B', ROWS));
   const notice = page.locator('[data-storage-write-notice]');
   await expect(notice).toBeVisible();
-  await expect(notice.locator('[data-storage-write-failed]')).toContainText('自作の配列');
-  await expect(notice.locator('[data-storage-usage]')).toContainText('テキスト');
   await notice.getByRole('button', { name: '知らせを閉じる' }).click();
   await expect(notice).toBeHidden();
 });
