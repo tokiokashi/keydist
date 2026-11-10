@@ -6,8 +6,8 @@
 /** 分野別のテキストの目安の字数（既定の条件で評価に渡す字数）。 */
 export const CATEGORY_TARGET_EVAL_CHARS = 10000;
 
-/** 分野を混ぜたテキストで、出どころ（青空文庫の作品1つ・Wikipediaの分野1つ）ごとに取る字数。出どころは12。 */
-export const MIXED_PER_SOURCE_EVAL_CHARS = Math.round(CATEGORY_TARGET_EVAL_CHARS / 12);
+/** 分野を混ぜたテキストで、出どころ（青空文庫の作品1つ・Wikipediaの分野1つ）ごとに取る字数。出どころは13。 */
+export const MIXED_PER_SOURCE_EVAL_CHARS = Math.round(CATEGORY_TARGET_EVAL_CHARS / 13);
 
 /** 分野を混ぜたテキストで、1つの出どころから取る塊の数。出どころを順に回って塊を並べる。 */
 export const MIXED_CHUNKS_PER_SOURCE = 3;
@@ -149,14 +149,25 @@ export const WIKIPEDIA_CATEGORIES: readonly WikipediaCategory[] = [
     ],
   },
   {
-    id: 'wiki-history',
-    name: '歴史',
+    id: 'wiki-japan-history',
+    name: '日本史',
     articles: [
       { title: '江戸時代', pageId: 2740, rowOffset: 1763, sha256: '2e44a4c40eb60bf282dade1786be1b71d9137207a1ebe5e007777836230e0ab7' },
       { title: '明治維新', pageId: 4516, rowOffset: 2873, sha256: 'd12f0751e35c36df4df38ed81c3da04b3a5e45f8876b1eb8da6817c0a16b2c2a' },
       { title: '織田信長', pageId: 5697, rowOffset: 3656, sha256: '29888a0fa429c8b5e11eba2e419b2479d2466941962ff4d43f8b29312ad0961d' },
       { title: '鎌倉幕府', pageId: 8466, rowOffset: 5382, sha256: 'd1a8afb2737723597567ce68a0b534418ba0279c13314030b663f95015f979fa' },
       { title: '縄文時代', pageId: 823031, rowOffset: 302520, sha256: 'a5490716cf991058f9cdfdec9819de70842c9cde574ac63edbf445247b6ed696' },
+    ],
+  },
+  {
+    id: 'wiki-world-history',
+    name: '世界史',
+    articles: [
+      { title: 'ローマ帝国', pageId: 7800, rowOffset: 4960, sha256: '2e1ae7c2b9d898458e4b27b3172d34c47542951df2d07e0b11c8967cb564455c' },
+      { title: 'フランス革命', pageId: 556062, rowOffset: 218163, sha256: '9d6c19aac5099314574b8847869e2bb8db4761b6620da609c9fa117ebadfdc49' },
+      { title: '産業革命', pageId: 82790, rowOffset: 45367, sha256: '12584a41f755ab98c6ef5d2684a884a37824d6ac199bdaf0e2c3bf90718e6a11' },
+      { title: '第一次世界大戦', pageId: 5331, rowOffset: 3438, sha256: 'f329ae5ddff204d16d5b906acbc289f6fb534a951fd35e38d5469f5e4c5026f9' },
+      { title: '大航海時代', pageId: 25200, rowOffset: 15118, sha256: '0982cd91ad18def5bf55132e28bcbab87a62f42310f3263d65052f5f047e4f70' },
     ],
   },
   {
@@ -217,4 +228,4 @@ export const WIKIPEDIA_CATEGORIES: readonly WikipediaCategory[] = [
 ];
 
 /** 分野を混ぜたテキストの `sampleId` と名前。 */
-export const MIXED_TEXT = { id: 'mixed', name: '混合（青空文庫4作品とWikipedia8分野）' } as const;
+export const MIXED_TEXT = { id: 'mixed', name: '混合（青空文庫4作品とWikipedia9分野）' } as const;

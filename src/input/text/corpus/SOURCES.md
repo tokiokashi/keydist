@@ -43,7 +43,7 @@
 
 ## CC BY-SA 4.0
 
-### 混合（青空文庫4作品とWikipedia8分野）（`mixed.txt`）
+### 混合（青空文庫4作品とWikipedia9分野）（`mixed.txt`）
 
 - [『人間失格』](https://www.aozora.gr.jp/cards/000035/card301.html): 太宰治（没年1948）。青空文庫。底本：「人間失格」新潮文庫、新潮社、1952（昭和27）年10月30日発行、1985（昭和60）年1月30日100刷改版。入力：細渕真弓、校正：八巻美惠。ルビと入力者注を取り除き、一部の文を抜粋しました
 - [『銀河鉄道の夜』](https://www.aozora.gr.jp/cards/000081/card43737.html): 宮沢賢治（没年1933）。青空文庫。底本：「銀河鉄道の夜」角川文庫、角川書店、1969（昭和44）年7月20日改版初版発行、1987（昭和62）年3月30日改版50版。入力：幸野素子、校正：土屋隆。ルビと入力者注を取り除き、一部の文を抜粋しました
@@ -58,6 +58,9 @@
 - [江戸時代](https://ja.wikipedia.org/wiki/%E6%B1%9F%E6%88%B8%E6%99%82%E4%BB%A3)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E6%B1%9F%E6%88%B8%E6%99%82%E4%BB%A3&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [明治維新](https://ja.wikipedia.org/wiki/%E6%98%8E%E6%B2%BB%E7%B6%AD%E6%96%B0)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E6%98%8E%E6%B2%BB%E7%B6%AD%E6%96%B0&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [織田信長](https://ja.wikipedia.org/wiki/%E7%B9%94%E7%94%B0%E4%BF%A1%E9%95%B7)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E7%B9%94%E7%94%B0%E4%BF%A1%E9%95%B7&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
+- [ローマ帝国](https://ja.wikipedia.org/wiki/%E3%83%AD%E3%83%BC%E3%83%9E%E5%B8%9D%E5%9B%BD)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E3%83%AD%E3%83%BC%E3%83%9E%E5%B8%9D%E5%9B%BD&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
+- [フランス革命](https://ja.wikipedia.org/wiki/%E3%83%95%E3%83%A9%E3%83%B3%E3%82%B9%E9%9D%A9%E5%91%BD)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E3%83%95%E3%83%A9%E3%83%B3%E3%82%B9%E9%9D%A9%E5%91%BD&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
+- [産業革命](https://ja.wikipedia.org/wiki/%E7%94%A3%E6%A5%AD%E9%9D%A9%E5%91%BD)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E7%94%A3%E6%A5%AD%E9%9D%A9%E5%91%BD&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [哲学](https://ja.wikipedia.org/wiki/%E5%93%B2%E5%AD%A6)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E5%93%B2%E5%AD%A6&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [倫理学](https://ja.wikipedia.org/wiki/%E5%80%AB%E7%90%86%E5%AD%A6)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E5%80%AB%E7%90%86%E5%AD%A6&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [功利主義](https://ja.wikipedia.org/wiki/%E5%8A%9F%E5%88%A9%E4%B8%BB%E7%BE%A9)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E5%8A%9F%E5%88%A9%E4%B8%BB%E7%BE%A9&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
@@ -90,13 +93,21 @@
 - [インターネット](https://ja.wikipedia.org/wiki/%E3%82%A4%E3%83%B3%E3%82%BF%E3%83%BC%E3%83%8D%E3%83%83%E3%83%88)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E3%82%A4%E3%83%B3%E3%82%BF%E3%83%BC%E3%83%8D%E3%83%83%E3%83%88&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [半導体](https://ja.wikipedia.org/wiki/%E5%8D%8A%E5%B0%8E%E4%BD%93)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E5%8D%8A%E5%B0%8E%E4%BD%93&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 
-### Wikipedia・歴史（`wiki-history.txt`）
+### Wikipedia・日本史（`wiki-japan-history.txt`）
 
 - [江戸時代](https://ja.wikipedia.org/wiki/%E6%B1%9F%E6%88%B8%E6%99%82%E4%BB%A3)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E6%B1%9F%E6%88%B8%E6%99%82%E4%BB%A3&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [明治維新](https://ja.wikipedia.org/wiki/%E6%98%8E%E6%B2%BB%E7%B6%AD%E6%96%B0)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E6%98%8E%E6%B2%BB%E7%B6%AD%E6%96%B0&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [織田信長](https://ja.wikipedia.org/wiki/%E7%B9%94%E7%94%B0%E4%BF%A1%E9%95%B7)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E7%B9%94%E7%94%B0%E4%BF%A1%E9%95%B7&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [鎌倉幕府](https://ja.wikipedia.org/wiki/%E9%8E%8C%E5%80%89%E5%B9%95%E5%BA%9C)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E9%8E%8C%E5%80%89%E5%B9%95%E5%BA%9C&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 - [縄文時代](https://ja.wikipedia.org/wiki/%E7%B8%84%E6%96%87%E6%99%82%E4%BB%A3)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E7%B8%84%E6%96%87%E6%99%82%E4%BB%A3&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
+
+### Wikipedia・世界史（`wiki-world-history.txt`）
+
+- [ローマ帝国](https://ja.wikipedia.org/wiki/%E3%83%AD%E3%83%BC%E3%83%9E%E5%B8%9D%E5%9B%BD)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E3%83%AD%E3%83%BC%E3%83%9E%E5%B8%9D%E5%9B%BD&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
+- [フランス革命](https://ja.wikipedia.org/wiki/%E3%83%95%E3%83%A9%E3%83%B3%E3%82%B9%E9%9D%A9%E5%91%BD)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E3%83%95%E3%83%A9%E3%83%B3%E3%82%B9%E9%9D%A9%E5%91%BD&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
+- [産業革命](https://ja.wikipedia.org/wiki/%E7%94%A3%E6%A5%AD%E9%9D%A9%E5%91%BD)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E7%94%A3%E6%A5%AD%E9%9D%A9%E5%91%BD&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
+- [第一次世界大戦](https://ja.wikipedia.org/wiki/%E7%AC%AC%E4%B8%80%E6%AC%A1%E4%B8%96%E7%95%8C%E5%A4%A7%E6%88%A6)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E7%AC%AC%E4%B8%80%E6%AC%A1%E4%B8%96%E7%95%8C%E5%A4%A7%E6%88%A6&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
+- [大航海時代](https://ja.wikipedia.org/wiki/%E5%A4%A7%E8%88%AA%E6%B5%B7%E6%99%82%E4%BB%A3)、[履歴](https://ja.wikipedia.org/w/index.php?title=%E5%A4%A7%E8%88%AA%E6%B5%B7%E6%99%82%E4%BB%A3&action=history): Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）
 
 ### Wikipedia・哲学（`wiki-philosophy.txt`）
 

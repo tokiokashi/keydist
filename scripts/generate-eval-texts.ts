@@ -1,6 +1,6 @@
 // 同梱する評価テキスト（src/input/text/corpus/）を、青空文庫の作品とWikipediaの記事から作る。
 //
-//   青空文庫から小説・童話・随筆・講演の4本、Wikipediaから8分野の8本、12の出どころから均等に取った分野を混ぜた1本。
+//   青空文庫から小説・童話・随筆・講演の4本、Wikipediaから9分野の9本、13の出どころから均等に取った分野を混ぜた1本。
 //   どれも、既定の条件で評価に渡す字数が約1万字になるように、文の単位で取る（規則はscripts/eval-text-core.ts）。
 //
 //   node --experimental-strip-types scripts/generate-eval-texts.ts           本文・出典の一覧・出典の表示用のJSONを作り直して書く
@@ -155,7 +155,7 @@ export interface Originals {
   readonly wikipedia: ReadonlyMap<string, string>;
 }
 
-/** 原文から、13本のテキストを作る。 */
+/** 原文から、14本のテキストを作る。 */
 export function buildTexts(originals: Originals, toReading: (text: string) => string): BuiltText[] {
   const cache = new Map<string, number>();
   const evalChars = (sentence: string): number => {
@@ -216,7 +216,7 @@ export function buildTexts(originals: Originals, toReading: (text: string) => st
     });
   }
 
-  // 分野を混ぜたテキスト: 12の出どころから均等に取る。分野別のテキストで取った文の続きから取るので、同じ文は入らない。
+  // 分野を混ぜたテキスト: 13の出どころから均等に取る。分野別のテキストで取った文の続きから取るので、同じ文は入らない。
   // 出どころを順に回って塊を並べる。取る順も並べる順と同じにし、残りの字数を残りの塊の数で割って予算にする（文の単位で取るので、
   // 予算との差が積もらないようにする）
   interface MixedSource {
@@ -281,7 +281,7 @@ function record(source: string, from: number, passage: Passage, text: string): T
   return { source, from, sentences: passage.sentences, evalChars: passage.evalChars, sourceChars: [...corpusBodyText(text)].length };
 }
 
-/** 選択肢の並び。分野を混ぜた1本、青空文庫の4本、Wikipediaの8本の順。 */
+/** 選択肢の並び。分野を混ぜた1本、青空文庫の4本、Wikipediaの9本の順。 */
 export function orderedEntries(built: readonly BuiltText[]): BuiltText[] {
   const mixed = built.filter((text) => text.entry.sampleId === MIXED_TEXT.id);
   const rest = built.filter((text) => text.entry.sampleId !== MIXED_TEXT.id);

@@ -1,4 +1,4 @@
-// 同梱する日本語のテキスト全部（既定の「吾輩は猫である」の冒頭と、src/input/text/corpus/ の13本）を検査する。
+// 同梱する日本語のテキスト全部（既定の「吾輩は猫である」の冒頭と、src/input/text/corpus/ の14本）を検査する。
 //
 //   node --experimental-strip-types scripts/check-sample-text.ts
 //
