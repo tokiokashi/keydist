@@ -48,8 +48,8 @@ test('日本語: 英字と数字を取り除く範囲は、配列が見出しと
   assert.equal(out, 'あい');
 });
 
-test('日本語: 英字と数字を取り除く範囲に、漢数字・〇・ギリシャ文字・十進でない数字は入らない', () => {
-  const text = '一二〇〇αβ①';
+test('日本語: 英字と数字を取り除く範囲に、漢数字・〇・ギリシャ文字・十進でない数字・ローマ数字は入らない', () => {
+  const text = '一二〇〇αβ①Ⅰⅿ';
   assert.equal(prepareEvaluationText(text, { language: 'ja', keepSymbols: false, keepAlphanumerics: false, ...NO_HEADINGS }), text);
 });
 

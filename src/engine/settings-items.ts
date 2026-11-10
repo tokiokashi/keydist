@@ -160,7 +160,7 @@ export const SETTINGS_ITEMS = {
   }),
   /**
    * 日本語のテキストで、英字と数字も評価に渡すか（仕様 §4.6）。既定は渡さない。
-   * `keepSymbols` と同じ理由で、全体とWorkspaceにだけ置く。
+   * `keepSymbols`と同じ理由で、全体とWorkspaceにだけ置く。
    */
   keepAlphanumerics: defineItem<boolean>({
     id: 'keepAlphanumerics',

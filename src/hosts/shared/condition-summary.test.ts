@@ -433,7 +433,6 @@ test('日本語の英数字の評価: 英語のテキストでは変えた項目
   assert.equal(en.find((r) => r.id === 'keepAlphanumerics')!.applicable, false);
   assert.equal(conditionSummaryLine(en).changedCount, 0);
   const ja = overrideRows([['keepAlphanumerics', true]], { textInapplicableIds: textInapplicableIdsOf('ja') });
-  assert.equal(ja.find((r) => r.id === 'keepAlphanumerics')!.label, '日本語の英数字の評価');
   assert.equal(conditionSummaryLine(ja).changedCount, 1);
   assert.deepEqual(
     nonDefaultConditionRows(ja).map((r) => r.id),

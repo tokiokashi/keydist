@@ -149,7 +149,7 @@ interface Unit {
   readonly tokens: readonly ReadingToken[];
 }
 
-/** 前処理（仕様 §4.6）が1文字を残すか。残す文字は、記号でも英字と数字でもない文字と `、` `。`、および `、` `。` に書き換わるか配列が直接持つ半角の `,` `.` */
+/** 前処理（仕様 §4.6）が1文字を残すか。残す文字は、記号でも英字と数字でもない文字と`、` `。`、および`、` `。`に書き換わるか配列が直接持つ半角の`,` `.` */
 function keptByPreprocess(char: string): boolean {
   if (isAlphanumericChar(char)) return false;
   return !isSymbolChar(char) || char === '、' || char === '。' || char === ',' || char === '.';
