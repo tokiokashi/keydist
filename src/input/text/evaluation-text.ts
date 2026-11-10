@@ -6,9 +6,9 @@ import type { TextLanguage } from './language.ts';
  * 2. 半角の `,` `.` を、配列が見出しとして直接持たない時だけ `、` `。` に書き換える
  * 3. 記号を取り除く。既定は `、` `。`（2.で書き換えた `,` `.` を含む）と、配列が見出しとして直接持つ半角の `,` `.` だけを残し、
  *    `keepSymbols` なら記号をすべて残す
- * 4. 英字と数字を取り除く。`keepAlphanumerics` なら取り除かない
+ * 4. 英字と数字を取り除く。`keepAlphanumerics`なら取り除かない
  * 5. 全角の片仮名（`ァ`〜`ヴ`）を、配列が見出しとして持たない部分だけひらがなに書き換える。
- *    見出しの切り出しが `generateTrace` と同じテキスト（2.から4.の後）の上で行われるよう、最後に当てる
+ *    見出しの切り出しが`generateTrace`と同じテキスト（2.から4.の後）の上で行われるよう、最後に当てる
  *
  * 漢字を読みに直す段（仕様 §4.6の1段目）はこの関数の前に済んでいる。以下の番号は仕様 §4.6の段の番号。
  * 記号は、Unicodeの文字・結合文字・数字・空白のどれでもない文字。
@@ -18,7 +18,7 @@ export interface EvaluationTextOptions {
   readonly language: TextLanguage;
   /** 記号をすべて残すか（条件 `keepSymbols`）。 */
   readonly keepSymbols: boolean;
-  /** 英字と数字を取り除かずに残すか（条件 `keepAlphanumerics`）。 */
+  /** 英字と数字を取り除かずに残すか（条件`keepAlphanumerics`）。 */
   readonly keepAlphanumerics: boolean;
   /** 配列が、その1文字を見出しとして直接持つか。半角の `,` `.` を書き換えるかの判定に使う。 */
   readonly layoutHasChar: (char: string) => boolean;
@@ -69,9 +69,9 @@ export function isSymbolChar(char: string): boolean {
   return !NOT_SYMBOL.test(char);
 }
 
-const ALPHANUMERIC = /[\p{Script=Latin}\p{Nd}]/u;
+const ALPHANUMERIC = /\p{Nd}|(?=\p{Script=Latin})\p{L}/u;
 
-/** 英字（ラテン文字）か十進の数字か。半角と全角の両方を含む。漢数字と `〇` は含まない。 */
+/** 英字（ラテン文字の文字）か十進の数字か。半角と全角の両方を含む。漢数字・〇・ローマ数字は含まない。 */
 export function isAlphanumericChar(char: string): boolean {
   return ALPHANUMERIC.test(char);
 }
@@ -91,7 +91,7 @@ const HALFWIDTH_PUNCTUATION: Readonly<Record<string, string>> = {
 };
 
 /**
- * 日本語のテキストの前処理（2.から4.）の後も、その1文字が残るか。半角の `,` `.` は書き換えられても1文字のまま残る。
+ * 日本語のテキストの前処理（2.から4.）の後も、その1文字が残るか。半角の`,` `.`は書き換えられても1文字のまま残る。
  * 前処理で文字が減るのは、記号を取り除く段と英字と数字を取り除く段だけ。
  */
 function remainsAfterPreparation(char: string, scope: PreparationScope): boolean {
@@ -127,7 +127,7 @@ export function prepareEvaluationText(text: string, options: EvaluationTextOptio
 
 /**
  * 読みのテキストの区切り（コードポイントの位置）を、評価に渡すテキストのコードポイントの位置へ写す。
- * 前処理（`prepareEvaluationText`）で文字が減るのは、記号と英字と数字を取り除く段だけ（半角の `,` `.` の書き換えと片仮名の書き換えは1文字を1文字に直す）。
+ * 前処理（`prepareEvaluationText`）で文字が減るのは、記号と英字と数字を取り除く段だけ（半角の`,` `.`の書き換えと片仮名の書き換えは1文字を1文字に直す）。
  * そこで、区切りより前に残る文字の数を、区切りの新しい位置にする。
  * 先頭・末尾に来た区切りと、取り除いた記号に挟まれて重なった区切りは除く。結果は昇順で重複しない。
  * 日本語以外のテキストは前処理が何も変えないので、区切りをそのまま返す。

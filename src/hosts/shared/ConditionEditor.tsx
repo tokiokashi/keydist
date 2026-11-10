@@ -576,7 +576,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               日本語の英数字
               <InfoButton
                 name="日本語の英数字の評価"
-                description="ONでは、英字と数字も評価に入れます。OFFでは、半角と全角の英字と数字を評価に入れません。かな配列は、評価に入れた英数字を打てない文字として数えます。"
+                description="ONでは、英字と数字も評価に入れます。OFFでは、半角と全角の英字と数字を評価に入れません。ONでは、ローマ字を経る配列は半角の英数字を打ち、全角の英数字とかな配列の英数字は打てない文字として数えます。"
               />
             </h3>
             {row('keepAlphanumerics', (badge) => (
