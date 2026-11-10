@@ -17,8 +17,8 @@ import type { WorkspaceLibrary } from './workspace.ts';
  * payloadは`{ presets?, workspaces? }`で、どちらか一方だけのファイルも読める（無い側は空）。
  * 書く時は空の側を出さないので、プリセットだけ・Workspaceだけのファイルになる。
  *
- * `userAssets`は、Workspaceが参照する自作の資産（配列・ローマ字規則・指の割り当て・Setup。形は資産のファイルと同じ）を
- * 同梱する場所。無ければ（資産を参照しないWorkspace、プリセットだけのファイル）空になる。
+ * `userAssets`は、Workspaceとプリセットが参照する自作の資産（配列・ローマ字規則・指の割り当て・Setup。形は資産のファイルと同じ）を
+ * 同梱する場所。プリセットが同梱するのは、値が指すローマ字規則と指の割り当てだけ。無ければ（資産を参照しないファイル）空になる。
  * 項目を足しただけで、無いファイルは同じ形で読めるので版は上げない。
  *
  * 要素の読み方は、手元の保存と同じ`decodePresets`・`decodeWorkspaces`を使う（壊れた要素だけ捨てて診断を積む）。
@@ -27,7 +27,7 @@ import type { WorkspaceLibrary } from './workspace.ts';
 export interface PresetFileContents {
   readonly presets: readonly Preset<SettingsValueMap>[];
   readonly workspaces: WorkspaceLibrary;
-  /** Workspaceに同梱した自作の資産。 */
+  /** Workspaceとプリセットに同梱した自作の資産。 */
   readonly userAssets: UserAssetsBundle;
 }
 
