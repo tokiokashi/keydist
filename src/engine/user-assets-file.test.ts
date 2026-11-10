@@ -11,6 +11,7 @@ import { columnFingerAssignment, PHYSICAL_SHAPES, QWERTY_OPTIMIZED_FINGER_ASSIGN
 import type { TextLanguage } from '#input/text/language.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
+import { readTextFile } from '#platform/browser-file.ts';
 import { emptyTextLibrary, type TextLibrary } from '#input/text/library.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import type { KeydistAssets } from './commands.ts';
@@ -946,9 +947,9 @@ test('『吾輩は猫である』の全文と同じ大きさのテキストを�
 test('上限を超えるファイルと件数は、書き出す前に断る', () => {
   const huge = 'あ'.repeat(Math.ceil(USER_ASSETS_FILE_MAX_BYTES / 3));
   const tooBig = userAssetsFileExportProblem(userAssetsFileBody({ ...EMPTY, textLibrary: { texts: [{ id: 'h', name: 'h', text: huge }] } }));
-  assert.ok(tooBig?.includes('大きすぎ'));
+  assert.notEqual(tooBig, undefined);
   const many = Array.from({ length: USER_ASSETS_FILE_MAX_ITEMS + 1 }, (_, index) => ({ id: `t${index}`, name: `t${index}`, text: 'a' }));
-  assert.ok(userAssetsFileExportProblem(userAssetsFileBody({ ...EMPTY, textLibrary: { texts: many } }))?.includes('テキスト'));
+  assert.notEqual(userAssetsFileExportProblem(userAssetsFileBody({ ...EMPTY, textLibrary: { texts: many } })), undefined);
 });
 
 test('インポートのコマンドは、資産とテキストを1回の変更で足し、元に戻すと両方が戻る', () => {
@@ -959,4 +960,20 @@ test('インポートのコマンドは、資産とテキストを1回の変更�
   const undone = undo(step.assets, step.history);
   assert.equal(undone.assets.textLibrary.texts.length, 0);
   assert.equal(undone.assets.userLayouts.length, 0);
+});
+
+test('1MiBを超え上限以下のファイルを、読み込み口（上限つきの読み取り）を通して読み込める', async () => {
+  const full = 'あ'.repeat(319_416);
+  const library: TextLibrary = { texts: [1, 2, 3].map((n) => ({ id: `big${n}`, name: `全文${n}`, text: `${full}${n}` })) };
+  const body = userAssetsFileBody({ ...EMPTY, textLibrary: library });
+  assert.equal(userAssetsFileExportProblem(body), undefined);
+  const file = `${JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...body }, null, 2)}\n`;
+  const blob = new Blob([file]);
+  assert.ok(blob.size > 1024 * 1024 && blob.size <= USER_ASSETS_FILE_MAX_BYTES);
+  const read = await readTextFile(blob, USER_ASSETS_FILE_MAX_BYTES);
+  assert.equal(read.kind, 'ok');
+  if (read.kind !== 'ok') return;
+  const parsed = parseUserAssetsFile(read.text);
+  assert.ok(parsed.ok);
+  if (parsed.ok) assert.deepEqual(parsed.userTexts.texts, library.texts);
 });

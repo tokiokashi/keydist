@@ -1,5 +1,5 @@
 import { TEXT_ASSET_NOUNS } from '#hosts/shared/asset-import-text.ts';
-import type { UserAssetImportEntry, UserAssetKind, UserAssetsFileHoldings } from '#engine/user-assets-file.ts';
+import { userTextsBundleOf, type UserAssetImportEntry, type UserAssetKind, type UserAssetsFileHoldings } from '#engine/user-assets-file.ts';
 
 /** 書き出しのファイル名。日付を入れて、ダウンロード先で見分けられるようにする。 */
 export function userAssetsFileName(date: Date): string {
@@ -23,7 +23,7 @@ export function exportedText(assets: UserAssetsFileHoldings): string {
     ['finger-assignment', assets.fingerAssignments.length],
     ['setup', assets.setupLibrary.setups.length],
     ['text', assets.textLibrary.texts.length],
-    ['builtin-text-reading', Object.keys(assets.textLibrary.builtinReadingCorrections ?? {}).length],
+    ['builtin-text-reading', Object.keys(userTextsBundleOf(assets.textLibrary).builtinReadingCorrections).length],
   ] as const;
   const listed = parts.filter(([, count]) => count > 0).map(([kind, count]) => `${KIND_LABELS[kind]}${count}件`);
   return `${listed.join('、')}を書き出しました`;

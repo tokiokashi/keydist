@@ -8,6 +8,7 @@ import {
   parseUserAssetsFile,
   userAssetsFileBody,
   userAssetsFileExportProblem,
+  userTextsBundleOf,
   type UserAssetImportEntry,
   type UserAssetsBundle,
   type UserTextsBundle,
@@ -236,7 +237,7 @@ export function UserAssetsPage({
       assets.fingerAssignments.length +
       assets.setupLibrary.setups.length +
       assets.textLibrary.texts.length +
-      Object.keys(assets.textLibrary.builtinReadingCorrections ?? {}).length >
+      Object.keys(userTextsBundleOf(assets.textLibrary).builtinReadingCorrections).length >
     0;
 
   /** 上書きを消した後、一覧が書き換わってからフォーカスを移す。消した項目のボタンは無くなり、「元に戻す」は書き込みの後に押せるようになるため。 */
