@@ -62,7 +62,11 @@ function decodeReadingCorrections(raw: unknown, path: string, diagnostics: Codec
   return Object.keys(corrections).length === 0 ? undefined : corrections;
 }
 
-function decodeBuiltinReadingCorrections(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Record<string, ReadingCorrections> | undefined {
+export function decodeBuiltinReadingCorrections(
+  raw: unknown,
+  path: string,
+  diagnostics: CodecDiagnostic[],
+): Record<string, ReadingCorrections> | undefined {
   if (raw === undefined) return undefined;
   if (!isRecord(raw)) {
     diagnostics.push({ path, message: '組み込みのテキストの読みの直しの形が違うため捨てました' });
@@ -76,7 +80,7 @@ function decodeBuiltinReadingCorrections(raw: unknown, path: string, diagnostics
   return Object.keys(result).length === 0 ? undefined : result;
 }
 
-function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
+export function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
     if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('テキスト') });
