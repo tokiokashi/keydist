@@ -428,6 +428,18 @@ test('日本語の記号の評価: 英語のテキストでは変えた項目に
   assert.equal(overrideWinsNotices(rows).has('keepSymbols'), false);
 });
 
+test('日本語の英数字の評価: 英語のテキストでは変えた項目に数えず、日本語のテキストでは数える', () => {
+  const en = overrideRows([['keepAlphanumerics', true]], { textInapplicableIds: textInapplicableIdsOf('en') });
+  assert.equal(en.find((r) => r.id === 'keepAlphanumerics')!.applicable, false);
+  assert.equal(conditionSummaryLine(en).changedCount, 0);
+  const ja = overrideRows([['keepAlphanumerics', true]], { textInapplicableIds: textInapplicableIdsOf('ja') });
+  assert.equal(conditionSummaryLine(ja).changedCount, 1);
+  assert.deepEqual(
+    nonDefaultConditionRows(ja).map((r) => r.id),
+    ['keepAlphanumerics'],
+  );
+});
+
 test('日本語の記号の評価: 日本語のテキストでは今のとおり変えた項目に数える', () => {
   const scope: ConditionSummaryScope = { textInapplicableIds: textInapplicableIdsOf('ja') };
   const rows = overrideRows([['keepSymbols', true]], scope);

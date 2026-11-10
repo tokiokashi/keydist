@@ -416,8 +416,8 @@ test('文字数W: 漢字を読みに直したテキストでは入力かな数C�
   const reading = [...KANJI_CONVERSION.text].length;
   assert.equal(reading, [...'きょうははれです。わたしはにほんごのぶんしょうをうちます。きょうはきょうとへいきます。'].length);
   const sourceLength = [...KANJI_SOURCE].length;
-  assert.equal(KANJI_CONVERSION.notationExcess.defaultSymbols, sourceLength - reading);
-  assert.equal(KANJI_CONVERSION.notationExcess.allSymbols, sourceLength - reading);
+  assert.equal(KANJI_CONVERSION.notationExcess.base, sourceLength - reading);
+  assert.equal(KANJI_CONVERSION.notationExcess.symbols, sourceLength - reading);
   assert.ok(sourceLength < reading);
   for (const { layoutId, row, inputChars } of KANJI_ROWS) {
     assert.equal(inputChars, reading, layoutId);

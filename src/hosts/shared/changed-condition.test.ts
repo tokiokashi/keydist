@@ -83,6 +83,12 @@ test('changedConditionLabels: 英語のテキストでは効かない「日本�
   assert.equal(check([QWERTY], overrides, 'en'), false);
 });
 
+test('changedConditionLabels: 英語のテキストでは効かない「日本語の英数字の評価」の変更は数えない', () => {
+  const overrides = overridden([{ kind: 'global' }, 'keepAlphanumerics', true]);
+  assert.equal(check([QWERTY], overrides, 'ja'), true);
+  assert.equal(check([QWERTY], overrides, 'en'), false);
+});
+
 test('changedConditionLabels: 複数の対象で変わった項目の名前を、重複なく返す', () => {
   const overrides = overridden([{ kind: 'global' }, 'windowSize', 5], [{ kind: 'setup', setupId: SETUP.id }, 'windowSize', 4]);
   assert.deepEqual(labelsOf([QWERTY, SETUP_TARGET], overrides), ['先読みN']);
@@ -96,5 +102,5 @@ test('changedConditionLabels: 解決できない対象は数えない', () => {
 test('singlePaneConditionScope: 宣言された条件だけを足し、設定項目でないidは通さない', () => {
   const scope = singlePaneConditionScope(['windowSize', 'not-an-item'], 'en');
   assert.deepEqual(scope.extraIds, ['windowSize']);
-  assert.deepEqual(scope.textInapplicableIds, ['keepSymbols']);
+  assert.deepEqual(scope.textInapplicableIds, ['keepSymbols', 'keepAlphanumerics']);
 });

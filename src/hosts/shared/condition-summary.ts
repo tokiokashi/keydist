@@ -36,6 +36,8 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
   { id: 'defaultShapeId', label: '既定の物理配列' },
   // 日本語のテキストで、かなと「、」「。」以外の記号も評価に入れるか。入力かな数が変わる
   { id: 'keepSymbols', label: '日本語の記号の評価' },
+  // 日本語のテキストで、英字と数字も評価に入れるか。入力かな数が変わる
+  { id: 'keepAlphanumerics', label: '日本語の英数字の評価' },
 ];
 
 /**
@@ -73,11 +75,11 @@ export interface ConditionSummaryScope {
 
 /**
  * 表示するテキストの言語では数値が変わらない項目。
- * 「日本語の記号の評価」は日本語のテキストにだけ働く（仕様 §4.6）。言語は配列・Setupでなくテキストの属性で、
+ * 「日本語の記号の評価」と「日本語の英数字の評価」は日本語のテキストにだけ働く（仕様 §4.6）。言語は配列・Setupでなくテキストの属性で、
  * 1つの配列が両方の言語のテキストに使われるため、項目の`isApplicable`でなくペインが求めて渡す。
  */
 export function textInapplicableIdsOf(language: TextLanguage): readonly SettingsItemId[] {
-  return language === 'ja' ? [] : ['keepSymbols'];
+  return language === 'ja' ? [] : ['keepSymbols', 'keepAlphanumerics'];
 }
 
 /** ペインの定義が宣言する項目のidのうち、設定項目のidだけを通す。 */

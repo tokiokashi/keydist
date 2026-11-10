@@ -46,6 +46,7 @@ export type GlobalEditableId = Extract<
   | 'chainInterpretation'
   | 'arpeggioInterpretation'
   | 'keepSymbols'
+  | 'keepAlphanumerics'
 >;
 
 /** モーダルに行がある項目。「すべて既定値に戻す」はこの項目の全体の上書きだけを消す。 */
@@ -62,6 +63,7 @@ export const GLOBAL_EDITABLE_IDS: readonly GlobalEditableId[] = [
   'chainInterpretation',
   'arpeggioInterpretation',
   'keepSymbols',
+  'keepAlphanumerics',
 ];
 
 /** 行を出している項目（`hiddenIds`を除く）のうち、全体の上書きがあるもの。 */

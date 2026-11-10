@@ -6,8 +6,9 @@ import type { TextLanguage } from './language.ts';
  * 2. 半角の `,` `.` を、配列が見出しとして直接持たない時だけ `、` `。` に書き換える
  * 3. 記号を取り除く。既定は `、` `。`（2.で書き換えた `,` `.` を含む）と、配列が見出しとして直接持つ半角の `,` `.` だけを残し、
  *    `keepSymbols` なら記号をすべて残す
- * 4. 全角の片仮名（`ァ`〜`ヴ`）を、配列が見出しとして持たない部分だけひらがなに書き換える。
- *    見出しの切り出しが `generateTrace` と同じテキスト（2.と3.の後）の上で行われるよう、最後に当てる
+ * 4. 英字と数字を取り除く。`keepAlphanumerics`なら取り除かない
+ * 5. 全角の片仮名（`ァ`〜`ヴ`）を、配列が見出しとして持たない部分だけひらがなに書き換える。
+ *    見出しの切り出しが`generateTrace`と同じテキスト（2.から4.の後）の上で行われるよう、最後に当てる
  *
  * 漢字を読みに直す段（仕様 §4.6の1段目）はこの関数の前に済んでいる。以下の番号は仕様 §4.6の段の番号。
  * 記号は、Unicodeの文字・結合文字・数字・空白のどれでもない文字。
@@ -17,6 +18,8 @@ export interface EvaluationTextOptions {
   readonly language: TextLanguage;
   /** 記号をすべて残すか（条件 `keepSymbols`）。 */
   readonly keepSymbols: boolean;
+  /** 英字と数字を取り除かずに残すか（条件`keepAlphanumerics`）。 */
+  readonly keepAlphanumerics: boolean;
   /** 配列が、その1文字を見出しとして直接持つか。半角の `,` `.` を書き換えるかの判定に使う。 */
   readonly layoutHasChar: (char: string) => boolean;
   /**
@@ -66,6 +69,19 @@ export function isSymbolChar(char: string): boolean {
   return !NOT_SYMBOL.test(char);
 }
 
+const ALPHANUMERIC = /\p{Nd}|(?=\p{Script=Latin})\p{L}/u;
+
+/** 英字（ラテン文字の文字）か十進の数字か。半角と全角の両方を含む。漢数字・〇・ローマ数字は含まない。 */
+export function isAlphanumericChar(char: string): boolean {
+  return ALPHANUMERIC.test(char);
+}
+
+/** 前処理の範囲を決める条件。 */
+export interface PreparationScope {
+  readonly keepSymbols: boolean;
+  readonly keepAlphanumerics: boolean;
+}
+
 /** 既定の範囲で残す記号。 */
 const DEFAULT_KEPT_SYMBOLS: ReadonlySet<string> = new Set(['、', '。']);
 
@@ -75,20 +91,22 @@ const HALFWIDTH_PUNCTUATION: Readonly<Record<string, string>> = {
 };
 
 /**
- * 日本語のテキストの前処理（2.と3.）の後も、その1文字が残るか。半角の `,` `.` は書き換えられても1文字のまま残る。
- * 前処理で文字が減るのは、記号を取り除く段だけ。
+ * 日本語のテキストの前処理（2.から4.）の後も、その1文字が残るか。半角の`,` `.`は書き換えられても1文字のまま残る。
+ * 前処理で文字が減るのは、記号を取り除く段と英字と数字を取り除く段だけ。
  */
-function remainsAfterPreparation(char: string, keepSymbols: boolean): boolean {
-  return HALFWIDTH_PUNCTUATION[char] !== undefined || keepSymbols || !isSymbolChar(char) || DEFAULT_KEPT_SYMBOLS.has(char);
+function remainsAfterPreparation(char: string, scope: PreparationScope): boolean {
+  if (HALFWIDTH_PUNCTUATION[char] !== undefined) return true;
+  if (isAlphanumericChar(char)) return scope.keepAlphanumerics;
+  return scope.keepSymbols || !isSymbolChar(char) || DEFAULT_KEPT_SYMBOLS.has(char);
 }
 
 /**
  * 日本語のテキストの一部分が、前処理（記号の範囲の処理）の後に何字残るか（コードポイント）。
  * 読みに置き換えた語の、表記の字数を数えるのに使う（仕様 §11.5の `W`）。
  */
-export function countCharsAfterPreparation(text: string, keepSymbols: boolean): number {
+export function countCharsAfterPreparation(text: string, scope: PreparationScope): number {
   let count = 0;
-  for (const char of text) if (remainsAfterPreparation(char, keepSymbols)) count++;
+  for (const char of text) if (remainsAfterPreparation(char, scope)) count++;
   return count;
 }
 
@@ -102,14 +120,14 @@ export function prepareEvaluationText(text: string, options: EvaluationTextOptio
       out += options.layoutHasChar(char) ? char : punctuation;
       continue;
     }
-    if (options.keepSymbols || !isSymbolChar(char) || DEFAULT_KEPT_SYMBOLS.has(char)) out += char;
+    if (remainsAfterPreparation(char, options)) out += char;
   }
   return hasConvertibleKatakana(out) ? katakanaToHiraganaByHeadings(out, options.uncoveredPositions) : out;
 }
 
 /**
  * 読みのテキストの区切り（コードポイントの位置）を、評価に渡すテキストのコードポイントの位置へ写す。
- * 前処理（`prepareEvaluationText`）で文字が減るのは、記号を取り除く段だけ（半角の `,` `.` の書き換えと片仮名の書き換えは1文字を1文字に直す）。
+ * 前処理（`prepareEvaluationText`）で文字が減るのは、記号と英字と数字を取り除く段だけ（半角の`,` `.`の書き換えと片仮名の書き換えは1文字を1文字に直す）。
  * そこで、区切りより前に残る文字の数を、区切りの新しい位置にする。
  * 先頭・末尾に来た区切りと、取り除いた記号に挟まれて重なった区切りは除く。結果は昇順で重複しない。
  * 日本語以外のテキストは前処理が何も変えないので、区切りをそのまま返す。
@@ -117,12 +135,12 @@ export function prepareEvaluationText(text: string, options: EvaluationTextOptio
 export function evaluationBoundaries(
   readingText: string,
   boundaries: readonly number[],
-  options: Pick<EvaluationTextOptions, 'language' | 'keepSymbols'>,
+  options: Pick<EvaluationTextOptions, 'language' | 'keepSymbols' | 'keepAlphanumerics'>,
 ): number[] {
   const chars = [...readingText];
   const kept: number[] = [0];
   for (const char of chars) {
-    const keeps = options.language !== 'ja' || remainsAfterPreparation(char, options.keepSymbols);
+    const keeps = options.language !== 'ja' || remainsAfterPreparation(char, options);
     kept.push(kept[kept.length - 1]! + (keeps ? 1 : 0));
   }
   const total = kept[kept.length - 1]!;

@@ -242,7 +242,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     return scoped(id, globalOverrideOf(overrides, id) ?? defaultValue, defaultValue);
   }
 
-  const boolBinding = (id: 'sfbHomeCost' | 'keepSymbols'): OptionBinding<'on' | 'off'> => {
+  const boolBinding = (id: 'sfbHomeCost' | 'keepSymbols' | 'keepAlphanumerics'): OptionBinding<'on' | 'off'> => {
     const inner = bind(id);
     return {
       value: inner.value ? 'on' : 'off',
@@ -561,11 +561,26 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               日本語の記号
               <InfoButton
                 name="日本語の記号の評価"
-                description="ONでは、「、」「。」以外の記号も評価に入れます。OFFでは、かなと英数字と「、」「。」だけを評価します。"
+                description="ONでは、「、」「。」以外の記号も評価に入れます。OFFでは、「、」「。」以外の記号を評価に入れません。"
               />
             </h3>
             {row('keepSymbols', (badge) => (
               <SegmentedOptionField label="日本語の記号の評価" binding={boolBinding('keepSymbols')} choices={ON_OFF} badge={badge} />
+            ))}
+          </section>
+        )}
+
+        {hidden('keepAlphanumerics') ? null : (
+          <section className="condition-group" aria-label="日本語の英数字">
+            <h3 className="condition-group-title">
+              日本語の英数字
+              <InfoButton
+                name="日本語の英数字の評価"
+                description="ONでは、英字と数字も評価に入れます。OFFでは、半角と全角の英字と数字を評価に入れません。ONでは、ローマ字を経る配列は半角の英数字を打ち、全角の英数字とかな配列の英数字は打てない文字として数えます。"
+              />
+            </h3>
+            {row('keepAlphanumerics', (badge) => (
+              <SegmentedOptionField label="日本語の英数字の評価" binding={boolBinding('keepAlphanumerics')} choices={ON_OFF} badge={badge} />
             ))}
           </section>
         )}

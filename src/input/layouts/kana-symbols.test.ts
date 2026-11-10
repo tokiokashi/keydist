@@ -54,6 +54,7 @@ function skippedWithWideSymbols(layoutId: string, text: string): number {
   const prepared = prepareEvaluationText(text, {
     language: 'ja',
     keepSymbols: true,
+    keepAlphanumerics: true,
     layoutHasChar: (char) => layout.canonicalInputs.has(char),
     uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });

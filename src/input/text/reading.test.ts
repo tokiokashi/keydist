@@ -240,12 +240,12 @@ test('読みに置き換えた語だけが、表記の字数と読みの字数�
     ['。', null],
   ]);
   // 今日(2字→3字) 晴れ(2字→2字)。かな・記号の語は置き換えないので足さない
-  assert.deepEqual(convertToReading(text, tokens).notationExcess, { defaultSymbols: -1, allSymbols: -1 });
+  assert.deepEqual(convertToReading(text, tokens).notationExcess, { base: -1, symbols: -1, alphanumerics: -1, both: -1 });
   // 直しで読みを当てた語も、直した読みの字数で数える
-  assert.deepEqual(convertToReading(text, tokens, { 今日: 'こんにち' }).notationExcess, { defaultSymbols: -2, allSymbols: -2 });
+  assert.deepEqual(convertToReading(text, tokens, { 今日: 'こんにち' }).notationExcess, { base: -2, symbols: -2, alphanumerics: -2, both: -2 });
   // 辞書に読みが無い語は置き換えず、元の表記のまま残るので足さない
   const unknown = tokensOf('鬱', [['鬱', null, true]]);
-  assert.deepEqual(convertToReading('鬱', unknown).notationExcess, { defaultSymbols: 0, allSymbols: 0 });
+  assert.deepEqual(convertToReading('鬱', unknown).notationExcess, { base: 0, symbols: 0, alphanumerics: 0, both: 0 });
   // 読みに直す語が無ければ0
-  assert.deepEqual(convertToReading('あい', []).notationExcess, { defaultSymbols: 0, allSymbols: 0 });
+  assert.deepEqual(convertToReading('あい', []).notationExcess, { base: 0, symbols: 0, alphanumerics: 0, both: 0 });
 });
