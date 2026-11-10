@@ -52,7 +52,9 @@ export interface RunChartHit {
 }
 
 export interface RunChartModel {
-  /** 横軸の長さ（文字数） */
+  /** 図の左端の文字位置。全体を出す時は0 */
+  readonly start: number;
+  /** 横軸の長さ（文字数）。図の右端の文字位置は`start + total` */
   readonly total: number;
   readonly yMax: number;
   readonly yTicks: readonly RunChartTick[];
@@ -127,23 +129,37 @@ function seriesMax(metric: RunChartMetricId, series: RunChartSeriesOk): number {
   return max;
 }
 
-/** 描く系列が1つも無ければ`undefined`。 */
-export function runChartModel(plot: readonly RunChartPlotSeries[], metric: RunChartMetricId): RunChartModel | undefined {
-  const total = Math.max(0, ...plot.map((item) => item.data.inputChars));
-  if (total === 0 || plot.length === 0) return undefined;
+/** 図に出す文字位置の区間（`start`以上`end`未満）。 */
+export interface RunChartSpan {
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * 描く系列が1つも無ければ`undefined`。
+ * `span`を渡すと、その区間の点だけを横軸いっぱいに出す。縦軸は区間によらず、系列の全部の値から決める。
+ * 渡さなければ、テキスト全体を出す。
+ */
+export function runChartModel(plot: readonly RunChartPlotSeries[], metric: RunChartMetricId, span?: RunChartSpan): RunChartModel | undefined {
+  const chars = Math.max(0, ...plot.map((item) => item.data.inputChars));
+  const start = Math.max(0, span?.start ?? 0);
+  const end = Math.min(chars, span?.end ?? chars);
+  const total = end - start;
+  if (total <= 0 || plot.length === 0) return undefined;
 
   const yMax = Math.max(...plot.map((item) => seriesMax(metric, item.data))) * 1.1 || 1;
   const yOf = (value: number) => CHART_MARGIN.top + (1 - value / yMax) * CHART_PLOT_HEIGHT;
 
   const series = plot.map(({ targetKey, data }): RunChartModelSeries => {
     // 位置`e`の点は、文字`e`の右端（`e + 1`）に置く。文字位置0の点が縦軸の線に重ならない
-    const xOf = (position: number) => chartX(position + 1, total);
+    const xOf = (position: number) => chartX(position + 1 - start, total);
     const line: PlotPoint[] = [];
     const upper: PlotPoint[] = [];
     const lower: PlotPoint[] = [];
     const hits: RunChartHit[] = [];
     const dots: RunChartDot[] = [];
     data.positions.forEach((position, pointIndex) => {
+      if (position < start || position >= end) return;
       const x = xOf(position);
       const value = data.values[pointIndex];
       if (value === null || value === undefined || !Number.isFinite(value)) {
@@ -174,10 +190,11 @@ export function runChartModel(plot: readonly RunChartPlotSeries[], metric: RunCh
   });
 
   return {
+    start,
     total,
     yMax,
     yTicks: [0, 0.5, 1].map((ratio) => ({ value: yMax * ratio, position: yOf(yMax * ratio) })),
-    xTicks: [...new Set([0, Math.round(total / 2), total])].map((at) => ({ value: at, position: chartX(at, total) })),
+    xTicks: [...new Set([0, Math.round(total / 2), total])].map((at) => ({ value: start + at, position: chartX(at, total) })),
     series,
   };
 }

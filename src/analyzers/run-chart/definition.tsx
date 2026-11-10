@@ -25,6 +25,7 @@ import {
 import { runChartDefinition, type RunChartExtracted, type RunChartSeries, type RunChartSeriesFailed, type RunChartSeriesOk } from './extract.ts';
 import { SegmentTables, type SegmentTableRow } from './segment-table.tsx';
 import { axisTitle, formatMetricValue, RUN_CHART_METRIC_IDS, runChartMetrics, type RunChartMetricId } from './metric-catalog.ts';
+import { RangeSwitch } from '../range-switch.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
 import {
@@ -150,6 +151,8 @@ function RunChartFigure({ rows, metric, windowChars, model, jump, boundaries }: 
   // 目安線を引く系列。系列が少ない間は全部、多い間はポインタ（またはキーボード）で選んでいる系列だけ
   const guideIndexes = new Set(rows.length <= GUIDES_FOR_ALL_LIMIT ? rows.map((_, index) => index) : active === undefined ? [] : [active.seriesIndex]);
   const activeRow = active === undefined ? undefined : rows[active.seriesIndex];
+  // 区切りは、図に出す範囲の中にあるものだけを重ねる
+  const shownBoundaries = boundaries.filter((boundary) => boundary >= model.start && boundary <= model.start + model.total);
 
   return (
     <div className="run-chart-figure">
@@ -183,11 +186,11 @@ function RunChartFigure({ rows, metric, windowChars, model, jump, boundaries }: 
           </text>
         ))}
 
-        {boundaries.length === 0 ? null : (
-          <g className="run-chart-boundaries" data-run-chart-boundaries={boundaries.length}>
-            {boundaries.map((boundary) => {
-              const x = chartX(boundary, model.total);
-              const full = boundaries.length <= BOUNDARY_FULL_LINE_LIMIT;
+        {shownBoundaries.length === 0 ? null : (
+          <g className="run-chart-boundaries" data-run-chart-boundaries={shownBoundaries.length}>
+            {shownBoundaries.map((boundary) => {
+              const x = chartX(boundary - model.start, model.total);
+              const full = shownBoundaries.length <= BOUNDARY_FULL_LINE_LIMIT;
               return (
                 <line
                   key={boundary}
@@ -288,7 +291,7 @@ function seriesFor(series: readonly RunChartSeries[], targetKey: string): RunCha
  * Run Chartの本体。対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。
  * メンバー単位の失敗は図の下に行で出す。
  */
-export function RunChartBody({ extracted, order, rowContext, playbackJump, segmentation }: RunChartBodyProps) {
+export function RunChartBody({ extracted, order, rowContext, options, onOptionsChange, playbackJump, segmentation }: RunChartBodyProps) {
   const metric = extracted.metric;
   const found = order
     .map((targetKey) => ({ targetKey, entry: seriesFor(extracted.series, targetKey), context: rowContext.get(targetKey) }))
@@ -308,7 +311,16 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump, segme
       : [],
   );
   const plot: RunChartPlotSeries[] = rows.map((row) => ({ targetKey: row.targetKey, data: row.data }));
-  const model = runChartModel(plot, metric);
+  // 図に出す範囲は、横軸の長さを決める（評価に渡した字数が最も多い）系列のテキストで分ける
+  const rangeBounds = rows.reduce<readonly number[]>(
+    (longest, row) => ((row.data.ranges.at(-1) ?? 0) > (longest.at(-1) ?? 0) ? row.data.ranges : longest),
+    [0, 0],
+  );
+  const rangeCount = Math.max(1, rangeBounds.length - 1);
+  const rangeIndex = Math.min(Math.max(1, options.range), rangeCount) - 1;
+  const rangeStart = rangeBounds[rangeIndex] ?? 0;
+  const rangeEnd = rangeBounds[rangeIndex + 1] ?? 0;
+  const model = runChartModel(plot, metric, { start: rangeStart, end: rangeEnd });
   const failed = found.filter((row): row is typeof row & { entry: RunChartSeriesFailed } => row.entry.kind === 'failed');
   // 同じ対象の打鍵再生へ移れない系列（Workspaceに、その対象を映す打鍵再生のペインが無い）
   const withoutDestination =
@@ -349,6 +361,13 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump, segme
         ) : null
       ) : (
         <>
+          <RangeSwitch
+            index={rangeIndex}
+            count={rangeCount}
+            start={rangeStart}
+            end={rangeEnd}
+            onChange={(index) => onOptionsChange({ ...options, range: index + 1 })}
+          />
           <RunChartFigure rows={rows} metric={metric} windowChars={extracted.window} model={model} jump={playbackJump} boundaries={overlay} />
           <ul className="run-chart-legend" aria-label="凡例">
             {rows.map((row) => (

@@ -18,8 +18,10 @@ import {
 import { planBunsetsuWaits, sumWaitGaps } from '#interpretation/timing/bunsetsu-wait.ts';
 import { planPunctuationWaits, type PunctuationWaitUse } from '#interpretation/timing/punctuation-wait.ts';
 import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
+import { textRangeBounds } from '#input/text/display-ranges.ts';
 import { ALTERNATE_PLAYBACK_OPTIONS, DEFAULT_PLAYBACK_OPTIONS, playbackOptions, type PlaybackOptions } from './options.ts';
 import { playbackScheduleOf } from './session.ts';
+import { playbackRangesOf, type PlaybackRanges } from './step-ranges.ts';
 import {
   personalSpeedUseOf,
   playbackAssetsKeyOf,
@@ -62,6 +64,8 @@ export interface PlaybackExtracted {
   readonly bunsetsuUse: BunsetsuWaitUse | undefined;
   /** 再生位置ごとの、かな毎秒・アクション毎秒の平均と、ChainとArpeggioの区間。先頭（位置0）を含む */
   readonly rateChart: readonly PlaybackRateChartPoint[];
+  /** シークバーと速度の図に一度に出す範囲。長いテキストを約1000字ごとに分ける。表示だけの区切りで、時間にも数値にも関わらない */
+  readonly ranges: PlaybackRanges;
   /**
    * 打鍵の列と構造解析の入力が同じなら同じ値になる識別子。平均方式などの解析設定を変えて抽出が
    * 作り直されても変わらないので、再生位置を保つかどうかの判定に使う
@@ -125,6 +129,7 @@ export function computePlaybackExtraction({
     waitUse: waitPlan.use,
     bunsetsuUse: segmentation !== undefined && bunsetsuPlan.hasBoundary ? { splitter: segmentation.splitter, origin: segmentation.origin } : undefined,
     rateChart,
+    ranges: playbackRangesOf(analysis.strokes, textRangeBounds(text)),
     basisId,
   };
 }

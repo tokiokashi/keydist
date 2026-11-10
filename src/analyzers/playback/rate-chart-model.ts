@@ -44,7 +44,9 @@ export interface RateChartDot {
 }
 
 export interface RateChartModel {
-  /** 再生位置の最大値（打鍵のステップ数） */
+  /** 図の左端の再生位置。全体を出す時は0 */
+  readonly start: number;
+  /** 図が出す再生位置の幅（打鍵のステップ数）。図の右端の再生位置は`start + total` */
   readonly total: number;
   readonly yMax: number;
   readonly yTicks: readonly RateChartTick[];
@@ -54,6 +56,12 @@ export interface RateChartModel {
   readonly kanaDots: readonly RateChartDot[];
   readonly actionDots: readonly RateChartDot[];
   readonly bands: readonly RateChartBand[];
+}
+
+/** 図に出す再生位置の区間（`start`以上`end`以下）。 */
+export interface RateChartSpan {
+  readonly start: number;
+  readonly end: number;
 }
 
 export interface RateChartDisplay {
@@ -71,32 +79,32 @@ export const rateChartAxisInsets = chartAxisInsets;
 
 export const rateChartX = chartX;
 
-/** グラフ内のx座標（viewBoxの座標）から、いちばん近い再生位置を求める。 */
-export function rateChartPositionAt(viewX: number, total: number): number {
-  return Math.round(chartPositionAt(viewX, total));
+/** グラフ内のx座標（viewBoxの座標）から、いちばん近い再生位置を求める。`start`は図の左端の再生位置。 */
+export function rateChartPositionAt(viewX: number, total: number, start = 0): number {
+  return start + Math.round(chartPositionAt(viewX, total));
 }
 
 /**
  * 連続する同じ種類の区間を1本の帯にまとめる。位置`c`の点は、ステップ`c`（位置`c-1`から`c`の間）を表す。
- * 表示する種類（`display`）に含まれない帯は作らない。
+ * 表示する種類（`display`）に含まれない帯は作らない。`points`は`start`以上の位置の点で、帯のx座標は`start`を左端にして求める。
  */
-function bandsOf(points: readonly PlaybackRateChartPoint[], total: number, display: RateChartDisplay): RateChartBand[] {
+function bandsOf(points: readonly PlaybackRateChartPoint[], start: number, total: number, display: RateChartDisplay): RateChartBand[] {
   const bands: RateChartBand[] = [];
   for (const kind of ['chain', 'arpeggio'] as const) {
     if (!display[kind]) continue;
     let startPosition: number | undefined;
     const close = (endPosition: number) => {
       if (startPosition === undefined) return;
-      const x = rateChartX(startPosition, total);
-      bands.push({ kind, x, width: rateChartX(endPosition, total) - x });
+      const x = rateChartX(startPosition - start, total);
+      bands.push({ kind, x, width: rateChartX(endPosition - start, total) - x });
       startPosition = undefined;
     };
     for (const point of points) {
-      if (point.cursor === 0) continue;
+      if (point.cursor <= start) continue;
       if (point[kind] === true) startPosition ??= point.cursor - 1;
       else close(point.cursor - 1);
     }
-    close(total);
+    close(start + total);
   }
   return bands;
 }
@@ -120,16 +128,23 @@ export function rateChartOwnRange(points: readonly PlaybackRateChartPoint[]): Sc
  * 点の並びが空（打鍵が無い）の時は`undefined`を返す。
  * `sharedRange`は並んだペイン全部を含む範囲で、縦軸の上限はこの最大値（1未満なら1）の1.1倍で決める。
  * 渡さなければ、このペインの値だけで決める。
+ * `span`を渡すと、その区間の点だけを横軸いっぱいに出す。縦軸は区間によらず、全部の点（`points`）から決める。
+ * 渡さなければ、全体を出す。
  */
 export function rateChartModel(
-  points: readonly PlaybackRateChartPoint[],
+  allPoints: readonly PlaybackRateChartPoint[],
   display: RateChartDisplay,
   sharedRange?: ScaleRange,
+  span?: RateChartSpan,
 ): RateChartModel | undefined {
-  const total = points.at(-1)?.cursor ?? 0;
-  if (total === 0) return undefined;
+  const last = allPoints.at(-1)?.cursor ?? 0;
+  const start = Math.max(0, span?.start ?? 0);
+  const end = Math.min(last, span?.end ?? last);
+  const total = end - start;
+  if (total <= 0) return undefined;
+  const points = allPoints.filter((point) => point.cursor >= start && point.cursor <= end);
 
-  const yMax = Math.max(1, sharedRange?.max ?? Math.max(0, ...finiteRates(points))) * 1.1;
+  const yMax = Math.max(1, sharedRange?.max ?? Math.max(0, ...finiteRates(allPoints))) * 1.1;
   const yOf = (value: number) => RATE_CHART_MARGIN.top + (1 - value / yMax) * PLOT_HEIGHT;
 
   const seriesOf = (pick: (point: PlaybackRateChartPoint) => number | undefined) => {
@@ -137,7 +152,7 @@ export function rateChartModel(
     for (const point of points) {
       const value = pick(point);
       if (value === undefined || !Number.isFinite(value)) continue;
-      dots.push({ x: rateChartX(point.cursor, total), y: yOf(value) });
+      dots.push({ x: rateChartX(point.cursor - start, total), y: yOf(value) });
     }
     const path = dots.map((dot, index) => `${index === 0 ? 'M' : 'L'}${formatCoordinate(dot.x)},${formatCoordinate(dot.y)}`).join(' ');
     return { path, dots: points.length <= RATE_CHART_DOT_LIMIT ? dots : [] };
@@ -146,15 +161,16 @@ export function rateChartModel(
   const action = seriesOf((point) => point.actionsPerSecond);
 
   return {
+    start,
     total,
     yMax,
     yTicks: [0, 0.5, 1].map((ratio) => ({ value: yMax * ratio, position: yOf(yMax * ratio) })),
-    xTicks: [...new Set([0, Math.round(total / 2), total])].map((at) => ({ value: at, position: rateChartX(at, total) })),
+    xTicks: [...new Set([0, Math.round(total / 2), total])].map((at) => ({ value: start + at, position: rateChartX(at, total) })),
     kanaPath: kana.path,
     actionPath: action.path,
     kanaDots: kana.dots,
     actionDots: action.dots,
-    bands: bandsOf(points, total, display),
+    bands: bandsOf(points, start, total, display),
   };
 }
 

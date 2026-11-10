@@ -117,3 +117,37 @@ test('揃えた範囲の最大から縦軸を作り、1未満の時は1の1.1倍
   assert.equal(rateChartModel(data, NONE)!.yMax, 2 * 1.1);
   assert.deepEqual(rateChartOwnRange(data), { min: 0, max: 2 });
 });
+
+test('区間: 区間の点だけを横軸いっぱいに出し、縦軸は全部の点から決める', () => {
+  const data = points([
+    { actionsPerSecond: 1 },
+    { actionsPerSecond: 2 },
+    { actionsPerSecond: 8 },
+    { actionsPerSecond: 3 },
+    { actionsPerSecond: 4 },
+    { actionsPerSecond: 5 },
+  ]);
+  const whole = rateChartModel(data, NONE)!;
+  const part = rateChartModel(data, NONE, undefined, { start: 2, end: 6 })!;
+  assert.equal(part.start, 2);
+  assert.equal(part.total, 4);
+  assert.equal(part.yMax, whole.yMax);
+  // 区間の左端の点が横軸の左端、右端の点が右端に来る。座標は区間の端から数える
+  assert.equal(part.actionDots.length, 5);
+  assert.equal(part.actionDots[0]!.x, rateChartX(0, 4));
+  assert.equal(part.actionDots.at(-1)!.x, rateChartX(4, 4));
+  assert.deepEqual(
+    part.xTicks.map((tick) => tick.value),
+    [2, 4, 6],
+  );
+  // 区間の中の位置5の値は、全体の中の位置5と同じ高さ
+  assert.equal(part.actionDots[3]!.y, whole.actionDots[4]!.y);
+  assert.equal(rateChartPositionAt(rateChartX(3, 4), 4, 2), 5);
+});
+
+test('区間: 帯は区間の左端から数える', () => {
+  const data = points([{}, { chain: true }, { chain: true }, { chain: true }, {}, {}]);
+  const part = rateChartModel(data, BOTH, undefined, { start: 2, end: 6 })!;
+  // 位置3・4のステップがChain。区間の左端は位置2
+  assert.deepEqual(part.bands, [{ kind: 'chain', x: rateChartX(0, 4), width: rateChartX(2, 4) - rateChartX(0, 4) }]);
+});

@@ -1,0 +1,24 @@
+/* 図に出す範囲を切り替える操作。幅が足りない時は、ボタンと現在の範囲の表示を折り返す */
+.range-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.range-switch button {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.76rem;
+}
+
+.range-switch button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.range-switch-label {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
