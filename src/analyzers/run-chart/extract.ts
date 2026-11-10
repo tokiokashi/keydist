@@ -13,6 +13,7 @@ import { analysisTargetKey, LAYOUT_MISSING_REASON, type AnalysisTarget } from '#
 import { buildSpanIndex, guideScaleOf, spanSpread, spanTotals, spanValue, type SpanIndex, type SpanMetricId } from '#interpretation/span-metrics.ts';
 import { generateTrace, type Trace } from '#trace/generate.ts';
 import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
+import { rangeBoundsOf, textRangeBounds } from '#input/text/display-ranges.ts';
 import { PRNG_NAME } from '#interpretation/prng.ts';
 import { buildSegmentationReport, SEGMENT_SEED_COUNT, type SegmentationReport } from '#interpretation/segments.ts';
 import { ALTERNATE_RUN_CHART_OPTIONS, DEFAULT_RUN_CHART_OPTIONS, runChartOptions, type RunChartOptions } from './options.ts';
@@ -50,6 +51,11 @@ export interface RunChartSeriesOk {
   readonly targetKey: string;
   /** 評価に渡したテキストの文字数（横軸の長さ）。 */
   readonly inputChars: number;
+  /**
+   * 図に一度に出す範囲の境目（文字位置）。先頭は0、最後は`inputChars`で、`i`番目の範囲は`[ranges[i], ranges[i + 1])`。
+   * 長いテキストを約1000字ごとに文末で分ける。表示だけの区切りで、集計窓にも区切り（`segmentation`）にも関わらない。
+   */
+  readonly ranges: readonly number[];
   /** 点の文字位置 `e`（昇順、重複なし）。 */
   readonly positions: readonly number[];
   /** 点の値。割合の指標は割合（0〜1）のまま。範囲の分母が0の点は `null`（欠け）。 */
@@ -100,10 +106,18 @@ export function pointPositionsOf(trace: Trace): number[] {
 interface MemberBasis {
   readonly index: SpanIndex;
   readonly positions: readonly number[];
+  readonly ranges: readonly number[];
 }
 
 function basisOf(member: AnalyzerSetMember): MemberBasis {
-  return member.remember('run-chart:basis', () => ({ index: buildSpanIndex(member.trace), positions: pointPositionsOf(member.trace) }));
+  return member.remember('run-chart:basis', () => {
+    const index = buildSpanIndex(member.trace);
+    return {
+      index,
+      positions: pointPositionsOf(member.trace),
+      ranges: member.text === undefined ? rangeBoundsOf(index.inputChars, []) : textRangeBounds(member.text),
+    };
+  });
 }
 
 /** 索引と点の位置から、指標と窓幅に応じた系列を作る。 */
@@ -114,7 +128,7 @@ export function seriesFromBasis(
   window: number,
   segments?: RunChartSegments,
 ): RunChartSeriesOk {
-  const { index, positions } = basis;
+  const { index, positions, ranges } = basis;
   const values: (number | null)[] = [];
   const denominators: number[] = [];
   for (const end of positions) {
@@ -127,6 +141,7 @@ export function seriesFromBasis(
     kind: 'ok',
     targetKey,
     inputChars: index.inputChars,
+    ranges,
     positions,
     values,
     denominators,

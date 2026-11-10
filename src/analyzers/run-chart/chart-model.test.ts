@@ -9,6 +9,7 @@ function seriesOf(partial: Partial<RunChartSeriesOk> & Pick<RunChartSeriesOk, 't
   return {
     kind: 'ok',
     inputChars: 4,
+    ranges: [0, 4],
     positions,
     values: positions.map(() => 1),
     denominators: positions.map(() => 50),
@@ -149,4 +150,35 @@ test('読み上げは文字位置を先頭が1の「何文字目」で書き、�
     'ja',
   );
   assert.match(rate, /10\.0%（直近20アクション）/);
+});
+
+test('区間: 区間の文字位置の点だけを横軸いっぱいに出し、縦軸と中心線は全体のまま', () => {
+  const positions = Array.from({ length: 10 }, (_, i) => i);
+  const data = seriesOf({
+    targetKey: 'a',
+    inputChars: 10,
+    ranges: [0, 4, 10],
+    positions,
+    values: positions.map((i) => (i === 1 ? 5 : 1)),
+    denominators: positions.map(() => 5),
+  });
+  const whole = runChartModel([{ targetKey: 'a', data }], 'perCharUnits')!;
+  const part = runChartModel([{ targetKey: 'a', data }], 'perCharUnits', { start: 4, end: 10 })!;
+  assert.equal(part.start, 4);
+  assert.equal(part.total, 6);
+  assert.equal(part.yMax, whole.yMax);
+  assert.equal(part.series[0]!.centerY, whole.series[0]!.centerY);
+  // 文字位置4〜9の点。位置eの点は文字eの右端（e + 1 - 区間の左端）に置く
+  assert.deepEqual(
+    part.series[0]!.hits.map((hit) => hit.position),
+    [4, 5, 6, 7, 8, 9],
+  );
+  assert.deepEqual(
+    part.series[0]!.hits.map((hit) => hit.x),
+    [1, 2, 3, 4, 5, 6].map((at) => chartX(at, 6)),
+  );
+  assert.deepEqual(
+    part.xTicks.map((tick) => tick.value),
+    [4, 7, 10],
+  );
 });

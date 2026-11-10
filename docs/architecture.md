@@ -215,6 +215,7 @@ Traceは同じまま数値の定義を変える項目（解釈）のうち、今
   - **文字位置へ移る操作**（Run Chartの図で押した点から打鍵再生へ移る）。文字位置は評価に渡したテキストの文字位置で、移り先は文字位置を含む最初のステップ（打鍵できなかった文字の位置は、その後で終わる最初のステップ。後にも無ければ最後）。移ったら一時停止にする（`session.ts` の `playbackCursorAtChar` と `seekPlaybackToChar`）。`acceptsPlaybackSeek` を宣言した打鍵再生だけが受ける
     - **Workspace**は、押した点の系列と同じ**対象**を映す打鍵再生のペインだけへ伝える。Workspaceのテキストは全ペイン共通なので、宛先は対象だけで決まり、条件（先読み `N` など）の違いは問わない（各ペインが自分の打鍵の列でステップを探す）。伝える所は `hosts/shared/playback-seek.ts`（Reactを知らない。操作の番号・宛先の対象・文字位置と、受け手の対象の集まりを持つ）で、Workspaceの器が1つ作り `PaneEnvironment.playbackSeek` で渡す。打鍵再生のペインは宛先の対象で受け手に登録し、宛てられた操作を本体の `playbackSeek` で受ける。登録は描画の後の副作用で行い、後から開いたペインは、開く前の操作では動かない。Run Chartは受け手の有無を読み、受け手が無い配列には、打鍵再生のペインを足す方法を本体の中で示す
     - **個別画面**は、押した点の対象で打鍵再生の画面を開く。対象と最初の文字位置はURLの `target` と `position` で渡す（`hosts/standalone/target-share.ts`）。移動は `app` が持つ（`PaneEnvironment.openPlayback`。ホストはrouterを知らない）。打鍵再生の画面は、最初に本体を描く時だけ `position` を最初の位置に使い、受け取ったらURLから消す（`hosts/standalone/use-playback-arrival.ts`）。`position` は対象が同じ時だけ使う
+- **長いテキストの図は、約1000字ごとの範囲を1つずつ出す。** 範囲の数は評価に渡す字数を1000で割って四捨五入した数（1を下回らない）で、境目は等分した位置に最も近い文末に置く（`input/text/display-ranges.ts`。Run Chartと共有する）。打鍵再生のシークバーと速度グラフが範囲の区間だけを出し、範囲を切り替える操作（`analyzers/range-switch.tsx`）は範囲が2つ以上の時だけ出す。範囲は表示だけの区切りで、時間・全文の平均・打鍵時間と総時間・グラフの縦軸（全部の点から決める）は範囲によらない。出す範囲は再生位置と同じくペインのメモリの上だけに持ち、解析設定には置かない。選んだ範囲が再生位置を境目も含めて含む間は替えず、含まなくなった時（再生が範囲の終わりを越えた時・別の画面の図から位置を指定された時）は、再生位置を含む範囲に替える。操作で範囲を替えると、その範囲の先頭へ移る（`analyzers/playback/step-ranges.ts`）
 
 ### Analyzerがペインに渡すもの
 
@@ -291,6 +292,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **描画の寸法と座標は打鍵再生の速度グラフと同じ**（`analyzers/chart-frame.ts`。余白・点の丸の上限・押した位置の変換）。速度（時間）と距離は同じ図に混ぜない。指標の名前と単位は、N感度と同じ指標では同じ文字（`analyzers/metric-labels.ts`）
 - **既定と違う集計窓**は、ペインの中で、解析設定の小窓を開かなくても分かるように知らせる。目安線は統計的な保証ではなく、外れている箇所を探す目安で、画面にもそう書く
 - **押した点から打鍵再生へ移る**仕組みは、打鍵再生の節の「文字位置へ移る操作」
+- **長いテキストの図は、約1000字ごとの範囲を1つずつ出す。** 分け方と範囲を切り替える操作は打鍵再生と同じ（`input/text/display-ranges.ts`、`analyzers/range-switch.tsx`）。出す範囲の番号は表示だけが変わる項目として解析設定に置く（`range`、`affects: 'view'`。範囲の数を超える値は最後の範囲に丸める）。範囲の外の点と区切りは描かず、縦軸・中心線・目安線は範囲によらずテキスト全体の値のまま
 - **区切りを重ねる**（定義は `docs/segment-metrics.md`）。区切り方（なし・文節・固定長・ランダム）とランダムの種の始まりの値は、今Run Chartだけが読むので解析設定に置く（`affects: 'extract'`。既定は区切りなし）。区切りなし以外の時は、ペインの中で、解析設定の小窓を開かなくても分かるように知らせる。区間の集計と区切りの作成は `interpretation/segments.ts`（乱数生成器は共有の `interpretation/prng.ts`）
   - **文節の区切りの経路**: 分割器（BudouX）は `platform/bunsetsu/` に置き、`app` が `BunsetsuSource`（`hosts/shared/segmentation.ts`）として器へ注入する。解析設定が区切りを求める（`SetAnalyzerPaneParts.usesSegmentation`・`SingleAnalyzerPaneParts.usesSegmentation`）間だけ、ペインが分割器を呼ぶ。分割器のモジュールは、区切りを使う設定のペインが現れるまで読み込まない（事前描画の modulepreload に載せない）
   - 分割器は、読みに直す前の原文に当てる。ペインが受け取る `resolvedText` は読みに直した後のテキストなので、器は漢字を読みに直した時に語の列と原文を `PaneText.segmentationBasis` に添える。漢字を含まないテキストと辞書を読み込めなかったテキストは、語の列が無い材料をペインが作る（`segmentationBasisOf`）。原文の区切りを、語の境目へ寄せて読みのテキストの位置へ写す処理は `input/text/segmentation.ts`

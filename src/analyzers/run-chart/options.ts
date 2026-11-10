@@ -28,6 +28,15 @@ export const RUN_CHART_SEGMENTATION_IDS = ['none', 'bunsetsu', 'fixed', 'random'
 export type RunChartSegmentationId = (typeof RUN_CHART_SEGMENTATION_IDS)[number];
 export const DEFAULT_RUN_CHART_SEGMENTATION: RunChartSegmentationId = 'none';
 
+/**
+ * `range` は図に出すテキストの範囲の番号（先頭が1）。約1000字ごとに文末で分けた範囲の1つを、横軸いっぱいに出す
+ * （分け方は `input/text/display-ranges.ts`）。範囲の数を超える値は最後の範囲として扱う。
+ * 表示だけが変わる項目で、集計窓・区切りの計算も、中心線と目安線の値も変えない（`affects: 'view'`）。
+ */
+export const RUN_CHART_RANGE_MIN = 1;
+export const RUN_CHART_RANGE_MAX = 1000;
+export const DEFAULT_RUN_CHART_RANGE = 1;
+
 export const RUN_CHART_SEED_MIN = 0;
 export const RUN_CHART_SEED_MAX = 1_000_000_000;
 export const DEFAULT_RUN_CHART_SEED_START = 1;
@@ -62,6 +71,13 @@ export const runChartOptions = defineOptions({
     url: integerUrlCodec('seed', RUN_CHART_SEED_MIN, RUN_CHART_SEED_MAX),
     label: RUN_CHART_SEED_LABEL,
   }),
+  range: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(RUN_CHART_RANGE_MIN), v.maxValue(RUN_CHART_RANGE_MAX)),
+    default: DEFAULT_RUN_CHART_RANGE,
+    affects: 'view',
+    url: integerUrlCodec('range', RUN_CHART_RANGE_MIN, RUN_CHART_RANGE_MAX),
+    label: '範囲',
+  }),
 });
 
 export type RunChartOptions = typeof runChartOptions.defaultOptions;
@@ -74,4 +90,5 @@ export const ALTERNATE_RUN_CHART_OPTIONS: RunChartOptions = {
   window: 20,
   segmentation: 'bunsetsu',
   seedStart: 7,
+  range: 2,
 };

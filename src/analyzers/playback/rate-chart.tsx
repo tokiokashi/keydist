@@ -9,6 +9,7 @@ import {
   rateChartPositionAt,
   rateChartReadout,
   rateChartX,
+  type RateChartSpan,
 } from './rate-chart-model.ts';
 import { viewXFromClient } from '../chart-frame.ts';
 import { useSharedScale } from '../shared-scale.tsx';
@@ -27,19 +28,21 @@ export interface PlaybackRateChartProps {
   readonly cursor: number;
   readonly showChain: boolean;
   readonly showArpeggio: boolean;
+  /** 図に出す再生位置の区間。渡さなければ全体を出す */
+  readonly span?: RateChartSpan;
   readonly onSeek: (cursor: number) => void;
 }
 
 const PLOT_HEIGHT = RATE_CHART_HEIGHT - RATE_CHART_MARGIN.top - RATE_CHART_MARGIN.bottom;
 const PLOT_RIGHT = RATE_CHART_WIDTH - RATE_CHART_MARGIN.right;
 
-export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onSeek }: PlaybackRateChartProps) {
+export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, span, onSeek }: PlaybackRateChartProps) {
   const [hovered, setHovered] = useState<number | undefined>(undefined);
   const language = useTextLanguage();
   const kana = kanaUnitOf(language);
   // 縦軸は、並んだ打鍵再生のペイン全部を含む範囲（配るものが無ければ自分の範囲）
   const sharedRange = useSharedScale(PLAYBACK_RATE_SCALE_KEY, rateChartOwnRange(points));
-  const model = rateChartModel(points, { chain: showChain, arpeggio: showArpeggio }, sharedRange);
+  const model = rateChartModel(points, { chain: showChain, arpeggio: showArpeggio }, sharedRange, span);
   if (model === undefined) {
     return <p className="playback-empty">打鍵するデータがありません。</p>;
   }
@@ -49,11 +52,11 @@ export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onS
     if (svg === null) return 0;
     const bounds = svg.getBoundingClientRect();
     if (bounds.width === 0) return 0;
-    return rateChartPositionAt(viewXFromClient(event.clientX, bounds.left, bounds.width), model.total);
+    return rateChartPositionAt(viewXFromClient(event.clientX, bounds.left, bounds.width), model.total, model.start);
   };
 
   const shown = points[hovered ?? cursor] ?? points[0];
-  const cursorX = rateChartX(Math.min(cursor, model.total), model.total);
+  const cursorX = rateChartX(Math.min(Math.max(cursor - model.start, 0), model.total), model.total);
 
   return (
     <div className="playback-rate-chart" data-playback-rate-chart>

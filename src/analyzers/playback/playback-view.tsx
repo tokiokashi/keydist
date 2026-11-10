@@ -6,6 +6,7 @@ import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
 import { OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import type { SingleBodyProps } from '../pane-parts.tsx';
+import { RangeSwitch } from '../range-switch.tsx';
 import { SegmentationSourceButton } from '../segmentation-source-button.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
@@ -31,6 +32,7 @@ import {
   tickPlayback,
 } from './session.ts';
 import { PLAYBACK_FIGURE_GROUPS } from './settings-sections.ts';
+import { playbackRangeCount, playbackShownRange } from './step-ranges.ts';
 import { formatRate, rateChartAxisInsets } from './rate-chart-model.ts';
 import { PlaybackRateChart } from './rate-chart.tsx';
 import './playback-view.css';
@@ -109,6 +111,7 @@ export function PlaybackBody({
     personalSpeedUse,
     schedule,
     rateChart,
+    ranges,
     basisId,
     timeTotals,
     overallRates,
@@ -159,6 +162,14 @@ export function PlaybackBody({
     });
   }
   const { state } = session;
+
+  // 図に出す範囲。選んだ範囲を再生位置が出るまで保ち、出たら再生位置を含む範囲に替える。
+  // 再生が範囲の終わりを越えた時、別の画面から位置を指定された時、シークバーや速度の図で範囲の外へ動かした時が、これにあたる
+  const [chosenRange, setChosenRange] = useState(0);
+  const shownRange = playbackShownRange(ranges, chosenRange, state.cursor);
+  if (shownRange !== chosenRange) setChosenRange(shownRange);
+  const rangeStart = ranges.bounds[shownRange] ?? 0;
+  const rangeEnd = ranges.bounds[shownRange + 1] ?? total;
 
   // Workspaceでは、再生・一時停止・停止を全部の打鍵再生のペインへ伝える。伝えられた操作は購読で同じ描画の確定の中に届き、
   // ここで再生位置へ当てる（副作用で遅れて当てると、ペインどうしの開始が1フレーム以上ずれる）。
@@ -277,6 +288,12 @@ export function PlaybackBody({
     if (resume) update((previous) => startPlayback(previous, total));
   };
 
+  // 範囲を替えると、その範囲の先頭へ移る
+  const switchRange = (index: number) => {
+    setChosenRange(index);
+    update((previous) => seekPlayback(previous, ranges.bounds[index] ?? 0, total));
+  };
+
   const atEnd = state.cursor >= total;
   // 全部のペインに伝える時は、押したペインだけでなく全部のペインの状態で押せるかを決める（自分の状態は報告より新しい）
   const canPlay = !atEnd || (broadcast !== undefined && availability.canPlay);
@@ -348,6 +365,14 @@ export function PlaybackBody({
         </button>
       </fieldset>
 
+      <RangeSwitch
+        index={shownRange}
+        count={playbackRangeCount(ranges)}
+        start={ranges.chars[shownRange]?.start ?? 0}
+        end={ranges.chars[shownRange]?.end ?? 0}
+        onChange={switchRange}
+      />
+
       <div className="playback-seek" style={{ '--seek-axis-left': axisInsets.left, '--seek-axis-right': axisInsets.right } as CSSProperties}>
         {/* 数はラベルの横に置き、ラベルとスライダーの名前は「再生位置」のまま保つ（数を名前に入れると、数が変わるたびに読み上げ名が変わる） */}
         <div className="playback-seek-head">
@@ -372,8 +397,8 @@ export function PlaybackBody({
           id={seekId}
           type="range"
           data-playback-seek
-          min={0}
-          max={total}
+          min={rangeStart}
+          max={rangeEnd}
           step={1}
           value={state.cursor}
           onPointerDown={beginSeek}
@@ -508,6 +533,7 @@ export function PlaybackBody({
           cursor={state.cursor}
           showChain={options.showChain}
           showArpeggio={options.showArpeggio}
+          span={{ start: rangeStart, end: rangeEnd }}
           onSeek={(position) => update((previous) => seekPlayback(previous, position, total))}
         />
       </div>
