@@ -389,7 +389,7 @@ export function PaneFrame({
         </div>
       ) : reading?.kind === 'bodyFailed' ? (
         <div className="pane-error" role="alert" data-pane-error="true" data-pane-reading="bodyFailed">
-          <p>テキストの本文を読み込めなかったため、数値を出していません。文脈バーのテキストから、もう一度読み込んでください</p>
+          <p>テキストの本文を読み込めなかったため、数値を出していません。テキストを開いて、もう一度読み込んでください</p>
         </div>
       ) : readingLoading ? (
         <p className="pane-busy" aria-busy="true" data-pane-busy="true" data-pane-reading="loading">
