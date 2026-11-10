@@ -27,7 +27,7 @@ export interface UserAssetsExtras {
   readonly personalSpeed: PersonalSpeed;
   /** Analyzerごとの最後に使った解析設定。 */
   readonly analyzerOptions: StandaloneAnalyzerOptionsState;
-  /** Setupとワークスペース以外のレベル（全体・物理配列・入力方式・配列）の条件。 */
+  /** SetupとWorkspace以外のレベル（全体・物理配列・入力方式・配列）の条件。 */
   readonly conditions: ConditionLevels;
 }
 

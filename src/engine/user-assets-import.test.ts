@@ -418,3 +418,25 @@ test('全体・配列などの条件: 配列が別のidで足された時は、�
   assert.equal(withoutRule.extras.conditions.global?.romajiRuleId, undefined);
   assert.equal(withoutRule.extras.conditions.global?.fingerAssignmentId, FINGER.id);
 });
+
+function layoutWithConditions(layout: UserLayout): UserAssetsFileContents {
+  const file = layoutOnlyFile(layout);
+  return { ...file, extras: { ...file.extras, conditions: { layout: { [layout.id]: { windowSize: 6 } } } } };
+}
+
+test('読み込まない: 手元の配列を残した時は、ファイルの同じidの配列のレベルの条件を手元の配列に付けない', () => {
+  const hand = { ...emptyAssets(), userLayouts: [HAND_LAYOUT] };
+  const { assets, entries } = importInto(hand, layoutWithConditions({ ...LAYOUT, romaji: 'kunrei' }), { layout: 'skip' });
+  assert.equal(assets.setupLibrary.overrides.layout, undefined);
+  assert.equal(
+    entries.some((entry) => entry.assetKind === 'conditions'),
+    false,
+  );
+});
+
+test('全体・配列などの条件: 組み込みと同じidの配列を別名で足しても、組み込みの配列向けの条件は別名の配列へ移さない', () => {
+  const file = layoutWithConditions({ ...LAYOUT, id: 'qwerty', romaji: 'kunrei' });
+  const { assets } = importInto(emptyAssets(), file);
+  assert.notEqual(assets.userLayouts[0]!.id, 'qwerty');
+  assert.deepEqual(Object.keys(assets.setupLibrary.overrides.layout ?? {}), ['qwerty']);
+});

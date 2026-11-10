@@ -186,11 +186,21 @@ function mergeConditions(
   current: KeydistAssets['setupLibrary'],
   incoming: UserAssetsExtras['conditions'],
   maps: SetupIdMaps,
+  layoutEntries: { readonly ids: readonly string[]; readonly entries: readonly UserAssetImportEntry[] },
   policies: ImportPolicies | undefined,
 ): { readonly library: KeydistAssets['setupLibrary']; readonly entries: readonly UserAssetImportEntry[] } {
   const name = CONDITIONS_LABEL;
   const policy = importPolicyOf(policies, 'conditions');
-  const merged = mergeConditionLevels(current.overrides, incoming, maps, policy);
+  // 配列の読み込みが手元の配列を残した・組み込みと同じidで足さなかった時は、その配列のレベルの条件を運ばない。
+  // 組み込みと同じidで別名で足した配列の条件は、組み込みの配列の条件のまま付け替えない
+  const dropped = new Set<string>();
+  const remap = new Map(maps.layouts);
+  layoutEntries.ids.forEach((id, index) => {
+    const outcome = layoutEntries.entries[index]?.outcome;
+    if (outcome?.kind === 'kept-own' || outcome?.kind === 'skipped-builtin') dropped.add(id);
+    else if (outcome?.kind === 'added-renamed' && outcome.overlap.with === 'builtin') remap.set(id, id);
+  });
+  const merged = mergeConditionLevels(current.overrides, incoming, { ...maps, layouts: remap }, policy, dropped);
   const kind = merged.conflicted > 0 ? (policy === 'overwrite' ? 'overwritten' : 'kept-own') : merged.added > 0 ? 'added' : 'skipped-same';
   if (merged.conflicted === 0 && merged.added === 0 && merged.same === 0) return { library: current, entries: [] };
   const outcome: UserAssetImportEntry['outcome'] =
@@ -219,7 +229,13 @@ export function mergeUserAssetsFile(
     stamp,
     policies,
   );
-  const conditions = mergeConditions(assets.assets.setupLibrary, extras.conditions, assets.idMaps, policies);
+  const conditions = mergeConditions(
+    assets.assets.setupLibrary,
+    extras.conditions,
+    assets.idMaps,
+    { ids: file.bundle.layouts.map((layout) => layout.id), entries: assets.entries.filter((entry) => entry.assetKind === 'layout') },
+    policies,
+  );
   const personalSpeed = mergePersonalSpeed(current.personalSpeed, extras.personalSpeed, policies);
   const analyzerOptions = mergeAnalyzerOptions(current.standaloneAnalyzerOptions, extras.analyzerOptions, policies);
   const changes: Partial<KeydistAssets> = {

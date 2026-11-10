@@ -261,7 +261,7 @@ function OverrideSection({
       <h2>変更した条件</h2>
       <p className="user-assets-detail">
         保存してある変更をそのまま並べています。継承する値と同じ値や、今の条件では使われない値も含みます。
-        書き出しのファイルに入るのは、Setupの変更だけです。
+        書き出しのファイルには、全体・物理配列・入力方式・配列・Setupの変更が入ります。Workspaceの変更は、各Workspaceのデータに含まれます。
       </p>
       {groups.length === 0 ? (
         <p className="user-assets-empty">変更した条件はありません。</p>

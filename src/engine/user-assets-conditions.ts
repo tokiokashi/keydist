@@ -107,6 +107,7 @@ export interface ConditionsMerge {
 
 /**
  * ファイルの条件を手元へ足す。配列のレベルの条件は、読み込みで別のidになった配列へ付け替え、指の割り当て・ローマ字規則への参照も付け替える。
+ * `droppedLayoutIds`は、読み込まずに手元の配列を残した（または組み込みと同じidで足さなかった）ファイルの配列のid。その配列のレベルの条件は運ばない。
  * 手元に無いレベルは足し、同じ中身は足さず、違う中身は`policy`が`overwrite`なら置き換え、そうでなければ手元を残す。
  */
 export function mergeConditionLevels(
@@ -114,13 +115,16 @@ export function mergeConditionLevels(
   incoming: ConditionLevels,
   maps: SetupIdMaps,
   policy: ImportPolicy,
+  droppedLayoutIds: ReadonlySet<string> = new Set(),
 ): ConditionsMerge {
-  const relayered = flatten(incoming).map(
-    (entry): ConditionEntry =>
-      entry.level.kind === 'layout'
-        ? { ...entry, level: { kind: 'layout', layoutId: maps.layouts.get(entry.level.layoutId) ?? entry.level.layoutId } }
-        : entry,
-  );
+  const relayered = flatten(incoming)
+    .filter((entry) => entry.level.kind !== 'layout' || !droppedLayoutIds.has(entry.level.layoutId))
+    .map(
+      (entry): ConditionEntry =>
+        entry.level.kind === 'layout'
+          ? { ...entry, level: { kind: 'layout', layoutId: maps.layouts.get(entry.level.layoutId) ?? entry.level.layoutId } }
+          : entry,
+    );
   let value = current;
   let added = 0;
   let same = 0;
