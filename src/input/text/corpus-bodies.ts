@@ -7,6 +7,8 @@
  * 画面側が読み込みを待ってから描く（`hosts/shared/use-resolved-text-selection.ts`）。
  */
 
+import { isAlphanumericChar } from './evaluation-text.ts';
+
 /** ファイル名から本文を取る。 */
 export type CorpusBodyLoader = (fileName: string) => Promise<string>;
 
@@ -21,10 +23,20 @@ function notify(): void {
   for (const listener of listeners) listener();
 }
 
-/** 評価に渡す前処理（空白の畳み込み）は、組み込みの日本語サンプルと同じ。 */
-function preprocess(raw: string): string {
-  return raw.replace(/\s+/g, '');
+/**
+ * 組み込みの日本語の本文の空白の処理。空白と改行はすべて取り除く。ただし、英字と数字どうしに挟まれた、改行を含まない空白は
+ * 1つの半角の空白に畳んで残す（`the Internet` を `theInternet` にしない。自作のテキストを英数字を残す条件で評価した時と同じ語の区切りになる）。
+ */
+export function corpusBodyText(raw: string): string {
+  return raw.replace(/\s+/gu, (run, offset: number, whole: string) => {
+    if (/[\r\n]/u.test(run)) return '';
+    const before = [...whole.slice(Math.max(0, offset - 2), offset)].at(-1);
+    const after = [...whole.slice(offset + run.length, offset + run.length + 2)][0];
+    return before !== undefined && after !== undefined && isAlphanumericChar(before) && isAlphanumericChar(after) ? ' ' : '';
+  });
 }
+
+const preprocess = corpusBodyText;
 
 /** 読み込んだ本文を置く。ブラウザ以外（検査・テスト）が本文を直接置く時にも使う。 */
 export function setCorpusBody(sampleId: string, raw: string): void {
@@ -49,7 +61,7 @@ export function corpusBodyStatus(sampleId: string): CorpusBodyStatus {
 
 /**
  * 本文を読み込む。読み込み済みか読み込み中なら何もしない。失敗は `failed` に記録し、例外は投げない
- * （再び選ばれた時に、もう一度試す）。
+ * （呼び出し側が、失敗の後に `requestCorpusBody` をもう一度呼んで試し直す）。
  */
 export function requestCorpusBody(sampleId: string, fileName: string, loader: CorpusBodyLoader): Promise<void> {
   if (bodies.has(sampleId)) return Promise.resolve();

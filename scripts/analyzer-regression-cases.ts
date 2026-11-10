@@ -1,17 +1,17 @@
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
 import { containsKanji } from '#input/text/reading.ts';
 import { sampleText, SAMPLE_TEXTS, type TextLanguage } from '#input/text/samples.ts';
-import { KANA_TEST_TEXT } from '../test/kana-test-text.ts';
+import { PRACTICE_TEXT_JA } from '../src/tester/practice-text-ja.ts';
 
 /**
  * 回帰の記録に載せる、漢字を含まない日本語のテキストのid。同梱のテキストは漢字を含み、読みに直す段（辞書）が要るので、
- * 辞書を使わずに日本語の配列を通すためのかな文（`KANA_TEST_TEXT`）をこのidで持つ。
+ * 辞書を使わずに日本語の配列を通すためのかな文（Testerの練習文 `PRACTICE_TEXT_JA`）をこのidで持つ。
  */
 export const KANA_REGRESSION_SAMPLE_ID = 'kana';
 
 /** 回帰の記録のケースが指すテキスト。前処理（空白畳み込み）は同梱のテキストと同じ。 */
 export function regressionText(language: TextLanguage, sampleId: string): string {
-  return language === 'ja' && sampleId === KANA_REGRESSION_SAMPLE_ID ? KANA_TEST_TEXT : sampleText(language, sampleId);
+  return language === 'ja' && sampleId === KANA_REGRESSION_SAMPLE_ID ? PRACTICE_TEXT_JA.replace(/\s+/g, '') : sampleText(language, sampleId);
 }
 
 /** 既定条件で回帰の記録に載せるケースの組。 */

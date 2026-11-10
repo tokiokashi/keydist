@@ -22,12 +22,14 @@ export interface ResolvedTextWithBody<Resolved extends ResolvedText | undefined 
    * 読み込めなかった時は `failed`（本文は空のまま）。
    */
   readonly body: BodyState;
+  /** 読み込みに失敗した本文を、もう一度読み込む。本文が使える時・読み込み中の時は何もしない。 */
+  readonly retry: () => void;
 }
 
 /**
  * `resolveTextSelection`に、選んだ時に読み込む組み込みテキストの本文の読み込みを足したもの。
  * 選択が読み込み前の組み込みテキストを指す間は、読み込みを始め、終わったら解決し直す。
- * 読み込みを始めるのは選択が変わった時だけで、読み込みに失敗した後は、選び直すまで試し直さない。
+ * 読み込みを始めるのは選択が変わった時だけで、読み込みに失敗した後は、`retry`を呼ぶまで試し直さない（同じテキストを選び直しても読み込み直さない）。
  */
 export function useResolvedTextSelection(selection: TextSelectionState, library: TextLibrary): ResolvedTextWithBody;
 export function useResolvedTextSelection(selection: TextSelectionState | undefined, library: TextLibrary): ResolvedTextWithBody<ResolvedText | undefined>;
@@ -49,22 +51,30 @@ export function useResolvedTextSelection(
     void requestCorpusBody(sampleId, fileName, loader);
   }, [sampleId, fileName, loader]);
 
-  if (sampleId === undefined) return { resolved, body: 'ready' };
+  const retry = () => {
+    if (sampleId === undefined || fileName === undefined || loader === undefined) return;
+    if (corpusBodyStatus(sampleId) !== 'failed') return;
+    void requestCorpusBody(sampleId, fileName, loader);
+  };
+  if (sampleId === undefined) return { resolved, body: 'ready', retry };
   const status = corpusBodyStatus(sampleId);
-  if (status === 'loaded') return { resolved, body: 'ready' };
-  if (status === 'failed') return { resolved, body: 'failed' };
-  return { resolved, body: 'loading' };
+  if (status === 'loaded') return { resolved, body: 'ready', retry };
+  if (status === 'failed') return { resolved, body: 'failed', retry };
+  return { resolved, body: 'loading', retry };
 }
 
 /**
- * 本文の読み込みが済むまで、ペインに「読み込み中」を見せる。評価に渡すテキストが空のまま、数値を出させないため。
- * 読みの変換の待ちと同じ状態（`loading`）に乗せるので、ペインは計算を依頼せず、読み込み中だけを出す。
+ * 本文が使えるようになるまで、ペインは計算を依頼しない。評価に渡すテキストが空のまま、数値を出させないため。
+ * 読み込み中は `loading`（読みの変換の待ちと同じ状態）、読み込みに失敗した時は `bodyFailed` に置き換える。
  */
 export function useHeldEvaluation(evaluation: ReadingEvaluation, body: BodyState): ReadingEvaluation;
 export function useHeldEvaluation(evaluation: ReadingEvaluation | undefined, body: BodyState): ReadingEvaluation | undefined;
 export function useHeldEvaluation(evaluation: ReadingEvaluation | undefined, body: BodyState): ReadingEvaluation | undefined {
-  return useMemo(
-    () => (evaluation === undefined || body !== 'loading' ? evaluation : { ...evaluation, state: { kind: 'loading' } as const }),
-    [evaluation, body],
-  );
+  return useMemo(() => holdEvaluation(evaluation, body), [evaluation, body]);
+}
+
+/** `useHeldEvaluation`の中身。本文が使えない間は、ペインが計算を依頼しない状態に置き換える。 */
+export function holdEvaluation(evaluation: ReadingEvaluation | undefined, body: BodyState): ReadingEvaluation | undefined {
+  if (evaluation === undefined || body === 'ready') return evaluation;
+  return { ...evaluation, state: body === 'loading' ? ({ kind: 'loading' } as const) : ({ kind: 'bodyFailed' } as const) };
 }

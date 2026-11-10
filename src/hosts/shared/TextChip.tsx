@@ -118,7 +118,9 @@ export function TextChip(props: TextChipProps) {
       >
         <span className="context-chip-key">テキスト</span>
         <span className="context-chip-value">{resolved.name}</span>
-        <span className="text-chip-count">{body === 'loading' ? '読み込み中' : formatTextCount(countTextCharacters(resolved.text))}</span>
+        <span className="text-chip-count">
+          {body === 'loading' ? '読み込み中' : body === 'failed' ? '読み込めません' : formatTextCount(countTextCharacters(resolved.text))}
+        </span>
         {hasUnseen ? <span className="text-chip-unseen" role="img" aria-label="新しいテキストがあります" title="新しいテキストがあります" /> : null}
         <span className="text-chip-language">{languageLabel(resolved.language)}</span>
         <svg className="context-chip-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
@@ -135,7 +137,7 @@ export function TextChip(props: TextChipProps) {
 }
 
 function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, onTextContentCommit }: TextChipProps) {
-  const { resolved, body } = useResolvedTextSelection(selection, textLibrary);
+  const { resolved, body, retry } = useResolvedTextSelection(selection, textLibrary);
   const builtinSource = resolved.isBuiltin ? builtinTextById(resolved.ref.id)?.source : undefined;
 
   // 本文は見た目へ即座に反映し（controlled textarea）、資産への反映は間引く。
@@ -277,11 +279,13 @@ function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, 
           onTextContentCommit({ ref: resolved.ref, text });
         }}
         rows={5}
-        readOnly={body === 'loading'}
+        readOnly={body !== 'ready'}
         aria-label="テキスト"
       />
       {/* 狭い文脈バーではチップの文字数を見た目から省くので、開いた欄の近くでも同じ数を出す。 */}
-      <p className="text-editor-count">{body === 'loading' ? '読み込み中' : formatTextCount(countTextCharacters(resolved.text))}</p>
+      <p className="text-editor-count">
+        {body === 'loading' ? '読み込み中' : body === 'failed' ? '読み込めませんでした' : formatTextCount(countTextCharacters(resolved.text))}
+      </p>
 
       <div className="text-editor-row">
         <label className="text-editor-inline text-editor-name">
@@ -302,7 +306,7 @@ function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, 
           <button type="button" onClick={() => dispatch(createTextCommand(holder, generateTextId))}>
             新規作成
           </button>
-          <button type="button" onClick={() => dispatch(duplicateTextCommand(holder, generateTextId))}>
+          <button type="button" onClick={() => dispatch(duplicateTextCommand(holder, generateTextId))} disabled={body !== 'ready'}>
             複製
           </button>
           {/* 削除は「元に戻す」で戻せるので、確認は挟まない。 */}
@@ -317,7 +321,7 @@ function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, 
           ? 'サンプルを書き換えると、自作のテキストとして新しく保存します。元のサンプルはそのまま残ります。'
           : '自作のテキストはその場で書き換わります。'}
       </p>
-      {builtinSource === undefined ? null : <TextSourceNote source={builtinSource} body={body} />}
+      {builtinSource === undefined ? null : <TextSourceNote source={builtinSource} body={body} onRetry={retry} />}
     </div>
   );
 }

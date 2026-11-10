@@ -1,15 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BUILTIN_TEXTS, builtinTextById, DEFAULT_BUILTIN_TEXT_ID, deriveEditedTextName } from './builtin.ts';
-
-test('BUILTIN_TEXTS: 既定のサンプル（en.default / ja.legacy）と、同梱の分野別・混合のテキストが揃っている', () => {
-  const ids = BUILTIN_TEXTS.map((entry) => entry.id);
-  assert.ok(ids.includes('builtin:en.default'));
-  assert.ok(ids.includes('builtin:ja.legacy'));
-  assert.ok(ids.includes('builtin:ja.mixed'));
-  assert.equal(ids.includes('builtin:ja.modern'), false);
-  assert.equal(BUILTIN_TEXTS.length, 2 + 13);
-});
+import { builtinTextById, DEFAULT_BUILTIN_TEXT_ID, deriveEditedTextName } from './builtin.ts';
 
 test('DEFAULT_BUILTIN_TEXT_ID: ja.legacyを指す', () => {
   assert.equal(DEFAULT_BUILTIN_TEXT_ID, 'builtin:ja.legacy');

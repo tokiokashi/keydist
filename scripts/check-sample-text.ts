@@ -13,6 +13,7 @@ import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { LAYOUT_BY_ID, LAYOUTS_JA } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { containsKanji } from '#input/text/reading.ts';
+import { corpusBodyText } from '#input/text/corpus-bodies.ts';
 import { CORPUS_ENTRIES, sampleText } from '#input/text/samples.ts';
 import { assertNoMarkup } from './aozora-core.ts';
 import { createNodeToReading } from './eval-text-reading.ts';
@@ -55,7 +56,7 @@ interface Target {
 const targets: Target[] = [{ id: 'legacy', text: sampleText('ja', 'legacy'), range: DEFAULT_TEXT_RANGE }];
 for (const entry of CORPUS_ENTRIES) {
   const raw = await readFile(fileURLToPath(new URL(`../src/input/text/corpus/${entry.fileName}`, import.meta.url)), 'utf8');
-  targets.push({ id: entry.sampleId, text: raw.replace(/\s+/g, ''), range: CORPUS_RANGE });
+  targets.push({ id: entry.sampleId, text: corpusBodyText(raw), range: CORPUS_RANGE });
 }
 
 const report: { id: string; evalChars: number; chars: number }[] = [];

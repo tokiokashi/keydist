@@ -59,7 +59,7 @@ const EAGER_SOURCES: Readonly<Record<string, TextSource>> = {
     items: [
       {
         label: '『吾輩は猫である』',
-        note: '夏目漱石（没年1916）。青空文庫。底本：「夏目漱石全集1」ちくま文庫、筑摩書房、1987（昭和62）年9月29日第1刷発行。入力：柴田卓治、校正：渡部峰子ほか。ルビと入力者注を取り除き、第一章の先頭の約1000字を抜粋した',
+        note: '夏目漱石（没年1916）。青空文庫。底本：「夏目漱石全集1」ちくま文庫、筑摩書房、1987（昭和62）年9月29日第1刷発行。入力：柴田卓治、校正：渡部峰子ほか。ルビと入力者注を取り除き、第一章の先頭の約1000字を抜粋しました',
         url: 'https://www.aozora.gr.jp/cards/000148/card789.html',
       },
     ],
@@ -69,17 +69,17 @@ const EAGER_SOURCES: Readonly<Record<string, TextSource>> = {
     items: [
       {
         label: 'Pride and Prejudice',
-        note: 'Jane Austen（1813年）の冒頭の文。小文字にし、句読点の一部を取り除いた',
+        note: 'Jane Austen（1813年）の冒頭の文です。小文字にし、句読点の一部を取り除きました',
         url: 'https://www.gutenberg.org/ebooks/1342',
       },
       {
         label: 'Moby-Dick',
-        note: 'Herman Melville（1851年）の冒頭の文。小文字にし、句読点の一部を取り除いた',
+        note: 'Herman Melville（1851年）の冒頭の文です。小文字にし、句読点の一部を取り除きました',
         url: 'https://www.gutenberg.org/ebooks/2701',
       },
       {
         label: 'The Declaration of Independence',
-        note: 'アメリカ独立宣言（1776年）の一節。小文字にし、句読点の一部を取り除いた',
+        note: 'アメリカ独立宣言（1776年）の一節です。小文字にし、句読点の一部を取り除きました',
         url: 'https://www.archives.gov/founding-docs/declaration-transcript',
       },
     ],

@@ -35,13 +35,16 @@ function SourceItems({ source }: { readonly source: TextSource }) {
  * 組み込みテキストの出典とライセンス。文脈バーのテキストの選択の下に出す。
  * 本文の読み込みに失敗した時は、その知らせも出す。
  */
-export function TextSourceNote({ source, body }: { readonly source: TextSource; readonly body: BodyState }) {
+export function TextSourceNote({ source, body, onRetry }: { readonly source: TextSource; readonly body: BodyState; readonly onRetry: () => void }) {
   const license = TEXT_LICENSES[source.license];
   return (
     <div className="text-source">
       {body === 'failed' ? (
         <p className="text-editor-hint" role="status">
-          本文を読み込めませんでした。通信を確かめて、もう一度選んでください。
+          本文を読み込めませんでした。通信を確かめて、もう一度読み込んでください。{' '}
+          <button type="button" onClick={onRetry}>
+            もう一度読み込む
+          </button>
         </p>
       ) : null}
       <p className="text-editor-hint">

@@ -92,6 +92,7 @@ Traceは同じまま数値の定義を変える項目（解釈）のうち、今
 - 対象をペインに置くのは、Workspaceのペインが「従う / 固定」の対象を自分で持つため。ページ上部に置くと、ペインを並べた時に破綻する
 - テキストは器の値。個別画面は全体で1つの選択、Workspaceは自分の選択を持つ
 - 漢字を含む日本語のテキストは、器がペインへ渡す前に読みに直す（仕様 §4.6の1段目）。解析と辞書は `platform/reading/` が持ち、`app` が `ReadingSource`（`hosts/shared/reading-evaluation.ts`）として器へ注入する。器は `useReadingEvaluation` で、直した後のテキストと状態（読みに直す対象でない・読み込み中・失敗・直した）を `PaneEnvironment` に載せる。計算部は直した後のテキストを同期で受け取る。読み込み中のペインは依頼を出さず、読み込み中だけを出す。入口のモジュールは漢字を含む日本語のテキストが現れるまで読み込まない（事前描画の modulepreload に載せない）。器は解析した語の列を持ち、利用者の読みの直し（`ResolvedText.readingCorrections`。自作のテキストは資産に、組み込みのテキストは本文を写さずに `TextLibrary.builtinReadingCorrections` に持つ）を表記の単位で後から当てる（`convertToReading`）。直しを変えても解析し直さない。直しが当たった表記と読みは `Metrics.conditions.reading.corrections` に入る。読みを見て直す画面は文脈バーの読みのチップ（`hosts/shared/ReadingChip.tsx`）で、読みの候補の表（`platform/reading/candidate-table.json`。`scripts/generate-reading-candidates.ts` が mecab-ipadicのCSVから作る）は、そのチップを開いた時に初めて読み込む。候補の並びは、器が持つ比べている配列すべてで、候補の読みを単独のテキストとして評価した打鍵数の変わり方が大きい順にする（`hosts/shared/reading-words.ts`）
+- 同梱の評価テキストの本文（`input/text/corpus/` の `*.txt`。出典とライセンスは同じ場所の `SOURCES.md` と `catalog.json`）は、JavaScriptに含めず、選んだ時に取得する。取得は `platform/corpus/` が持ち、`app` が `CorpusBodyLoaderContext`（`hosts/shared/use-resolved-text-selection.ts`）として器へ注入する。読みの辞書と同じ向きで、器は `platform/` を直接importしない。器は `useResolvedTextSelection` で、選んだテキストの本文の状態（使える・読み込み中・失敗）を `body` に載せ、本文が使えない間は `useHeldEvaluation` がペインの状態を読み込み中か本文の読み込み失敗に置き換える。ペインは依頼を出さず、空の本文で数値を出さない。取得した本文は `input/text/corpus-bodies.ts` に置く。取得に失敗した本文は、`retry` を呼ぶまで試し直さない。ビルドの後に `scripts/check-corpus-assets.ts` が、本文がJavaScriptに入っていないことと、独立したファイルとして公開物に入っていることを確かめる
 - テキストの編集: 組み込みのサンプルを書き換えると、自作のテキストとして新しく保存し、以後はそれを編集する。自作のテキストは、明示的に複製しない限りその場で書き換える
 - **メニューバー（編集 / 表示…）は置かない。** 全操作の目録はコマンドパレット（書き込みはすべてコマンドを通すので、コマンドの一覧から作れる）で持つ。ペインと文脈バーにグローバルな操作が入り切らなくなった時に、メニューバー（かデスクトップアプリ化）を検討する
 - **トップは道具の全体像を説明するページ。** サイドバーの Analyze / Workspace の区分を見本として描き（名前は各Analyzerの`pane-meta`とサイドバーと同じものを使い、各画面へのリンクにする）、Analyzerとは・SingleとMultiの違い・始め方（気になる配列を1つ選ぶ。選んだ配列は Single の対象になり、Multi の組にも入る。選んだ後に各 Analyzer へのリンクを出す。書き込みは`setTargetForSingleAndMultiCommand`の1回の操作）・Workspace（複数のAnalyzerを並べて見る画面。サイドバーの「＋ 新しいWorkspace」から作る）、の4点を短く説明する。あわせて観測値の注記を置く。操作の細部（元に戻す・共有・条件の要約など）は書かない。画面への入口はサイドバーが持ち、見本のリンクはその写しなので、増やすときは両方そろえる
@@ -480,7 +481,7 @@ src/
     shapes/          物理配列
     semantics/       trigger / action realization
     romaji/
-    text/            サンプルテキストと言語
+    text/            サンプルテキストと言語。`corpus/` は同梱の評価テキストの本文（`*.txt`）と出典（`SOURCES.md`・`catalog.json`）
     settings/        カスケードの仕組み
     setup/           Setup
     presets/         プリセット（条件の1レベル分に付けた名前）
@@ -511,7 +512,7 @@ src/
     theme/           token
     keyboard/        キーボード図など、入力の型を知る部品
     charts/          グラフの部品（系列の点の見本など）
-  platform/          storage・ブラウザAPI。`reading/` は漢字の読みの解析（Worker・wasm・辞書の取得と保存）、`bunsetsu/` は文節の分割器（BudouX）
+  platform/          storage・ブラウザAPI。`reading/` は漢字の読みの解析（Worker・wasm・辞書の取得と保存）、`corpus/` は同梱の評価テキストの本文の取得、`bunsetsu/` は文節の分割器（BudouX）
   app/               組み立て・シェル・AppState
   routes/            TanStack Startの規約どおり。createFileRouteだけの薄いファイル
   router.tsx

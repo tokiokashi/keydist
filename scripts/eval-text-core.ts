@@ -34,6 +34,9 @@ const BROKEN_START = /^(?:は、|とは、|[がをにのへ。、）])/;
 /** 中身が欠けた空の鉤括弧。この括弧を含む段落は、語が欠けているので外す。 */
 const EMPTY_QUOTES = /「」|『』/;
 
+/** 語が欠けた跡の印。空白が2つ以上続く所と、空白の直後に読点か閉じ括弧が来る所。この跡を含む段落は外す。 */
+const GAP_RESIDUE = /\s{2,}|\s[、）]/;
+
 /**
  * 記事の書式の部品を展開した時に欠けた語の跡を整える。中身が読点と空白だけの括弧を取り除き、括弧の中の読点の余りを詰める。
  * 括弧の外の文は変わらない。
@@ -49,7 +52,7 @@ export function tidyWikipediaLine(line: string): string {
 /**
  * Wikipediaの記事の本文から、地の文の段落を選ぶ。
  *
- * 40字未満の行と句点の無い行（見出し・箇条書き・表の行）、数式や表の記法が残った行、語が欠けた行を除き、
+ * 40字未満の行と句点の無い行（見出し・箇条書き・表の行）、数式や表の記法が残った行、語が欠けた行（先頭の語・鉤括弧の中身・空白の跡）を除き、
  * 脚注や関連項目などの節の見出しから後ろを捨てる。英字と数字は原文のまま残す。
  */
 export function wikipediaParagraphs(raw: string): string[] {
@@ -59,7 +62,7 @@ export function wikipediaParagraphs(raw: string): string[] {
     if (TAIL_HEADINGS.has(trimmed)) break;
     const text = tidyWikipediaLine(trimmed);
     if ([...text].length < MIN_PARAGRAPH_CHARS || !text.includes('。')) continue;
-    if (MARKUP_RESIDUE.test(text) || BROKEN_START.test(text) || EMPTY_QUOTES.test(text)) continue;
+    if (MARKUP_RESIDUE.test(text) || BROKEN_START.test(text) || EMPTY_QUOTES.test(text) || GAP_RESIDUE.test(text)) continue;
     paragraphs.push(text);
   }
   return paragraphs;
@@ -142,7 +145,10 @@ export function takePassage(paragraphs: readonly string[], from: number, budget:
 export function defaultEvalChars(reading: string): number {
   let count = 0;
   for (const char of reading) {
-    if (/\s/u.test(char)) continue;
+    if (/\s/u.test(char)) {
+      count++;
+      continue;
+    }
     if (isAlphanumericChar(char)) continue;
     if (isSymbolChar(char) && !'、。,.'.includes(char)) continue;
     count++;

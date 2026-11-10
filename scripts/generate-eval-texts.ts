@@ -16,6 +16,7 @@ import type { TextLicenseId, TextSource, TextSourceItem } from '../src/input/tex
 import { extractZip } from '../src/platform/reading/zip.ts';
 import { convertAozora, extractBody } from './aozora-core.ts';
 import { createNodeToReading } from './eval-text-reading.ts';
+import { corpusBodyText } from '#input/text/corpus-bodies.ts';
 import { aozoraParagraphs, defaultEvalChars, takePassage, wikipediaParagraphs, type Passage } from './eval-text-core.ts';
 import {
   AOZORA_WORKS,
@@ -136,7 +137,7 @@ export interface TakeRecord {
 function aozoraItem(work: AozoraWork): TextSourceItem {
   return {
     label: `『${work.title}』`,
-    note: `${work.author}（没年${work.authorDeathYear}）。青空文庫。${work.colophon}ルビと入力者注を取り除き、一部の文を抜粋した`,
+    note: `${work.author}（没年${work.authorDeathYear}）。青空文庫。${work.colophon}ルビと入力者注を取り除き、一部の文を抜粋しました`,
     url: work.cardUrl,
   };
 }
@@ -160,7 +161,7 @@ export function buildTexts(originals: Originals, toReading: (text: string) => st
   const evalChars = (sentence: string): number => {
     let value = cache.get(sentence);
     if (value === undefined) {
-      value = defaultEvalChars(toReading(sentence));
+      value = defaultEvalChars(toReading(corpusBodyText(sentence)));
       cache.set(sentence, value);
     }
     return value;
@@ -277,7 +278,7 @@ export function buildTexts(originals: Originals, toReading: (text: string) => st
 }
 
 function record(source: string, from: number, passage: Passage, text: string): TakeRecord {
-  return { source, from, sentences: passage.sentences, evalChars: passage.evalChars, sourceChars: [...text.replace(/\s+/g, '')].length };
+  return { source, from, sentences: passage.sentences, evalChars: passage.evalChars, sourceChars: [...corpusBodyText(text)].length };
 }
 
 /** 選択肢の並び。分野を混ぜた1本、青空文庫の4本、Wikipediaの8本の順。 */

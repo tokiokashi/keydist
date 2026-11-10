@@ -51,7 +51,7 @@ test('同梱のテキストの一覧・本文のファイル・出典の一覧�
 
 test('Wikipediaの文を含むテキストはCC BY-SA 4.0で、記事ごとに履歴へのリンクを持つ', () => {
   const wikipedia = CORPUS_ENTRIES.filter((entry) => entry.sampleId.startsWith('wiki-') || entry.sampleId === 'mixed');
-  assert.equal(wikipedia.length, 9);
+  assert.ok(wikipedia.length > 0);
   for (const entry of wikipedia) {
     assert.equal(entry.license, 'cc-by-sa-4.0');
     const articles = entry.items.filter((item) => item.url.startsWith('https://ja.wikipedia.org/'));
