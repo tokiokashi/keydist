@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { DEFAULT_EXTRACTION_ASSETS, noRemember, type AnalyzerSetMember } from '#analyzers/contract.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 import { buildSpanIndex, spanSpread, spanTotals, spanValue } from '#interpretation/span-metrics.ts';
 import { generateTrace, type Trace } from '#trace/generate.ts';
 import { computeMemberSeries, computeRunChartExtraction, pointPositionsOf, runChartDefinition } from './extract.ts';

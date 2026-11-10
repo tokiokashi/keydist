@@ -24,7 +24,7 @@ function SourceItems({ source }: { readonly source: TextSource }) {
               ）
             </>
           )}
-          <span className="text-source-note">{item.note}</span>
+          {item.note === undefined ? null : <span className="text-source-note">{item.note}</span>}
         </li>
       ))}
     </ul>

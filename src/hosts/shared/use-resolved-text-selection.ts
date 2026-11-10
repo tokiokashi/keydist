@@ -31,10 +31,13 @@ export interface ResolvedTextWithBody<Resolved extends ResolvedText | undefined 
  */
 export function useResolvedTextSelection(selection: TextSelectionState, library: TextLibrary): ResolvedTextWithBody;
 export function useResolvedTextSelection(selection: TextSelectionState | undefined, library: TextLibrary): ResolvedTextWithBody<ResolvedText | undefined>;
-export function useResolvedTextSelection(selection: TextSelectionState | undefined, library: TextLibrary): ResolvedTextWithBody<ResolvedText | undefined> {
+export function useResolvedTextSelection(
+  selection: TextSelectionState | undefined,
+  library: TextLibrary,
+): ResolvedTextWithBody<ResolvedText | undefined> {
   const loader = useContext(CorpusBodyLoaderContext);
   const version = useSyncExternalStore(subscribeCorpusBodies, corpusBodiesVersion, corpusBodiesVersion);
-  // 本文が読み込まれたら解決し直すため、`version`を依存に入れる
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 読み込んだ本文は外部の置き場（`corpus-bodies.ts`）にあり、読み込みが済んだら解決し直すため、`version`を依存に入れる
   const resolved = useMemo(() => (selection === undefined ? undefined : resolveTextSelection(selection, library)), [selection, library, version]);
   const lazyBody = resolved?.isBuiltin === true ? builtinTextById(resolved.ref.id)?.lazyBody : undefined;
   const sampleId = lazyBody?.sampleId;
@@ -60,5 +63,8 @@ export function useResolvedTextSelection(selection: TextSelectionState | undefin
 export function useHeldEvaluation(evaluation: ReadingEvaluation, body: BodyState): ReadingEvaluation;
 export function useHeldEvaluation(evaluation: ReadingEvaluation | undefined, body: BodyState): ReadingEvaluation | undefined;
 export function useHeldEvaluation(evaluation: ReadingEvaluation | undefined, body: BodyState): ReadingEvaluation | undefined {
-  return useMemo(() => (evaluation === undefined || body !== 'loading' ? evaluation : { ...evaluation, state: { kind: 'loading' } as const }), [evaluation, body]);
+  return useMemo(
+    () => (evaluation === undefined || body !== 'loading' ? evaluation : { ...evaluation, state: { kind: 'loading' } as const }),
+    [evaluation, body],
+  );
 }

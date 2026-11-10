@@ -5,7 +5,7 @@ import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import type { Setup } from '#input/setup/index.ts';
-import { SAMPLE_TEXTS } from '#input/text/samples.ts';
+import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { computeComparisonRowValues, type ComparisonRowValues } from '../comparison-column-values.ts';
 import { computeTraceScalars, movedPressMetrics } from '#interpretation/metrics.ts';
@@ -27,7 +27,7 @@ const CATALOG = {
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
-const TEXT = SAMPLE_TEXTS.ja.modern!;
+const TEXT = SAMPLE_TEXT_JA.replace(/\s+/g, '');
 
 function rowOf(
   layoutId: string,

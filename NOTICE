@@ -14,3 +14,16 @@ You may modify and redistribute this software under the Apache License 2.0.
 However, do not present numbers produced by a modified version as output of
 keydist. The author can only answer for numbers produced by the repository
 above.
+
+同梱するテキストについて:
+src/input/text/corpus/ のうち、Wikipediaの記事を含むテキスト（wiki-*.txt と mixed.txt）は
+Creative Commons 表示-継承 4.0 国際（CC BY-SA 4.0）で配布します。記事ごとの出典・
+改変の内容は src/input/text/corpus/SOURCES.md にあります。それ以外のテキストは、
+著作権の保護期間が満了した作品です。
+
+On bundled texts:
+The Wikipedia-derived texts under src/input/text/corpus/ (wiki-*.txt and mixed.txt)
+are excerpted and modified from Japanese Wikipedia articles and are distributed
+under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). The article
+list and the modifications are in src/input/text/corpus/SOURCES.md. The other
+texts are works whose copyright has expired.

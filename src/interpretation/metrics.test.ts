@@ -5,7 +5,7 @@ import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing, meanStdDevMax, textCharMetrics } from './metrics.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { dist } from '#input/shapes/geometry.ts';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../test/kana-sample-text.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from './structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION } from './structure/arpeggio.ts';
 

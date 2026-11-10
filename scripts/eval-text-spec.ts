@@ -57,7 +57,8 @@ export const AOZORA_WORKS: readonly AozoraWork[] = [
     url: 'https://www.aozora.gr.jp/cards/000081/files/43737_ruby_19028.zip',
     sha256: 'a1eede5175fe832269192e004d7893a06be8deb1c90e1683366a883c60e8a42a',
     entryName: 'gingatetsudono_yoru.txt',
-    colophon: '底本：「銀河鉄道の夜」角川文庫、角川書店、1969（昭和44）年7月20日改版初版発行、1987（昭和62）年3月30日改版50版。入力：幸野素子、校正：土屋隆。',
+    colophon:
+      '底本：「銀河鉄道の夜」角川文庫、角川書店、1969（昭和44）年7月20日改版初版発行、1987（昭和62）年3月30日改版50版。入力：幸野素子、校正：土屋隆。',
   },
   {
     id: 'aozora-essay',

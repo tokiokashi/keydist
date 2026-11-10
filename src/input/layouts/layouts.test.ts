@@ -6,7 +6,7 @@ import { mapInputAlternativePhysicalKeys } from '../semantics/index.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { COMBO_LAYER_ID, faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from './index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 import { toLayout } from './user-layouts.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from '../../../test/kana-layout-helpers.ts';
 import {

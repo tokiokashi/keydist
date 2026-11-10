@@ -24,8 +24,8 @@ export const TEXT_LICENSES: Readonly<Record<TextLicenseId, TextLicense>> = {
 export interface TextSourceItem {
   /** 作品名や記事名。 */
   readonly label: string;
-  /** 作者や取得元など、`label` に添えて出す短い説明。 */
-  readonly note: string;
+  /** 作者や底本など、`label` に添えて出す短い説明。無い時は添えない。 */
+  readonly note?: string;
   /** 図書カードや記事のページ。 */
   readonly url: string;
   /** Wikipediaの記事の履歴のページ（執筆者の一覧）。青空文庫の作品には無い。 */

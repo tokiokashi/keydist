@@ -4,6 +4,10 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
+import { SAMPLE_TEXT_JA } from '../../test/kana-sample-text.ts';
+
+/** 漢字を含まない日本語の入力（読みの辞書を使わずに計算できる）。 */
+const KANA_SAMPLE = SAMPLE_TEXT_JA.replace(/\s+/g, '');
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { DEFAULT_BIGRAM_FLOW_OPTIONS } from '#analyzers/bigram-flow/options.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
@@ -87,11 +91,11 @@ function createFakeWorker(options: { manual?: boolean } = {}) {
 }
 
 test('Worker越しのTrace・抽出は、メインスレッドの計算と完全に一致する（英文・日本語のローマ字入力）', async () => {
-  for (const [language, sample] of [
-    ['en', 'default'],
-    ['ja', 'modern'],
+  for (const [language, text] of [
+    ['en', sampleText('en', 'default')],
+    ['ja', KANA_SAMPLE],
   ] as const) {
-    const entries = resolveAll(sampleText(language, sample), language);
+    const entries = resolveAll(text, language);
     const local = createEngineCache();
     const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
 
@@ -403,7 +407,7 @@ test('段の依頼が走っている間に打ち切られても、Workerは止�
 });
 
 test('メインスレッドへ返すTraceは打鍵の列を含まない要約で、打鍵の列以外の値は計算結果と同じ', async () => {
-  const entries = resolveAll(sampleText('ja', 'modern'), 'ja');
+  const entries = resolveAll(KANA_SAMPLE, 'ja');
   const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
   const summary = await remote.getTraceSummary(entries[0]!.input);
   assert.equal('strokes' in summary.trace, false);

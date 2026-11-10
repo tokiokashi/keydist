@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../test/kana-sample-text.ts';
 import { generateTrace, type Trace, type TracePolicy } from '#trace/generate.ts';
 import { computeTraceScalars } from './metrics.ts';
 import {

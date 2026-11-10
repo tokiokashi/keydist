@@ -27,145 +27,121 @@
       },
       {
         "label": "光合成",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%85%89%E5%90%88%E6%88%90",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%85%89%E5%90%88%E6%88%90&action=history"
       },
       {
         "label": "火山",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%81%AB%E5%B1%B1",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%81%AB%E5%B1%B1&action=history"
       },
       {
         "label": "太陽",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%A4%AA%E9%99%BD",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%A4%AA%E9%99%BD&action=history"
       },
       {
         "label": "自動車",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E8%87%AA%E5%8B%95%E8%BB%8A",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E8%87%AA%E5%8B%95%E8%BB%8A&action=history"
       },
       {
         "label": "鉄道",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E9%89%84%E9%81%93",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E9%89%84%E9%81%93&action=history"
       },
       {
         "label": "飛行機",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E9%A3%9B%E8%A1%8C%E6%A9%9F",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E9%A3%9B%E8%A1%8C%E6%A9%9F&action=history"
       },
       {
         "label": "江戸時代",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B1%9F%E6%88%B8%E6%99%82%E4%BB%A3",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B1%9F%E6%88%B8%E6%99%82%E4%BB%A3&action=history"
       },
       {
         "label": "明治維新",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%98%8E%E6%B2%BB%E7%B6%AD%E6%96%B0",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%98%8E%E6%B2%BB%E7%B6%AD%E6%96%B0&action=history"
       },
       {
         "label": "織田信長",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%B9%94%E7%94%B0%E4%BF%A1%E9%95%B7",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%B9%94%E7%94%B0%E4%BF%A1%E9%95%B7&action=history"
       },
       {
         "label": "哲学",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%93%B2%E5%AD%A6",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%93%B2%E5%AD%A6&action=history"
       },
       {
         "label": "倫理学",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%80%AB%E7%90%86%E5%AD%A6",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%80%AB%E7%90%86%E5%AD%A6&action=history"
       },
       {
         "label": "功利主義",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%8A%9F%E5%88%A9%E4%B8%BB%E7%BE%A9",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%8A%9F%E5%88%A9%E4%B8%BB%E7%BE%A9&action=history"
       },
       {
         "label": "仏教",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E4%BB%8F%E6%95%99",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E4%BB%8F%E6%95%99&action=history"
       },
       {
         "label": "キリスト教",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E3%82%AD%E3%83%AA%E3%82%B9%E3%83%88%E6%95%99",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E3%82%AD%E3%83%AA%E3%82%B9%E3%83%88%E6%95%99&action=history"
       },
       {
         "label": "神道",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%A5%9E%E9%81%93",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%A5%9E%E9%81%93&action=history"
       },
       {
         "label": "日本語",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E8%AA%9E",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%97%A5%E6%9C%AC%E8%AA%9E&action=history"
       },
       {
         "label": "漢字",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%BC%A2%E5%AD%97",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%BC%A2%E5%AD%97&action=history"
       },
       {
         "label": "俳句",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E4%BF%B3%E5%8F%A5",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E4%BF%B3%E5%8F%A5&action=history"
       },
       {
         "label": "経済学",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%B5%8C%E6%B8%88%E5%AD%A6",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%B5%8C%E6%B8%88%E5%AD%A6&action=history"
       },
       {
         "label": "民主主義",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B0%91%E4%B8%BB%E4%B8%BB%E7%BE%A9",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B0%91%E4%B8%BB%E4%B8%BB%E7%BE%A9&action=history"
       },
       {
         "label": "憲法",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%86%B2%E6%B3%95",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%86%B2%E6%B3%95&action=history"
       },
       {
         "label": "寿司",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%AF%BF%E5%8F%B8",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%AF%BF%E5%8F%B8&action=history"
       },
       {
         "label": "日本料理",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E6%96%99%E7%90%86",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%97%A5%E6%9C%AC%E6%96%99%E7%90%86&action=history"
       },
       {
         "label": "温泉",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B8%A9%E6%B3%89",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B8%A9%E6%B3%89&action=history"
       }
@@ -231,31 +207,26 @@
     "items": [
       {
         "label": "光合成",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%85%89%E5%90%88%E6%88%90",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%85%89%E5%90%88%E6%88%90&action=history"
       },
       {
         "label": "火山",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%81%AB%E5%B1%B1",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%81%AB%E5%B1%B1&action=history"
       },
       {
         "label": "太陽",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%A4%AA%E9%99%BD",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%A4%AA%E9%99%BD&action=history"
       },
       {
         "label": "進化",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E9%80%B2%E5%8C%96",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E9%80%B2%E5%8C%96&action=history"
       },
       {
         "label": "気象",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B0%97%E8%B1%A1",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B0%97%E8%B1%A1&action=history"
       }
@@ -269,31 +240,26 @@
     "items": [
       {
         "label": "自動車",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E8%87%AA%E5%8B%95%E8%BB%8A",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E8%87%AA%E5%8B%95%E8%BB%8A&action=history"
       },
       {
         "label": "鉄道",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E9%89%84%E9%81%93",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E9%89%84%E9%81%93&action=history"
       },
       {
         "label": "飛行機",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E9%A3%9B%E8%A1%8C%E6%A9%9F",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E9%A3%9B%E8%A1%8C%E6%A9%9F&action=history"
       },
       {
         "label": "インターネット",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E3%82%A4%E3%83%B3%E3%82%BF%E3%83%BC%E3%83%8D%E3%83%83%E3%83%88",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E3%82%A4%E3%83%B3%E3%82%BF%E3%83%BC%E3%83%8D%E3%83%83%E3%83%88&action=history"
       },
       {
         "label": "半導体",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%8D%8A%E5%B0%8E%E4%BD%93",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%8D%8A%E5%B0%8E%E4%BD%93&action=history"
       }
@@ -307,31 +273,26 @@
     "items": [
       {
         "label": "江戸時代",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B1%9F%E6%88%B8%E6%99%82%E4%BB%A3",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B1%9F%E6%88%B8%E6%99%82%E4%BB%A3&action=history"
       },
       {
         "label": "明治維新",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%98%8E%E6%B2%BB%E7%B6%AD%E6%96%B0",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%98%8E%E6%B2%BB%E7%B6%AD%E6%96%B0&action=history"
       },
       {
         "label": "織田信長",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%B9%94%E7%94%B0%E4%BF%A1%E9%95%B7",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%B9%94%E7%94%B0%E4%BF%A1%E9%95%B7&action=history"
       },
       {
         "label": "鎌倉幕府",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E9%8E%8C%E5%80%89%E5%B9%95%E5%BA%9C",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E9%8E%8C%E5%80%89%E5%B9%95%E5%BA%9C&action=history"
       },
       {
         "label": "縄文時代",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%B8%84%E6%96%87%E6%99%82%E4%BB%A3",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%B8%84%E6%96%87%E6%99%82%E4%BB%A3&action=history"
       }
@@ -345,31 +306,26 @@
     "items": [
       {
         "label": "哲学",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%93%B2%E5%AD%A6",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%93%B2%E5%AD%A6&action=history"
       },
       {
         "label": "倫理学",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%80%AB%E7%90%86%E5%AD%A6",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%80%AB%E7%90%86%E5%AD%A6&action=history"
       },
       {
         "label": "功利主義",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%8A%9F%E5%88%A9%E4%B8%BB%E7%BE%A9",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%8A%9F%E5%88%A9%E4%B8%BB%E7%BE%A9&action=history"
       },
       {
         "label": "イマヌエル・カント",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E3%82%A4%E3%83%9E%E3%83%8C%E3%82%A8%E3%83%AB%E3%83%BB%E3%82%AB%E3%83%B3%E3%83%88",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E3%82%A4%E3%83%9E%E3%83%8C%E3%82%A8%E3%83%AB%E3%83%BB%E3%82%AB%E3%83%B3%E3%83%88&action=history"
       },
       {
         "label": "実存主義",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%AE%9F%E5%AD%98%E4%B8%BB%E7%BE%A9",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%AE%9F%E5%AD%98%E4%B8%BB%E7%BE%A9&action=history"
       }
@@ -383,31 +339,26 @@
     "items": [
       {
         "label": "仏教",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E4%BB%8F%E6%95%99",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E4%BB%8F%E6%95%99&action=history"
       },
       {
         "label": "キリスト教",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E3%82%AD%E3%83%AA%E3%82%B9%E3%83%88%E6%95%99",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E3%82%AD%E3%83%AA%E3%82%B9%E3%83%88%E6%95%99&action=history"
       },
       {
         "label": "神道",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%A5%9E%E9%81%93",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%A5%9E%E9%81%93&action=history"
       },
       {
         "label": "イスラム教",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E3%82%A4%E3%82%B9%E3%83%A9%E3%83%A0%E6%95%99",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E3%82%A4%E3%82%B9%E3%83%A9%E3%83%A0%E6%95%99&action=history"
       },
       {
         "label": "浄土真宗",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B5%84%E5%9C%9F%E7%9C%9F%E5%AE%97",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B5%84%E5%9C%9F%E7%9C%9F%E5%AE%97&action=history"
       }
@@ -421,31 +372,26 @@
     "items": [
       {
         "label": "日本語",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E8%AA%9E",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%97%A5%E6%9C%AC%E8%AA%9E&action=history"
       },
       {
         "label": "漢字",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%BC%A2%E5%AD%97",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%BC%A2%E5%AD%97&action=history"
       },
       {
         "label": "俳句",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E4%BF%B3%E5%8F%A5",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E4%BF%B3%E5%8F%A5&action=history"
       },
       {
         "label": "浮世絵",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B5%AE%E4%B8%96%E7%B5%B5",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B5%AE%E4%B8%96%E7%B5%B5&action=history"
       },
       {
         "label": "歌舞伎",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%AD%8C%E8%88%9E%E4%BC%8E",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%AD%8C%E8%88%9E%E4%BC%8E&action=history"
       }
@@ -459,31 +405,26 @@
     "items": [
       {
         "label": "経済学",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%B5%8C%E6%B8%88%E5%AD%A6",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%B5%8C%E6%B8%88%E5%AD%A6&action=history"
       },
       {
         "label": "民主主義",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B0%91%E4%B8%BB%E4%B8%BB%E7%BE%A9",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B0%91%E4%B8%BB%E4%B8%BB%E7%BE%A9&action=history"
       },
       {
         "label": "憲法",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%86%B2%E6%B3%95",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%86%B2%E6%B3%95&action=history"
       },
       {
         "label": "貨幣",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E8%B2%A8%E5%B9%A3",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E8%B2%A8%E5%B9%A3&action=history"
       },
       {
         "label": "国際連合",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%9B%BD%E9%9A%9B%E9%80%A3%E5%90%88",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%9B%BD%E9%9A%9B%E9%80%A3%E5%90%88&action=history"
       }
@@ -497,31 +438,26 @@
     "items": [
       {
         "label": "寿司",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E5%AF%BF%E5%8F%B8",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E5%AF%BF%E5%8F%B8&action=history"
       },
       {
         "label": "日本料理",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E6%96%99%E7%90%86",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%97%A5%E6%9C%AC%E6%96%99%E7%90%86&action=history"
       },
       {
         "label": "温泉",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E6%B8%A9%E6%B3%89",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E6%B8%A9%E6%B3%89&action=history"
       },
       {
         "label": "相撲",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E7%9B%B8%E6%92%B2",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E7%9B%B8%E6%92%B2&action=history"
       },
       {
         "label": "茶道",
-        "note": "Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）",
         "url": "https://ja.wikipedia.org/wiki/%E8%8C%B6%E9%81%93",
         "historyUrl": "https://ja.wikipedia.org/w/index.php?title=%E8%8C%B6%E9%81%93&action=history"
       }

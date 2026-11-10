@@ -204,9 +204,9 @@ test('共有リンクで届いた解析設定と対象は、「元に戻す」1�
   await expect(undo).toBeDisabled();
 });
 
-/** テキストを組み込みの「現代文」に切り替え、チップを閉じる。 */
+/** テキストを組み込みの「吾輩は猫である」の冒頭（既定）に切り替え、チップを閉じる。 */
 async function selectBuiltinText(page: Page): Promise<void> {
   const panel = await openTextChip(page);
-  await panel.getByLabel('テキストを選ぶ').selectOption('builtin:builtin:ja.modern');
+  await panel.getByLabel('テキストを選ぶ').selectOption('builtin:builtin:ja.legacy');
   await page.keyboard.press('Escape');
 }

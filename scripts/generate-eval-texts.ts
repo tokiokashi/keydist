@@ -16,13 +16,7 @@ import type { TextLicenseId, TextSource, TextSourceItem } from '../src/input/tex
 import { extractZip } from '../src/platform/reading/zip.ts';
 import { convertAozora, extractBody } from './aozora-core.ts';
 import { createNodeToReading } from './eval-text-reading.ts';
-import {
-  aozoraParagraphs,
-  defaultEvalChars,
-  takePassage,
-  wikipediaParagraphs,
-  type Passage,
-} from './eval-text-core.ts';
+import { aozoraParagraphs, defaultEvalChars, takePassage, wikipediaParagraphs, type Passage } from './eval-text-core.ts';
 import {
   AOZORA_WORKS,
   CATEGORY_TARGET_EVAL_CHARS,
@@ -150,7 +144,6 @@ function aozoraItem(work: AozoraWork): TextSourceItem {
 function wikipediaItem(article: WikipediaArticle): TextSourceItem {
   return {
     label: article.title,
-    note: 'Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）',
     url: WIKIPEDIA_SOURCE.articleUrl(article.title),
     historyUrl: WIKIPEDIA_SOURCE.historyUrl(article.title),
   };
@@ -294,6 +287,8 @@ export function orderedEntries(built: readonly BuiltText[]): BuiltText[] {
   return [...mixed, ...rest];
 }
 
+const WIKIPEDIA_ITEM_NOTE = 'Wikipedia日本語版の記事から一部の文を抜粋した（行を除き、文の順は変えていない）';
+
 const SOURCES_HEADER = `# 同梱するテキストの出典とライセンス
 
 このディレクトリのテキスト（\`*.txt\`）は \`scripts/generate-eval-texts.ts\` が作る。手で直さない。
@@ -332,7 +327,7 @@ function sourcesMarkdown(built: readonly BuiltText[]): string {
       parts.push(`\n### ${text.entry.name}（\`${text.entry.fileName}\`）\n\n`);
       for (const item of text.entry.items) {
         const history = item.historyUrl === undefined ? '' : `、[履歴](${item.historyUrl})`;
-        parts.push(`- [${item.label}](${item.url})${history}: ${item.note}\n`);
+        parts.push(`- [${item.label}](${item.url})${history}: ${item.note ?? WIKIPEDIA_ITEM_NOTE}\n`);
       }
     }
   }
@@ -349,7 +344,14 @@ export function outputFiles(built: readonly BuiltText[]): OutputFile[] {
   return [
     ...ordered.map((text) => ({ path: join(CORPUS_DIR, text.entry.fileName), content: text.body })),
     { path: join(CORPUS_DIR, 'SOURCES.md'), content: sourcesMarkdown(ordered) },
-    { path: join(CORPUS_DIR, 'catalog.json'), content: `${JSON.stringify(ordered.map((text) => text.entry), null, 2)}\n` },
+    {
+      path: join(CORPUS_DIR, 'catalog.json'),
+      content: `${JSON.stringify(
+        ordered.map((text) => text.entry),
+        null,
+        2,
+      )}\n`,
+    },
   ];
 }
 

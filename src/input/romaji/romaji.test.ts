@@ -8,7 +8,7 @@ import { kanaToRomaji, kanaToRomajiChunks, kunrei } from './kunrei.ts';
 import { azik } from './azik.ts';
 import { jlod } from './jlod.ts';
 import { gact10 } from './gact10.ts';
-import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 
 const geometry = buildGeometry('row-staggered');
 const qwerty = LAYOUTS[0];
