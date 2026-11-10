@@ -4,14 +4,14 @@ import { levelOverrides, type LevelOverrides } from '#input/settings/index.ts';
 import { dedupeTargets, type TargetSet } from './multi-target-selection.ts';
 import type { SettingsValueMap } from './settings-items.ts';
 import { userAssetsBundleOf, type UserAssetIdMaps, type UserAssetsBundle, type UserAssetsHoldings } from './user-assets-file.ts';
-import { workspaceTargets, type LinkGroup, type Workspace, type WorkspacePane, type WorkspacePaneTarget } from './workspace.ts';
+import { workspaceReferencedTargets, type LinkGroup, type Workspace, type WorkspacePane, type WorkspacePaneTarget } from './workspace.ts';
 import { withWorkspaceColors } from './workspace-colors.ts';
 
 /**
  * Workspaceの書き出しに同梱する自作の資産と、読み込み時の参照の付け替え（DOMを使わない計算）。
  *
  * 同梱するのは、Workspaceから参照をたどって届く自作の資産だけ（組み込みの資産・物理配列・自作のテキストは入れない）:
- * - Workspaceが映す対象（`workspaceTargets`）の配列とSetup
+ * - Workspaceが映す対象と、どのペインも従っていない組の対象（`workspaceReferencedTargets`）の配列とSetup
  * - `Workspace.conditions`の指の割り当てとローマ字規則
  * - 同梱するSetupが指す配列と、Setupのレベルの条件の指の割り当て・ローマ字規則
  * - 同梱する配列が推奨するローマ字規則
@@ -44,7 +44,7 @@ export function workspaceAssetsOf(workspaces: readonly Workspace[], holdings: Us
     if (id !== undefined && ownFingers.has(id)) fingerIds.add(id);
   };
   for (const workspace of workspaces) {
-    for (const target of workspaceTargets(workspace)) {
+    for (const target of workspaceReferencedTargets(workspace)) {
       if (target.kind === 'layout') {
         if (ownLayouts.has(target.layoutId)) layoutIds.add(target.layoutId);
       } else if (ownSetups.has(target.setupId)) {
