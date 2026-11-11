@@ -1,8 +1,11 @@
+import { useState, type ReactNode } from 'react';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import { DISTRIBUTION_CAP, distributionRowsOf, type DistributionRow } from './distribution.ts';
 import { handRhythmDefinition, type HandRhythmExtracted } from './extract.ts';
 import { DEFAULT_HAND_RHYTHM_OPTIONS, handRhythmOptions, type HandRhythmOptions } from './options.ts';
 import { HAND_RHYTHM_PANE_META } from './pane-meta.ts';
+import { handRhythmDistributionTableModel } from './table-model.ts';
 import { alternationRowsOf, pairRowsOf, type ValueRow } from './value-rows.ts';
 import { ALTERNATION_MIN_STROKES } from '#interpretation/structure/hand-rhythm.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
@@ -31,11 +34,12 @@ const DISTRIBUTION_READING =
   '交互打鍵の連続と、同じ手の連続を、長さ（アクション数）ごとに数えた分布です。同じ手の連続は、同じ手だけを使うアクションが続く区間で、1アクションだけの区間も数えます。' +
   `左右の手を合わせた数で、両手のアクションは区間を切ります。${DISTRIBUTION_CAP}アクション以上の連続は1行にまとめています。棒の長さは、その分布の中で最も多い長さを基準にします。`;
 
-function Heading({ title, description }: { readonly title: string; readonly description: string }) {
+function Heading({ title, description, action }: { readonly title: string; readonly description: string; readonly action?: ReactNode }) {
   return (
     <div className="hand-rhythm-heading">
       <h3>{title}</h3>
       <InfoButton name={title} description={description} />
+      {action}
     </div>
   );
 }
@@ -53,7 +57,24 @@ function Values({ rows }: { readonly rows: readonly ValueRow[] }) {
   );
 }
 
-function Distribution({ id, title, rows }: { readonly id: string; readonly title: string; readonly rows: readonly DistributionRow[] }) {
+function Distribution({
+  id,
+  title,
+  rows,
+  asTable,
+}: {
+  readonly id: string;
+  readonly title: string;
+  readonly rows: readonly DistributionRow[];
+  readonly asTable: boolean;
+}) {
+  if (asTable) {
+    return (
+      <div data-hand-rhythm-distribution={id}>
+        <FigureTable model={handRhythmDistributionTableModel(title, rows)} />
+      </div>
+    );
+  }
   const high = Math.max(1, ...rows.map((row) => row.count));
   return (
     <figure className="hand-rhythm-distribution" data-hand-rhythm-distribution={id}>
@@ -78,6 +99,8 @@ function Distribution({ id, title, rows }: { readonly id: string; readonly title
 }
 
 export function HandRhythmBody({ extracted }: SingleBodyProps<HandRhythmExtracted, HandRhythmOptions>) {
+  /** 分布の値を表で読む表示にしているか。保存しない */
+  const [asTable, setAsTable] = useState(false);
   return (
     <div className="hand-rhythm-feature" data-react-feature="hand-rhythm">
       <section className="hand-rhythm-section">
@@ -89,10 +112,19 @@ export function HandRhythmBody({ extracted }: SingleBodyProps<HandRhythmExtracte
         <Values rows={alternationRowsOf(extracted)} />
       </section>
       <section className="hand-rhythm-section">
-        <Heading title="連続の長さの分布" description={DISTRIBUTION_READING} />
+        <Heading
+          title="連続の長さの分布"
+          description={DISTRIBUTION_READING}
+          action={<FigureTableSwitch pressed={asTable} onToggle={() => setAsTable((current) => !current)} />}
+        />
         <div className="hand-rhythm-distributions">
-          <Distribution id="alternation" title="交互打鍵の連続（件）" rows={distributionRowsOf(extracted.alternationLengths, ALTERNATION_MIN_STROKES)} />
-          <Distribution id="same-hand" title="同じ手の連続（件）" rows={distributionRowsOf(extracted.sameHandLengths, 1)} />
+          <Distribution
+            id="alternation"
+            title="交互打鍵の連続（件）"
+            rows={distributionRowsOf(extracted.alternationLengths, ALTERNATION_MIN_STROKES)}
+            asTable={asTable}
+          />
+          <Distribution id="same-hand" title="同じ手の連続（件）" rows={distributionRowsOf(extracted.sameHandLengths, 1)} asTable={asTable} />
         </div>
       </section>
     </div>
