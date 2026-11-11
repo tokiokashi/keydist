@@ -36,6 +36,13 @@ const PAGE = 100;
 const PLACE_PAGE = 20;
 const NO_OCCURRENCES: readonly ReadingOccurrence[] = [];
 
+/** チップの値。直した数と見つからない直しの数を並べる時は、語の数を出さず、直した数と取り違えないようにする。 */
+function chipValue(surfaces: number, words: number, wordCount: number, unfound: number): string {
+  const fixed = surfaces + words > 0 ? `${correctionCountText(surfaces, words)}を直し済み` : undefined;
+  if (unfound === 0) return fixed ?? `${wordCount}語`;
+  return `${fixed ?? '直し済みなし'}、見つからない直し${unfound}件`;
+}
+
 /**
  * 文脈バーの読みのチップ。漢字を読みに直したテキストで、語ごとの読みを見て、直せる。
  * 直しは表記の単位で、同じ表記の語すべてに当たる。同じ表記の語が複数あれば、テキストの中の1つの語（場所）だけも直せる。
@@ -89,8 +96,7 @@ export function ReadingChip(props: ReadingChipProps) {
       >
         <span className="context-chip-key">読み</span>
         <span className="context-chip-value" data-reading-unfound-count={unfound > 0 ? unfound : undefined}>
-          {fixedSurfaces + fixedWords > 0 ? `${correctionCountText(fixedSurfaces, fixedWords)}を直し済み` : `${evaluation.words.length}語`}
-          {unfound > 0 ? `・見つからない直し${unfound}` : ''}
+          {chipValue(fixedSurfaces, fixedWords, evaluation.words.length, unfound)}
         </span>
         <svg className="context-chip-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
           <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

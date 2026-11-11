@@ -1,14 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { convertToReading, type ReadingToken } from './reading.ts';
-import {
-  anchorTokens,
-  listReadingOccurrences,
-  resolveWordCorrections,
-  withWordReadingCorrection,
-  WORD_CONTEXT_LENGTH,
-  type WordReadingCorrection,
-} from './word-reading.ts';
+import { anchorTokens, listReadingOccurrences, resolveWordCorrections, withWordReadingCorrection, type WordReadingCorrection } from './word-reading.ts';
 
 const encoder = new TextEncoder();
 
@@ -47,7 +40,6 @@ function correction(order: number, before: string, after: string, reading = 'こ
 test('語の指定は、同じ表記の語の順番と、原文の前後4文字（原文の端では足りない分だけ）で決まる', () => {
   const { text, tokens } = days('晴', '雨', '雪');
   const anchors = anchorTokens(text, tokens).filter((anchor) => anchor?.surface === '今日');
-  assert.equal(WORD_CONTEXT_LENGTH, 4);
   assert.deepEqual(anchors, [
     { surface: '今日', order: 0, before: '', after: 'は晴。今' },
     { surface: '今日', order: 1, before: '日は晴。', after: 'は雨。今' },
@@ -211,4 +203,13 @@ test('直しの差し替え: 同じ語の指定は置き換え、指定した直
   // 見つからない直しを付け直す: 古い指定を消して、新しい指定を足す
   assert.deepEqual(withWordReadingCorrection([a], [a], { ...b }), [b]);
   assert.equal(withWordReadingCorrection([], [a], undefined).length, 0);
+});
+
+test('原文の端で前後の文字が4文字に満たない直しは、同じ文脈になった別の語に当たりうる（仕様で許容した場合）', () => {
+  const stored = correction(1, '日は雨。', 'は雪。');
+  const once = days('雨', '雪');
+  assert.equal(resolveWordCorrections(once.text, once.tokens, [stored]).applied[0]?.order, 1);
+  // 同じ文を後ろに書き足すと、書き足した4つ目が同じ前後の文字になる
+  const twice = days('雨', '雪', '雨', '雪');
+  assert.equal(resolveWordCorrections(twice.text, twice.tokens, [stored]).applied[0]?.order, 3);
 });
