@@ -121,6 +121,33 @@ test('テキストが空なら、押下数はすべて0でレイヤーの構成�
   ]);
 });
 
+test('切り替えのキーの行は、分母が打鍵数で、レイヤーとコンボの表と同じ行を持つ', () => {
+  // "aAa" は3打鍵。Shiftと同時に押す「A」の1打鍵だけが切り替えのキーを使う
+  const { extracted } = extractFor('qwerty', 'aAa');
+  assert.equal(extracted.strokes, 3);
+  assert.equal(extracted.presses, 4);
+  const group = (id: string) => extracted.triggerGroups.find((entry) => entry.id === id);
+  assert.deepEqual(
+    group('all')?.rows.map((row) => [row.participated, row.sameHand]),
+    [[1, 0]],
+  );
+  assert.deepEqual(
+    group('face')?.rows.map((row) => [row.id, row.participated]),
+    [
+      ['single', 0],
+      ['layer:Shift', 1],
+    ],
+  );
+  assert.deepEqual(
+    group('order')?.rows.map((row) => [row.id, row.participated]),
+    [
+      ['overlap', 1],
+      ['before', 1],
+      ['after', 0],
+    ],
+  );
+});
+
 test('割合は全体に対する百分率。全体が0なら0.0%', () => {
   assert.equal(attributionShare(1, 4), '25.0%');
   assert.equal(attributionShare(2, 3), '66.7%');
