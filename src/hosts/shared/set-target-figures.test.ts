@@ -24,6 +24,7 @@ const EN_TEXT: ResolvedText = {
   languageOverride: undefined,
   isBuiltin: false,
   readingCorrections: {},
+  wordReadingCorrections: [],
 };
 
 const layoutTarget = (layoutId: string): AnalysisTarget => ({ kind: 'layout', layoutId });

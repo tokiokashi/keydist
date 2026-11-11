@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
-import { pressSentenceSessionKey, startSentenceSession, type SentenceSession, type SentencePlan } from '#interpretation/timing/sentence-session.ts';
+import {
+  pressSentenceSessionKey,
+  sentenceUsesThumbKeys,
+  startSentenceSession,
+  type SentenceSession,
+  type SentencePlan,
+} from '#interpretation/timing/sentence-session.ts';
 import { captureCalibrationKeys, matchableKeyEvent, swallowsPress } from './key-capture.ts';
 
 export interface SentenceRunOptions {
@@ -36,6 +42,8 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
   const optionsRef = useRef(options);
   optionsRef.current = options;
   const bindingsRef = useRef<BrowserKeyBindingOverrides>({});
+  // 示す文の打つキーに親指のキーがあるか。測定を始める時に決める。
+  const thumbKeysRef = useRef(false);
   const active = session !== undefined;
 
   useEffect(() => {
@@ -43,11 +51,11 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
     const codeBindings = bindingsRef.current;
     return captureCalibrationKeys(
       document,
-      (event) => {
+      (event, held) => {
         const current = sessionRef.current;
         if (current === undefined) return;
         const { keyLabel, onFinished } = optionsRef.current;
-        const pressed = pressSentenceSessionKey(current, matchableKeyEvent(event, codeBindings), event.timeStamp, keyLabel);
+        const pressed = pressSentenceSessionKey(current, { ...matchableKeyEvent(event, codeBindings), heldThumbKeys: held }, event.timeStamp, keyLabel);
         if (pressed.outcome.kind === 'wrong-key') {
           // 違うキーを押したストロークは、間隔を数えない印を進行に残す。
           sessionRef.current = pressed.session;
@@ -74,6 +82,8 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
       },
       {
         codeBindings,
+        // 示す文に親指のキーがある配列の間だけ、親指のキーを受け付ける。その間の親指のキーは、次に打つキーかを問わず、スクロールとボタンの押下へ渡さない。
+        acceptsThumbKeys: () => thumbKeysRef.current,
         // CapsLock・Tab・Backquoteも取る。次に打つキーでなければ違うキーの押下になり、preventDefaultは呼ばない。
         withLeftColumnCodes: true,
       },
@@ -84,6 +94,7 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
     if (plans.length === 0 || plans.some((plan) => plan.units.length === 0)) return;
     const next = startSentenceSession(plans);
     bindingsRef.current = optionsRef.current.codeBindings();
+    thumbKeysRef.current = sentenceUsesThumbKeys(plans);
     sessionRef.current = next;
     setWrongKey(undefined);
     setSession(next);

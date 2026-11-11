@@ -3,7 +3,9 @@ import { test } from 'node:test';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { checkFaceLayout, createUserFaceLayout, draftOf } from './face-layout-edit.ts';
-import type { AlphaLayoutContent } from './face-layout-file.ts';
+import { faceLayoutFileText, parseFaceLayoutFile, type AlphaLayoutContent } from './face-layout-file.ts';
+import type { AlphaFaceBody } from './face-layout.ts';
+import { authoredShiftedSymbols } from './face-layout.ts';
 import { importBenizara, importDvorakJ, importKanaLayoutFile, importRomajiLayoutFile, importVial, type ImportedDefinition } from './import.ts';
 import { isAlphaFaceUserLayout, toJapaneseLayout, toLayout, type UserLayout } from './user-layouts.ts';
 
@@ -277,4 +279,91 @@ test('かなの語の登録の判定は、かなの取り込みだけに掛か�
   if (kana.kind === 'kana') assert.ok(!Object.values(kana.content.faces[0]!.outputs).includes('トシ'));
   const alpha = alphaOf(importDvorakJ(DJ_SPACE_SYLLABLES));
   assert.ok(Object.values(faceOf(alpha.content, ['thumb-r'])!.outputs).includes('ka'));
+});
+
+/** JIS配列の記号の組（`2` のShiftが `"`、`6` が `&`、`7` が `'`）をShiftの面に置く定義。`0` と `-` はShiftの面が置かない。 */
+const JIS_SYMBOLS = [
+  '同時に打鍵する配列',
+  '[',
+  '  1|2|3|4|5|6|7|8|9|0|-|',
+  '  q|w|e|',
+  '  a|s|d|',
+  ']',
+  '-shift[',
+  '  !|"|#|$|%|&|\'|(|)|||',
+  '  Q|W|E|',
+  '  A|S|D|',
+  ']',
+].join('\n');
+
+type Stroke = ReturnType<typeof generateTrace>['strokes'][number];
+const pressedIds = (stroke: Stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id));
+const keysTyped = (layout: ReturnType<typeof toLayout>, text: string) =>
+  generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY).strokes.map((stroke) => pressedIds(stroke).join('+'));
+
+test('JIS配列の記号の組をShiftの面に置いた定義は、取り込んで保存でき、置いた記号をその打鍵で打てる', () => {
+  const { content } = alphaOf(importDvorakJ(JIS_SYMBOLS));
+  assert.equal(faceOf(content, ['shift-l'])?.outputs['2'], '"');
+  assert.deepEqual(checkFaceLayout(draftOf({ ...content, romaji: 'kunrei' })).problems, []);
+  const saved = savedLayout(content);
+  const layout = toLayout(saved);
+  for (const [symbol, key] of [
+    ['!', '1'],
+    ['"', '2'],
+    ['&', '6'],
+    ["'", '7'],
+    ['(', '8'],
+  ] as const) {
+    const trace = generateTrace(symbol, layout, geometry, DEFAULT_TRACE_POLICY);
+    assert.equal(trace.skipped, 0, symbol);
+    assert.equal(trace.strokes.length, 1, symbol);
+    assert.ok(pressedIds(trace.strokes[0]!).includes(key), `${symbol} は ${key} のキーで打つ`);
+    assert.ok(
+      pressedIds(trace.strokes[0]!).some((id) => id.startsWith('shift')),
+      `${symbol} はShiftを押す`,
+    );
+  }
+  // 通常Shiftの組の `2`→`@` は、Shiftの面が `2` に別の記号を置いたので作られない
+  assert.equal(layout.canonicalInputs.has('@'), false);
+  // 保存した定義の書き出しと読み込みを経ても、同じ打鍵になる
+  const file = parseFaceLayoutFile(faceLayoutFileText({ name: saved.name, ...(saved as AlphaFaceBody) }), 'alpha');
+  assert.ok(file.ok);
+  const reloaded = toLayout(savedLayout(file.layout as AlphaLayoutContent));
+  assert.deepEqual(keysTyped(reloaded, '"&\''), keysTyped(layout, '"&\''));
+});
+
+test('Shiftの面が置かないキーの記号は、US配列の組で打て、大文字は通常Shiftの経路のまま', () => {
+  const layout = toLayout(savedLayout(alphaOf(importDvorakJ(JIS_SYMBOLS)).content));
+  const keys = keysTyped(layout, '_)A');
+  assert.equal(keys.length, 3);
+  assert.ok(keys[0]!.includes('-') && keys[0]!.includes('shift'), '`-` のShiftは `_`');
+  // Shiftの面が `9` に置いた `)` が優先され、置かれていない `0` のUS配列の組は同じ記号を足さない
+  assert.ok(keys[1]!.includes('9') && keys[1]!.includes('shift'), '`)` は `9` のShift');
+  assert.ok(keys[2]!.includes('shift'));
+});
+
+test('Shiftの面に大文字だけを置く定義は、記号の組を作らずUS配列の組のまま', () => {
+  const source = shiftFace('Q|W|E|').replace('!|@|#|', '|||');
+  const layout = toLayout(savedLayout(alphaOf(importDvorakJ(source)).content));
+  assert.equal(layout.canonicalInputs.has('@'), true);
+  assert.equal(layout.canonicalInputs.has('!'), true);
+});
+
+test('基底の面が同じ出力を2つのキーに置き、Shiftの面が片方にだけ記号を置く定義は、どちらのキーもUS配列の組を使わない', () => {
+  const source = ['同時に打鍵する配列', '[', '  1|2|', '  q|w|', '  a|-|', '  z|-|', ']', '-shift[', '  !|"|', '  Q|W|', '  A|=|', ']'].join('\n');
+  const layout = toLayout(savedLayout(alphaOf(importDvorakJ(source)).content));
+  // `-` を出す2つのキーのどちらでも `_` は出ず、Shiftの面が置いた `=` だけが残る
+  assert.equal(layout.canonicalInputs.has('_'), false);
+  assert.equal(layout.canonicalInputs.has('='), true);
+});
+
+test('Shiftの面の記号の組は、記号どうしのキーだけから作り、英字や食い違うキーは入れない', () => {
+  const face = (trigger: string[], outputs: Record<string, string>) => ({ trigger, inputRole: 'layer' as const, outputs });
+  const symbols = authoredShiftedSymbols([
+    face([], { '1': '1', '2': '2', '3': '3', q: 'q', '4': '4' }),
+    face(['shift-l'], { '1': '!', '2': '"', q: '?', '3': 'Z', '4': '$' }),
+    face(['shift-r'], { '1': '!', '2': '"', '4': '%' }),
+  ]);
+  // 英字の `q`、英字の出力 `Z`、左右で食い違う `4` は入れない
+  assert.deepEqual(symbols, { '1': '!', '2': '"' });
 });

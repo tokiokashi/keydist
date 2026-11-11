@@ -484,6 +484,8 @@ export interface TargetConditionInput {
   readonly key: string;
   /** 「対象ごとの差」に出す対象の表示名（集合に対して計算したもの）。 */
   readonly label: string;
+  /** 対象が実際に使う物理配列の名前。Setup対象は条件の行に物理配列を持たないので、ここから差を出す。 */
+  readonly shapeName?: string;
   readonly rows: readonly ConditionSummaryRow[];
 }
 
@@ -555,11 +557,36 @@ export function multiTargetConditionSummary(
       diffItems.set(target.key, list);
     }
   }
+  // 対象が使う物理配列が全員同じでなければ、全員の物理配列を差に出す（配列対象の「既定の物理配列」の差はこれに置き換える）
+  const shapeNames = new Set(targets.flatMap((target) => (target.shapeName === undefined ? [] : [target.shapeName])));
+  const showShapes = shapeNames.size > 1;
   const diffs = targets.flatMap((target) => {
-    const items = diffItems.get(target.key);
-    return items === undefined ? [] : [{ key: target.key, label: target.label, items }];
+    const own = (diffItems.get(target.key) ?? []).filter((item) => !(showShapes && item.id === 'defaultShapeId'));
+    const items =
+      showShapes && target.shapeName !== undefined ? [{ id: 'defaultShapeId' as const, label: '物理配列', displayValue: target.shapeName }, ...own] : own;
+    return items.length === 0 ? [] : [{ key: target.key, label: target.label, items }];
   });
   return { rows, diffs };
+}
+
+/**
+ * 並べた対象について、基準の対象（主の対象）と違う物理配列・条件を、短い断片の並びにする。
+ * 物理配列は名前で比べ、条件は反映される値（`valueKey`）で比べる。どちらかで使われない項目は数えない。
+ * 「既定の物理配列」の行は、物理配列名として別に出すので条件には数えない。
+ */
+export function differencesFromBase(
+  base: { readonly shapeName: string; readonly rows: readonly ConditionSummaryRow[] },
+  other: { readonly shapeName: string; readonly rows: readonly ConditionSummaryRow[] },
+): readonly string[] {
+  const notes: string[] = [];
+  if (other.shapeName !== base.shapeName) notes.push(`物理配列: ${other.shapeName}`);
+  for (const row of other.rows) {
+    if (!row.applicable || SHOWN_AS_SHAPE_NAME.includes(row.id)) continue;
+    const baseRow = base.rows.find((r) => r.id === row.id);
+    if (baseRow === undefined || !baseRow.applicable || baseRow.valueKey === row.valueKey) continue;
+    notes.push(`${row.label}: ${row.displayValue}`);
+  }
+  return notes;
 }
 
 /**

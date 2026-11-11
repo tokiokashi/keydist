@@ -36,7 +36,8 @@ import {
   saveBrowserKeyBindingOverrides,
   unassignBrowserKeyCode,
 } from './browser-keyboard-bindings.ts';
-import { browserCodeDisplayLabel, browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
+import { browserCodeDisplayLabel } from '#input/shapes/browser-key-codes.ts';
+import { browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
 import {
   INPUT_CONVERTER_PREFERENCES_VERSION,
   inputConverterLayoutPreferences,

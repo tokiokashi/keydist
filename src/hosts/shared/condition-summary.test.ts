@@ -18,6 +18,7 @@ import {
   formatOrigin,
   globalConditionValues,
   multiTargetConditionSummary,
+  differencesFromBase,
   nonDefaultConditionRows,
   type ConditionSummaryRow,
   type ConditionSummaryScope,
@@ -623,14 +624,17 @@ function setupTargets(
   return withOverrides(
     setups.map((setup) => {
       const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
-      return { key: setup.id, label: setup.id, rows: traceConditionSummary(input.cascade, CATALOG) };
+      return { key: setup.id, label: setup.id, shapeName: input.geometry.name, rows: traceConditionSummary(input.cascade, CATALOG) };
     }),
     overrides,
   );
 }
 
 function diffValue(summary: ReturnType<typeof multiTargetConditionSummary>, id: SettingsItemId) {
-  return summary.diffs.map((d) => [d.key, d.items.find((i) => i.id === id)?.displayValue] as const);
+  return summary.diffs.flatMap((d) => {
+    const item = d.items.find((i) => i.id === id);
+    return item === undefined ? [] : [[d.key, item.displayValue] as const];
+  });
 }
 
 test('multiTargetConditionSummary: ANSIとJISのQWERTYは、共通の指の割当は列固定で、JISだけが差に出る', () => {
@@ -812,4 +816,48 @@ test('conditionTriggerTitle: Workspaceのペインは、変えた項目の値を
   assert.ok(same.includes('先読みN: 5') && same.includes('同指連続のホーム復帰距離: OFF'));
   assert.notEqual(diff, same);
   assert.ok(diff.startsWith(same));
+});
+
+test('multiTargetConditionSummary: 物理配列だけが違う2つのSetupは、物理配列の名前が両方の差に出る', () => {
+  const summary = summarize(
+    setupTargets(
+      [
+        { layoutId: 'qwerty', shapeId: 'row-staggered' },
+        { layoutId: 'qwerty', shapeId: 'ortholinear' },
+      ],
+      'en',
+    ),
+  );
+  const shapes = summary.diffs.map((d) => [d.key, d.items.find((i) => i.label === '物理配列')?.displayValue] as const);
+  assert.deepEqual(shapes, [
+    ['t1', PHYSICAL_SHAPES['row-staggered']!.name],
+    ['t2', PHYSICAL_SHAPES.ortholinear!.name],
+  ]);
+});
+
+test('multiTargetConditionSummary: 物理配列が全対象で同じなら、物理配列は差に出ない', () => {
+  const summary = summarize(
+    setupTargets(
+      [
+        { layoutId: 'qwerty', shapeId: 'ortholinear' },
+        { layoutId: 'colemak-dh', shapeId: 'ortholinear' },
+      ],
+      'en',
+    ),
+  );
+  assert.equal(
+    summary.diffs.some((d) => d.items.some((i) => i.label === '物理配列')),
+    false,
+  );
+});
+
+test('differencesFromBase: 物理配列と条件の違いだけを返し、同じ値の項目は出さない', () => {
+  const [a, b, c] = targetsWith([], [[], [['s2', 'windowSize', 7]], []]);
+  assert.ok(a && b && c);
+  const base = { shapeName: '同じ', rows: a.rows };
+  assert.deepEqual(differencesFromBase(base, { shapeName: '同じ', rows: c.rows }), []);
+  assert.deepEqual(differencesFromBase(base, { shapeName: '別', rows: c.rows }), ['物理配列: 別']);
+  const notes = differencesFromBase(base, { shapeName: '同じ', rows: b.rows });
+  assert.equal(notes.length, 1);
+  assert.match(notes[0]!, /: 7$/);
 });
