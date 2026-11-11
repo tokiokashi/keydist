@@ -291,6 +291,7 @@ export function PaneFrame({
         data-menu={menuItems.length > 0 || undefined}
         data-action={headerAction !== undefined || undefined}
         data-lead={(nameInLead && headerLead !== null) || undefined}
+        data-extra={targetExtra !== undefined || undefined}
       >
         {nameInLead && headerLead !== null ? <div className="pane-frame-lead">{headerLead}</div> : null}
         {nameInLead ? (
