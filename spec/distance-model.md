@@ -224,6 +224,7 @@ Face = {
   suffixTrigger?: KeyId[],
   rows: FaceRow[],
   extraCells?: Record<KeyId, string>,
+  defaultCells?: KeyId[],
   layer?: string,
   inputRole?: "layer" | "modifier" | "composition",
   compositionAggregation?: "layer" | "combo",
@@ -238,6 +239,15 @@ FaceRow = string | string[]
 親指・Shiftは面の出力のキーにしない。
 3つのキーは、面のtriggerと配列のホームキー（`homeKeys`）にも書ける。ホームキーは、その指が担当するキーの時だけ採用する（§3.2）。
 同じキーを `rows` と `extraCells` の両方に置く定義は作らない（`rows` のキーはgridの位置だけ、`extraCells` のキーは3つのキーだけ）。
+
+面のセルから作る経路の並びは、配列の定義が面を並べる順が先で、1つの面の中では行の順、行の中では左から、`extraCells` は `rows` の全行の後ろ、とする。
+同じ面の中の複数のセルが同じ出力を持つ時、その出力の経路はセルの数だけ並び、並びの先頭の経路が既定（authoring default）になる。
+同じ面の中の同じ出力のどのセルを既定にするかを、面の定義が `defaultCells` に挙げたキーで指定できる。
+`defaultCells` に挙げたキーのセルは、同じ面の中の同じ出力の他のセルより前に並ぶ。他の出力の経路の並びと、面をまたぐ並びは変わらない。
+`defaultCells` が指せるのは、その面の中に出力があり、同じ出力を持つ他のセルが同じ面の中にあるキーだけで、同じ出力のセルを2つ以上指す定義は作らない。
+`defaultCells` を持たない面の並びは、上の規則のままである。
+面をまたぐ重複（同じ出力が別の面にもある時）の既定は、面を並べる順で決め、`defaultCells` では指定しない。
+`defaultCells` は既定の経路だけを決める。同じ面の中の他のセルの経路は、`alternatives` に残る。
 
 `suffixTrigger` は、`mode="prefix"` の面が、出力キーの後に打つ後置のtriggerを持つための値である。
 `trigger` が前置、`suffixTrigger` が後置を表し、面の打鍵は「前置trigger → 出力キー → 後置trigger」の3ステップの
