@@ -1950,7 +1950,7 @@ Singleの対象の図と集合の対象の図の間では、同じ濃さが同�
 
 *trigger参加。* Strokeの `participations`（§11.11）のうち、役に「トリガー」か「押したままのトリガー」を持つ参加が1つ以上ある時、
 そのStrokeにtriggerが参加したとする。この集計はtriggerの役を、配列名・面の名前・出力の文字から推測しない。
-Traceが持つ参加の役と、成立した入力の `Requirement`・`classifications`・`aggregationGroupId` から決める。
+Traceが持つ参加の役と、成立した入力の `Requirement`・`roles`・`classifications`・`aggregationGroupId` から決める。
 
 *行と二重計上。* 集計は「行」ごとに、次の2つの整数を持つ。
 
@@ -1959,7 +1959,8 @@ Traceが持つ参加の役と、成立した入力の `Requirement`・`classific
 
 1つのStrokeで複数の役が成立しても、行の中で二重に数えない。行の条件は、そのStrokeで成立した役の**どれか1つでも**当たれば満たす。
 たとえば前置triggerと後置triggerを同じStrokeで持つ面のStrokeは、「前置」の行にも「後置」の行にも1回ずつ入るが、同じ行には1回しか入らない。
-したがって、同じ軸の行の `T_row` の和は、triggerが参加したStroke数 `T` より大きくなりうる。
+したがって、順序の行の `T_row` の和は、triggerが参加したStroke数 `T` より大きくなりうる。同時押しで押す順も縛る入力（`Requirement` に `overlap` と `order` の両方を持つ入力）は、同時と前置の両方に入る。
+面・持続・入力の意味の行は重ならず、各群の `T_row` の和は `T` に等しい。
 行は次の5群である。
 
 | 群 | 行 | 条件 |
@@ -1968,7 +1969,7 @@ Traceが持つ参加の役と、成立した入力の `Requirement`・`classific
 | 面 | 層・コンボ枠ごと | trigger参加があり、Strokeの `aggregationGroupId` がその層・コンボ枠のid（§11.10の帰属先）。Strokeは自分の帰属先の1行にだけ入る |
 | 順序 | 同時・前置・後置 | trigger参加の `Requirement` が、`overlap` なら同時、`order` の `before` 側なら前置、`after` 側なら後置 |
 | 持続 | 単発・保持 | 保持は、参加に「押したままのトリガー」の役がある（`TriggerRealizationPolicy` で保持を実現した結果）。単発は、trigger参加があり保持が無い。入力の定義が宣言する `while-held` の能力では分けない |
-| composition | composition（層に計上）・composition（コンボ枠に計上）・composition以外 | `classifications` に `composition` を含み、`aggregationGroupId` がコンボ枠なら「コンボ枠に計上」、そうでなければ「層に計上」。含まなければ「composition以外」 |
+| 入力の意味 | レイヤーの切り替え・修飾キー・合成（層に計上）・合成（コンボ枠に計上） | `classifications` に `composition` を含めば合成で、`aggregationGroupId` がコンボ枠なら「コンボ枠に計上」、そうでなければ「層に計上」。合成でなく、triggerのキーが入力の `roles` で `modifier` の役を持つなら修飾キー。どちらでもなければレイヤーの切り替え |
 
 順序の対応は、`Requirement` の `overlap`（キーを同時に押す）を同時、`order` の `before` を前置、`after` を後置とする。
 trigger参加の順序は、そのStrokeのtriggerのキー（保持を続けているtriggerのキーを含む）が、成立した入力の `Requirement` のどこに現れるかで決める。
@@ -1979,11 +1980,11 @@ trigger参加の順序は、そのStrokeのtriggerのキー（保持を続けて
 
 - 手は、Traceの `participations` の `hand`、すなわち条件の指の割り当てで決まる指の手を使う
 - triggerの手は、そのStrokeの、役に「トリガー」か「押したままのトリガー」を持つ参加の手
-- 出力の手は、同じ入力の選択（Traceの `selectionIndex`）のStrokeのうち、そのStrokeと同じ `aggregationGroupId` を持つものの、役に「出力」を持つ参加の手
-  - 前置・後置のtriggerを別のStrokeで打つ実現（`ActionRealizationPolicy` で分けた時）では、triggerだけのStrokeに出力が無いので、同じ入力の出力のStrokeまで広げて手を比べる
-  - 同時に押す実現では、同じStrokeの出力と比べることになる
+- 出力の手は、次のとおり決める
+  - 役に「出力」を持つ参加があるStrokeは、そのStrokeの出力の手とだけ比べる。同じ入力が複数のStrokeに分かれていても（たとえば同じ面で2ステップに分かれる出力）、他のStrokeの出力は混ぜない
+  - triggerだけのStrokeは出力を持たない。前置の面のtriggerは、既定の実現でもtriggerだけのStrokeになる（§11.5）。このStrokeは、同じ入力の選択（Traceの `selectionIndex`）・同じ `aggregationGroupId` のすぐ隣の、出力を持つStrokeの出力の手と比べる。順序が前置ならすぐ後、後置ならすぐ前のStrokeである。隣がその条件を満たさなければ、出力の手は無い
 - triggerの手と出力の手を合わせて、手が1つだけで、かつ出力の手が1つ以上ある時に同手とする。出力の手が無い時は同手に数えない（分母には入れる）
-- 親指も指の割り当てが決める手に従う。左右のどちらの手にも数える
+- 親指は、指の割り当てが決める側の手に数える
 
 同手の行の条件は、参加回数の行と同じである。
 

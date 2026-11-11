@@ -13,8 +13,20 @@ import { computeTriggerParticipation, type TriggerParticipationStroke } from './
 
 const FINGER_OF = { left: 'LM', right: 'RM' } as const satisfies Record<'left' | 'right', Finger>;
 
-function participation(hand: 'left' | 'right', roles: readonly ParticipationRole[], triggerOrders?: readonly TriggerOrder[]): StrokeParticipation {
-  return { hand, finger: FINGER_OF[hand], keys: [], roles, ...(triggerOrders === undefined ? {} : { triggerOrders }) };
+function participation(
+  hand: 'left' | 'right',
+  roles: readonly ParticipationRole[],
+  triggerOrders?: readonly TriggerOrder[],
+  modifier = false,
+): StrokeParticipation {
+  return {
+    hand,
+    finger: FINGER_OF[hand],
+    keys: [],
+    roles,
+    ...(triggerOrders === undefined ? {} : { triggerOrders }),
+    ...(modifier ? { modifier: true as const } : {}),
+  };
 }
 
 function stroke(
@@ -123,19 +135,46 @@ test('別の入力の選択や別の帰属先の出力の手は、同手の判�
   assert.deepEqual(result.all, { participated: 1, sameHand: 0 });
 });
 
-test('compositionは、帰属先がコンボ枠かどうかで分け、compositionでない面は別の行にする', () => {
+test('入力の意味は、合成を計上先で分け、合成でなければ修飾キーとレイヤーの切り替えに分ける。行は重ならない', () => {
   const result = computeTriggerParticipation({
     strokes: [
       stroke(0, [participation('left', ['trigger', 'output'])], { group: 'layer:A', composition: true }),
       stroke(1, [participation('left', ['trigger', 'output'])], { group: 'combo', composition: true }),
-      stroke(2, [participation('left', ['trigger', 'output'])], { group: 'layer:B' }),
-      stroke(3, [participation('left', ['trigger', 'output'])], { group: 'combo' }),
+      stroke(2, [participation('left', ['trigger', 'output'], undefined, true)], { group: 'layer:B' }),
+      stroke(3, [participation('left', ['trigger', 'output'])], { group: 'layer:C' }),
     ],
   });
-  assert.equal(result.composition.layer.participated, 1);
-  assert.equal(result.composition.combo.participated, 1);
-  assert.equal(result.composition.none.participated, 2);
-  assert.equal(result.faces.get('combo')?.participated, 2);
+  assert.equal(result.meaning['composition-layer'].participated, 1);
+  assert.equal(result.meaning['composition-combo'].participated, 1);
+  assert.equal(result.meaning.modifier.participated, 1);
+  assert.equal(result.meaning.layer.participated, 1);
+  assert.equal(result.faces.get('combo')?.participated, 1);
+});
+
+test('同手: 出力を持つStrokeは自分の出力とだけ比べ、同じ入力の別のStrokeの出力は混ぜない', () => {
+  const result = computeTriggerParticipation({
+    strokes: [
+      stroke(0, [participation('right', ['trigger', 'output'], ['overlap'])], { group: 'layer:A' }),
+      stroke(0, [participation('left', ['trigger', 'output'], ['overlap'])], { group: 'layer:A' }),
+    ],
+  });
+  assert.deepEqual(result.all, { participated: 2, sameHand: 2 });
+});
+
+test('同手: triggerだけのStrokeは、前置なら次の、後置なら前のStrokeの出力と比べる', () => {
+  const result = computeTriggerParticipation({
+    strokes: [
+      // 後置: 前のStrokeの出力（右手）と、後置triggerの右手が同手
+      stroke(0, [participation('right', ['output'])], { group: 'layer:A' }),
+      stroke(0, [participation('right', ['trigger'], ['after'])], { group: 'layer:A' }),
+      // 前置: 次のStrokeの出力（左手）と、前置triggerの右手は異手。前のStroke（右手の出力）とは比べない
+      stroke(1, [participation('right', ['output'])], { group: 'layer:B' }),
+      stroke(1, [participation('right', ['trigger'], ['before'])], { group: 'layer:B' }),
+      stroke(1, [participation('left', ['output'])], { group: 'layer:B' }),
+    ],
+  });
+  assert.deepEqual(result.faces.get('layer:A'), { participated: 1, sameHand: 1 });
+  assert.deepEqual(result.faces.get('layer:B'), { participated: 1, sameHand: 0 });
 });
 
 const geometry = buildGeometry('row-staggered');
@@ -185,9 +224,32 @@ test('実際の配列: 前置と後置の面は、それぞれの行に入る', 
   assert.equal(suffix.orders.before.participated, 0);
 });
 
-test('実際の配列: compositionの面は、帰属先の宣言どおりに層とコンボ枠へ分かれる', () => {
+test('実際の配列: 合成の面は、帰属先の宣言どおりに層とコンボ枠へ分かれる', () => {
   const result = computeTriggerParticipation(traceOf('kawasemi-plus', 'あいく'));
-  assert.ok(result.composition.layer.participated > 0);
-  assert.ok(result.composition.combo.participated > 0);
-  assert.equal(result.composition.combo.participated, result.faces.get('combo')?.participated);
+  assert.ok(result.meaning['composition-layer'].participated > 0);
+  assert.ok(result.meaning['composition-combo'].participated > 0);
+  assert.equal(result.meaning['composition-combo'].participated, result.faces.get('combo')?.participated);
+});
+
+test('実際の配列: Shiftは修飾キーの行に入る', () => {
+  const result = computeTriggerParticipation(traceOf('qwerty', 'Hello'));
+  assert.equal(result.meaning.modifier.participated, 1);
+  assert.equal(result.meaning.layer.participated, 0);
+});
+
+test('実際の配列: 同じ面で2ステップに分かれる出力は、各ステップの出力とだけ比べる', () => {
+  // 新JIS同時の「ぴ」は、1ステップ目が右手どうし（右親指とy）、2ステップ目が左手の出力。ステップをまたいで混ぜない
+  const trace = traceOf('shin-jis-simultaneous', 'ぴ');
+  const result = computeTriggerParticipation(trace);
+  assert.equal(result.strokes, 2);
+  // 1ステップ目だけが同手。2ステップ目は右親指と左手のwで異手
+  assert.deepEqual(result.all, { participated: 2, sameHand: 1 });
+});
+
+test('実際の配列: 前置の面のtriggerだけのStrokeは、次のStrokeの出力の手と比べる', () => {
+  // 月配列2-263式の中指シフトは反対の手で打つので、前置のStrokeは全部が異手
+  const result = computeTriggerParticipation(traceOf('tsuki-2-263', 'あいうえおかきくけこ'));
+  assert.equal(result.strokes, 13);
+  assert.deepEqual(result.all, { participated: 3, sameHand: 0 });
+  assert.deepEqual(result.orders.before, { participated: 3, sameHand: 0 });
 });

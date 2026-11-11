@@ -20,7 +20,8 @@ export interface TriggerCounts {
 }
 
 export type TriggerPersistence = 'single' | 'held';
-export type TriggerComposition = 'layer' | 'combo' | 'none';
+/** 入力の意味（面の編集画面の「入力の意味」）。合成は計上先で分ける。 */
+export type TriggerMeaning = 'layer' | 'modifier' | 'composition-layer' | 'composition-combo';
 
 export interface TriggerParticipation {
   /** 全Stroke数（分母） */
@@ -31,7 +32,7 @@ export interface TriggerParticipation {
   readonly faces: ReadonlyMap<string, TriggerCounts>;
   readonly orders: Readonly<Record<TriggerOrder, TriggerCounts>>;
   readonly persistence: Readonly<Record<TriggerPersistence, TriggerCounts>>;
-  readonly composition: Readonly<Record<TriggerComposition, TriggerCounts>>;
+  readonly meaning: Readonly<Record<TriggerMeaning, TriggerCounts>>;
 }
 
 interface MutableCounts {
@@ -49,18 +50,30 @@ const add = (counts: MutableCounts, sameHand: boolean): void => {
 const isTriggerParticipation = (participation: StrokeParticipation): boolean =>
   participation.roles.includes('trigger') || participation.roles.includes('held-trigger');
 
-/** 同じ入力の選択の中で、帰属先ごとの出力の手。 */
-function outputHandsByGroup(run: readonly TriggerParticipationStroke[]): Map<string, Set<StrokeParticipation['hand']>> {
-  const byGroup = new Map<string, Set<StrokeParticipation['hand']>>();
-  for (const stroke of run) {
-    for (const participation of stroke.participations) {
-      if (!participation.roles.includes('output')) continue;
-      const hands = byGroup.get(stroke.aggregationGroupId) ?? new Set();
-      hands.add(participation.hand);
-      byGroup.set(stroke.aggregationGroupId, hands);
-    }
-  }
-  return byGroup;
+type Hand = StrokeParticipation['hand'];
+
+/** Strokeの、役に「出力」を持つ参加の手。 */
+function outputHandsOf(stroke: TriggerParticipationStroke): Set<Hand> {
+  return new Set(stroke.participations.filter((participation) => participation.roles.includes('output')).map((participation) => participation.hand));
+}
+
+/**
+ * triggerが参加したStrokeの、比べる出力の手。
+ * 出力を持つStrokeは自分の出力とだけ比べる。triggerだけのStrokeは、同じ入力の選択・同じ帰属先のすぐ隣の出力のStrokeと比べる
+ * （前置の順序を持つならすぐ後、後置ならすぐ前）。
+ */
+function comparedOutputHands(strokes: readonly TriggerParticipationStroke[], index: number, orders: ReadonlySet<TriggerOrder>): Set<Hand> {
+  const stroke = strokes[index]!;
+  const own = outputHandsOf(stroke);
+  if (own.size > 0) return own;
+  const hands = new Set<Hand>();
+  const take = (neighbor: TriggerParticipationStroke | undefined): void => {
+    if (neighbor === undefined || neighbor.selectionIndex !== stroke.selectionIndex || neighbor.aggregationGroupId !== stroke.aggregationGroupId) return;
+    for (const hand of outputHandsOf(neighbor)) hands.add(hand);
+  };
+  if (orders.has('before')) take(strokes[index + 1]);
+  if (orders.has('after')) take(strokes[index - 1]);
+  return hands;
 }
 
 export function computeTriggerParticipation(trace: { readonly strokes: readonly TriggerParticipationStroke[] }): TriggerParticipation {
@@ -68,48 +81,43 @@ export function computeTriggerParticipation(trace: { readonly strokes: readonly 
   const faces = new Map<string, MutableCounts>();
   const orders: Record<TriggerOrder, MutableCounts> = { overlap: newCounts(), before: newCounts(), after: newCounts() };
   const persistence: Record<TriggerPersistence, MutableCounts> = { single: newCounts(), held: newCounts() };
-  const composition: Record<TriggerComposition, MutableCounts> = { layer: newCounts(), combo: newCounts(), none: newCounts() };
+  const meaning: Record<TriggerMeaning, MutableCounts> = {
+    layer: newCounts(),
+    modifier: newCounts(),
+    'composition-layer': newCounts(),
+    'composition-combo': newCounts(),
+  };
 
   const { strokes } = trace;
-  let start = 0;
-  while (start < strokes.length) {
-    // 同じ入力の選択（`selectionIndex`）のStrokeは続けて並ぶ
-    let end = start + 1;
-    while (end < strokes.length && strokes[end]!.selectionIndex === strokes[start]!.selectionIndex) end++;
-    const run = strokes.slice(start, end);
-    start = end;
+  strokes.forEach((stroke, index) => {
+    const triggers = stroke.participations.filter(isTriggerParticipation);
+    if (triggers.length === 0) return;
 
-    if (!run.some((stroke) => stroke.participations.some(isTriggerParticipation))) continue;
-    const outputHands = outputHandsByGroup(run);
+    const strokeOrders = new Set(triggers.flatMap((participation) => participation.triggerOrders ?? []));
+    const hands = new Set(triggers.map((participation) => participation.hand));
+    const outputs = comparedOutputHands(strokes, index, strokeOrders);
+    for (const hand of outputs) hands.add(hand);
+    const sameHand = outputs.size > 0 && hands.size === 1;
 
-    for (const stroke of run) {
-      const triggers = stroke.participations.filter(isTriggerParticipation);
-      if (triggers.length === 0) continue;
+    add(all, sameHand);
+    const face = faces.get(stroke.aggregationGroupId) ?? newCounts();
+    add(face, sameHand);
+    faces.set(stroke.aggregationGroupId, face);
 
-      const hands = new Set(triggers.map((participation) => participation.hand));
-      const outputs = outputHands.get(stroke.aggregationGroupId) ?? new Set();
-      for (const hand of outputs) hands.add(hand);
-      const sameHand = outputs.size > 0 && hands.size === 1;
+    for (const order of strokeOrders) add(orders[order], sameHand);
 
-      add(all, sameHand);
-      const face = faces.get(stroke.aggregationGroupId) ?? newCounts();
-      add(face, sameHand);
-      faces.set(stroke.aggregationGroupId, face);
+    const held = stroke.participations.some((participation) => participation.roles.includes('held-trigger'));
+    add(held ? persistence.held : persistence.single, sameHand);
 
-      const strokeOrders = new Set(triggers.flatMap((participation) => participation.triggerOrders ?? []));
-      for (const order of strokeOrders) add(orders[order], sameHand);
+    const kind: TriggerMeaning = stroke.classifications.includes('composition')
+      ? stroke.aggregationGroupId === COMBO_LAYER_ID
+        ? 'composition-combo'
+        : 'composition-layer'
+      : triggers.some((participation) => participation.modifier === true)
+        ? 'modifier'
+        : 'layer';
+    add(meaning[kind], sameHand);
+  });
 
-      const held = stroke.participations.some((participation) => participation.roles.includes('held-trigger'));
-      add(held ? persistence.held : persistence.single, sameHand);
-
-      const kind: TriggerComposition = !stroke.classifications.includes('composition')
-        ? 'none'
-        : stroke.aggregationGroupId === COMBO_LAYER_ID
-          ? 'combo'
-          : 'layer';
-      add(composition[kind], sameHand);
-    }
-  }
-
-  return { strokes: strokes.length, all, faces, orders, persistence, composition };
+  return { strokes: strokes.length, all, faces, orders, persistence, meaning };
 }

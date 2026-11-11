@@ -82,6 +82,8 @@ export interface StrokeParticipation {
    * triggerの役を持つ参加だけが持ち、Requirementに現れないキーしか無ければ持たない。
    */
   triggerOrders?: readonly TriggerOrder[];
+  /** この指のtriggerのキーが、入力の定義で `modifier` の役を持つキーである（仕様 §11.10.1）。 */
+  modifier?: true;
 }
 
 /** 距離が採用した候補の起点。 */
@@ -537,6 +539,7 @@ export function generateTrace(
           action.heldKeys,
           action.holdPhase,
           action.input.requirements,
+          modifierKeys,
           geometry,
           heldFingerOf,
         ),
@@ -651,6 +654,7 @@ function normalizeParticipations(
   heldTriggerKeys: readonly string[],
   holdPhase: HoldPhase | undefined,
   requirements: readonly Requirement[],
+  modifierKeys: ReadonlySet<string>,
   geometry: Geometry,
   heldFingerOf: (id: string) => Finger | undefined,
 ): readonly StrokeParticipation[] {
@@ -687,7 +691,8 @@ function normalizeParticipations(
   }
 
   return [...byFinger].map(([finger, value]) => {
-    const orders = value.roles.has('trigger') || value.roles.has('held-trigger') ? triggerOrdersOf(value.keys, triggers, held, requirements) : [];
+    const isTrigger = value.roles.has('trigger') || value.roles.has('held-trigger');
+    const orders = isTrigger ? triggerOrdersOf(value.keys, triggers, held, requirements) : [];
     return {
       hand: finger.startsWith('L') ? 'left' : 'right',
       finger,
@@ -695,6 +700,9 @@ function normalizeParticipations(
       roles: [...value.roles],
       ...(value.roles.has('held-trigger') && holdPhase !== undefined ? { holdPhase } : {}),
       ...(orders.length > 0 ? { triggerOrders: orders } : {}),
+      ...(isTrigger && value.keys.some((key) => (triggers.has(key.id) || held.has(key.id)) && modifierKeys.has(key.id))
+        ? { modifier: true as const }
+        : {}),
     };
   });
 }
@@ -999,7 +1007,7 @@ function internParticipations(
   const signature = participations
     .map(
       (entry) =>
-        `${entry.hand}|${entry.finger}|${entry.keys.map((key) => key.id).join(',')}|${entry.roles.join(',')}|${entry.holdPhase ?? ''}|${(entry.triggerOrders ?? []).join(',')}`,
+        `${entry.hand}|${entry.finger}|${entry.keys.map((key) => key.id).join(',')}|${entry.roles.join(',')}|${entry.holdPhase ?? ''}|${(entry.triggerOrders ?? []).join(',')}|${entry.modifier === true ? 'm' : ''}`,
     )
     .join(';');
   const known = pool.get(signature);

@@ -40,7 +40,7 @@ export interface TriggerRow {
 
 /** 行の群。同じ打鍵が、群の中の複数の行に入ることがある。 */
 export interface TriggerGroup {
-  readonly id: 'all' | 'face' | 'order' | 'persistence' | 'composition';
+  readonly id: 'all' | 'face' | 'order' | 'persistence' | 'meaning';
   readonly label: string;
   readonly rows: readonly TriggerRow[];
 }
@@ -88,11 +88,11 @@ export function computeLayerComboPressesExtraction({ trace, metrics }: LayerComb
     { id: 'face', label: 'レイヤー・コンボ', rows: rows.map((entry) => row(entry.id, entry.label, participation.faces.get(entry.id))) },
     {
       id: 'order',
-      label: '打鍵の順序',
+      label: '押す順',
       rows: [
         row('overlap', '同時に押す', participation.orders.overlap),
-        row('before', '先に打つ', participation.orders.before),
-        row('after', '後に打つ', participation.orders.after),
+        row('before', '先に押す', participation.orders.before),
+        row('after', '後に押す', participation.orders.after),
       ],
     },
     {
@@ -101,12 +101,13 @@ export function computeLayerComboPressesExtraction({ trace, metrics }: LayerComb
       rows: [row('single', '単発', participation.persistence.single), row('held', '保持', participation.persistence.held)],
     },
     {
-      id: 'composition',
-      label: '合成',
+      id: 'meaning',
+      label: '入力の意味',
       rows: [
-        row('layer', '合成（レイヤーに数える）', participation.composition.layer),
-        row('combo', '合成（コンボ枠に数える）', participation.composition.combo),
-        row('none', '合成以外', participation.composition.none),
+        row('layer', 'レイヤーの切り替え', participation.meaning.layer),
+        row('modifier', '修飾キー', participation.meaning.modifier),
+        row('composition-layer', '合成（レイヤーに数える）', participation.meaning['composition-layer']),
+        row('composition-combo', '合成（コンボ枠に数える）', participation.meaning['composition-combo']),
       ],
     },
   ];

@@ -49,7 +49,7 @@ function PressesTable({ extracted }: { readonly extracted: LayerComboPressesExtr
 }
 
 const TRIGGER_READING =
-  '参加した打鍵の割合は、その行の打鍵の数を全打鍵の数で割った値です。同手の割合は、その行の打鍵のうち、切り替えのキーと出力のキーを打つ指が同じ手の打鍵の割合です。同じ打鍵が、打鍵の順序や持続の複数の行に入ることがあるので、行の数を足しても全体の数とは一致しません。';
+  '全打鍵に対する割合は、その行の打鍵の数を全打鍵の数で割った値です。同手の割合は、その行の打鍵のうち、切り替えのキーと出力のキーを打つ指が同じ手の打鍵の割合です。レイヤー・コンボと入力の意味と持続の行は重ならず、足すと全体の数になります。押す順の行だけは重なります。同時に押して押す順も縛る入力は、同時に押すと先に押すの両方に入ります。持続の行は、条件のシフト系キーの押し続けで決まります。押し続けを実現した打鍵が保持で、それ以外は単発です。面の編集画面の単発・保持は入力の宣言の意味で、ここでの分け方とは異なります。';
 
 function TriggerTable({ extracted }: { readonly extracted: LayerComboPressesExtracted }) {
   return (
@@ -62,7 +62,7 @@ function TriggerTable({ extracted }: { readonly extracted: LayerComboPressesExtr
         <table className="layer-combo-presses-table" data-trigger-participation-table>
           <thead>
             <tr>
-              <th scope="col">行</th>
+              <th scope="col">区分</th>
               <th scope="col">打鍵数</th>
               <th scope="col">全打鍵に対する割合</th>
               <th scope="col">同手の打鍵数</th>
