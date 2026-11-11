@@ -144,6 +144,15 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
   const { axes, plotted, excluded, contour, logScale, usedKinds, model } = figure;
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const quantityHelp = scatterQuantityHelp(axes, contour, language, logScale);
+  // 点が新しい位置へ動く間は名前を隠し、動き終わってから出す。名前の置き場は点の組み合わせごとに変わり、行数・向き・点との結び線も変わるので、点と同じ時間で動かせない
+  const pointsSignature = model.points.map((point) => `${point.targetKey}@${point.px.toFixed(1)},${point.py.toFixed(1)}`).join(' ');
+  const [namesEpoch, setNamesEpoch] = useState(0);
+  const previousSignature = useRef(pointsSignature);
+  useLayoutEffect(() => {
+    if (previousSignature.current === pointsSignature) return;
+    previousSignature.current = pointsSignature;
+    setNamesEpoch((epoch) => epoch + 1);
+  }, [pointsSignature]);
   const readouts = [
     { role: 'pinned', point: pinned === undefined ? undefined : model.points.find((point) => point.targetKey === pinned) },
     { role: 'hover', point: hovered === undefined ? undefined : model.points.find((point) => point.targetKey === hovered) },
@@ -335,7 +344,7 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
 
               {/* 点の名前。印が重なる点の組は複数の点に属するので、点ごとの要素の外に描く。読み上げは点ごとの値の読み取りが担う。ポインターの操作は下の透明な層が受ける */}
               {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
-              <g className="scatter-names" aria-hidden="true">
+              <g key={namesEpoch} className="scatter-names" data-settling={namesEpoch > 0 || undefined} aria-hidden="true">
                 {model.names.map((name) => (
                   <g
                     key={name.lines.map((line) => line.targetKey).join('\n')}
