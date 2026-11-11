@@ -174,7 +174,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   const romajiItem = cascade.romajiRuleId;
   const romajiRuleId = romajiItem.applicable ? romajiItem.value : null;
   const baseLayout = withoutRomaji(textResolution.layout);
-  // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）を外した配列を渡す。
+  // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）と、romajiOnlyOutputsの出力・刻印を外した配列を渡す。
   // Trace生成も同じ規則で外すが、ResolvedInput.layoutは表示側も読むので、ここで揃えておく。
   const layout =
     romajiRuleId !== null

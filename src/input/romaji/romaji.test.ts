@@ -244,10 +244,10 @@ test('…は綴りを持たず、打てない記号に数える', () => {
   assert.deepEqual(t.skippedByKind, { kanji: 0, symbol: 1, other: 0 });
 });
 
-test('物理キーを持たず出典も置き場を定めない「」と『』は打てない文字に数える', () => {
+test('大西配列は公式の配布物が、TK音直入力法は出典が見つからず置き場を定めない「」と『』を打てない文字に数える', () => {
   const oonishi = LAYOUTS_JA.find((layout) => layout.id === 'oonishi')!;
   const custom = LAYOUTS_JA.find((layout) => layout.id === 'tk-onchoku')!;
-  // 大西配列は [ ] のキーを持たず、出典も置き場を定めない。『』も「」を打てないので打てない文字に数える。/ は日本語の評価でだけ打つ
+  // 大西配列は [ ] のキーを持たず、公式の配布物も置き場を定めない。『』も「」を打てないので打てない文字に数える。/ は日本語の評価でだけ打つ
   const oonishiTrace = generateTrace('「」・『』', oonishi, geometry, opts);
   assert.equal(oonishiTrace.skipped, 4);
   assert.equal(oonishiTrace.strokes.length, 1);

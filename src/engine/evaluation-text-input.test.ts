@@ -316,7 +316,7 @@ test('範囲を広げると、ローマ字配列は「」・と『』を打ち�
   const keys = qwerty.trace.strokes.map((stroke) => stroke.inputChar);
   assert.deepEqual(keys, [...'あ「い」・『う』']);
 
-  // 大西配列は [ ] のキーを持たず、出典も置き場を定めない。/ は日本語の評価でだけ、配布物の置き場で打つ
+  // 大西配列は [ ] のキーを持たず、公式の配布物も置き場を定めない。/ は日本語の評価でだけ、公式ページの配列図と配布物の置き場で打つ
   const oonishi = measure('oonishi', text, 'ja', true);
   assert.equal(oonishi.trace.skipped, 5);
   // TK音直入力法は / のキーだけを持つ
