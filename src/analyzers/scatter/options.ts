@@ -16,7 +16,7 @@ import { DEFAULT_SCATTER_PRESET, normalizeScatterPresets, SCATTER_PRESET_IDS, ty
  * 選んでいない軸の列は、足しても描ける図が1つも増えない時（もう一方の軸に選んだ全部の列と、選べない組になる時）だけ、解析設定の小窓で選べない状態にする。選べない組は、同じ列と入力かな数倍の関係にある2列。
  * 選んだ軸が選べない組になった時は、その組の図を描かず、本体が1つの知らせにまとめる。
  * `freeOrder`は「自由選択」の図の並びで、`byX`は横軸の順にその中で縦軸の順、`byY`は縦軸の順にその中で横軸の順。
- * `tickScale`は全ての図で共通の1つで、組み合わせごとには持たない。`log`を選んでいても、対数にできない図は通常の目盛りで描き、本体が図ごとにその旨を知らせる。
+ * `tickScale`は全ての図で共通の1つで、組み合わせごとには持たない。`log`を選んでいても、対数にできない図は通常の目盛りで描く。
  * `columns`は図を並べる列の数の上限で、`auto`は幅で決める（`figure-layout.ts`）。
  */
 export const DEFAULT_SCATTER_X_AXIS: ComparisonColumnId = 'perCharSteps';
