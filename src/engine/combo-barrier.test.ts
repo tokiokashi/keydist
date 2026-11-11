@@ -35,29 +35,29 @@ function measure(text: string, comboBarriers?: readonly number[]) {
   return { input: result.input, trace: generateEngineTrace(result.input).trace };
 }
 
-test('境が無ければ、早く は aku、嬉しかった は sika のコンボで打つ（境の効果を測る基準）', () => {
+test('境が無ければ、早くはaku、嬉しかったはsikaのコンボで打つ（境の効果を測る基準）', () => {
   assert.deepEqual(measure('はやく').trace.comboHits, ['aku']);
   assert.deepEqual(measure('うれしかった').trace.comboHits, ['sika']);
 });
 
-test('早く の語幹と活用語尾の間の境で、aku のコンボを使わない', () => {
+test('早くの語幹と活用語尾の間の境で、akuのコンボを使わない', () => {
   const { trace } = measure('はやく', [2]);
   assert.deepEqual(trace.comboHits, []);
   assert.equal(trace.strokes.length, 6);
 });
 
-test('嬉しかった の語幹と活用語尾の間の境で、sika のコンボを使わない', () => {
+test('嬉しかったの語幹と活用語尾の間の境で、sikaのコンボを使わない', () => {
   const { trace } = measure('うれしかった', [3]);
   assert.deepEqual(trace.comboHits, []);
 });
 
 test('境をまたがないコンボは、境があっても使う', () => {
-  // 語幹と語尾の間の境（位置5）をまたぐ sika は使わず、境の手前の desu は使う
+  // 語幹と語尾の間の境（位置5）をまたぐsikaは使わず、境の手前のdesuは使う
   const { trace } = measure('ですうれしかった', [5]);
   assert.deepEqual(trace.comboHits, ['desu']);
 });
 
-test('入力 は活用語でなく境が無いので、4アクションのまま', () => {
+test('入力は活用語でなく境が無いので、4アクションのまま', () => {
   const { trace } = measure('にゅうりょく', []);
   assert.equal(trace.strokes.length, 4);
 });
@@ -78,7 +78,7 @@ test('語の列から境を求め、利用者の読みの直しで読みの長�
 
 // 実際の辞書で、漢字書きの入力が境のとおりにコンボを使わないことまで通して確かめる。テスト自身は辞書を取得しない
 const zipPath = new URL(`../../.cache/dictionary/${DICTIONARY_SPEC.fileName}`, import.meta.url);
-test('実際の辞書で、漢字書きの 早く と 嬉しかった は aku と sika を使わず、入力 は4アクションのまま', {
+test('実際の辞書で、漢字書きの早くと嬉しかったはakuとsikaを使わず、入力は4アクションのまま', {
   skip: process.env.CI === undefined && !existsSync(zipPath),
 }, async () => {
   const lindera = await import('lindera-wasm');

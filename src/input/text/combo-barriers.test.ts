@@ -47,7 +47,7 @@ test('語の間の空白は原文のまま数える', () => {
     { surface: '早く', byteStart: 0, byteEnd: 6, reading: 'ハヤク', isUnknown: false, stemLength: 1 },
     { surface: '行か', byteStart: 7, byteEnd: 13, reading: 'イカ', isUnknown: false, stemLength: 1 },
   ];
-  // はやく(3字) + 空白 + いか → 境は 2 と 3+1+1
+  // はやく(3字)+空白+いか → 境は2と3+1+1
   assert.deepEqual(comboBarriersInReading('早く 行か', tokens), [2, 5]);
 });
 
