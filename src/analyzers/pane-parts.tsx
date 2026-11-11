@@ -82,6 +82,8 @@ export interface SetTargetFigure<Extracted> {
   readonly label: string;
   /** 集合によらない完全な名前。 */
   readonly fullName: string;
+  /** Singleの対象と違う物理配列・条件を、名前の近くに出す短い断片。違いが無ければ空。 */
+  readonly differences: readonly string[];
   /** 集合が配った色。まだ配られていない間は`undefined`。 */
   readonly color: string | undefined;
   readonly mark: TargetMark | undefined;
