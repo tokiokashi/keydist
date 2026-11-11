@@ -2,8 +2,8 @@ import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { Fragment, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
-import { browserKeyBindingsForShape, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
-import { FINGERS, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { browserKeyBindingsForShape, EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
+import { FINGERS, isPresetGeometryKind, presetGeometryStandard, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { OVERHEAD_KINDS, SIMULTANEOUS_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import {
   applyCalibrationField,
@@ -19,6 +19,7 @@ import {
   calibrationBasis,
   calibrationKeyLabel,
   planCalibration,
+  unassignedThumbKeys,
   type CalibrationPlan,
   type CalibrationRun,
   type CalibrationScope,
@@ -35,10 +36,8 @@ import {
 import {
   remainingSentenceKeys,
   remainingSentenceStrokes,
-  sentencePlan,
+  sentenceKeyIds,
   sentenceSamples,
-  sentenceSteps,
-  sentenceUnmeasurable,
   upcomingSentenceSteps,
   type SentencePlan,
   type SentenceRun,
@@ -61,6 +60,7 @@ import {
   zeroMoveRowNote,
   calibrationProgressText,
   clearedSimultaneousText,
+  unassignedThumbKeysText,
   simultaneousWrongKeyText,
   MEASUREMENT_DESCRIPTION,
   MEASUREMENT_HOW_TO,
@@ -80,10 +80,10 @@ import {
   savedMessage,
   sentenceFailureText,
   sentenceSavedMessage,
-  sentenceUnmeasurableText,
   wrongKeyText,
 } from './calibration-text.ts';
 import { PERSONAL_SPEED_LABEL } from './label.ts';
+import { sentenceSetupOf, type SentenceSetup } from './sentence-setup.ts';
 import { SentenceResultTable } from './SentenceResultTable.tsx';
 import { useCalibrationRun } from './use-calibration-run.ts';
 import { useSentenceRun } from './use-sentence-run.ts';
@@ -131,21 +131,6 @@ export interface PersonalSpeedEditorProps {
   readonly onDiscard: () => void;
   /** 計算の詳細を読める再生時間モデルの仕様書のURL。 */
   readonly specHref?: string | undefined;
-}
-
-/** 文章を打つ測定の準備。打てる時は文ごとの測定の計画を持ち、打てない時は理由の文を持つ。 */
-type SentenceSetup = { readonly ok: true; readonly plans: readonly SentencePlan[] } | { readonly ok: false; readonly message: string };
-
-/** 示す文の全部が打てる時だけ、測れる。1本でも作れない・測れない文があれば、その理由を返す。 */
-function sentenceSetupOf(builds: readonly SentenceBuildResult[], phraseBreaks: readonly (readonly number[])[]): SentenceSetup {
-  const plans: SentencePlan[] = [];
-  for (const [index, build] of builds.entries()) {
-    if (!build.ok) return build;
-    const unmeasurable = sentenceUnmeasurable(sentenceSteps(build.analysis));
-    if (unmeasurable !== undefined) return { ok: false, message: sentenceUnmeasurableText(unmeasurable) };
-    plans.push({ ...sentencePlan(build.analysis, build.spelling), phraseBreaks: phraseBreaks[index] ?? [] });
-  }
-  return { ok: true, plans };
 }
 
 /** 示す文と、打つ位置の表示。打ち終えた入力単位・今の入力単位・まだの入力単位に分けて見せる。 */
@@ -463,10 +448,14 @@ export function PersonalSpeedEditor({
     [layout, shape, assignment],
   );
   const plan: CalibrationPlan | undefined = useMemo(() => (basis?.ok ? planCalibration(basis.basis) : undefined), [basis]);
+  // 測定を始めた時のキーの対応。案内に出す親指のキーの名前は、測定が使う対応で決める。
+  const [measureBindings, setMeasureBindings] = useState<BrowserKeyBindingOverrides>(EMPTY_BROWSER_KEY_BINDING_OVERRIDES);
+  const measureBindingsRef = useRef<BrowserKeyBindingOverrides>(EMPTY_BROWSER_KEY_BINDING_OVERRIDES);
+  const standard = shape !== undefined && isPresetGeometryKind(shape.id) ? presetGeometryStandard(shape.id) : undefined;
   const keyLabel = useMemo(() => {
     const legends = basis?.ok ? basis.basis.legends : new Map<string, string>();
-    return (keyId: string) => calibrationKeyLabel(legends, keyId);
-  }, [basis]);
+    return (keyId: string) => calibrationKeyLabel(legends, keyId, measureBindings, standard);
+  }, [basis, measureBindings, standard]);
 
   const opener = useRef<HTMLElement | null>(null);
   const regionRef = useRef<HTMLDivElement>(null);
@@ -510,7 +499,14 @@ export function PersonalSpeedEditor({
   };
   // 押下からキーを引く対応は、選んだ物理配列の対応に、利用者の対応を重ねたもの。測定を始めた時点の値を使う。
   const codeBindings = () => browserKeyBindingsForShape(selection.shapeId, readKeyBindingOverrides());
-  const runner = useCalibrationRun({ keyLabel, codeBindings, onFinished: finished });
+  // 測定を始める時に対応を1回だけ読み、測定の取得と案内の両方が同じ対応を使うようにする。
+  const snapshotBindings = () => {
+    const bindings = codeBindings();
+    measureBindingsRef.current = bindings;
+    setMeasureBindings(bindings);
+    return bindings;
+  };
+  const runner = useCalibrationRun({ keyLabel, codeBindings: () => measureBindingsRef.current, onFinished: finished });
 
   const sentence: SentenceSetup | undefined = useMemo(
     () =>
@@ -560,7 +556,7 @@ export function PersonalSpeedEditor({
     setSentencePending(undefined);
     setNotices({ sentence: { kind: 'message', text: SENTENCE_DECLINED_TEXT, table: pending?.table, phase: 'after-decline' } });
   };
-  const sentenceRunner = useSentenceRun({ keyLabel, codeBindings, onFinished: sentenceFinished });
+  const sentenceRunner = useSentenceRun({ keyLabel, codeBindings: () => measureBindingsRef.current, onFinished: sentenceFinished });
   const running = runner.run !== undefined || sentenceRunner.session !== undefined;
   // キー操作もボタンと同じ処理を通し、測定中（ボタンも押せない間）は動かさない
   useHistoryShortcuts(
@@ -600,6 +596,15 @@ export function PersonalSpeedEditor({
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setNotices({});
     setSentencePending(undefined);
+    const bindings = snapshotBindings();
+    const unassigned = unassignedThumbKeys(
+      tasks.filter((task) => task.item.kind === 'simultaneous').flatMap((task) => task.keys),
+      bindings,
+    );
+    if (unassigned.length > 0) {
+      setNotices({ simultaneous: { kind: 'error', text: unassignedThumbKeysText(unassigned) } });
+      return;
+    }
     runner.start(scope, tasks);
   };
 
@@ -609,6 +614,13 @@ export function PersonalSpeedEditor({
 
   const startSentence = () => {
     if (sentence?.ok !== true || calibration === undefined) return;
+    // 打つ親指のキーに割り当てたキーが無ければ、打てないので始めない。
+    const bindings = snapshotBindings();
+    const unassigned = unassignedThumbKeys(sentenceKeyIds(sentence.plans), bindings);
+    if (unassigned.length > 0) {
+      setNotices({ sentence: { kind: 'error', text: unassignedThumbKeysText(unassigned) } });
+      return;
+    }
     const started: SentenceStart = { setup: sentence, calibration };
     sentenceStartRef.current = started;
     setSentenceStart(started);

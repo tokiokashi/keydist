@@ -108,7 +108,7 @@ test('割り当てが無いJISのIntlRoは格子のキーになるので、caps-
   assert.ok(outcomes.includes('wrong-key'));
 });
 
-test('月林檎配列は測れ、親指のキーを使う配列は測れないまま', () => {
+test('月林檎配列も、親指のキーを使う配列（NICOLA）も測れる', () => {
   const unmeasurableLayouts: string[] = [];
   const layouts = [...paneCatalog(BASE).setupCatalog.layouts.keys()];
   for (const layoutId of layouts) {
@@ -119,5 +119,5 @@ test('月林檎配列は測れ、親指のキーを使う配列は測れない�
     if (failed) unmeasurableLayouts.push(layoutId);
   }
   assert.ok(!unmeasurableLayouts.includes('tsuki-ringo'));
-  assert.ok(unmeasurableLayouts.includes('nicola'));
+  assert.ok(!unmeasurableLayouts.includes('nicola'));
 });
