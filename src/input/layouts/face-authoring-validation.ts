@@ -72,6 +72,22 @@ function validateExtraCells(face: Face, faceIndex: number): void {
   }
 }
 
+function validateDefaultCells(face: Face, faceIndex: number): void {
+  const marks = face.defaultCells ?? [];
+  if (marks.length === 0) return;
+  const cells = faceCells(face);
+  const outputByKey = new Map([...cells].map(([key, output]) => [resolveKeyId(key), output] as const));
+  const markedOutputs = new Set<string>();
+  for (const mark of marks) {
+    const output = outputByKey.get(resolveKeyId(mark));
+    if (output === undefined) throw new Error(`defaultCellsのキー「${mark}」は面に出力が無い（face:${faceIndex}）`);
+    if (markedOutputs.has(output)) throw new Error(`defaultCellsが同じ出力「${output}」のセルを2つ以上指している（face:${faceIndex}）`);
+    markedOutputs.add(output);
+    const sameOutput = [...outputByKey.values()].filter((entry) => entry === output).length;
+    if (sameOutput < 2) throw new Error(`defaultCellsのキー「${mark}」の出力「${output}」は面の中に他のセルが無い（face:${faceIndex}）`);
+  }
+}
+
 /**
  * Face authoring invariantをconstructor境界で検証する。
  * semantic layer foldingとpresentation metadataの不正をconsumerまで遅延させない。
@@ -83,6 +99,7 @@ export function validateFaceAuthoring(faces: readonly Face[]): void {
   for (const [faceIndex, face] of faces.entries()) {
     validatePresentationMetadata(face, faceIndex);
     validateExtraCells(face, faceIndex);
+    validateDefaultCells(face, faceIndex);
     if (faceAggregatesAsCombo(face)) {
       if (face.layer !== undefined) throw new Error('コンボ枠に計上する面にはレイヤーを宣言できない');
       continue;
