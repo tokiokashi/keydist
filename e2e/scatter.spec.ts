@@ -5,7 +5,7 @@ import { useShortText } from './short-text-helper.ts';
 
 /**
  * 散布図のe2e。等位線の値・座標・名前の置き場所はunit testで固定しているので、
- * ここでは画面の配線（組み合わせの切り替えで軸の名前と点が替わる）だけを見る。
+ * ここでは画面の配線（表示する図の切り替えで軸の名前と点が替わる）だけを見る。
  */
 
 const feature = (page: Page) => page.locator('[data-react-feature="scatter"]');
@@ -14,7 +14,7 @@ const pointOf = (scope: Locator, targetKey: string) => scope.locator(`[data-scat
 const PRESET_LABELS = scatterPresetLabels('ja');
 const presetBox = (settings: Locator, preset: ScatterPresetId) => settings.getByRole('checkbox', { name: PRESET_LABELS[preset], exact: true });
 
-/** 選ぶ組み合わせを1つだけにする。先に選んでから他を外す（最後の1つは外せないため）。 */
+/** 表示する図を1つだけにする。先に選んでから他を外す（最後の1つは外せないため）。 */
 async function selectOnlyPreset(settings: Locator, preset: ScatterPresetId): Promise<void> {
   const target = presetBox(settings, preset);
   if (!(await target.isChecked())) await target.check();
@@ -48,7 +48,7 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-point]')).toHaveCount(3, { timeout: 15_000 });
   });
 
-  test('組み合わせを切り替えると、軸の名前と点の位置が変わる', { tag: PAGE_TAG }, async ({ page }) => {
+  test('表示する図を切り替えると、軸の名前と点の位置が変わる', { tag: PAGE_TAG }, async ({ page }) => {
     const qwerty = pointOf(feature(page), 'layout:qwerty');
     const before = await qwerty.evaluate((element) => getComputedStyle(element).transform);
     const settings = await openSettings(page);

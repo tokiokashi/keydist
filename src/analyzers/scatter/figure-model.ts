@@ -15,7 +15,7 @@ import {
 import { axisTitle, axisUnit } from './axis-names.ts';
 import type { ScatterRow } from './extract.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
-import { logScaleBlockers, resolveLogScale, scatterPlotModel, type LogScaleBlockers, type ScatterPlotModel } from './plot-model.ts';
+import { logScaleBlockers, resolveLogScale, scatterPlotModel, type ScatterPlotModel } from './plot-model.ts';
 
 /**
  * 組み合わせ1つぶんの図の描画モデル（画面に依存しない純粋な関数）。
@@ -77,8 +77,6 @@ export interface ScatterFigureModel {
   /** 細い線を引く組の細い線の量。引かない組は`undefined`。 */
   readonly lineContour: ScatterContour | undefined;
   readonly logScale: boolean;
-  /** 軸を対数にしているのに線形で描く理由。 */
-  readonly logReasons: readonly (keyof LogScaleBlockers)[];
   readonly usedKinds: readonly LayoutKind[];
   readonly model: ScatterPlotModel;
 }
@@ -111,8 +109,8 @@ export function scatterFigureModel(preset: ScatterPresetId, axes: ScatterAxes, i
   const contour = scatterContour(axes.x, axes.y, inputChars, input.language);
   // 線を引かない組でも、3つの量の関係は図の見方に出すので`contour`は残す。点の読み取りと凡例には、線を引く組の線の量だけを出す
   const lineContour = contour?.drawsLines === true ? contour : undefined;
-  // 対数の目盛りは、対数にできる図でだけ使う。選んだ設定と表示が違う時は、図の近くに理由を出す
-  const { logScale, reasons: logReasons } = resolveLogScale(input.tickScale, logScaleBlockers(lineContour, plotted));
+  // 対数の目盛りは、対数にできる図でだけ使う
+  const logScale = resolveLogScale(input.tickScale, logScaleBlockers(lineContour, plotted));
   const usedKinds = SCATTER_KIND_ORDER.filter((kind) => plotted.some((row) => row.kind === kind));
   const model = scatterPlotModel({
     points: plotted.map(({ targetKey, label, x, y }) => ({ targetKey, label, x, y })),
@@ -132,7 +130,6 @@ export function scatterFigureModel(preset: ScatterPresetId, axes: ScatterAxes, i
     contour,
     lineContour,
     logScale,
-    logReasons,
     usedKinds,
     model,
   };

@@ -90,15 +90,13 @@ test('軸の種類と「自由選択」の軸は、全ての図で同じ値を�
   assert.equal(figures[0]!.logScale, true);
 });
 
-test('対数を選ぶと、対数にできない図にだけその旨の理由が付き、その図は線形の軸で描く', () => {
+test('対数を選ぶと、対数にできる図だけを対数の軸で描き、対数にできない図は線形の軸で描く', () => {
   const figures = scatterFigureModels(['distance', 'handShare'], input({ tickScale: 'log' }));
   const [distance, handShare] = figures;
   assert.equal(distance!.logScale, true);
-  assert.deepEqual(distance!.logReasons, []);
   assert.equal(handShare!.logScale, false);
-  assert.ok(handShare!.logReasons.includes('noStraightLines'));
-  // 線形を選んでいる時は、どの図にも理由が付かない
-  for (const figure of scatterFigureModels(['distance', 'handShare'], input())) assert.deepEqual(figure.logReasons, []);
+  // 線形を選んでいる時は、どの図も線形の軸で描く
+  for (const figure of scatterFigureModels(['distance', 'handShare'], input())) assert.equal(figure.logScale, false);
 });
 
 test('「自由選択」の位置に、縦軸ごとの図が縦軸の順に入る', () => {

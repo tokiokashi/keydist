@@ -298,16 +298,11 @@ export interface ScatterPlotInput {
 }
 
 /**
- * 解析設定の目盛りの種類と、図が対数にできるかから、実際に使う目盛りと、通常の目盛りで描く理由を決める。
- * 対数を選んでいても対数にできない図は通常の目盛りで描き、理由を返す（図の近くに文で出す）。通常を選んでいる時は理由を返さない。
+ * 解析設定の目盛りの種類と、図が対数にできるかから、図を対数の目盛りで描くかを決める。
+ * 対数を選んでいても対数にできない図は通常の目盛りで描く。対数で描いたかは目盛りの間隔で見分けられるので、理由は画面に出さない。
  */
-export function resolveLogScale(
-  requested: 'linear' | 'log',
-  blockers: LogScaleBlockers,
-): { readonly logScale: boolean; readonly reasons: readonly (keyof LogScaleBlockers)[] } {
-  if (requested !== 'log') return { logScale: false, reasons: [] };
-  const reasons = (['noStraightLines', 'nonPositive'] as const).filter((reason) => blockers[reason]);
-  return { logScale: reasons.length === 0, reasons };
+export function resolveLogScale(requested: 'linear' | 'log', blockers: LogScaleBlockers): boolean {
+  return requested === 'log' && !blockers.noStraightLines && !blockers.nonPositive;
 }
 
 /** 対数の目盛りにできない理由。両方に当たる図は両方が真になる。 */

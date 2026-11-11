@@ -823,20 +823,16 @@ test('logScaleBlockers: 0以下の値がある点があれば理由に挙がる�
   assert.equal(logScaleBlockers(PRODUCT_CONTOUR, []).nonPositive, false);
 });
 
-test('resolveLogScale: 対数を選んでいて理由が無い時だけ対数で描き、できない時は理由ごとに返す。通常を選んでいる時は理由を返さない', () => {
+test('resolveLogScale: 対数を選んでいて、対数にできない理由が1つも無い時だけ対数で描く', () => {
   const none = { noStraightLines: false, nonPositive: false };
-  assert.deepEqual(resolveLogScale('log', none), { logScale: true, reasons: [] });
-  assert.deepEqual(resolveLogScale('linear', none), { logScale: false, reasons: [] });
-  assert.deepEqual(resolveLogScale('log', { noStraightLines: true, nonPositive: false }), { logScale: false, reasons: ['noStraightLines'] });
-  assert.deepEqual(resolveLogScale('log', { noStraightLines: false, nonPositive: true }), { logScale: false, reasons: ['nonPositive'] });
-  assert.deepEqual(resolveLogScale('log', { noStraightLines: true, nonPositive: true }), {
-    logScale: false,
-    reasons: ['noStraightLines', 'nonPositive'],
-  });
-  assert.deepEqual(resolveLogScale('linear', { noStraightLines: true, nonPositive: true }), { logScale: false, reasons: [] });
+  assert.equal(resolveLogScale('log', none), true);
+  assert.equal(resolveLogScale('linear', none), false);
+  assert.equal(resolveLogScale('log', { noStraightLines: true, nonPositive: false }), false);
+  assert.equal(resolveLogScale('log', { noStraightLines: false, nonPositive: true }), false);
+  assert.equal(resolveLogScale('log', { noStraightLines: true, nonPositive: true }), false);
 });
 
-test('対数を選んだまま組み合わせを変える: 対数にできる図は対数のまま、できない図は通常の目盛りと理由になる', () => {
+test('対数を選んだまま組み合わせを変える: 対数にできる図は対数のまま、できない図は通常の目盛りになる', () => {
   const rows = [
     { actions: 120, perCharSteps: 1.2, meanPerStroke: 0.9, sameFingerRate: 3 },
     { actions: 150, perCharSteps: 1.5, meanPerStroke: 1.1, sameFingerRate: 0 },
@@ -852,13 +848,13 @@ test('対数を選んだまま組み合わせを変える: 対数にできる図
       ),
     );
   };
-  assert.deepEqual(resolve('actions', 'meanPerStroke'), { logScale: true, reasons: [] });
+  assert.equal(resolve('actions', 'meanPerStroke'), true);
   // 同指率が0%の配列がある図
-  assert.deepEqual(resolve('actions', 'sameFingerRate'), { logScale: false, reasons: ['nonPositive'] });
+  assert.equal(resolve('actions', 'sameFingerRate'), false);
   // 線の無い図（同じ手が続く割合と同指率）に0以下の値が重なる
-  assert.deepEqual(resolve('sameFingerRate', 'perCharSteps'), { logScale: false, reasons: ['noStraightLines', 'nonPositive'] });
+  assert.equal(resolve('sameFingerRate', 'perCharSteps'), false);
   // 対数を選んだままでも、対数にできる図に戻れば対数になる
-  assert.deepEqual(resolve('perCharSteps', 'meanPerStroke'), { logScale: true, reasons: [] });
+  assert.equal(resolve('perCharSteps', 'meanPerStroke'), true);
 });
 
 const LOG_POINTS = [
