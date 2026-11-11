@@ -33,7 +33,7 @@ export interface EngineTraceResult {
  * `romajiChunks`は、ローマ字の配列で打つ綴りを呼び出し側が決める時だけ渡す（キャッシュを通さない経路）。
  */
 export function generateEngineTrace(input: ResolvedInput, romajiChunks?: readonly RomajiChunk[]): EngineTraceResult {
-  const trace = generateTrace(input.text, input.layout, input.geometry, input.tracePolicy, romajiChunks);
+  const trace = generateTrace(input.text, input.layout, input.geometry, input.tracePolicy, romajiChunks, input.comboBarriers);
   return { modelVersion: MODEL_VERSION, trace };
 }
 
@@ -79,6 +79,7 @@ export function interpretEngineTrace(traceResult: EngineTraceResult, input: Reso
       keepSymbols: input.keepSymbols,
       keepAlphanumerics: input.keepAlphanumerics,
       reading: input.reading,
+      ...(input.comboSet === undefined ? {} : { comboSet: input.comboSet }),
     },
     input.notationExcess,
   );

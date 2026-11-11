@@ -1,6 +1,7 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
 import type { LayerPresentationRole } from '#input/layouts/types.ts';
 import { attributeMetrics } from '#interpretation/attribution.ts';
+import { computeTriggerParticipation, type TriggerCounts } from '#interpretation/trigger-participation.ts';
 import { layerComboDisciplineContext } from '#analyzers/discipline-material.ts';
 import { DEFAULT_LAYER_COMBO_PRESSES_OPTIONS, layerComboPressesOptions, type LayerComboPressesOptions } from './options.ts';
 
@@ -10,6 +11,9 @@ import { DEFAULT_LAYER_COMBO_PRESSES_OPTIONS, layerComboPressesOptions, type Lay
  * 押下をレイヤーとコンボ枠へ割り振る規則は `computeMetrics` が持つので、ここでは数え直さず、
  * `interpretation/attribution.ts` が `Metrics` の集計に表示区分を添えた値を、表の行に並べるだけにする。
  * 割合は求めない（表示側が各行の `presses` と `LayerComboPressesExtracted.presses` から求める）。
+ *
+ * 切り替えのキーの参加率と同手率（仕様 §11.10.1）は、キー押下ではなくStrokeを単位にするので、別の表として
+ * `interpretation/trigger-participation.ts` の回数を行に並べる。分母は `LayerComboPressesExtracted.strokes`。
  */
 
 /** 帰属先1つぶん（表の1行）。 */
@@ -24,11 +28,31 @@ export interface AttributionRow {
   readonly presses: number;
 }
 
+/** 切り替えのキーの行1つぶん（仕様 §11.10.1）。 */
+export interface TriggerRow {
+  readonly id: string;
+  readonly label: string;
+  /** その行の条件に当たる打鍵（Stroke）の数 */
+  readonly participated: number;
+  /** そのうち、切り替えのキーと出力が同じ手の打鍵の数 */
+  readonly sameHand: number;
+}
+
+/** 行の群。同じ打鍵が、群の中の複数の行に入ることがある。 */
+export interface TriggerGroup {
+  readonly id: 'all' | 'face' | 'order' | 'persistence' | 'meaning';
+  readonly label: string;
+  readonly rows: readonly TriggerRow[];
+}
+
 export interface LayerComboPressesExtracted {
   /** 全キー押下の総数（`Metrics.presses`）。帰属先ごとの押下数の和に等しい */
   readonly presses: number;
   /** レイヤーを配列の宣言順に並べ、コンボ枠があれば末尾に置く */
   readonly rows: readonly AttributionRow[];
+  /** 全打鍵（Stroke）の数。切り替えのキーの参加率の分母 */
+  readonly strokes: number;
+  readonly triggerGroups: readonly TriggerGroup[];
 }
 
 /** 抽出の入力。解析設定は無い。 */
@@ -52,7 +76,42 @@ export function computeLayerComboPressesExtraction({ trace, metrics }: LayerComb
       presses: attribution.combo.presses,
     });
   }
-  return { presses: metrics.presses, rows };
+  const participation = computeTriggerParticipation(trace);
+  const row = (id: string, label: string, counts: TriggerCounts | undefined): TriggerRow => ({
+    id,
+    label,
+    participated: counts?.participated ?? 0,
+    sameHand: counts?.sameHand ?? 0,
+  });
+  const triggerGroups: TriggerGroup[] = [
+    { id: 'all', label: '全体', rows: [row('all', '切り替えのキーが参加した打鍵', participation.all)] },
+    { id: 'face', label: 'レイヤー・コンボ', rows: rows.map((entry) => row(entry.id, entry.label, participation.faces.get(entry.id))) },
+    {
+      id: 'order',
+      label: '押す順',
+      rows: [
+        row('overlap', '同時に押す', participation.orders.overlap),
+        row('before', '先に押す', participation.orders.before),
+        row('after', '後に押す', participation.orders.after),
+      ],
+    },
+    {
+      id: 'persistence',
+      label: '持続',
+      rows: [row('single', '単発', participation.persistence.single), row('held', '保持', participation.persistence.held)],
+    },
+    {
+      id: 'meaning',
+      label: '入力の意味',
+      rows: [
+        row('layer', 'レイヤーの切り替え', participation.meaning.layer),
+        row('modifier', '修飾キー', participation.meaning.modifier),
+        row('composition-layer', '合成（レイヤーに数える）', participation.meaning['composition-layer']),
+        row('composition-combo', '合成（コンボ枠に数える）', participation.meaning['composition-combo']),
+      ],
+    },
+  ];
+  return { presses: metrics.presses, rows, strokes: participation.strokes, triggerGroups };
 }
 
 /** engine（`engine/cache.ts` の `getExtraction`）が呼ぶ、Analyzer契約の実体。 */

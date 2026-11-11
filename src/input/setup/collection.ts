@@ -55,10 +55,14 @@ export function duplicateSetup<V>(library: SetupLibrary<V>, sourceSetupId: strin
 
   const id = generateId();
   const number = nextSetupNumber(library.setups);
-  const duplicated: Setup =
-    label === undefined
-      ? { id, number, layoutId: source.layoutId, shapeId: source.shapeId }
-      : { id, number, layoutId: source.layoutId, shapeId: source.shapeId, label };
+  const duplicated: Setup = {
+    id,
+    number,
+    layoutId: source.layoutId,
+    shapeId: source.shapeId,
+    ...(label === undefined ? {} : { label }),
+    ...(source.comboSetId === undefined ? {} : { comboSetId: source.comboSetId }),
+  };
 
   return {
     setups: [...library.setups, duplicated],
@@ -106,6 +110,23 @@ export function setSetupShape<V>(library: SetupLibrary<V>, setupId: string, shap
   if (target === undefined || target.shapeId === shapeId) return library;
   return {
     setups: library.setups.map((setup) => (setup.id === setupId ? { ...setup, shapeId } : setup)),
+    overrides: library.overrides,
+  };
+}
+
+/**
+ * Setupが重ねるコンボの組を付け替える。`undefined`を渡すと組を外す。配列・物理配列・ラベル・番号・Setup固有の上書きは変えない。
+ * 対象が存在しない、または既に同じ組なら`library`をそのまま返す（`setSetupShape`と同じ規約）。
+ */
+export function setSetupComboSet<V>(library: SetupLibrary<V>, setupId: string, comboSetId: string | undefined): SetupLibrary<V> {
+  const target = library.setups.find((setup) => setup.id === setupId);
+  if (target === undefined || target.comboSetId === comboSetId) return library;
+  return {
+    setups: library.setups.map((setup) => {
+      if (setup.id !== setupId) return setup;
+      const { comboSetId: _drop, ...rest } = setup;
+      return comboSetId === undefined ? rest : { ...rest, comboSetId };
+    }),
     overrides: library.overrides,
   };
 }

@@ -1,7 +1,7 @@
 import { ALL_FINGERS, THUMB_KEY, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
 import { commitAction, commitKeyOf } from './commit-stroke.ts';
 import { decidePress, selectFingers, strokeFingerChoices, targetOf, type PlannedInput, type PlannedStroke } from './finger-selection.ts';
-import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyCombos } from '#input/layouts/types.ts';
+import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyInputs } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
 import { canTypeSpaceWithLeftThumb, isLoneRightThumbPress } from '#input/layouts/space-thumb.ts';
 import { bracketAliasesFor } from '#input/text/bracket-alias.ts';
@@ -25,6 +25,7 @@ import {
   type RealizedSemanticAction,
   type InputClassification,
   type InputContextRequirement,
+  type Requirement,
   type TriggerHoldState,
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
@@ -66,12 +67,25 @@ export const DEFAULT_TRACE_POLICY: TracePolicy = {
 
 export type ParticipationRole = 'output' | 'trigger' | 'held-trigger';
 
+/**
+ * triggerのキーが、成立した入力のRequirementのどこに現れるか（仕様 §11.10.1）。
+ * `overlap` は同時押し、`before` は前置、`after` は後置。
+ */
+export type TriggerOrder = 'overlap' | 'before' | 'after';
+
 export interface StrokeParticipation {
   hand: 'left' | 'right';
   finger: Finger;
   keys: readonly Key[];
   roles: readonly ParticipationRole[];
   holdPhase?: HoldPhase;
+  /**
+   * この指のtriggerのキー（`trigger`・`held-trigger` の役のキー）が、入力のRequirementに現れる位置。
+   * triggerの役を持つ参加だけが持ち、Requirementに現れないキーしか無ければ持たない。
+   */
+  triggerOrders?: readonly TriggerOrder[];
+  /** この指のtriggerのキーが、入力の定義で `modifier` の役を持つキーである（仕様 §11.10.1）。 */
+  modifier?: true;
 }
 
 /** 距離が採用した候補の起点。 */
@@ -268,7 +282,7 @@ function evaluationUnitsOf(text: string, layout: Layout, romajiChunks: readonly 
  * （`youonOnly`・`romajiOnly`）だけで、条件が付くのは英字の出力の見出しだけである。
  */
 export function uncoveredTextPositions(text: string, sourceLayout: Layout): number[] {
-  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyCombos(sourceLayout);
+  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyInputs(sourceLayout);
   const { chunks, chars, chunkRanges, canonicalInputs } = evaluationUnitsOf(text, layout, undefined);
   const maxLen = Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
   const uncovered: number[] = [];
@@ -306,11 +320,16 @@ export function generateTrace(
    * この列を打つ。配列がローマ字表を持たない時は読まない。
    */
   romajiChunks?: readonly RomajiChunk[],
+  /**
+   * コンボを止める境（仕様 §4.3）。`text`のかなの位置（コードポイント。境は位置の直前）。コンボ枠の見出しは、境をまたぐ範囲では当てない。
+   * 渡さなければ、コンボは境に止められない。
+   */
+  comboBarriers: readonly number[] = [],
 ): Trace {
   // 仕様 §4.3。ローマ字を経ない打ち方ではromajiOnlyのコンボを配列に無いものとして扱う。
   // 見出し探索だけでなく定義数B（§11.8）とコンボ枠の有無も揃えるため、alternativeの
   // filterだけで済ませず、評価前に配列ごと外す。
-  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyCombos(sourceLayout);
+  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyInputs(sourceLayout);
   const prev = {} as Record<Finger, Point>;
   const last = {} as Record<Finger, number>;
   const lastInputEnd = {} as Record<Finger, number>;
@@ -339,6 +358,7 @@ export function generateTrace(
   const inputs: PlannedGeneratedInput[] = [];
 
   const { rawChars, chunks, chars, chunkRanges, canonicalInputs } = evaluationUnitsOf(text, layout, romajiChunks);
+  const barrierPositions = comboBarrierPositions(comboBarriers, chunkRanges, chunks !== undefined);
   const commitRules = commitStrokeRulesOf(canonicalInputs);
   const commitKey = commitKeyOf(geometry);
   // 直前の入力が選んだpath。打てない文字を挟んだら継ぎ目として扱わないので、そこで外す
@@ -354,8 +374,11 @@ export function generateTrace(
     for (let len = Math.min(maxLen, chars.length - cursor); len >= 1; len--) {
       const candidate = chars.slice(cursor, cursor + len).join('');
       const found = canonicalInputs.get(candidate);
-      const eligible = found?.filter((alternative) =>
-        alternativeContextSatisfied(alternative.contextRequirements, cursor, cursor + len, chars, chunkRanges, chunks !== undefined),
+      const crossesBarrier = spansBarrier(barrierPositions, cursor, cursor + len);
+      const eligible = found?.filter(
+        (alternative) =>
+          !(crossesBarrier && isComboFrameAlternative(alternative)) &&
+          alternativeContextSatisfied(alternative.contextRequirements, cursor, cursor + len, chars, chunkRanges, chunks !== undefined),
       );
       if (eligible && eligible.length > 0) {
         alternatives = eligible;
@@ -520,7 +543,17 @@ export function generateTrace(
 
       const participations = internParticipations(
         participationPool,
-        normalizeParticipations(presses, action.outputKeys, action.triggerKeys, action.heldKeys, action.holdPhase, geometry, heldFingerOf),
+        normalizeParticipations(
+          presses,
+          action.outputKeys,
+          action.triggerKeys,
+          action.heldKeys,
+          action.holdPhase,
+          action.input.requirements,
+          modifierKeys,
+          geometry,
+          heldFingerOf,
+        ),
       );
 
       let total = 0;
@@ -631,6 +664,8 @@ function normalizeParticipations(
   triggerKeys: readonly string[],
   heldTriggerKeys: readonly string[],
   holdPhase: HoldPhase | undefined,
+  requirements: readonly Requirement[],
+  modifierKeys: ReadonlySet<string>,
   geometry: Geometry,
   heldFingerOf: (id: string) => Finger | undefined,
 ): readonly StrokeParticipation[] {
@@ -666,13 +701,45 @@ function normalizeParticipations(
     current.roles.add('held-trigger');
   }
 
-  return [...byFinger].map(([finger, value]) => ({
-    hand: finger.startsWith('L') ? 'left' : 'right',
-    finger,
-    keys: value.keys,
-    roles: [...value.roles],
-    ...(value.roles.has('held-trigger') && holdPhase !== undefined ? { holdPhase } : {}),
-  }));
+  return [...byFinger].map(([finger, value]) => {
+    const isTrigger = value.roles.has('trigger') || value.roles.has('held-trigger');
+    const orders = isTrigger ? triggerOrdersOf(value.keys, triggers, held, requirements) : [];
+    return {
+      hand: finger.startsWith('L') ? 'left' : 'right',
+      finger,
+      keys: value.keys,
+      roles: [...value.roles],
+      ...(value.roles.has('held-trigger') && holdPhase !== undefined ? { holdPhase } : {}),
+      ...(orders.length > 0 ? { triggerOrders: orders } : {}),
+      ...(isTrigger && value.keys.some((key) => (triggers.has(key.id) || held.has(key.id)) && modifierKeys.has(key.id))
+        ? { modifier: true as const }
+        : {}),
+    };
+  });
+}
+
+const TRIGGER_ORDER_SEQUENCE: readonly TriggerOrder[] = ['overlap', 'before', 'after'];
+
+/** triggerのキーがRequirementのどこに現れるかを、`overlap`・`before`・`after` の順に重複なく返す。 */
+function triggerOrdersOf(
+  keys: readonly Key[],
+  triggers: ReadonlySet<string>,
+  held: ReadonlySet<string>,
+  requirements: readonly Requirement[],
+): TriggerOrder[] {
+  const found = new Set<TriggerOrder>();
+  for (const key of keys) {
+    if (!triggers.has(key.id) && !held.has(key.id)) continue;
+    for (const requirement of requirements) {
+      if (requirement.kind === 'overlap') {
+        if (requirement.keys.some((candidate) => resolveKeyId(candidate) === key.id)) found.add('overlap');
+      } else {
+        if (requirement.before.some((candidate) => resolveKeyId(candidate) === key.id)) found.add('before');
+        if (requirement.after.some((candidate) => resolveKeyId(candidate) === key.id)) found.add('after');
+      }
+    }
+  }
+  return TRIGGER_ORDER_SEQUENCE.filter((order) => found.has(order));
 }
 
 /**
@@ -818,6 +885,32 @@ interface RomajiChunkRange {
   kanaLength: number;
 }
 
+/**
+ * コンボを止める境（`text`のかなの位置）を、見出しを引く列（`chars`）の位置にする。
+ * ローマ字の配列は、境の位置から始まる綴りの単位の先頭の英字の位置。複数のかなを1つにまとめた綴りの単位（`kya`など）の内側に来た境は、
+ * 単位を割れないので置かない。かな配列は、かなの位置がそのまま列の位置になる。
+ */
+function comboBarrierPositions(barriers: readonly number[], chunkRanges: readonly RomajiChunkRange[], romaji: boolean): ReadonlySet<number> {
+  if (barriers.length === 0) return NO_BARRIERS;
+  if (!romaji) return new Set(barriers);
+  const startByKana = new Map(chunkRanges.map((range) => [range.kanaStart, range.start]));
+  const positions = new Set<number>();
+  for (const barrier of barriers) {
+    const start = startByKana.get(barrier);
+    if (start !== undefined) positions.add(start);
+  }
+  return positions;
+}
+
+const NO_BARRIERS: ReadonlySet<number> = new Set();
+
+/** 列の範囲[start, end)の内側（先頭の直前と末尾の直後を除く）に境があるか。 */
+function spansBarrier(barriers: ReadonlySet<number>, start: number, end: number): boolean {
+  if (barriers.size === 0) return false;
+  for (let position = start + 1; position < end; position++) if (barriers.has(position)) return true;
+  return false;
+}
+
 function alternativeContextSatisfied(
   requirements: readonly InputContextRequirement[],
   cursor: number,
@@ -949,7 +1042,10 @@ function internParticipations(
   participations: readonly StrokeParticipation[],
 ): readonly StrokeParticipation[] {
   const signature = participations
-    .map((entry) => `${entry.hand}|${entry.finger}|${entry.keys.map((key) => key.id).join(',')}|${entry.roles.join(',')}|${entry.holdPhase ?? ''}`)
+    .map(
+      (entry) =>
+        `${entry.hand}|${entry.finger}|${entry.keys.map((key) => key.id).join(',')}|${entry.roles.join(',')}|${entry.holdPhase ?? ''}|${(entry.triggerOrders ?? []).join(',')}|${entry.modifier === true ? 'm' : ''}`,
+    )
     .join(';');
   const known = pool.get(signature);
   if (known !== undefined) return known;

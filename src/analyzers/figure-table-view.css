@@ -1,0 +1,74 @@
+/* 図の値を表で読む表示と、図と表を切り替えるボタン */
+.figure-table-switch {
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.figure-table-switch:hover {
+  border-color: var(--focus);
+}
+
+.figure-table-switch:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.figure-table-switch[aria-pressed='true'] {
+  border-color: var(--focus);
+  background: var(--surface-muted);
+  font-weight: 600;
+}
+
+.figure-table-scroll {
+  max-width: 100%;
+  overflow: auto;
+}
+
+.figure-table-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.figure-table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.figure-table caption {
+  padding: 0 0 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.figure-table th,
+.figure-table td {
+  padding: 0.2rem 0.8rem 0.2rem 0;
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.figure-table thead th {
+  color: var(--text-muted);
+}
+
+.figure-table td,
+.figure-table thead th:not(:first-child) {
+  text-align: right;
+}
+
+/* 見出しの行を持たない図で、切り替えのボタンを置く行 */
+.figure-table-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 1rem;
+}

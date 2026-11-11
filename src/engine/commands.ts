@@ -14,6 +14,15 @@ import { createUserLayout, updateUserLayout, type UserLayoutContent, type UserLa
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PresetLibrary } from '#input/presets/index.ts';
 import {
+  addComboToSet,
+  createComboSet,
+  deleteComboSet,
+  removeComboFromSet,
+  renameComboSet,
+  type ComboSet,
+  type ComboSetEntry,
+} from '#input/combo-set/combo-set.ts';
+import {
   createUserRomajiRule,
   duplicateUserRomajiRule,
   renameUserRomajiRule,
@@ -23,7 +32,16 @@ import {
 import type { RomajiBaseRuleId, UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { PersonalSpeed } from '#interpretation/timing/calibration-codec.ts';
-import { createSetup, deleteSetup, duplicateSetup, relabelSetup, setSetupShape, type SetupIdGenerator, type SetupLibrary } from '#input/setup/index.ts';
+import {
+  createSetup,
+  deleteSetup,
+  duplicateSetup,
+  relabelSetup,
+  setSetupComboSet,
+  setSetupShape,
+  type SetupIdGenerator,
+  type SetupLibrary,
+} from '#input/setup/index.ts';
 import {
   appendCopiedUserText,
   deleteUserText,
@@ -149,6 +167,11 @@ export interface KeydistAssets {
   readonly userLayouts: readonly UserLayout[];
   /** 自作のローマ字規則の手持ち。`userLayouts`とは別のキーで、互いに触れずに読み書きする。 */
   readonly userRomajiRules: readonly UserRomajiRule[];
+  /**
+   * コンボの組の手持ち。配列の定義には入らない独立の資産で、Setupが`Setup.comboSetId`で0か1つ選ぶ。
+   * `userRomajiRules`と同じく、Setupとは対にならない（組を削除しても、選んでいるSetupは書き換えず、解決の側が「組が無い」として扱う）。
+   */
+  readonly comboSets: readonly ComboSet[];
   /**
    * 個人の打鍵・指移動の速度。配列・物理配列・指の割り当てのどれにも紐づかず、他の資産と
    * 対にならない独立の値なので別のキーとして持つ。
@@ -375,6 +398,14 @@ export function setSetupShapeCommand(setupId: string, shapeId: string): Command<
   }));
 }
 
+/** Setupが重ねるコンボの組を付け替える。`undefined`で組を外す。対象が存在しない、または既に同じ組なら何もしない。 */
+export function setSetupComboSetCommand(setupId: string, comboSetId: string | undefined): Command<KeydistAssets> {
+  return setupLibraryCommand('Setupのコンボの組を変更する', (library) => ({
+    ok: true,
+    library: setSetupComboSet(library, setupId, comboSetId),
+  }));
+}
+
 type FingerAssignmentsComputation =
   | { readonly ok: true; readonly assignments: readonly FingerAssignment[] }
   | { readonly ok: false; readonly reason: unknown };
@@ -538,6 +569,47 @@ export function renameUserRomajiRuleCommand(id: string, name: string): Command<K
 /** 自作のローマ字規則の中身（基底のルール・差分・促音の生成）を書き換える。対象が存在しない、または中身が同じなら何もしない。 */
 export function setUserRomajiRuleContentCommand(id: string, content: RomajiRuleContent): Command<KeydistAssets> {
   return userRomajiRulesCommand('自作のローマ字規則を編集する', (rules) => updateUserRomajiRule(rules, id, content));
+}
+
+/** `comboSets`だけに触れる書き込みの共通の骨組み。変化が無ければ（参照が同じなら）何もしない。 */
+function comboSetsCommand(label: string, compute: (sets: readonly ComboSet[]) => readonly ComboSet[]): Command<KeydistAssets> {
+  return (current) => {
+    const next = compute(current.comboSets);
+    if (next === current.comboSets) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes: { comboSets: next } };
+  };
+}
+
+/**
+ * コンボの組を削除する。存在しないidの削除は何もしない。
+ * この組を選んでいるSetupは書き換えず、解決の側が組を重ねない扱いにする。元に戻せば、同じ参照が再び解決できる。
+ */
+export function deleteComboSetCommand(id: string): Command<KeydistAssets> {
+  return comboSetsCommand('コンボの組を削除する', (sets) => deleteComboSet(sets, id));
+}
+
+/** コンボの組を新規作成する。コンボは持たず、基準の綴り（ローマ字規則のid）は作る時に決めて変えない。 */
+export function createComboSetCommand(generateId: () => string, name: string, romajiRuleId: string): Command<KeydistAssets> {
+  return comboSetsCommand('コンボの組を作成する', (sets) => createComboSet(sets, generateId, name, romajiRuleId));
+}
+
+/** コンボの組の名前を変更する。対象が存在しない、または既に同じ名前なら何もしない。 */
+export function renameComboSetCommand(id: string, name: string): Command<KeydistAssets> {
+  return comboSetsCommand('コンボの組の名前を変更する', (sets) => renameComboSet(sets, id, name));
+}
+
+/** コンボの組にコンボを1件足す。対象が存在しない、または同じコンボが既にあれば拒否する。 */
+export function addComboCommand(id: string, entry: ComboSetEntry): Command<KeydistAssets> {
+  return (current) => {
+    const result = addComboToSet(current.comboSets, id, entry);
+    if (!result.ok) return { kind: 'rejected', reason: result.problem };
+    return { kind: 'applied', label: 'コンボを追加する', changes: { comboSets: result.sets } };
+  };
+}
+
+/** コンボの組からコンボを1件外す。位置が範囲外なら何もしない。 */
+export function removeComboCommand(id: string, index: number): Command<KeydistAssets> {
+  return comboSetsCommand('コンボを削除する', (sets) => removeComboFromSet(sets, id, index));
 }
 
 /**

@@ -5,6 +5,7 @@ import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { PopoverSelect } from '#ui/primitives/popover-select.tsx';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { CopyImageControl } from '../copy-image-control.tsx';
+import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import { fitLabel, FONT_SIZE, textWidth } from '../figure-text.ts';
 import { useElementWidth } from '../use-element-width.tsx';
 import { useVisibleHeight } from './use-visible-height.tsx';
@@ -25,6 +26,7 @@ import {
   type BandRowContext,
 } from './figure-model.ts';
 import { BAND_CHART_PANE_META, bandChartHelp } from './pane-meta.ts';
+import { bandChartTableModel } from './table-model.ts';
 import { BAND_SORT_DIRECTIONS, bandChartOptions, DEFAULT_BAND_CHART_OPTIONS, type BandChartOptions, type BandSortDirection } from './options.ts';
 import {
   BAND_QUANTITIES,
@@ -351,6 +353,8 @@ export function BandChartBody({ extracted, order, rowContext, options, onOptions
   const [pickedKeys, setPickedKeys] = useState<ReadonlySet<string>>(() => new Set());
   /** 選んだ配列の図で、区分ごとの値を表に出している配列 */
   const [detailKey, setDetailKey] = useState<string | undefined>(undefined);
+  /** 図の値を表で読む表示にしているか。保存しない */
+  const [asTable, setAsTable] = useState(false);
 
   const sortBoundary = effectiveSortBoundary(extracted.quantity, options.sortBoundary);
   const sortDirection = options.sortDirection;
@@ -411,25 +415,31 @@ export function BandChartBody({ extracted, order, rowContext, options, onOptions
         <>
           <div className="band-heading">
             <InfoButton name="図の見方" description={BAND_CHART_PANE_META.description} help={help} />
-            {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSourceOf(mainFigureRef)} />}
+            <FigureTableSwitch pressed={asTable} onToggle={() => setAsTable((current) => !current)} />
+            {copyFigureImage === undefined || asTable ? null : (
+              <CopyImageControl copyFigureImage={copyFigureImage} source={imageSourceOf(mainFigureRef)} />
+            )}
           </div>
-          <BandFigure
-            scope="all"
-            rows={model.rows}
-            quantity={quantity}
-            caption={caption}
-            width={width}
-            visibleHeight={visibleHeight}
-            legendIndices={legendIndices}
-            sortBoundary={sortBoundary}
-            sortDirection={sortDirection}
-            onLegendPress={pressLegend}
-            highlighted={pickedKeys}
-            onRowPress={togglePicked}
-            figureRef={measureFigure}
-          />
+          {asTable ? <FigureTable model={bandChartTableModel(model, language)} /> : null}
+          <div hidden={asTable}>
+            <BandFigure
+              scope="all"
+              rows={model.rows}
+              quantity={quantity}
+              caption={caption}
+              width={width}
+              visibleHeight={visibleHeight}
+              legendIndices={legendIndices}
+              sortBoundary={sortBoundary}
+              sortDirection={sortDirection}
+              onLegendPress={pressLegend}
+              highlighted={pickedKeys}
+              onRowPress={togglePicked}
+              figureRef={measureFigure}
+            />
+          </div>
 
-          {picked.length === 0 ? null : (
+          {picked.length === 0 || asTable ? null : (
             <>
               <div className="band-heading" data-band-focus="">
                 <button type="button" className="band-clear" onClick={clearPicked}>

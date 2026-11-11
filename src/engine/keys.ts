@@ -9,7 +9,7 @@ import { describeResolvedInputError } from './resolved-input-errors.ts';
 /**
  * Traceを決める中身だけを持つキー。
  *
- * 含めるもの: テキスト・Layout（romaji表を含む最終形）・Geometry（指割り当てを含む）・
+ * 含めるもの: テキスト・コンボを止める境・Layout（romaji表を含む最終形）・Geometry（指割り当てを含む）・
  * TracePolicy。Setupのid・ラベル・色、カスケードの出どころ・診断は含めない
  * （`ResolvedInput.cascade`はキーの計算に使わない）。
  * modelVersionも含める。Trace生成のロジックが変われば別キーになり、旧キャッシュへは
@@ -36,6 +36,7 @@ export function traceKeyOf(input: TraceRequestInput): string {
     layout: input.layout,
     geometry: input.geometry,
     tracePolicy: input.tracePolicy,
+    comboBarriers: input.comboBarriers,
   });
   traceKeyByInput.set(input, key);
   return key;
@@ -66,6 +67,8 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
     keepAlphanumerics: input.keepAlphanumerics,
     // 読みに直した後のテキストが同じでも、直した辞書の版や直せなかった事実は数値の出どころとして運ぶ
     reading: input.reading,
+    // 重ねた配列が同じでも、組の名前と外したコンボの数は数値の出どころとして運ぶ
+    comboSet: input.comboSet,
     // 読みが同じでも、読みに置き換えた語の表記の字数が違えば文字数Wが変わる（`今日` と `京`）
     notationExcess: input.notationExcess,
   });

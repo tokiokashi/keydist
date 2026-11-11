@@ -25,6 +25,7 @@ import { SETUP_LABEL } from '../setup/label.ts';
 import { KANA_LAYOUT_LABEL } from '#editors/kana-layout/label.ts';
 import { ROMAJI_LAYOUT_LABEL } from '#editors/romaji-layout/label.ts';
 import { ROMAJI_RULE_LABEL } from '#editors/romaji-rule/label.ts';
+import { COMBO_SET_LABEL } from '#editors/combo-set/label.ts';
 import { PERSONAL_SPEED_LABEL } from '#editors/personal-speed/label.ts';
 import { USER_ASSETS_LABEL } from '../assets/UserAssetsPage.tsx';
 import { REPOSITORY_URL, SPEC_LINKS } from '../about/links.ts';
@@ -346,6 +347,9 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           </NavLink>
           <NavLink to="/romaji-rule" onNavigate={onNavigate}>
             {ROMAJI_RULE_LABEL}
+          </NavLink>
+          <NavLink to="/combo-set" onNavigate={onNavigate}>
+            {COMBO_SET_LABEL}
           </NavLink>
           <NavLink to="/personal-speed" onNavigate={onNavigate}>
             {PERSONAL_SPEED_LABEL}

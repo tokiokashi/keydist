@@ -3,6 +3,7 @@ import type { SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { AnalysisTarget, Setup, SetupCatalog } from '#input/setup/index.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
+import type { ComboSet } from '#input/combo-set/combo-set.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { SegmentationInput } from '#input/text/segmentation.ts';
@@ -22,6 +23,8 @@ export interface PaneCatalog {
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   readonly customRomajiRules?: readonly UserRomajiRule[];
   readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;
+  /** コンボの組。Setupが選んだ組をSetupの配列へ重ねる。 */
+  readonly comboSets?: ReadonlyMap<string, ComboSet>;
   /**
    * 個人速度の画面の保存値（資産`personalSpeed`）。無ければ保存値は無い。個人速度を適用する設定の打鍵再生の抽出の入力とキーに入るので、
    * 保存値が変わった時（個人速度の画面で測り直した時・他のタブで変えた時）にペインの計算を作り直す。
@@ -54,12 +57,14 @@ export function resolvePaneInput(
     userLayouts: catalog.userLayouts,
     customRomajiRules: catalog.customRomajiRules,
     customFingerAssignments: catalog.customFingerAssignments,
+    comboSets: catalog.comboSets,
     personalSpeed: catalog.personalSpeed,
     overrides,
     text: resolvedText.text,
     language: resolvedText.language,
     reading: resolvedText.reading,
     notationExcess: resolvedText.notationExcess,
+    comboBarriers: resolvedText.comboBarriers,
     segmentation,
   });
 }

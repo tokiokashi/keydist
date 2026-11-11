@@ -291,7 +291,7 @@ function readEnvelope(text: string): EnvelopeRead {
     return failure(`Workspaceが多すぎます（${PRESET_FILE_MAX_WORKSPACES}件まで）`, `workspaces: ${parsed.workspaces.length}`);
   }
   if (isRecord(parsed.userAssets)) {
-    for (const key of ['layouts', 'romajiRules', 'fingerAssignments', 'setups']) {
+    for (const key of ['layouts', 'romajiRules', 'fingerAssignments', 'comboSets', 'setups']) {
       const list = parsed.userAssets[key];
       if (Array.isArray(list) && list.length > USER_ASSETS_FILE_MAX_ITEMS) {
         return failure(`同梱の資産が多すぎます（種類ごとに${USER_ASSETS_FILE_MAX_ITEMS}件まで）`, `userAssets.${key}: ${list.length}`);

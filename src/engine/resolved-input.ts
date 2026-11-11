@@ -2,7 +2,7 @@ import { assignmentWithHomeKeys, buildGeometry, type FingerAssignment, type Geom
 import { describeShapeFallback } from '#input/setup/index.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { ExtractionAssets } from '#analyzers/contract.ts';
-import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
+import { withoutRomajiOnlyInputs, withRomaji } from '#input/layouts/types.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
@@ -11,6 +11,7 @@ import type { SegmentationInput } from '#input/text/segmentation.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
 import { isBuiltin, ROMAJI_RULES, tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { uncoveredTextPositions, type TracePolicy } from '#trace/generate.ts';
+import type { ComboSetConditions } from '#interpretation/metrics.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
@@ -18,6 +19,9 @@ import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-ass
 import { resolveSettings, type ResolvedSettingsCascade, type SettingsCascadeOverrides } from './settings-items.ts';
 import { evaluationBoundaries, prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { resolveTargetForText } from './target-resolution.ts';
+import { appliedCombos, overlaySetupComboSet } from './setup-combo-set.ts';
+import { layoutKind } from '#input/layouts/kind.ts';
+import type { ComboSet } from '#input/combo-set/combo-set.ts';
 
 /**
  * 解決済み入力。Setup + Setupの手持ち（上書き含む）+ テキスト + カタログから、
@@ -49,12 +53,19 @@ export interface ResolvedInput {
    */
   readonly notationExcess: number;
   /**
+   * コンボを止める境（仕様 §4.3）。評価に渡すテキストのかなの位置（コードポイント。境は位置の直前。昇順で0と末尾を含まない）。
+   * 同じ`text`でも境が違えばTraceが変わるので、Traceのキーに入れる。境が無ければ空。
+   */
+  readonly comboBarriers: readonly number[];
+  /**
    * 抽出が読む資産の値。Traceと解釈のキーには入れず、抽出のキーにだけ、各Analyzerが決めた分を入れる
    * （`keys.ts`の`singleExtractionKeyOf`）。
    */
   readonly extractionAssets: ExtractionAssets;
   /** ローマ字入力でなければnull（かな直接・英字直接）。 */
   readonly romajiRuleId: string | null;
+  /** Setupが選んで計算に入れたコンボの組。入れていなければ持たない。 */
+  readonly comboSet?: ComboSetConditions;
   /**
    * カスケードの実効値・出どころ・診断。
    * 表示専用で、キャッシュキーには使わない（`keys.ts`のコメント参照）。
@@ -100,6 +111,11 @@ export interface ResolveEngineInputOptions {
    * 呼び出し側がその時点の手持ちを都度渡す）で省略可能にし、既定は空。
    */
   readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment> | undefined;
+  /**
+   * コンボの組の手持ち。id → 実体。Setup対象が選んだ組（`Setup.comboSetId`）をSetupの配列へ重ねる（仕様 §4.3）。
+   * 配列対象には重ねない。省略した時は、どのSetupも組を重ねない。
+   */
+  readonly comboSets?: ReadonlyMap<string, ComboSet> | undefined;
   readonly overrides: SettingsCascadeOverrides;
   /**
    * 個人速度の画面の保存値（資産`personalSpeed`）。条件のカスケードの外にある値なので、ここで受ける。
@@ -119,6 +135,11 @@ export interface ResolveEngineInputOptions {
   readonly reading?: ReadingConditions | null | undefined;
   /** `text` を作った時に読みに置き換えた語の、表記の字数と読みの字数の差。読みに直した時だけ渡す。無ければ差は0。 */
   readonly notationExcess?: NotationExcess | undefined;
+  /**
+   * コンボを止める境（仕様 §4.3）。`text`を作った語の列から求めた、読みのテキストの位置（`comboBarriersInReading`）。
+   * 評価に渡すテキストの位置へは、この対象の記号と英数字の範囲で写し直して`ResolvedInput.comboBarriers`に載せる。無ければ境は無い。
+   */
+  readonly comboBarriers?: readonly number[] | undefined;
   /**
    * 文節の区切り（読みのテキストの位置）。区切りを使うペインだけが渡す。評価に渡すテキストの位置へは、
    * この対象の記号と英数字の範囲（`keepSymbols`・`keepAlphanumerics`）で写し直して`extractionAssets.segmentation`に載せる。
@@ -173,13 +194,22 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
 
   const romajiItem = cascade.romajiRuleId;
   const romajiRuleId = romajiItem.applicable ? romajiItem.value : null;
-  const baseLayout = withoutRomaji(textResolution.layout);
-  // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）を外した配列を渡す。
+  // Setupが選んだコンボの組を、ローマ字の表を外す前の配列へ重ねる。重ねたコンボは`romajiOnly`なので、
+  // ローマ字を経ない打ち方では下の`withoutRomajiOnlyInputs`が外す
+  const setupForCombos = options.target.kind === 'setup' ? options.setups.get(options.target.setupId) : undefined;
+  const comboOverlay = overlaySetupComboSet(
+    setupForCombos,
+    textResolution.layout,
+    layoutKind(textResolution.layout, options.userLayouts),
+    options.comboSets,
+  );
+  const baseLayout = withoutRomaji(comboOverlay.layout);
+  // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）と、romajiOnlyOutputsの出力・刻印を外した配列を渡す。
   // Trace生成も同じ規則で外すが、ResolvedInput.layoutは表示側も読むので、ここで揃えておく。
   const layout =
     romajiRuleId !== null
       ? withRomaji(baseLayout, tableForRule(romajiRuleId, options.customRomajiRules ? [...options.customRomajiRules] : undefined))
-      : withoutRomajiOnlyCombos(baseLayout);
+      : withoutRomajiOnlyInputs(baseLayout);
 
   // 未知のidが渡ってきた時のfallback先は「その物理配列の既定」（defaultFingerAssignmentId）に揃える。
   // 上書きが無い時の既定値（settings-items.tsのdefaultValue）と同じ規則にすることで、
@@ -299,6 +329,14 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
               keepSymbols: cascade.keepSymbols.value,
               keepAlphanumerics: cascade.keepAlphanumerics.value,
             }),
+      comboBarriers:
+        options.verbatimText === true || options.comboBarriers === undefined
+          ? []
+          : evaluationBoundaries(options.text, options.comboBarriers, {
+              language: options.language,
+              keepSymbols: cascade.keepSymbols.value,
+              keepAlphanumerics: cascade.keepAlphanumerics.value,
+            }),
       extractionAssets: {
         personalSpeed: options.personalSpeed,
         textLanguage: options.language,
@@ -316,6 +354,17 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
               },
       },
       romajiRuleId,
+      // ローマ字を経ない打ち方（英文など）では組のコンボが成立しないので、組を使って測ったとは記録しない
+      ...(romajiRuleId !== null && comboOverlay.status.kind === 'applied'
+        ? {
+            comboSet: {
+              name: comboOverlay.status.comboSet.name,
+              romajiRuleId: comboOverlay.status.comboSet.romajiRuleId,
+              combos: appliedCombos(comboOverlay.status),
+              dropped: comboOverlay.status.dropped.length,
+            },
+          }
+        : {}),
       cascade: resolvedCascade,
     },
   };

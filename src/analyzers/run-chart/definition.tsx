@@ -25,6 +25,7 @@ import {
 import { runChartDefinition, type RunChartExtracted, type RunChartSeries, type RunChartSeriesFailed, type RunChartSeriesOk } from './extract.ts';
 import { SegmentTables, type SegmentTableRow } from './segment-table.tsx';
 import { axisTitle, formatMetricValue, RUN_CHART_METRIC_IDS, runChartMetrics, type RunChartMetricId } from './metric-catalog.ts';
+import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import { RangeSwitch } from '../range-switch.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
@@ -41,6 +42,7 @@ import {
   type RunChartOptions,
 } from './options.ts';
 import { RUN_CHART_PANE_META } from './pane-meta.ts';
+import { runChartTableModel } from './table-model.ts';
 import './run-chart-view.css';
 
 /**
@@ -292,6 +294,8 @@ function seriesFor(series: readonly RunChartSeries[], targetKey: string): RunCha
  * メンバー単位の失敗は図の下に行で出す。
  */
 export function RunChartBody({ extracted, order, rowContext, options, onOptionsChange, playbackJump, segmentation }: RunChartBodyProps) {
+  /** 図の値を表で読む表示にしているか。保存しない */
+  const [asTable, setAsTable] = useState(false);
   const metric = extracted.metric;
   const found = order
     .map((targetKey) => ({ targetKey, entry: seriesFor(extracted.series, targetKey), context: rowContext.get(targetKey) }))
@@ -361,6 +365,9 @@ export function RunChartBody({ extracted, order, rowContext, options, onOptionsC
         ) : null
       ) : (
         <>
+          <div className="figure-table-heading">
+            <FigureTableSwitch pressed={asTable} onToggle={() => setAsTable((current) => !current)} />
+          </div>
           <RangeSwitch
             index={rangeIndex}
             count={rangeCount}
@@ -368,7 +375,11 @@ export function RunChartBody({ extracted, order, rowContext, options, onOptionsC
             end={rangeEnd}
             onChange={(index) => onOptionsChange({ ...options, range: index + 1 })}
           />
-          <RunChartFigure rows={rows} metric={metric} windowChars={extracted.window} model={model} jump={playbackJump} boundaries={overlay} />
+          {asTable ? (
+            <FigureTable model={runChartTableModel(rows, metric, { start: rangeStart, end: rangeEnd }, language)} />
+          ) : (
+            <RunChartFigure rows={rows} metric={metric} windowChars={extracted.window} model={model} jump={playbackJump} boundaries={overlay} />
+          )}
           <ul className="run-chart-legend" aria-label="凡例">
             {rows.map((row) => (
               <li key={row.targetKey} data-run-chart-row="ok" title={row.fullName || row.label}>
@@ -389,10 +400,12 @@ export function RunChartBody({ extracted, order, rowContext, options, onOptionsC
               </li>
             ))}
           </ul>
-          <p className="run-chart-guide-note" data-run-chart-guide-note="">
-            点線はテキスト全体の値（中心線）、細い線は目安線です。
-            {rows.length > GUIDES_FOR_ALL_LIMIT ? '配列が多いので、ポインタを合わせた配列の目安線だけを引きます。' : ''}
-          </p>
+          {asTable ? null : (
+            <p className="run-chart-guide-note" data-run-chart-guide-note="">
+              点線はテキスト全体の値（中心線）、細い線は目安線です。
+              {rows.length > GUIDES_FOR_ALL_LIMIT ? '配列が多いので、ポインタを合わせた配列の目安線だけを引きます。' : ''}
+            </p>
+          )}
         </>
       )}
 

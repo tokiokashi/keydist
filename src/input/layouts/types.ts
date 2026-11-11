@@ -279,6 +279,11 @@ export interface Layout {
    * （`input/shapes/jis-shape.ts`）。配列・Setupのレベルで明示した物理配列は、そのまま使う。
    */
   requiresJisShape?: true;
+  /**
+   * ローマ字を経る日本語の評価でだけ打てる出力。配列の出典が記号の置き場を定めているが、英文を打つ配列の物理キーには
+   * 含めない記号を持つ（仕様 §4.6）。英文を打つ時は`withoutRomajiOnlyInputs`が、この出力と置き場の刻印を外す。
+   */
+  romajiOnlyOutputs?: readonly string[];
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 層・コンボの表示順と種別。 */
@@ -947,6 +952,27 @@ export function withRomaji(layout: Layout, table: Map<string, string>): Layout {
 }
 
 /**
+ * 文字を1キー1アクションで出す経路ごとの、そのキーと経路の文脈条件。経路が無ければ空。
+ * コンボの入力の文字を物理キーへ解決する規則で、`withCombos`と利用者が定義したコンボの重ね方（`input/combo-set/`）が共有する。
+ */
+export function singleActionKeyChoicesOf(
+  layout: Pick<Layout, 'canonicalInputs'>,
+  input: string,
+): readonly { readonly key: string; readonly contextRequirements: readonly InputContextRequirement[] }[] {
+  return (layout.canonicalInputs.get(input) ?? []).flatMap((alternative) => {
+    if (alternative.baseRealizations.length !== 1) return [];
+    const realization = alternative.baseRealizations[0];
+    if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
+    return [
+      {
+        key: resolveKeyId(realization.actions[0][0]),
+        contextRequirements: alternative.contextRequirements,
+      },
+    ];
+  });
+}
+
+/**
  * コンボを足す。入力は「その文字を出すキー」で指定する。
  * 物理位置ではなく文字で指すので、同じ定義を別の英字配列にも適用できる。
  */
@@ -956,18 +982,7 @@ export function withCombos(id: string, name: string, layout: Layout, combos: Com
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
-  const singleActionKeyChoices = (input: string) =>
-    (layout.canonicalInputs.get(input) ?? []).flatMap((alternative) => {
-      if (alternative.baseRealizations.length !== 1) return [];
-      const realization = alternative.baseRealizations[0];
-      if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
-      return [
-        {
-          key: resolveKeyId(realization.actions[0][0]),
-          contextRequirements: alternative.contextRequirements,
-        },
-      ];
-    });
+  const singleActionKeyChoices = (input: string) => singleActionKeyChoicesOf(layout, input);
   for (const [output, inputs, condition, presentation, classifications = []] of combos) {
     const keyChoices = inputs.map(singleActionKeyChoices);
     if (keyChoices.some((choices) => choices.length === 0)) continue;
@@ -1060,19 +1075,29 @@ export function hasRomajiOnlyCombos(layout: Layout): boolean {
 }
 
 /**
+ * 出力を、ローマ字を経る日本語の評価でだけ打てるものとして印を付ける。
+ * 出力に対応する置き場の刻印（`legends`）も、英文では外す対象になる。
+ */
+export function withRomajiOnlyOutputs(layout: Layout, outputs: readonly string[]): Layout {
+  return { ...layout, romajiOnlyOutputs: [...new Set([...(layout.romajiOnlyOutputs ?? []), ...outputs])] };
+}
+
+/**
  * ローマ字を経ない打ち方（英文の直接入力）で見える配列にする。
- * `romajiOnly` のコンボ（仕様 §4.3）を定義ごと外し、単打配置だけを残す。
+ * `romajiOnly`のコンボ（仕様 §4.3）を定義ごと外し、`romajiOnlyOutputs`の出力と置き場の刻印を外して、単打配置だけを残す。
  *
- * 配列は言語によらず1つだが、英文ではそのコンボは「配列に無い」扱いなので、
+ * 配列は言語によらず1つだが、英文ではそのコンボ・出力は「配列に無い」扱いなので、
  * 評価（見出し探索・定義数B）だけでなく配列図・逆引き等の表示にも出さない。
  * 外す対象は条件付きalternativeだけで、同じ見出しに別のpathがあればそれは残る。
  */
-export function withoutRomajiOnlyCombos(layout: Layout): Layout {
+export function withoutRomajiOnlyInputs(layout: Layout): Layout {
   const scoped = (layout.resolvedComboDefinitions ?? []).filter((combo) => combo.condition?.romajiOnly === true);
-  if (scoped.length === 0) return layout;
+  const onlyOutputs = new Set(layout.romajiOnlyOutputs ?? []);
+  if (scoped.length === 0 && onlyOutputs.size === 0) return layout;
 
   const canonicalInputs = new Map<string, InputAlternative[]>();
   for (const [output, alternatives] of layout.canonicalInputs) {
+    if (onlyOutputs.has(output)) continue;
     const kept = alternatives.filter((alternative) => !alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input'));
     if (kept.length > 0) canonicalInputs.set(output, kept);
   }
@@ -1081,6 +1106,8 @@ export function withoutRomajiOnlyCombos(layout: Layout): Layout {
   for (const combo of scoped) {
     if (!canonicalInputs.has(combo.output)) map.delete(combo.output);
   }
+  for (const output of onlyOutputs) map.delete(output);
+  const legends = new Map([...layout.legends].filter(([, legend]) => !onlyOutputs.has(legend)));
   const resolvedComboDefinitions = (layout.resolvedComboDefinitions ?? []).filter((combo) => combo.condition?.romajiOnly !== true);
   // コンボ枠は、残るコンボ定義も面由来のコンボpathも無ければ層一覧から外す。
   // 残すと英文の層別集計にだけ空のコンボ枠が現れ、単打配置と数値の形が変わる。
@@ -1091,12 +1118,13 @@ export function withoutRomajiOnlyCombos(layout: Layout): Layout {
     );
   const layerDefinitions = layout.layerDefinitions?.filter((definition) => comboLayerUsed || definition.id !== COMBO_LAYER_ID);
 
-  const { resolvedComboDefinitions: _dropped, layerDefinitions: _layers, ...rest } = layout;
+  const { resolvedComboDefinitions: _dropped, layerDefinitions: _layers, romajiOnlyOutputs: _outputs, ...rest } = layout;
   validateCanonicalInputMap(canonicalInputs);
   return {
     ...rest,
     map,
     canonicalInputs,
+    legends,
     ...(resolvedComboDefinitions.length === 0 ? {} : { resolvedComboDefinitions }),
     ...(layerDefinitions === undefined ? {} : { layerDefinitions }),
   };

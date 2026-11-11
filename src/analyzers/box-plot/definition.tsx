@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObjec
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { AnalyzerSettingsProps, FigureImageSource, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { CopyImageControl } from '../copy-image-control.tsx';
+import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import { FONT_SIZE, textWidth } from '../figure-text.ts';
 import { useSharedScale } from '../shared-scale.tsx';
 import { useElementWidth } from '../use-element-width.tsx';
@@ -26,6 +27,7 @@ import {
   type BoxRowContext,
 } from './figure-model.ts';
 import { BOX_PLOT_AXIS_TITLE, BOX_PLOT_FOCUS_CAPTION, BOX_PLOT_PANE_META, BOX_PLOT_QUANTITY_NAME, boxPlotSourceItems } from './pane-meta.ts';
+import { boxPlotTableModel, QUANTILE_ROWS } from './table-model.ts';
 import { boxPlotOptions, DEFAULT_BOX_PLOT_OPTIONS, type BoxPlotOptions } from './options.ts';
 import './box-plot-view.css';
 
@@ -50,14 +52,6 @@ const CAPTION_FONT_SIZE = 16;
 const TICK_LENGTH = 4;
 
 const NO_KEYS: ReadonlySet<string> = new Set();
-
-const QUANTILE_ROWS = [
-  { key: 'upperWhisker', name: '90%点（ひげの上端）' },
-  { key: 'upperQuartile', name: '75%点（箱の上端）' },
-  { key: 'median', name: '中央値（箱の中の線）' },
-  { key: 'lowerQuartile', name: '25%点（箱の下端）' },
-  { key: 'lowerWhisker', name: '10%点（ひげの下端）' },
-] as const;
 
 function columnAriaLabel(row: BoxDisplayRow): string {
   const { box } = row.row;
@@ -260,6 +254,8 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
   const [pickedKeys, setPickedKeys] = useState<ReadonlySet<string>>(() => new Set());
   /** 選んだ配列の図で、5つの値を出している配列 */
   const [detailKey, setDetailKey] = useState<string | undefined>(undefined);
+  /** 図の値を表で読む表示にしているか。保存しない */
+  const [asTable, setAsTable] = useState(false);
 
   const unavailable = segmentation === 'unsupported' || segmentation === 'failed';
   const model = useMemo(() => boxPlotModel(extracted, order, rowContext), [extracted, order, rowContext]);
@@ -326,9 +322,13 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
         <>
           <div className="box-plot-heading">
             <InfoButton name="図の見方" description={BOX_PLOT_PANE_META.description} help={help} />
-            {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSourceOf(mainFigureRef)} />}
+            <FigureTableSwitch pressed={asTable} onToggle={() => setAsTable((current) => !current)} />
+            {copyFigureImage === undefined || asTable ? null : (
+              <CopyImageControl copyFigureImage={copyFigureImage} source={imageSourceOf(mainFigureRef)} />
+            )}
           </div>
-          <div ref={measureFigure} className="box-plot-figure-wrap">
+          {asTable ? <FigureTable model={boxPlotTableModel(drawn)} /> : null}
+          <div ref={measureFigure} className="box-plot-figure-wrap" hidden={asTable}>
             <BoxFigure
               scope="all"
               rows={drawn}
@@ -358,7 +358,7 @@ export function BoxPlotBody({ extracted, order, rowContext, segmentation, copyFi
             </p>
           )}
 
-          {picked.length === 0 ? null : (
+          {picked.length === 0 || asTable ? null : (
             <>
               <div className="box-plot-heading" data-box-plot-focus="">
                 <button type="button" className="box-plot-clear" onClick={clearPicked}>

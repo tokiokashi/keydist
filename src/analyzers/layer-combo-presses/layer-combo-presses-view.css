@@ -56,3 +56,19 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.layer-combo-presses-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.4rem;
+}
+
+.layer-combo-presses-heading h3 {
+  margin: 0;
+}
+
+.layer-combo-presses-table .layer-combo-presses-group {
+  background: var(--surface);
+  font-weight: 600;
+}

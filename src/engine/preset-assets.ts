@@ -104,7 +104,7 @@ export function mergePresetImport(
   bundle: UserAssetsBundle,
   stamp: string,
 ): PresetImportMerge {
-  const own: UserAssetsBundle = { ...bundle, layouts: [], setups: [] };
+  const own: UserAssetsBundle = { ...bundle, layouts: [], comboSets: [], setups: [] };
   const merged = isEmptyUserAssetsBundle(own)
     ? undefined
     : mergeUserAssets(
@@ -112,6 +112,7 @@ export function mergePresetImport(
           userRomajiRules: holdings.userRomajiRules,
           fingerAssignments: holdings.fingerAssignments,
           userLayouts: [],
+          comboSets: [],
           setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
         },
         own,

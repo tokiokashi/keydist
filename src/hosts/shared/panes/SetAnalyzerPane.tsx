@@ -28,7 +28,7 @@ import { useAnalyzerSetPane } from '../use-analyzer-set-pane.ts';
 import { usePaneOnScreen } from '../use-pane-on-screen.ts';
 import { usePlaybackSeekReceivers } from '../playback-seek-store.tsx';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
-import { isWaitingForReading, readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
+import { comboSetProvenanceOfTargets, isWaitingForReading, readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
 import { useSegmentation } from '../segmentation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 
@@ -119,6 +119,18 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
     [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog, excludeIds, summaryScope],
   );
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
+  const provenanceItems = useMemo(
+    () => [
+      ...conditionProvenance,
+      ...comboSetProvenanceOfTargets(
+        members.map((member) => ({
+          targetName: namedByKey.get(analysisTargetKey(member.target))?.displayName ?? '',
+          comboSet: member.resolution.ok ? member.resolution.input.comboSet : undefined,
+        })),
+      ),
+    ],
+    [conditionProvenance, members, namedByKey],
+  );
 
   const targetSummary = useMemo(
     () =>
@@ -168,6 +180,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
             {
               key,
               label: namedByKey.get(key)?.displayName ?? key,
+              shapeName: member.resolution.input.geometry.name,
               rows: traceConditionSummary(member.resolution.input.cascade, conditionNames, summaryScope),
             },
           ];
@@ -274,7 +287,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
           ),
         }}
         conditionTargetDiffs={conditionSummary.diffs}
-        conditionProvenance={conditionProvenance}
+        conditionProvenance={provenanceItems}
         reading={env.reading}
         engineState={extraction}
         frameRef={frameRef}

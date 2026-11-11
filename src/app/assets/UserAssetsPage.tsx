@@ -26,7 +26,15 @@ import { getStorageWriteFailuresSnapshot } from '#platform/persistence/storage-w
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE } from '#hosts/shared/preset-file.ts';
 import { assetKindLabel, exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
-import { deleteConfirmText, userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
+import {
+  deleteConfirmText,
+  userComboSetRows,
+  userFingerAssignmentRows,
+  userLayoutRows,
+  userRomajiRuleRows,
+  userSetupRows,
+  type UserAssetRow,
+} from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
 import type { OverrideEntry, OverrideGroup } from './cascade-override-groups.ts';
 
@@ -39,6 +47,7 @@ export interface UserAssetsPageProps {
     | 'userLayouts'
     | 'userRomajiRules'
     | 'fingerAssignments'
+    | 'comboSets'
     | 'setupLibrary'
     | 'textLibrary'
     | 'presetLibrary'
@@ -57,6 +66,7 @@ export interface UserAssetsPageProps {
   readonly onDeleteLayout: (id: string) => void;
   readonly onDeleteRomajiRule: (id: string) => void;
   readonly onDeleteFingerAssignment: (id: string) => void;
+  readonly onDeleteComboSet: (id: string) => void;
   readonly onDeleteSetup: (id: string) => void;
   /** 条件の設定の表。保存してある条件の上書きの一覧の前に出す。 */
   readonly conditionTable: ReactNode;
@@ -93,7 +103,7 @@ function newStamp(): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'setup';
+type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'combo-set' | 'setup';
 
 interface AssetSectionProps {
   readonly title: string;
@@ -299,7 +309,7 @@ function OverrideSection({
 }
 
 /**
- * 自作の配列・ローマ字規則・指の割り当て・Setupを一覧して削除する画面。削除は確認の後に行い、元に戻すで戻せる。
+ * 自作の配列・ローマ字規則・指の割り当て・コンボの組・Setupを一覧して削除する画面。削除は確認の後に行い、元に戻すで戻せる。
  * 削除した配列を対象にしているペインは、その旨を各画面で出す。
  */
 export function UserAssetsPage({
@@ -313,6 +323,7 @@ export function UserAssetsPage({
   onDeleteLayout,
   onDeleteRomajiRule,
   onDeleteFingerAssignment,
+  onDeleteComboSet,
   onDeleteSetup,
   conditionTable,
   overrideGroups,
@@ -334,6 +345,7 @@ export function UserAssetsPage({
     assets.userLayouts.length +
       assets.userRomajiRules.length +
       assets.fingerAssignments.length +
+      assets.comboSets.length +
       assets.setupLibrary.setups.length +
       assets.textLibrary.texts.length +
       builtinTextReadingIds(userTextsBundleOf(assets.textLibrary)).length +
@@ -451,6 +463,7 @@ export function UserAssetsPage({
   const layouts = userLayoutRows(assets.userLayouts, assets.userRomajiRules);
   const rules = userRomajiRuleRows(assets.userLayouts, assets.userRomajiRules);
   const fingerAssignments = userFingerAssignmentRows(assets.fingerAssignments);
+  const comboSets = userComboSetRows(assets.comboSets, assets.userRomajiRules);
   const setups = userSetupRows(setupItems);
 
   return (
@@ -547,6 +560,16 @@ export function UserAssetsPage({
             }}
           />
           <AssetSection
+            title="コンボの組"
+            kind="combo-set"
+            emptyText="コンボの組はありません。"
+            rows={comboSets}
+            onDelete={(row, button) => {
+              opener.current = button;
+              setPending({ kind: 'combo-set', row });
+            }}
+          />
+          <AssetSection
             title="Setup"
             kind="setup"
             emptyText="Setupはありません。"
@@ -604,6 +627,7 @@ export function UserAssetsPage({
             if (pending.kind === 'layout') onDeleteLayout(pending.row.id);
             else if (pending.kind === 'romaji-rule') onDeleteRomajiRule(pending.row.id);
             else if (pending.kind === 'finger-assignment') onDeleteFingerAssignment(pending.row.id);
+            else if (pending.kind === 'combo-set') onDeleteComboSet(pending.row.id);
             else onDeleteSetup(pending.row.id);
             clearResults();
             setMessage(`「${pending.row.name}」を削除しました`);

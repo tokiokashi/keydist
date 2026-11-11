@@ -94,3 +94,22 @@ test('createTraceRequesterFor: N=baseInput自身のwindowSizeを要求すると�
   assert.equal(requested, baseTrace, 'baseInput自身のNを部分形で要求すると、既存のキャッシュエントリと同じTraceオブジェクトを再利用する');
   assert.equal(cache.size.trace, 1, '新しいキャッシュエントリは作られない');
 });
+
+test('createTraceRequesterFor: 境は、テキストを差し替えない依頼に引き継ぎ、差し替えて境を渡さない依頼には引き継がない', () => {
+  const baseInput: ResolvedInput = { ...resolve('hello world'), comboBarriers: [3] };
+  const seen: (readonly number[])[] = [];
+  const requester = createTraceRequesterFor(
+    {
+      getTrace: (input) => {
+        seen.push(input.comboBarriers);
+        return cache.getTrace(input);
+      },
+    },
+    baseInput,
+  );
+  const cache = createEngineCache();
+  requester.requestTrace({ tracePolicy: { windowSize: 4 } });
+  requester.requestTrace({ text: 'hello' });
+  requester.requestTrace({ text: 'hello', comboBarriers: [2] });
+  assert.deepEqual(seen, [[3], [], [2]]);
+});

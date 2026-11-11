@@ -8,6 +8,7 @@ import {
   type AssetCodec,
   type CodecDiagnostic,
 } from '#input/codec/index.ts';
+import { decodeComboSets, encodeComboSets, type ComboSet } from '#input/combo-set/combo-set.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { decodeUserRomajiRules, isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
@@ -35,9 +36,9 @@ import {
 /**
  * 「データ・設定の管理」の書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
  *
- * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, setups, texts, builtinReadingCorrections, builtinWordReadingCorrections,
+ * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, comboSets, setups, texts, builtinReadingCorrections, builtinWordReadingCorrections,
  * presets, workspaces, personalSpeed, analyzerOptions }`。後ろの4つは`UserAssetsExtras`（`user-assets-extras.ts`）で、無ければ空として読む。
- * 配列・規則・指の割り当て・Setupの4つは、プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsBundle`）と共通で、
+ * 配列・規則・指の割り当て・コンボの組・Setupの5つは、プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsBundle`）と共通で、
  * テキストはこのファイルだけが持つ（`UserTextsBundle`。ほかのファイルはテキストを参照（id）でしか持たない）。`format` は書く直前に
  * `platform/browser-download.ts` が付け、読む時は `format` を見てからこのcodecへ渡す（プリセットのファイルと同じ封筒）。
  * 自作の物理配列は扱わない。
@@ -65,6 +66,8 @@ export interface UserAssetsBundle {
   readonly layouts: readonly UserLayout[];
   readonly romajiRules: readonly UserRomajiRule[];
   readonly fingerAssignments: readonly FingerAssignment[];
+  /** コンボの組。`comboSets`の無い古いファイルは空になる。 */
+  readonly comboSets: readonly ComboSet[];
   /** Setupと、そのSetupのレベルの条件。`setups`の無い古いファイルは空になる。 */
   readonly setups: readonly UserAssetSetup[];
 }
@@ -151,6 +154,7 @@ export function decodeUserAssetsBundle(payload: Record<string, unknown>, pathPre
     layouts: layouts.value,
     romajiRules: decodeUserRomajiRules(payload.romajiRules, `${pathPrefix}romajiRules`, diagnostics),
     fingerAssignments: completeLeftColumnKeys(decodeUserFingerAssignments(payload.fingerAssignments, `${pathPrefix}fingerAssignments`, diagnostics)),
+    comboSets: decodeComboSets(payload.comboSets, `${pathPrefix}comboSets`, diagnostics),
     setups: decodeUserAssetSetups(payload.setups, `${pathPrefix}setups`, diagnostics),
   };
 }
@@ -160,15 +164,16 @@ export function encodeUserAssetsBundle(value: UserAssetsBundle): Record<string, 
     layouts: value.layouts.map((layout) => structuredClone(layout)),
     romajiRules: value.romajiRules.map((rule) => ({ ...rule, overrides: { ...rule.overrides } })),
     fingerAssignments: value.fingerAssignments.map((assignment) => structuredClone(assignment)),
+    comboSets: encodeComboSets(value.comboSets),
     setups: encodeUserAssetSetups(value.setups),
   };
 }
 
 export function isEmptyUserAssetsBundle(bundle: UserAssetsBundle): boolean {
-  return bundle.layouts.length + bundle.romajiRules.length + bundle.fingerAssignments.length + bundle.setups.length === 0;
+  return bundle.layouts.length + bundle.romajiRules.length + bundle.fingerAssignments.length + bundle.comboSets.length + bundle.setups.length === 0;
 }
 
-export const EMPTY_USER_ASSETS_BUNDLE: UserAssetsBundle = { layouts: [], romajiRules: [], fingerAssignments: [], setups: [] };
+export const EMPTY_USER_ASSETS_BUNDLE: UserAssetsBundle = { layouts: [], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [] };
 
 export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsFileValue> = defineAssetCodec({
   currentVersion: 1,
@@ -187,7 +192,7 @@ export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsFileValue> = defineAss
   }),
 });
 
-export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
+export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'comboSets' | 'setupLibrary'>;
 
 /** このファイルが持つ手元の資産。プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsHoldings`）にテキストなどを足したもの。 */
 export type UserAssetsFileHoldings = UserAssetsHoldings &
@@ -247,6 +252,7 @@ const FILE_KEY_LABELS: Readonly<Record<string, string>> = {
   layouts: '配列',
   romajiRules: 'ローマ字規則',
   fingerAssignments: '指の割り当て',
+  comboSets: 'コンボの組',
   setups: 'Setup',
   texts: 'テキスト',
   presets: 'プリセット',
@@ -275,10 +281,12 @@ export function userAssetsBundleOf(assets: UserAssetsHoldings): UserAssetsBundle
     layouts: assets.userLayouts.map((layout) => withResolvableRomaji(layout, (id) => (ruleIds.has(id) ? id : undefined))),
     romajiRules: assets.userRomajiRules,
     fingerAssignments: assets.fingerAssignments,
+    comboSets: assets.comboSets,
     setups: userAssetSetupsOf(assets.setupLibrary).map((setup) =>
       withResolvableReferences(setup, {
         ruleIds,
         fingerAssignmentIds: new Set(assets.fingerAssignments.map((assignment) => assignment.id)),
+        comboSetIds: new Set(assets.comboSets.map((set) => set.id)),
       }),
     ),
   };
@@ -288,6 +296,7 @@ export type UserAssetKind =
   | 'layout'
   | 'romaji-rule'
   | 'finger-assignment'
+  | 'combo-set'
   | 'setup'
   | 'text'
   | 'builtin-text-reading'
@@ -349,18 +358,19 @@ export interface UserAssetImportEntry {
   readonly outcome: UserAssetImportOutcome;
 }
 
-/** ファイルのid → 読み込み後に指すid。4種類とも、足さなかったものは同じ中身の手元のid、足したものは足したid。 */
+/** ファイルのid → 読み込み後に指すid。5種類とも、足さなかったものは同じ中身の手元のid、足したものは足したid。 */
 export interface UserAssetIdMaps {
   readonly layouts: ReadonlyMap<string, string>;
   readonly rules: ReadonlyMap<string, string>;
   readonly fingers: ReadonlyMap<string, string>;
+  readonly comboSets: ReadonlyMap<string, string>;
   readonly setups: ReadonlyMap<string, string>;
 }
 
 export interface UserAssetsMerge {
   readonly assets: UserAssetsHoldings;
   readonly idMaps: UserAssetIdMaps;
-  /** 配列、規則、指の割り当て、Setupの順で、ファイルの並びのまま。 */
+  /** 配列、規則、指の割り当て、コンボの組、Setupの順で、ファイルの並びのまま。 */
   readonly entries: readonly UserAssetImportEntry[];
 }
 
@@ -401,6 +411,13 @@ const fingerContent = (assignment: FingerAssignment): string =>
     baseFinger: assignment.baseFinger,
     fingerKeys: Object.fromEntries(Object.entries(assignment.fingerKeys).map(([finger, keys]) => [finger, [...keys].sort()])),
     homeKey: assignment.homeKey,
+  });
+
+/** 組の中身。基準の綴りとコンボを、コンボの並びによらず比べる。名前は比べない（数値に関わらない）。 */
+const comboSetContent = (set: ComboSet): string =>
+  canonical({
+    romajiRuleId: set.romajiRuleId,
+    combos: set.combos.map((combo) => `${[...combo.keys].sort().join('')}\u0000${combo.output}`).sort(),
   });
 
 export interface Item {
@@ -568,22 +585,45 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     },
     stamp,
   );
-  // Setupは、突き合わせで別のidになった配列・規則・指の割り当てへ付け替えてから比べる
+  // 組の基準の綴りは、突き合わせで別のidになった規則へ付け替えてから比べる。ファイルの中に無い規則を指す綴りは、そのidのまま持つ
+  const mapRule = (id: string): string => rules.idMap.get(id) ?? id;
+  const comboSets = mergeKind<ComboSet>(
+    {
+      assetKind: 'combo-set',
+      idPrefix: 'combo-set-',
+      current: current.comboSets,
+      incoming: incoming.comboSets.map((set) => ({ ...set, romajiRuleId: mapRule(set.romajiRuleId) })),
+      builtinIds: () => false,
+      builtinName: () => undefined,
+      content: comboSetContent,
+      rebuild: (set, id, name) => ({ ...set, id, name }),
+      policy: importPolicyOf(policies, 'combo-set'),
+    },
+    stamp,
+  );
+  // Setupは、突き合わせで別のidになった配列・規則・指の割り当て・コンボの組へ付け替えてから比べる
   const setups = mergeUserAssetSetups(
     current.setupLibrary,
     incoming.setups,
-    { layouts: layouts.idMap, rules: rules.idMap, fingers: fingers.idMap },
+    { layouts: layouts.idMap, rules: rules.idMap, fingers: fingers.idMap, comboSets: comboSets.idMap },
     new Map(layouts.items.map((layout) => [layout.id, layout.name] as const)),
     stamp,
     importPolicyOf(policies, 'setup'),
   );
   return {
-    assets: { userLayouts: layouts.items, userRomajiRules: rules.items, fingerAssignments: fingers.items, setupLibrary: setups.library },
-    idMaps: { layouts: layouts.idMap, rules: rules.idMap, fingers: fingers.idMap, setups: setups.idMap },
+    assets: {
+      userLayouts: layouts.items,
+      userRomajiRules: rules.items,
+      fingerAssignments: fingers.items,
+      comboSets: comboSets.items,
+      setupLibrary: setups.library,
+    },
+    idMaps: { layouts: layouts.idMap, rules: rules.idMap, fingers: fingers.idMap, comboSets: comboSets.idMap, setups: setups.idMap },
     entries: [
       ...layouts.entries,
       ...rules.entries,
       ...fingers.entries,
+      ...comboSets.entries,
       ...setups.entries.map((entry): UserAssetImportEntry => ({ assetKind: 'setup', ...entry })),
     ],
   };
@@ -698,6 +738,7 @@ export function userAssetChanges(current: UserAssetsHoldings, merged: UserAssets
     ...(merged.userLayouts === current.userLayouts ? {} : { userLayouts: merged.userLayouts }),
     ...(merged.userRomajiRules === current.userRomajiRules ? {} : { userRomajiRules: merged.userRomajiRules }),
     ...(merged.fingerAssignments === current.fingerAssignments ? {} : { fingerAssignments: merged.fingerAssignments }),
+    ...(merged.comboSets === current.comboSets ? {} : { comboSets: merged.comboSets }),
     ...(merged.setupLibrary === current.setupLibrary ? {} : { setupLibrary: merged.setupLibrary }),
   };
 }
