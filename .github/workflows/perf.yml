@@ -1,0 +1,131 @@
+name: Performance
+
+# PRごとに、ベースとheadの計算の時間とバンドルサイズを同じjobの中で測り、差分をjob summaryに出す。
+# 計算の時間は報告だけで、結果によって失敗にしない（共有のランナーは時間がばらつくので、ばらつきを見てから閾値を決める）。
+# バンドルサイズは、headが scripts/bundle-budget.json の上限を超えたらjobを失敗にする。
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    env:
+      # 測定の出力の置き場。リポジトリの中に置かない
+      PERF_OUT: ${{ runner.temp }}/perf
+    steps:
+      - name: Checkout head
+        uses: actions/checkout@v7
+
+      # ベースは、PRならbaseのコミット。手動実行（workflow_dispatch）にはベースが無いので、headだけを測る
+      - name: Checkout base
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      # ci.yml と同じ理由で、npm のキャッシュは自前で持つ
+      - name: Cache npm
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - name: Cache reading dictionary
+        uses: actions/cache@v6
+        with:
+          path: .cache/dictionary
+          key: dictionary-${{ hashFiles('src/platform/reading/dictionary-spec.ts') }}
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm_version="$(node -p "require('./package.json').packageManager.replace(/^npm@/, '')")"
+          (cd "$RUNNER_TEMP" && npm install --global "npm@$npm_version")
+          npm --version
+          npm ci
+          if [ -d base ]; then
+            (cd base && npm ci)
+          fi
+
+      # ビルドが取る読みの辞書のzip。ベースのビルドも同じzipを読めるよう、ベースの作業ディレクトリへ写す
+      - name: Fetch reading dictionary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types scripts/dictionary-fetch.ts
+          if [ -d base ]; then
+            mkdir -p base/.cache
+            cp -r .cache/dictionary base/.cache/dictionary
+          fi
+          mkdir -p "$PERF_OUT"
+
+      - name: Build head
+        shell: bash
+        run: npm run build
+
+      - name: Build base
+        if: github.event_name == 'pull_request'
+        shell: bash
+        working-directory: base
+        # ベースがビルドできなくても、headの測定は出す
+        continue-on-error: true
+        run: npm run build
+
+      - name: Measure bundle size
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types scripts/measure-bundle.ts --out "$PERF_OUT/bundle-head.json" --dir .output/public
+          if [ -d base/.output/public ]; then
+            node --experimental-strip-types scripts/measure-bundle.ts --out "$PERF_OUT/bundle-base.json" --dir base/.output/public
+          fi
+
+      # ベースの作業ディレクトリでも、headの測定スクリプトを使う（ベースにスクリプトが無くても測れるように）。
+      # headとベースを交互に2回ずつ測り、実行の順序による偏りを減らす。最初のheadの測定が、漢字を読みに直した後の日本語のテキストを書き出す
+      - name: Benchmark engine
+        shell: bash
+        run: |
+          set -uo pipefail
+          bench() {
+            local dir="$1" out="$2"
+            (cd "$dir" && node --expose-gc --experimental-strip-types scripts/bench-engine.ts --out "$out" --texts-file "$PERF_OUT/texts.json")
+          }
+          bench . "$PERF_OUT/bench-head-1.json"
+          if [ -d base ]; then
+            cp scripts/bench-engine.ts base/scripts/bench-engine.ts
+            bench base "$PERF_OUT/bench-base-1.json" || echo "::warning::ベースの測定に失敗したので、headの値だけを示します"
+          fi
+          bench . "$PERF_OUT/bench-head-2.json"
+          if [ -f "$PERF_OUT/bench-base-1.json" ]; then
+            bench base "$PERF_OUT/bench-base-2.json" || rm -f "$PERF_OUT/bench-base-1.json"
+          fi
+          exit 0
+
+      - name: Write performance summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--budget scripts/bundle-budget.json --bundle-head "$PERF_OUT/bundle-head.json")
+          [ -f "$PERF_OUT/bundle-base.json" ] && args+=(--bundle-base "$PERF_OUT/bundle-base.json")
+          for f in "$PERF_OUT"/bench-head-*.json; do args+=(--bench-head "$f"); done
+          if [ -f "$PERF_OUT/bench-base-1.json" ] && [ -f "$PERF_OUT/bench-base-2.json" ]; then
+            for f in "$PERF_OUT"/bench-base-*.json; do args+=(--bench-base "$f"); done
+          fi
+          node --experimental-strip-types scripts/perf-report.ts "${args[@]}" >> "$GITHUB_STEP_SUMMARY"
