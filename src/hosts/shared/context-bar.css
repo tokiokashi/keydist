@@ -523,14 +523,17 @@ button.context-chip:hover:not(:disabled),
  * （390pxで18px。タップの最小の大きさ24pxを下回る）。テキストのチップが潰れないよう、チップは次の段へ送る。
  * 段が増えても、狭い時の切り替えは上と同じ境目（53.5rem）で行う（中間段階は置かない）。個別画面（Workspace名が無い）は1行のまま。
  *
- * 2段目へ送るのは、テキストのチップの基準の幅を「1段目いっぱいから物理配列のチップ分を引いた幅」にして、
- * 1段目に入りきらなくするため。物理配列のチップ（アイコンだけ、約2rem）と間隔が2段目の残りに収まる。
+ * 2段目へ送るのは、1段目と2段目の間に、バーの全幅の要素（`::after`。高さは行の間隔の0.35rem）を置いて行を折るため。
+ * テキストのチップ・読みのチップ・物理配列のチップは、`order` でその後ろへ回す。
+ * チップの基準の幅から折り返しを決めると、読みのチップのように後から現れるチップが2段目に入りきらず、
+ * 3段になってバーの高さが伸びる。行の折り方をチップの数と幅に依らせない。
  * Workspace名は長くても1段目の幅を超えないよう、⋯の分（2.5rem）を残して省略する。
  */
 @container context-bar (max-width: 53.5rem) {
   .context-bar-items:has(.workspace-name) {
     flex-wrap: wrap;
-    row-gap: 0.35rem;
+    /* 行の間隔は、下の `::after` の高さで持つ（行の間に `::after` の行が入るので、row-gapを使うと間隔が2回入る）。 */
+    row-gap: 0;
   }
 
   .context-bar-items:has(.workspace-name) .workspace-name {
@@ -539,8 +542,16 @@ button.context-chip:hover:not(:disabled),
     max-width: min(16rem, calc(100% - 5.5rem));
   }
 
-  .context-bar-items:has(.workspace-name) .text-chip-root {
-    flex: 1 1 calc(100% - 3.5rem);
+  .context-bar-items:has(.workspace-name)::after {
+    content: "";
+    order: 1;
+    flex: 0 0 100%;
+    height: 0.35rem;
+  }
+
+  .context-bar-items:has(.workspace-name) > .text-chip-root,
+  .context-bar-items:has(.workspace-name) > .context-chip-group {
+    order: 2;
   }
 
   /* ☰と右端の操作は1段目の高さ（2rem）に揃える（2段分の真ん中に浮かせない）。 */
