@@ -4,7 +4,16 @@ import { seotoRomaji } from '#input/romaji/seoto.ts';
 import { tomisukeRomaji } from '#input/romaji/tomisuke.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
-import { fromRows, withAliases, withCombos, withoutRomajiOnlyCombos, withRomaji, withShiftedOutputs, type Layout } from './types.ts';
+import {
+  fromRows,
+  withAliases,
+  withCombos,
+  withoutRomajiOnlyInputs,
+  withRomaji,
+  withRomajiOnlyOutputs,
+  withShiftedOutputs,
+  type Layout,
+} from './types.ts';
 import { NICOLA } from './nicola.ts';
 import { ASUKA } from './asuka.ts';
 import { SHIN_KOUME } from './shin-koume.ts';
@@ -53,7 +62,7 @@ export {
   withShiftedOutputs,
   withRomaji,
   withCombos,
-  withoutRomajiOnlyCombos,
+  withoutRomajiOnlyInputs,
 } from './types.ts';
 export { faceCells, handOfKey } from './face-geometry.ts';
 export type { Hand } from './face-geometry.ts';
@@ -208,10 +217,12 @@ const ALPHA: Layout[] = [
   ]),
   // レイヤー（左親指との同時押し）の面で ん っ ー を出す。綴りは対のせおと配列の綴り
   SEOTO,
-  withAliases(withShiftedOutputs(fromRows('oonishi', '大西配列', ['1234567890', 'qlu,.fwryp', 'eiao-ktnsh', 'zxcv;gdmjb'])), [
-    'おおにし',
-    'おおにしはいれつ',
-  ]),
+  // 数字段の右端（QWERTYの `-` のキー）の `/` は、日本語（ローマ字）の評価でだけ打てる（仕様 §4.6）。
+  // 配布物（Karabiner-Elementsの設定）が、このキーを `/` を出すキーにする。英文の物理キーには含めない
+  withAliases(
+    withRomajiOnlyOutputs(withShiftedOutputs(fromRows('oonishi', '大西配列', ['1234567890/', 'qlu,.fwryp', 'eiao-ktnsh', 'zxcv;gdmjb'])), ['/', '?']),
+    ['おおにし', 'おおにしはいれつ'],
+  ),
   // コンボはどれもromajiOnly（仕様 §4.3）。かなから展開した綴りの区間はコンボ込み、英文や英字の区間は単打配置だけで打つ。
   withAliases(
     withCombos(
@@ -230,7 +241,7 @@ const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
  * 英文をそのまま打つ配列。ローマ字でしか使わないコンボは外した形で並べ、
  * 配列図・逆引き等の表示にも出さない（評価側もgenerateTraceが同じ規則で外す）。
  */
-export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyCombos);
+export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyInputs);
 
 /**
  * 日本語のかなテキストを打つ配列。

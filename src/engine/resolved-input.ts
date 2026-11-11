@@ -2,7 +2,7 @@ import { assignmentWithHomeKeys, buildGeometry, type FingerAssignment, type Geom
 import { describeShapeFallback } from '#input/setup/index.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { ExtractionAssets } from '#analyzers/contract.ts';
-import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
+import { withoutRomajiOnlyInputs, withRomaji } from '#input/layouts/types.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
@@ -179,7 +179,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   const layout =
     romajiRuleId !== null
       ? withRomaji(baseLayout, tableForRule(romajiRuleId, options.customRomajiRules ? [...options.customRomajiRules] : undefined))
-      : withoutRomajiOnlyCombos(baseLayout);
+      : withoutRomajiOnlyInputs(baseLayout);
 
   // 未知のidが渡ってきた時のfallback先は「その物理配列の既定」（defaultFingerAssignmentId）に揃える。
   // 上書きが無い時の既定値（settings-items.tsのdefaultValue）と同じ規則にすることで、
