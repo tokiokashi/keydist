@@ -152,6 +152,7 @@ function assetsWith(overrides: SettingsCascadeOverrides, workspaces: readonly Wo
   return {
     setupLibrary,
     fingerAssignments: [],
+    comboSets: [],
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},

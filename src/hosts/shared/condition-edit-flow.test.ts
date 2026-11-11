@@ -52,6 +52,7 @@ function newSession(): Session {
     assets: {
       setupLibrary,
       fingerAssignments: [],
+      comboSets: [],
       textLibrary: emptyTextLibrary(),
       standaloneTextSelection: initialTextSelection(),
       standaloneAnalyzerOptions: {},

@@ -12,6 +12,7 @@ const ASSET_NOUNS: Readonly<Record<UserAssetKind, string>> = {
   layout: '配列',
   'romaji-rule': 'ローマ字規則',
   'finger-assignment': '指の割当',
+  'combo-set': 'コンボの組',
   setup: 'Setup',
   preset: 'プリセット',
   workspace: 'Workspace',

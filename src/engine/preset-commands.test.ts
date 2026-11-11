@@ -23,6 +23,7 @@ function initialAssets(): KeydistAssets {
   return {
     setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
     fingerAssignments: [],
+    comboSets: [],
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},

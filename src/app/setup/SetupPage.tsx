@@ -1,7 +1,14 @@
 import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useMemo, useState, type FormEvent } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { createSetupCommand, duplicateSetupCommand, relabelSetupCommand, setSetupShapeCommand, type KeydistAssets } from '#engine/commands.ts';
+import {
+  createSetupCommand,
+  duplicateSetupCommand,
+  relabelSetupCommand,
+  setSetupComboSetCommand,
+  setSetupShapeCommand,
+  type KeydistAssets,
+} from '#engine/commands.ts';
 import { resolveShapeForLayout } from '#engine/target-resolution.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
 import { MISSING_SHAPE_NAME, type Setup } from '#input/setup/index.ts';
@@ -12,11 +19,12 @@ import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { targetChoiceGroups } from '#hosts/shared/target-choices.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { SETUP_LABEL } from './label.ts';
-import { SETUP_HIDDEN_ITEM_IDS, setupConditionRows, setupListItems } from './setup-view.ts';
+import { SETUP_HIDDEN_ITEM_IDS, setupComboSetView, setupConditionRows, setupListItems } from './setup-view.ts';
+import { comboSetStatusNotes } from './combo-set-notes.ts';
 import './setup.css';
 
 export interface SetupPageProps {
-  readonly assets: Pick<KeydistAssets, 'setupLibrary' | 'presetLibrary'>;
+  readonly assets: Pick<KeydistAssets, 'setupLibrary' | 'presetLibrary' | 'comboSets'>;
   /** 保存の読み込みが済むまでは、Setupが無いように見せない。 */
   readonly ready: boolean;
   readonly catalog: PaneCatalog;
@@ -129,6 +137,9 @@ export function SetupPage({
   const selectedLayout = selected === undefined ? undefined : layouts.get(selected.layoutId);
   const selectedShapeMissing = selected !== undefined && !shapes.has(selected.shapeId);
   const resettable = selected === undefined ? [] : resettableSetupIds(overrides, selected.id, SETUP_HIDDEN_ITEM_IDS);
+  const comboView = selected === undefined ? undefined : setupComboSetView(selected, catalog, overrides);
+  const comboNotes = comboView === undefined ? [] : comboSetStatusNotes(comboView);
+  const comboSetMissing = selected?.comboSetId !== undefined && !assets.comboSets.some((set) => set.id === selected.comboSetId);
 
   const editor: ConditionEditorContext | undefined =
     selected === undefined
@@ -309,6 +320,36 @@ export function SetupPage({
                   このSetupの物理配列が見つかりません。物理配列を選び直してください。
                 </p>
               ) : null}
+
+              {comboView === undefined || selected === undefined ? null : (
+                <>
+                  <label className="setup-shape">
+                    コンボの組
+                    <select
+                      aria-label="このSetupのコンボの組を選ぶ"
+                      data-setup-combo-set-select
+                      value={selected.comboSetId ?? ''}
+                      disabled={!comboView.selectable}
+                      onChange={(event) =>
+                        dispatch(setSetupComboSetCommand(selected.id, event.currentTarget.value === '' ? undefined : event.currentTarget.value))
+                      }
+                    >
+                      <option value="">なし</option>
+                      {comboSetMissing ? <option value={selected.comboSetId}>（見つかりません）</option> : null}
+                      {assets.comboSets.map((set) => (
+                        <option key={set.id} value={set.id}>
+                          {set.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {comboNotes.map((note) => (
+                    <p key={note.kind} className="setup-note" data-setup-combo-status={note.kind}>
+                      {note.text}
+                    </p>
+                  ))}
+                </>
+              )}
 
               {rows === undefined || editor === undefined ? null : (
                 <div className="setup-conditions" data-setup-conditions>

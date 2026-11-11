@@ -1,0 +1,123 @@
+/* コンボの組の画面。読み物の幅はローマ字の綴りの画面と同じに抑えて中央に置く */
+.combo-set {
+  max-width: 50rem;
+  margin-inline: auto;
+}
+
+.combo-set h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.combo-set h2 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.combo-set h3 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.combo-set-note {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.combo-set-toolbar,
+.combo-set-actions,
+.combo-set-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.combo-set button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.combo-set button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.combo-set button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.combo-set label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.combo-set-name {
+  max-width: 20rem;
+  margin-top: 0.5rem;
+}
+
+.combo-set select,
+.combo-set input[type='text'] {
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.combo-set-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.combo-set-table th,
+.combo-set-table td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: normal;
+}
+
+.combo-set-table thead th {
+  color: var(--text-muted);
+}
+
+.combo-set-table tbody th {
+  font-weight: bold;
+}
+
+.combo-set-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.combo-set-invalid {
+  margin-left: 0.5rem;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.combo-set-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.combo-set-add input[type='text'] {
+  width: 9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

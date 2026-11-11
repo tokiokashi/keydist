@@ -18,6 +18,9 @@ import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-ass
 import { resolveSettings, type ResolvedSettingsCascade, type SettingsCascadeOverrides } from './settings-items.ts';
 import { evaluationBoundaries, prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { resolveTargetForText } from './target-resolution.ts';
+import { overlaySetupComboSet } from './setup-combo-set.ts';
+import { layoutKind } from '#input/layouts/kind.ts';
+import type { ComboSet } from '#input/combo-set/combo-set.ts';
 
 /**
  * 解決済み入力。Setup + Setupの手持ち（上書き含む）+ テキスト + カタログから、
@@ -100,6 +103,11 @@ export interface ResolveEngineInputOptions {
    * 呼び出し側がその時点の手持ちを都度渡す）で省略可能にし、既定は空。
    */
   readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment> | undefined;
+  /**
+   * コンボの組の手持ち。id → 実体。Setup対象が選んだ組（`Setup.comboSetId`）をSetupの配列へ重ねる（仕様 §4.3）。
+   * 配列対象には重ねない。省略した時は、どのSetupも組を重ねない。
+   */
+  readonly comboSets?: ReadonlyMap<string, ComboSet> | undefined;
   readonly overrides: SettingsCascadeOverrides;
   /**
    * 個人速度の画面の保存値（資産`personalSpeed`）。条件のカスケードの外にある値なので、ここで受ける。
@@ -173,7 +181,16 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
 
   const romajiItem = cascade.romajiRuleId;
   const romajiRuleId = romajiItem.applicable ? romajiItem.value : null;
-  const baseLayout = withoutRomaji(textResolution.layout);
+  // Setupが選んだコンボの組を、ローマ字の表を外す前の配列へ重ねる。重ねたコンボは`romajiOnly`なので、
+  // ローマ字を経ない打ち方では下の`withoutRomajiOnlyCombos`が外す
+  const setupForCombos = options.target.kind === 'setup' ? options.setups.get(options.target.setupId) : undefined;
+  const comboOverlay = overlaySetupComboSet(
+    setupForCombos,
+    textResolution.layout,
+    layoutKind(textResolution.layout, options.userLayouts),
+    options.comboSets,
+  );
+  const baseLayout = withoutRomaji(comboOverlay.layout);
   // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）を外した配列を渡す。
   // Trace生成も同じ規則で外すが、ResolvedInput.layoutは表示側も読むので、ここで揃えておく。
   const layout =

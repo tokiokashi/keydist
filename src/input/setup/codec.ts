@@ -39,6 +39,8 @@ const setupSchema = v.strictObject({
   layoutId: v.pipe(v.string(), v.minLength(1)),
   shapeId: v.pipe(v.string(), v.minLength(1)),
   label: v.optional(v.pipe(v.string(), v.minLength(1))),
+  // 無い・空の時は組を選んでいないSetup。読めない値ならSetupごと捨てる
+  comboSetId: v.optional(v.pipe(v.string(), v.minLength(1))),
 });
 
 type RawSetup = Omit<Setup, 'number'> & { readonly number?: unknown };

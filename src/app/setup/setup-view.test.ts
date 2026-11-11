@@ -26,6 +26,7 @@ function newSession(): Session {
     assets: {
       setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
       fingerAssignments: [],
+      comboSets: [],
       textLibrary: emptyTextLibrary(),
       standaloneTextSelection: initialTextSelection(),
       standaloneAnalyzerOptions: {},

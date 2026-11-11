@@ -7,6 +7,8 @@ import { STANDALONE_TEXT_SELECTION_CODEC } from '#input/text/selection-codec.ts'
 import { completeLeftColumnKeys, USER_FINGER_ASSIGNMENTS_CODEC } from '#input/shapes/user-finger-assignments.ts';
 import { USER_LAYOUTS_CODEC } from '#input/layouts/user-layouts.ts';
 import { USER_ROMAJI_RULES_CODEC } from '#input/romaji/user-rules-codec.ts';
+import { COMBO_SETS_CODEC } from '#input/combo-set/combo-set.ts';
+import { COMBO_SETS_STORAGE_KEY } from '#platform/assets/combo-sets-storage.ts';
 import { USER_LAYOUTS_ASSET_STORAGE_KEY } from '#platform/assets/user-layouts-asset-storage.ts';
 import { USER_ROMAJI_RULES_STORAGE_KEY } from '#platform/assets/user-romaji-rules-storage.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
@@ -133,6 +135,11 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
   userRomajiRules: {
     storageKey: USER_ROMAJI_RULES_STORAGE_KEY,
     codec: USER_ROMAJI_RULES_CODEC,
+    initial: () => [],
+  },
+  comboSets: {
+    storageKey: COMBO_SETS_STORAGE_KEY,
+    codec: COMBO_SETS_CODEC,
     initial: () => [],
   },
   personalSpeed: {

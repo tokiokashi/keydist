@@ -31,6 +31,11 @@ export interface Setup {
    * 同名になる時だけユーザーがラベルを付ける。表示名の決め方は naming.ts。
    */
   readonly label?: string;
+  /**
+   * このSetupが重ねるコンボの組（`input/combo-set/`）。0か1つで、組を選ばなければ配列のコンボだけで測る。
+   * 配列対象・組を持たないSetupには重ならない。かな配列のSetupは持てない（ローマ字を経ないので成立しない）。
+   */
+  readonly comboSetId?: string;
 }
 
 /**

@@ -13,7 +13,7 @@ import { withWorkspaceColors } from './workspace-colors.ts';
  * 同梱するのは、Workspaceから参照をたどって届く自作の資産だけ（組み込みの資産・物理配列・自作のテキストは入れない）:
  * - Workspaceが映す対象と、どのペインも従っていない組の対象（`workspaceReferencedTargets`）の配列とSetup
  * - `Workspace.conditions`の指の割り当てとローマ字規則
- * - 同梱するSetupが指す配列と、Setupのレベルの条件の指の割り当て・ローマ字規則
+ * - 同梱するSetupが指す配列・コンボの組と、Setupのレベルの条件の指の割り当て・ローマ字規則
  * - 同梱する配列が推奨するローマ字規則
  * 手元に無い資産を指す参照は同梱する物が無いので、そのまま残す。
  */
@@ -33,10 +33,12 @@ export function workspaceAssetsOf(workspaces: readonly Workspace[], holdings: Us
   const setupIds = new Set<string>();
   const ruleIds = new Set<string>();
   const fingerIds = new Set<string>();
+  const comboSetIds = new Set<string>();
   const ownLayouts = new Map(holdings.userLayouts.map((layout) => [layout.id, layout] as const));
   const ownSetups = new Map(holdings.setupLibrary.setups.map((setup) => [setup.id, setup] as const));
   const ownRules = new Set(holdings.userRomajiRules.map((rule) => rule.id));
   const ownFingers = new Set(holdings.fingerAssignments.map((assignment) => assignment.id));
+  const ownComboSets = new Set(holdings.comboSets.map((set) => set.id));
   const addRule = (id: string | undefined) => {
     if (id !== undefined && ownRules.has(id)) ruleIds.add(id);
   };
@@ -59,6 +61,7 @@ export function workspaceAssetsOf(workspaces: readonly Workspace[], holdings: Us
   for (const id of setupIds) {
     const setup = ownSetups.get(id)!;
     if (ownLayouts.has(setup.layoutId)) layoutIds.add(setup.layoutId);
+    if (setup.comboSetId !== undefined && ownComboSets.has(setup.comboSetId)) comboSetIds.add(setup.comboSetId);
     const references = conditionReferences(levelOverrides(holdings.setupLibrary.overrides, { kind: 'setup', setupId: id }));
     addRule(references.rule);
     addFinger(references.finger);
@@ -72,6 +75,7 @@ export function workspaceAssetsOf(workspaces: readonly Workspace[], holdings: Us
     userLayouts: holdings.userLayouts.filter((layout) => layoutIds.has(layout.id)),
     userRomajiRules: holdings.userRomajiRules.filter((rule) => ruleIds.has(rule.id)),
     fingerAssignments: holdings.fingerAssignments.filter((assignment) => fingerIds.has(assignment.id)),
+    comboSets: holdings.comboSets.filter((set) => comboSetIds.has(set.id)),
     setupLibrary: {
       setups: holdings.setupLibrary.setups.filter((setup) => setupIds.has(setup.id)),
       overrides: holdings.setupLibrary.overrides,

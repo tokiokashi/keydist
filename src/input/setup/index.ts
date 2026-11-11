@@ -32,6 +32,7 @@ export {
   deleteSetup,
   relabelSetup,
   setSetupShape,
+  setSetupComboSet,
   type SetupLibrary,
 } from './collection.ts';
 export { setupLibraryCodec } from './codec.ts';

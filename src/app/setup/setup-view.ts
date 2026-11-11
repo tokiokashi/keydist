@@ -1,4 +1,6 @@
 import { resolveSettings, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
+import { comboSetSpellingDiffers, overlaySetupComboSet, type SetupComboSetStatus } from '#engine/setup-combo-set.ts';
+import { isBuiltin, ROMAJI_RULES } from '#input/romaji/rules.ts';
 import { layoutKind } from '#input/layouts/kind.ts';
 import {
   deriveInputMethod,
@@ -64,12 +66,16 @@ export function setupListItems(setups: readonly Setup[], catalog: PaneCatalog, o
     };
     const rows = setupConditionRows(setup, catalog, overrides);
     if (rows === undefined) return { ...base, failed: true, description: failedDescription(setup, catalog.setupCatalog) };
-    const overrideSummary = summarizeNonDefaultConditions(nonDefaultConditionRows(rows));
+    // 選んだコンボの組は数値を変えるので、変えた条件と同じく名前の併記に入れる（仕様 §4.3）
+    const comboName = setup.comboSetId === undefined ? undefined : catalog.comboSets?.get(setup.comboSetId)?.name;
+    const overrideSummary = [summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), comboName === undefined ? undefined : `コンボ: ${comboName}`]
+      .filter((part): part is string => part !== undefined)
+      .join(' ・ ');
     return {
       ...base,
       layoutName: catalog.setupCatalog.layouts.get(setup.layoutId)!.name,
       shapeName: catalog.setupCatalog.shapes.get(setup.shapeId)!.name,
-      ...(overrideSummary === undefined ? {} : { overrideSummary }),
+      ...(overrideSummary === '' ? {} : { overrideSummary }),
     };
   });
   const named = nameTargets(sources);
@@ -78,4 +84,41 @@ export function setupListItems(setups: readonly Setup[], catalog: PaneCatalog, o
     displayName: named[index]!.displayName,
     fullName: named[index]!.fullName,
   }));
+}
+
+/** Setupの画面に出す、コンボの組の状態。組を選べない配列（かな配列・見つからない配列）は`undefined`。 */
+export interface SetupComboSetView {
+  readonly status: SetupComboSetStatus;
+  /** 組の基準の綴りと、Setupの実効のローマ字規則が違い、組を作り直す必要がある。 */
+  readonly spellingDiffers: boolean;
+  /** 実効のローマ字規則の名前。違いを伝える文に使う。 */
+  readonly effectiveRuleName: string | undefined;
+  /** 組の基準の綴りの名前。見つからなければ`undefined`。 */
+  readonly comboSetRuleName: string | undefined;
+  /** 組を選べない配列か（かな配列。ローマ字を経ないので組のコンボが成立しない）。 */
+  readonly selectable: boolean;
+}
+
+/** Setupが選んだコンボの組の状態。配列が手持ちに無いSetupは`undefined`。 */
+export function setupComboSetView(setup: Setup, catalog: PaneCatalog, overrides: SettingsCascadeOverrides): SetupComboSetView | undefined {
+  const layout = catalog.setupCatalog.layouts.get(setup.layoutId);
+  if (layout === undefined) return undefined;
+  const kind = layoutKind(layout, catalog.userLayouts);
+  const overlay = overlaySetupComboSet(setup, layout, kind, catalog.comboSets);
+  const derivation = deriveInputMethod('ja', kind);
+  const resolution = derivation.ok ? resolveSetup(setup, catalog.setupCatalog, derivation.inputMethod) : undefined;
+  const cascade = resolution?.ok === true ? resolveSettings(overrides, resolution.context) : undefined;
+  const ruleItem = cascade?.romajiRuleId;
+  const effectiveRuleId = ruleItem?.applicable === true ? ruleItem.value : null;
+  const comboSet = overlay.status.kind === 'applied' || overlay.status.kind === 'kana-layout' ? overlay.status.comboSet : undefined;
+  const ruleName = (id: string): string | undefined =>
+    catalog.setupCatalog.romajiRules?.get(id)?.name ?? (isBuiltin(id) ? ROMAJI_RULES[id].name : undefined);
+  const effectiveRuleName = effectiveRuleId === null ? undefined : ruleName(effectiveRuleId);
+  return {
+    status: overlay.status,
+    spellingDiffers: comboSet !== undefined && comboSetSpellingDiffers(comboSet, effectiveRuleId),
+    effectiveRuleName,
+    comboSetRuleName: comboSet === undefined ? undefined : ruleName(comboSet.romajiRuleId),
+    selectable: kind !== 'kana',
+  };
 }

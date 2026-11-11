@@ -23,6 +23,8 @@ export interface UserAssetSetup {
   readonly layoutId: string;
   readonly shapeId: string;
   readonly label?: string;
+  /** Setupが重ねるコンボの組のid。無ければ組を選んでいない。 */
+  readonly comboSetId?: string;
   /** Setupのレベルの条件。空なら無い。 */
   readonly overrides?: LevelOverrides<SettingsValueMap>;
 }
@@ -50,6 +52,7 @@ export function decodeUserAssetSetups(raw: unknown, path: string, diagnostics: C
     }
     seen.add(candidate.id);
     const label = effectiveLabel(typeof candidate.label === 'string' ? candidate.label : undefined);
+    const comboSetId = nonEmptyString(candidate.comboSetId) ? candidate.comboSetId : undefined;
     const decoded = decodeLevelOverrides(SETTINGS_ITEM_SCHEMAS, candidate.overrides, `${where}.overrides`, diagnostics);
     // Setupのレベルに置けない項目は読み込まない（置けても解決の時に無視されるだけで、見えない値が残るため）
     const allowed: Record<string, unknown> = {};
@@ -62,6 +65,7 @@ export function decodeUserAssetSetups(raw: unknown, path: string, diagnostics: C
       layoutId: candidate.layoutId,
       shapeId: candidate.shapeId,
       ...(label === undefined ? {} : { label }),
+      ...(comboSetId === undefined ? {} : { comboSetId }),
       ...(Object.keys(allowed).length === 0 ? {} : { overrides: allowed as LevelOverrides<SettingsValueMap> }),
     });
   });
@@ -74,6 +78,7 @@ export function encodeUserAssetSetups(setups: readonly UserAssetSetup[]): readon
     layoutId: setup.layoutId,
     shapeId: setup.shapeId,
     ...(setup.label === undefined ? {} : { label: setup.label }),
+    ...(setup.comboSetId === undefined ? {} : { comboSetId: setup.comboSetId }),
     ...(setup.overrides === undefined ? {} : { overrides: structuredClone(setup.overrides) }),
   }));
 }
@@ -87,6 +92,7 @@ export function userAssetSetupsOf(library: SetupLibraryOfSettings): readonly Use
       layoutId: setup.layoutId,
       shapeId: setup.shapeId,
       ...(setup.label === undefined ? {} : { label: setup.label }),
+      ...(setup.comboSetId === undefined ? {} : { comboSetId: setup.comboSetId }),
       ...(overrides === undefined || Object.keys(overrides).length === 0 ? {} : { overrides }),
     };
   });
@@ -98,8 +104,13 @@ export function userAssetSetupsOf(library: SetupLibraryOfSettings): readonly Use
  */
 export function withResolvableReferences(
   setup: UserAssetSetup,
-  known: { readonly ruleIds: ReadonlySet<string>; readonly fingerAssignmentIds: ReadonlySet<string> },
+  known: { readonly ruleIds: ReadonlySet<string>; readonly fingerAssignmentIds: ReadonlySet<string>; readonly comboSetIds: ReadonlySet<string> },
 ): UserAssetSetup {
+  // 同梱しないコンボの組への参照は、読み込む側の手元の同じidの別の組に結び付かないよう外す
+  if (setup.comboSetId !== undefined && !known.comboSetIds.has(setup.comboSetId)) {
+    const { comboSetId: _dropped, ...withoutCombo } = setup;
+    return withResolvableReferences(withoutCombo, known);
+  }
   if (setup.overrides === undefined) return setup;
   const { romajiRuleId, fingerAssignmentId, ...rest } = setup.overrides;
   const kept: Record<string, unknown> = { ...rest };
@@ -156,10 +167,14 @@ function canonicalValue(value: unknown): string {
 }
 
 /** 「中身が同じ」の判定。ラベル・id・番号は比べない。条件が空のSetupと条件の無いSetupは同じ。 */
-function setupContent(setup: { readonly layoutId: string; readonly shapeId: string }, overrides: object | undefined): string {
+function setupContent(
+  setup: { readonly layoutId: string; readonly shapeId: string; readonly comboSetId?: string | undefined },
+  overrides: object | undefined,
+): string {
   return canonicalValue({
     layoutId: setup.layoutId,
     shapeId: setup.shapeId,
+    comboSetId: setup.comboSetId,
     overrides: overrides === undefined || Object.keys(overrides).length === 0 ? undefined : overrides,
   });
 }
@@ -168,6 +183,7 @@ export interface SetupIdMaps {
   readonly layouts: ReadonlyMap<string, string>;
   readonly rules: ReadonlyMap<string, string>;
   readonly fingers: ReadonlyMap<string, string>;
+  readonly comboSets: ReadonlyMap<string, string>;
 }
 
 /**
@@ -199,9 +215,13 @@ export function remapOverrideReferences(
 
 function remapSetup(setup: UserAssetSetup, maps: SetupIdMaps): UserAssetSetup {
   const mapped = remapOverrideReferences(setup.overrides, maps);
+  const { comboSetId, overrides: _overrides, ...rest } = setup;
+  // ファイルの中に無いコンボの組を指す参照は、手元の同じidの別の組に結び付けず外す
+  const comboId = comboSetId === undefined ? undefined : maps.comboSets.get(comboSetId);
   return {
-    ...setup,
+    ...rest,
     layoutId: maps.layouts.get(setup.layoutId) ?? setup.layoutId,
+    ...(comboId === undefined ? {} : { comboSetId: comboId }),
     ...(mapped === undefined ? {} : { overrides: mapped }),
   };
 }
@@ -266,6 +286,7 @@ export function mergeUserAssetSetups(
         layoutId: remapped.layoutId,
         shapeId: remapped.shapeId,
         ...(remapped.label === undefined ? {} : { label: remapped.label }),
+        ...(remapped.comboSetId === undefined ? {} : { comboSetId: remapped.comboSetId }),
       };
       setups[setups.indexOf(collision)] = replaced;
       overrides = withLevelOverrides(
@@ -286,6 +307,7 @@ export function mergeUserAssetSetups(
       layoutId: remapped.layoutId,
       shapeId: remapped.shapeId,
       ...(remapped.label === undefined ? {} : { label: remapped.label }),
+      ...(remapped.comboSetId === undefined ? {} : { comboSetId: remapped.comboSetId }),
     };
     setups.push(added);
     idMap.set(file.id, id);
