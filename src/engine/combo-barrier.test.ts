@@ -79,7 +79,7 @@ test('コンボ枠でない複数かなの見出し（きゃ）は、境をま�
 });
 
 test('境は、記号を取り除いた後の評価に渡すテキストの位置へ写し直す', () => {
-  // 読みのテキスト 'あ！はやく' の境（くの直前 = 4）は、！を取り除くと 3
+  // 読みのテキスト 'あ！はやく' の境（くの直前の4）は、！を取り除くと3
   assert.deepEqual(measure('あ！はやく', [4]).input.comboBarriers, [3]);
   assert.deepEqual(measure('あ！はやく', [4]).trace.comboHits, []);
   assert.deepEqual(measure('あ！はやく').trace.comboHits, ['aku']);
