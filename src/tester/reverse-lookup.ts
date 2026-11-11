@@ -1,6 +1,8 @@
 import {
   commitStrokeRulesOf,
+  faceStrokeOf,
   inputAlternativeSelectionIdentity,
+  mayNeedCommitStroke,
   needsCommitStroke,
   type CommitStrokeRules,
   type InputAlternative,
@@ -224,8 +226,11 @@ function mergeEquivalentRoutes(layout: Layout, routes: readonly ReverseLookupRou
 }
 
 /**
- * 隣り合うstepの継ぎ目に、確定の打鍵（仕様 §4.7）のactionを入れる。継ぎ目の判定は距離の測定（Trace）と同じ `needsCommitStroke` で行う。
- * 確定の打鍵は次のstepの先頭のactionにする。次のstepの出力が確定する前の打鍵なので、案内の進み方は他のactionと同じになる。
+ * 隣り合うstepの継ぎ目に、確定の打鍵（仕様 §4.7）のactionを入れる。入れるのは次の2つの時。
+ * - 距離の測定（Trace）と同じ `needsCommitStroke` が、確定の打鍵が要る継ぎ目と判定する時
+ * - 前のstepがTesterで確定の打鍵として受ける形（`mayNeedCommitStroke`）で、次のstepの先頭の打鍵が右親指のキーを含む時。
+ *   Testerはこの形の直後の右親指のキーの押下を確定の打鍵として受けるので、次のstepの右親指のキーはもう1打要る
+ * 確定の打鍵は次のstepの先頭のactionにする。案内の進み方は、確定の打鍵だけ `input-converter-view.tsx` で別に扱う。
  */
 function withCommitStrokes(
   rules: CommitStrokeRules,
@@ -237,7 +242,14 @@ function withCommitStrokes(
     const previous = route.steps[index - 1];
     const previousAlternative = previous === undefined ? undefined : alternativeOfStep.get(previous);
     const alternative = alternativeOfStep.get(step);
-    if (previousAlternative === undefined || alternative === undefined || !needsCommitStroke(rules, previousAlternative, alternative)) return step;
+    if (previous === undefined || previousAlternative === undefined || alternative === undefined) return step;
+    const testerCommits =
+      step.actions[0]?.some((key) => resolveKeyId(key) === THUMB_KEY.RT) === true &&
+      mayNeedCommitStroke(
+        rules,
+        previous.actions.map((keys) => faceStrokeOf(keys)),
+      );
+    if (!needsCommitStroke(rules, previousAlternative, alternative) && !testerCommits) return step;
     commits += 1;
     const committed: ReverseLookupStep = {
       ...step,

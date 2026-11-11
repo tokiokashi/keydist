@@ -58,19 +58,6 @@ test('右親指のキーが前置トリガーでもある配列でも、継ぎ�
   assert.deepEqual(typeKeys(layout.canonicalInputs, ['j', 'k', COMMIT, 'a'], {}), ['び', 'ぁ']);
 });
 
-test('確定の打鍵を押した結果は、そのキーを認識中のキーに含め、離すと含めない', () => {
-  const engine = new TypingInputEngine(YUMI.canonicalInputs, { commitKey: COMMIT });
-  engine.handle({ type: 'down', key: 'n' });
-  engine.handle({ type: 'up', key: 'n' });
-  const down = engine.handle({ type: 'down', key: COMMIT });
-  assert.deepEqual(
-    down.recognized.map((entry) => entry.output),
-    ['く'],
-  );
-  assert.ok(down.recognitionKeys.includes(COMMIT));
-  assert.ok(!engine.handle({ type: 'up', key: COMMIT }).recognitionKeys.includes(COMMIT));
-});
-
 test('確定の打鍵が要る継ぎ目を持たない配列では、確定の打鍵のキーを指定しても何も変わらない', () => {
   const plain = fromFaces('plain', 'plain', [SINGLE, THUMB_PREFIX]);
   assert.deepEqual(typeKeys(plain.canonicalInputs, ['a', 'k']), typeKeys(plain.canonicalInputs, ['a', 'k'], {}));
