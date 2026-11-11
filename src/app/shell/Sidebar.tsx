@@ -13,6 +13,7 @@ import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { RUN_CHART_PANE_META } from '#analyzers/run-chart/pane-meta.ts';
 import { BUNSETSU_STATS_PANE_META } from '#analyzers/bunsetsu-stats/pane-meta.ts';
+import { CONTROL_TEXTS_PANE_META } from '#analyzers/control-texts/pane-meta.ts';
 import { SCATTER_PANE_META } from '#analyzers/scatter/pane-meta.ts';
 import { BAND_CHART_PANE_META } from '#analyzers/band-chart/pane-meta.ts';
 import { BOX_PLOT_PANE_META } from '#analyzers/box-plot/pane-meta.ts';
@@ -276,6 +277,9 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           </NavLink>
           <NavLink to="/analyzer/bunsetsu-stats" onNavigate={onNavigate}>
             {BUNSETSU_STATS_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/control-texts" onNavigate={onNavigate}>
+            {CONTROL_TEXTS_PANE_META.name}
           </NavLink>
           <NavLink to="/analyzer/scatter" onNavigate={onNavigate}>
             {SCATTER_PANE_META.name}

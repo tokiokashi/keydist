@@ -1,6 +1,7 @@
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { bigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { bunsetsuStatsOptions } from '#analyzers/bunsetsu-stats/options.ts';
+import { controlTextsOptions } from '#analyzers/control-texts/options.ts';
 import { comparisonOptions } from '#analyzers/comparison/options.ts';
 import { fingerDistanceOptions } from '#analyzers/finger-distance/options.ts';
 import { handRhythmOptions } from '#analyzers/hand-rhythm/options.ts';
@@ -29,6 +30,7 @@ export const ANALYZER_OPTIONS_DECODERS: ReadonlyMap<string, AnalyzerOptionsDecod
   ['bigram-flow', bigramFlowOptions.decodeOptions],
   ['bunsetsu-stats', bunsetsuStatsOptions.decodeOptions],
   ['comparison', comparisonOptions.decodeOptions],
+  ['control-texts', controlTextsOptions.decodeOptions],
   ['finger-distance', fingerDistanceOptions.decodeOptions],
   ['hand-rhythm', handRhythmOptions.decodeOptions],
   ['finger-matrix', fingerMatrixOptions.decodeOptions],
