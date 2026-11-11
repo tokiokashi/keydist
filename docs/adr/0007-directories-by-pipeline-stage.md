@@ -1,20 +1,17 @@
 # ADR-0007: ディレクトリを流れの段で切り、依存を一方向にする
 
 - 番号: ADR-0007
-- 日付: 2026-10-06（このリポジトリの最初のコミットの日。旧リポジトリから履歴を持たずに取り込んだため、決めた日は読めない）
+- 日付: 2026-10-06（取り込みの日。決めた日は読めない。READMEの「日付」を参照）
 - 状態: 採用
 
 ## 背景
 
-コードの置き場がファイルごとの判断になると、層をまたぐ参照が増え、計算部がReactやブラウザAPIに引きずられる。
-計算部を単体でテストでき、Workerへ移せる形を保つために、置き場と依存の向きを規則にした。
-
-決めた当時の議論は、取り込み前の履歴にあり読めない。以下は、`docs/architecture.md` と `test/architecture-layers.test.ts` に書かれている内容に限る。
+決めた当時の議論と理由は、取り込み前の履歴にあり読めない。今の文書が挙げる、純粋な層を守る理由は「結果」の節にある。以下は、`docs/architecture.md` と `test/architecture-layers.test.ts` に書かれている内容に限る。
 
 ## 決定
 
-- `src/` のトップは、流れの段の名前で切る。`input`（入力）・`trace`・`interpretation`・`analyzers`・`engine`・`hosts`・`editors`・`tester`・`ui`・`platform`・`app`・`routes`（`docs/architecture.md`「ディレクトリ」）
-- 依存は、`docs/architecture.md`「依存の規則」の表のとおり一方向にする。要点は次の4つ
+- `src/` のトップは、流れの段の名前で切る。`input` （入力）・`trace`・`interpretation`・`analyzers`・`engine`・`hosts`・`editors`・`tester`・`ui`・`platform`・`app`・`routes` （`docs/architecture.md` 「ディレクトリ」）
+- 依存は、`docs/architecture.md` 「依存の規則」の表のとおり一方向にする。要点は次の4つ
   - `input` は何もimportしない。`trace` は `input` まで、`interpretation` は `input`・`trace` まで
   - Analyzer同士はimportしない。個別のAnalyzerから別のAnalyzerへも、契約から個別のAnalyzerへも向かない
   - host同士はimportしない。共有物は `hosts/shared/` に置く

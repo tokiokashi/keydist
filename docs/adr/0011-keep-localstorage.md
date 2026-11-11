@@ -11,7 +11,7 @@ issue #26は、実際のサイズを測り、IndexedDBへ移す必要がある�
 
 ## 決定
 
-IndexedDBへ移さず、localStorageのまま続ける。判断の根拠は、`docs/architecture.md`「保存容量の見積もり」に、`scripts/measure-storage-size.ts` で測った値とあわせて書かれている。
+IndexedDBへ移さず、localStorageのまま続ける。判断の根拠は、`docs/architecture.md` 「保存容量の見積もり」に、`scripts/measure-storage-size.ts` で測った値とあわせて書かれている。
 
 - 構造を持つ資産と組み込みのテキストは、全部写しても合計19.6万字ほどで、枠（ChromiumのlocalStorageの約524万字）の約3.7%に収まる
 - 長いテキストは、全文の大きさ（約32万字）で1件につき枠の約6%を使い、枠には約16件入る。使い切る前に、容量の超過の知らせが出る
