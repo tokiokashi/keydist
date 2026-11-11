@@ -7,7 +7,7 @@ import { keyDetailTooltip, keyName } from './key-detail-view.ts';
 import type { KeySelectionProps } from './pane-parts.tsx';
 import './heatmap-diagram.css';
 import { heatIntensity, type HeatmapColorScale, type HeatmapDrawStyle, type HeatmapPalette } from './heatmap-figure.ts';
-import { heatmapFlowSegments, heatmapFlowStrokeWidth } from './heatmap-flow.ts';
+import { FLOW_CASING_COLOR, FLOW_CASING_WIDTH, heatmapFlowSegments, heatmapFlowStrokeWidth } from './heatmap-flow.ts';
 import type { BigramVector } from './bigram-vectors.ts';
 import { edgeKind, FLOW_COLORS, FLOW_GRADIENT_END_OPACITY, FLOW_GRADIENT_START_OPACITY, type FlowPoint } from './keyboard-flow-lines.ts';
 import { HEAT_BLOB_BLUR, HEAT_BLOB_LEVELS, heatBlobBlurParts, heatBlobRuns, type HeatBlobBlurPart, type HeatBlobSource } from './heatmap-blob.ts';
@@ -205,6 +205,7 @@ export function HeatmapDiagram({
   const zoom = useZoom(svgRef, width, flow !== undefined);
   const blurId = `heatmap-blob-blur-${diagramId}`;
   const gradientId = (index: number) => `heatmap-flow-${diagramId}-${index}`;
+  const casingGradientId = (index: number) => `heatmap-flow-casing-${diagramId}-${index}`;
   const blobSources: HeatBlobSource[] = blob
     ? keys.flatMap((item) =>
         item.unused
@@ -369,8 +370,32 @@ export function HeatmapDiagram({
                   </linearGradient>
                 );
               })}
+              {segments.map((segment, index) => (
+                <linearGradient
+                  id={casingGradientId(index)}
+                  key={segment.vector.id}
+                  gradientUnits="userSpaceOnUse"
+                  x1={segment.start.x}
+                  y1={segment.start.y}
+                  x2={segment.end.x}
+                  y2={segment.end.y}
+                >
+                  <stop offset="0%" stopColor={FLOW_CASING_COLOR} stopOpacity={FLOW_GRADIENT_START_OPACITY} />
+                  <stop offset="100%" stopColor={FLOW_CASING_COLOR} stopOpacity={FLOW_GRADIENT_END_OPACITY} />
+                </linearGradient>
+              ))}
             </defs>
             <g className="heatmap-flow-layer" pointerEvents="none" opacity={FLOW_LINE_OPACITY}>
+              {segments.map((segment, index) => (
+                <path
+                  key={`casing-${segment.vector.id}`}
+                  data-heatmap-flow-casing=""
+                  d={segment.path}
+                  fill="none"
+                  stroke={`url(#${casingGradientId(index)})`}
+                  strokeWidth={heatmapFlowStrokeWidth(segment.vector.weight, flow?.maxWeight ?? 1, zoom) + 2 * FLOW_CASING_WIDTH}
+                />
+              ))}
               {segments.map((segment, index) => (
                 <path
                   key={segment.vector.id}

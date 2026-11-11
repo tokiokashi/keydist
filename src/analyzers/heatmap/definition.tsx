@@ -148,6 +148,7 @@ export function HeatmapBody({
                 <TargetSwatch color={figure.color} mark={figure.mark} />
                 <span>{figure.label}</span>
               </p>
+              {figure.differences.length === 0 ? null : <p className="heatmap-set-diff">{figure.differences.join(' ・ ')}</p>}
               {figure.state.status === 'ready' ? (
                 <HeatmapDiagram
                   {...figureProps(figure.state.layout, figure.state.geometry, options.drawStyle, options.palette)}

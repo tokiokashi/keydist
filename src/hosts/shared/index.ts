@@ -7,6 +7,7 @@ export {
   globalConditionLevels,
   globalConditionValues,
   multiTargetConditionSummary,
+  differencesFromBase,
   formatOrigin,
   nonDefaultConditionRows,
   summarizeNonDefaultConditions,
