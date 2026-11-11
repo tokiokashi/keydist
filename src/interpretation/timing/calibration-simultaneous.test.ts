@@ -6,9 +6,8 @@ import {
   SIMULTANEOUS_PRESS_WINDOW_MS,
   applyCalibrationRun,
   calibrationItemId,
-  calibrationKeyLabel,
   calibrationRunFinished,
-  calibrationTaskAcceptsSpace,
+  calibrationTaskAcceptsThumbKeys,
   planCalibration,
   pressCalibrationKey,
   startCalibrationRun,
@@ -39,7 +38,7 @@ const SAVED: PlaybackCalibration = {
 };
 
 function event(keyId: string) {
-  return keyId === THUMB ? { key: ' ', code: 'Space' } : { key: keyId, code: '' };
+  return keyId === THUMB ? { key: ' ', code: 'Space', physicalKey: THUMB } : { key: keyId, code: '' };
 }
 
 function taskOf(kind: SimultaneousKind): CalibrationTask {
@@ -69,14 +68,13 @@ test('row-staggeredでは、同時押しの測定は両手・片手・親指の3
   assert.equal(PLAN.byField.get('simultaneous:thumb')?.length, 1);
 });
 
-test('Spaceは右手の親指のキーで、親指との同時押しの項目だけがSpaceを受け付ける', () => {
-  assert.equal(calibrationKeyLabel(LEGENDS, THUMB), 'Space');
-  assert.equal(calibrationTaskAcceptsSpace(taskOf('thumb')), true);
-  assert.equal(calibrationTaskAcceptsSpace(taskOf('one-hand')), false);
-  assert.equal(calibrationTaskAcceptsSpace(PLAN.byItem.get('actions')), false);
-  assert.equal(calibrationTaskAcceptsSpace(undefined), false);
-  assert.equal(calibrationKeyMatches({ key: ' ', code: 'Space' }, THUMB), true);
-  assert.equal(calibrationKeyMatches({ key: ' ', code: '' }, THUMB), true);
+test('親指との同時押しの項目だけが親指のキーを受け付け、測る親指のキーは対応で右手の親指のキーに引ける押下に一致する', () => {
+  assert.equal(calibrationTaskAcceptsThumbKeys(taskOf('thumb')), true);
+  assert.equal(calibrationTaskAcceptsThumbKeys(taskOf('one-hand')), false);
+  assert.equal(calibrationTaskAcceptsThumbKeys(PLAN.byItem.get('actions')), false);
+  assert.equal(calibrationTaskAcceptsThumbKeys(undefined), false);
+  assert.equal(calibrationKeyMatches({ key: ' ', code: 'Space', physicalKey: THUMB }, THUMB), true);
+  assert.equal(calibrationKeyMatches({ key: ' ', code: '' }, THUMB), false);
   assert.equal(calibrationKeyMatches({ key: 'j', code: 'KeyJ' }, THUMB), false);
 });
 
@@ -156,6 +154,27 @@ test('測る2つ以外のキーは、進行を変えない', () => {
   // 1つ目を待たせている間に別のキーを押しても、待たせている押下は残る。
   const waiting = pressCalibrationKey(run, event('f'), 1000, label).run;
   assert.equal(pressCalibrationKey(waiting, event('x'), 1010, label).run, waiting);
+});
+
+test('親指との同時押しは、Testerと同じ対応で右手の親指のキーに引ける押下（変換）でも揃い、左手の親指のキーに引ける押下では揃わない', () => {
+  const task = taskOf('thumb');
+  const convert = { key: 'Convert', code: 'Convert', physicalKey: THUMB };
+  const nonConvert = { key: 'NonConvert', code: 'NonConvert', physicalKey: GEOMETRY.thumbs.LT.id };
+  let run = startCalibrationRun('item', [task]);
+  run = pressCalibrationKey(run, convert, 1000, label).run;
+  run = pressCalibrationKey(run, event('j'), 1010, label).run;
+  assert.equal(run.lastAtMs, 1000);
+  assert.deepEqual(run.pending, []);
+  // 左手の親指のキーは、測る2つのキーのどちらでもない
+  const rejected = pressCalibrationKey(run, nonConvert, 1500, label);
+  assert.equal(rejected.outcome.kind, 'wrong-key');
+  assert.equal(rejected.run, run);
+});
+
+test('親指との同時押しで、Spaceを割り当てなしにした利用者のSpaceは測るキーにならない', () => {
+  const run = startCalibrationRun('item', [taskOf('thumb')]);
+  const rejected = pressCalibrationKey(run, { key: ' ', code: 'Space' }, 1000, label);
+  assert.equal(rejected.outcome.kind, 'wrong-key');
 });
 
 test('9間隔を数えると、その項目が済む', () => {
