@@ -27,7 +27,7 @@ export function comboSetStatusNotes(view: SetupComboSetView): readonly ComboSetN
     const reasons = [
       ...(unresolved === 0 ? [] : [`この配列で出せない文字のキーを使うものが${unresolved}件`]),
       ...(trigger === 0 ? [] : [`修飾や層のキーを使うものが${trigger}件`]),
-      ...(conflict === 0 ? [] : [`同じキーの組を別の出力に使う、配列や組の中の別のコンボとぶつかるものが${conflict}件`]),
+      ...(conflict === 0 ? [] : [`配列や組の中の別のコンボと同じキーの組で、出力が違うものが${conflict}件`]),
     ];
     notes.push({
       kind: 'dropped',

@@ -163,7 +163,7 @@ export function ComboSetEditor({
         自作のコンボを組にして作ります。
         <InfoButton
           name="コンボの組"
-          description="押すキーは英字の文字で、出力はかなで入れます。出力は、組を作る時に選んだ基準の綴りでローマ字へ展開して保存します。作った組はSetupで選びます。"
+          description="押すキーは英字の文字で、出力はかなで入れます。出力は、組を作る時に選んだ基準の綴りでローマ字へ展開して保存します。同じキーの組に別の出力は足せません。"
         />
       </p>
       <div className="combo-set-toolbar">

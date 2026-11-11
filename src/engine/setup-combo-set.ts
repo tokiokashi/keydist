@@ -59,3 +59,13 @@ export function appliedCombos(status: Extract<SetupComboSetStatus, { kind: 'appl
   const droppedEntries = new Set(status.dropped.map((item) => item.combo));
   return status.comboSet.combos.filter((combo) => !droppedEntries.has(combo));
 }
+
+/** Setupが選んで、計算に入れる組。選んでいない・手持ちに無い・かな配列のSetupは`undefined`。 */
+export function comboSetInUse(
+  setup: Pick<Setup, 'comboSetId'> | undefined,
+  kind: LayoutKind,
+  comboSets: ReadonlyMap<string, ComboSet> | undefined,
+): ComboSet | undefined {
+  if (setup?.comboSetId === undefined || kind === 'kana') return undefined;
+  return comboSets?.get(setup.comboSetId);
+}

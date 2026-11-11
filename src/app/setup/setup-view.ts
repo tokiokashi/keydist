@@ -1,5 +1,5 @@
 import { resolveSettings, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
-import { comboSetSpellingDiffers, overlaySetupComboSet, type SetupComboSetStatus } from '#engine/setup-combo-set.ts';
+import { comboSetInUse, comboSetSpellingDiffers, overlaySetupComboSet, type SetupComboSetStatus } from '#engine/setup-combo-set.ts';
 import { isBuiltin, ROMAJI_RULES } from '#input/romaji/rules.ts';
 import { layoutKind } from '#input/layouts/kind.ts';
 import {
@@ -68,7 +68,8 @@ export function setupListItems(setups: readonly Setup[], catalog: PaneCatalog, o
     const rows = setupConditionRows(setup, catalog, overrides);
     if (rows === undefined) return { ...base, failed: true, description: failedDescription(setup, catalog.setupCatalog) };
     // 選んだコンボの組は数値を変えるので、変えた条件と同じく名前の併記に入れる（仕様 §4.3）
-    const comboName = setup.comboSetId === undefined ? undefined : catalog.comboSets?.get(setup.comboSetId)?.name;
+    const layout = catalog.setupCatalog.layouts.get(setup.layoutId)!;
+    const comboName = comboSetInUse(setup, layoutKind(layout, catalog.userLayouts), catalog.comboSets)?.name;
     const overrideSummary = withComboSetSummary(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), comboName);
     return {
       ...base,
