@@ -122,7 +122,7 @@ function fileOf(assets: KeydistAssets): UserAssetsFileContents {
 function layoutOnlyFile(layout: UserLayout): UserAssetsFileContents {
   return {
     bundle: { layouts: [layout], romajiRules: [], fingerAssignments: [], setups: [] },
-    userTexts: { texts: [], builtinReadingCorrections: {} },
+    userTexts: { texts: [], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} },
     extras: EMPTY_USER_ASSETS_EXTRAS,
   };
 }
@@ -376,7 +376,7 @@ test('読み込まない: 解析設定が手元と重なる時は、手元に無
   const source = { ...emptyAssets(), standaloneAnalyzerOptions: { 'bigram-flow': { source: 'within-hand' }, other: { a: 1 } } };
   const file: UserAssetsFileContents = {
     bundle: { layouts: [], romajiRules: [], fingerAssignments: [], setups: [] },
-    userTexts: { texts: [], builtinReadingCorrections: {} },
+    userTexts: { texts: [], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} },
     extras: { ...EMPTY_USER_ASSETS_EXTRAS, analyzerOptions: source.standaloneAnalyzerOptions },
   };
   const skipped = importInto(hand, file, { 'analyzer-options': 'skip' });

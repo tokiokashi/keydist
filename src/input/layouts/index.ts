@@ -60,6 +60,7 @@ export {
   withComposedOutputs,
   withThumbShiftAlternatives,
   withShiftedOutputs,
+  withAuthoredShiftedSymbols,
   withRomaji,
   withCombos,
   withoutRomajiOnlyInputs,

@@ -14,6 +14,7 @@ const FIELD_EQUALS: { readonly [K in keyof ResolvedText]: (a: ResolvedText[K], b
   languageOverride: (a, b) => a === b,
   isBuiltin: (a, b) => a === b,
   readingCorrections: (a, b) => a === b || stableStringify(a) === stableStringify(b),
+  wordReadingCorrections: (a, b) => a === b || stableStringify(a) === stableStringify(b),
 };
 
 /**

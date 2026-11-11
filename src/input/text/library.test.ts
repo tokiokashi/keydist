@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   setTextReadingCorrection,
+  setTextWordReadingCorrection,
   appendCopiedUserText,
   deleteUserText,
   editUserTextContent,
@@ -153,4 +154,35 @@ test('appendCopiedUserText: 直した読みも複製先に持たせ、空の直�
   assert.deepEqual(copied.created.readingCorrections, { 今日: 'こんにち' });
   const empty = appendCopiedUserText({ texts: [] }, generate, { text: '今日', name: 'A', readingCorrections: {} });
   assert.equal('readingCorrections' in empty.created, false);
+});
+
+const WORD_FIX = { surface: '今日', order: 1, before: '日は晴。', after: 'は雨。今', reading: 'こんにち' };
+
+test('setTextWordReadingCorrection: 自作のテキストの語ごとの直しを足す・差し替える・消す', () => {
+  const library: TextLibrary = { texts: [{ id: 'a', name: 'A', text: '今日' }] };
+  const added = setTextWordReadingCorrection(library, { kind: 'user', id: 'a' }, [], WORD_FIX);
+  assert.deepEqual(added.texts[0]!.wordReadingCorrections, [WORD_FIX]);
+  assert.equal(setTextWordReadingCorrection(added, { kind: 'user', id: 'a' }, [], WORD_FIX), added);
+  const replaced = setTextWordReadingCorrection(added, { kind: 'user', id: 'a' }, [], { ...WORD_FIX, reading: 'ほんじつ' });
+  assert.deepEqual(replaced.texts[0]!.wordReadingCorrections, [{ ...WORD_FIX, reading: 'ほんじつ' }]);
+  const removed = setTextWordReadingCorrection(added, { kind: 'user', id: 'a' }, [WORD_FIX], undefined);
+  assert.equal(removed.texts[0]!.wordReadingCorrections, undefined);
+  assert.equal(setTextWordReadingCorrection(library, { kind: 'user', id: 'none' }, [], WORD_FIX), library);
+});
+
+test('setTextWordReadingCorrection: 組み込みのテキストの語ごとの直しは本文を写さず、組み込みのidに紐づけて持つ', () => {
+  const library: TextLibrary = { texts: [] };
+  const ref = { kind: 'builtin', id: 'builtin:ja.legacy' } as const;
+  const added = setTextWordReadingCorrection(library, ref, [], WORD_FIX);
+  assert.deepEqual(added.texts, []);
+  assert.deepEqual(added.builtinWordReadingCorrections, { 'builtin:ja.legacy': [WORD_FIX] });
+  const removed = setTextWordReadingCorrection(added, ref, [WORD_FIX], undefined);
+  assert.equal(removed.builtinWordReadingCorrections, undefined);
+});
+
+test('appendCopiedUserText: 語ごとの直しは複製先に写し、複製元と配列を共有しない', () => {
+  const wordReadingCorrections = [WORD_FIX];
+  const { created } = appendCopiedUserText({ texts: [] }, () => 'c', { text: '今日', name: 'A', wordReadingCorrections });
+  assert.deepEqual(created.wordReadingCorrections, [WORD_FIX]);
+  assert.notEqual(created.wordReadingCorrections, wordReadingCorrections);
 });

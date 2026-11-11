@@ -817,7 +817,26 @@ export function withShiftedOutputs(
   shiftKeys: readonly string[] = [SHIFT_KEY.L, SHIFT_KEY.R],
   shiftedOverrides?: Readonly<Record<string, string>>,
 ): Layout {
-  const table = shiftedTable(shiftedOverrides);
+  return withShiftTable(layout, shiftKeys, shiftedTable(shiftedOverrides));
+}
+
+/**
+ * 定義がShiftの面に置いた記号を作者の組として、通常Shiftの組に重ねる。
+ * `authored` は、単打で出る文字 -> 定義がShiftの面に置いた記号。作者の組は出力ごとに1つで、その文字を出すキーすべてのUS配列の組を置き換える
+ * （Shiftの面が置いていないキーでも、同じ文字を出すなら置き換わる）。
+ * `authored` に無い文字を出すキーはUS配列の組のまま。ただし、定義が既に置いた記号を出すUS配列の組は、置かれた定義を優先するので足されない。
+ * 定義が同じ記号を2つのキーに置くことがあるので、組の中の重複は弾かない。
+ */
+export function withAuthoredShiftedSymbols(
+  layout: Layout,
+  authored: Readonly<Record<string, string>>,
+  shiftKeys: readonly string[] = [SHIFT_KEY.L, SHIFT_KEY.R],
+): Layout {
+  const table = Object.fromEntries(Object.entries(SHIFTED_ASCII).filter(([base]) => !Object.hasOwn(authored, base)));
+  return withShiftTable(layout, shiftKeys, { ...table, ...authored });
+}
+
+function withShiftTable(layout: Layout, shiftKeys: readonly string[], table: Readonly<Record<string, string>>): Layout {
   const canonicalShiftKeys = [...new Set(shiftKeys.map(resolveKeyId))];
   if (canonicalShiftKeys.length === 0) {
     throw new Error('shiftKeysは1キー以上必要');

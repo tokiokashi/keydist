@@ -32,10 +32,12 @@ import {
   renameUserText,
   setUserTextLanguageOverride,
   setTextReadingCorrection,
+  setTextWordReadingCorrection,
   uniqueAutoTextName,
   type TextIdGenerator,
   type TextLibrary,
 } from '#input/text/library.ts';
+import type { WordAnchor, WordReadingCorrection } from '#input/text/word-reading.ts';
 import { builtinTextById, deriveEditedTextName } from '#input/text/builtin.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { DEFAULT_TEXT_REF, withTextSelection, type TextRef, type TextSelectionState } from '#input/text/selection.ts';
@@ -627,6 +629,7 @@ export function duplicateTextCommand(holder: TextSelectionHolder, generateId: Te
         name: resolved.name,
         ...(resolved.languageOverride === undefined ? {} : { languageOverride: resolved.languageOverride }),
         readingCorrections: resolved.readingCorrections,
+        wordReadingCorrections: resolved.wordReadingCorrections,
       },
       uniqueName,
     );
@@ -743,8 +746,15 @@ export function setTextContentCommand(holder: TextSelectionHolder, ref: TextRef,
     // 印を付けて知らせるため、まだ見ていない印を付けて残す
     // 組み込みのテキストに保存した読みの直しは、写した先にも持たせる（編集の前後で読みが変わらないように）。
     // 編集で現れなくなった表記の直しは、数値に使われない
+    // 語ごとの直しは、指定（表記・順番・前後の文字）をそのまま写し、編集した本文に当て直す。見つからない直しは、写した先でも見つからない直しとして残る
     const readingCorrections = library.builtinReadingCorrections?.[ref.id];
-    const copySource = { text, name, ...(readingCorrections === undefined ? {} : { readingCorrections }) };
+    const wordReadingCorrections = library.builtinWordReadingCorrections?.[ref.id];
+    const copySource = {
+      text,
+      name,
+      ...(readingCorrections === undefined ? {} : { readingCorrections }),
+      ...(wordReadingCorrections === undefined ? {} : { wordReadingCorrections }),
+    };
     const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, notSelected ? { ...copySource, unseen: true } : copySource);
     if (notSelected) {
       return { kind: 'applied', label: 'テキストを変更する', changes: { textLibrary: nextLibrary } };
@@ -765,6 +775,19 @@ export function setTextContentCommand(holder: TextSelectionHolder, ref: TextRef,
  */
 export function setReadingCorrectionCommand(ref: TextRef, surface: string, reading: string | undefined): Command<KeydistAssets> {
   return textLibraryCommand('読みを直す', (library) => setTextReadingCorrection(library, ref, surface, reading));
+}
+
+/**
+ * テキストの中の1つの語の読みを直す。`remove`の語の指定の直しをすべて消し、`add`があれば足す（同じ指定の直しは置き換える）。
+ * 語の読みを直す・直しを消す・見つからない直しを付け直す・見つからない直しを消す、のどれもこの1つのコマンドで行う。
+ * `ref`は操作の瞬間に見ていたテキストを指す。保存先は`setReadingCorrectionCommand`と同じ。
+ */
+export function setWordReadingCorrectionCommand(
+  ref: TextRef,
+  remove: readonly WordAnchor[],
+  add: WordReadingCorrection | undefined,
+): Command<KeydistAssets> {
+  return textLibraryCommand('語の読みを直す', (library) => setTextWordReadingCorrection(library, ref, remove, add));
 }
 
 /**
