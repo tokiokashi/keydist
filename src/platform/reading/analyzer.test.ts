@@ -45,9 +45,9 @@ test('語幹を出さない語: 活用語尾が無い・語幹が空・活用し
   // 助動詞は、ましょ／ます や なかっ／ない のように語幹と語尾に割れても、境を置かない
   assert.equal(toReadingToken(conjugating('ましょ', '助動詞', '未然ウ接続', 'ます', 'マショ')).stemLength, undefined);
   assert.equal(toReadingToken(conjugating('なかっ', '助動詞', '連用タ接続', 'ない', 'ナカッ')).stemLength, undefined);
-  // 語幹と原形が先頭から食い違う（し／する、で／だ）
+  // 語幹と原形が先頭から食い違う（し／する、き／くる）
   assert.equal(toReadingToken(conjugating('し', '動詞', '連用形', 'する', 'シ')).stemLength, undefined);
-  assert.equal(toReadingToken(conjugating('で', '助動詞', '連用形', 'だ', 'デ')).stemLength, undefined);
+  assert.equal(toReadingToken(conjugating('き', '動詞', '連用形', 'くる', 'キ')).stemLength, undefined);
   // 活用しない品詞。形容動詞はIPADICが語幹（名詞）と助詞に分けるので、1語の内側には語幹と語尾の境が無い
   assert.equal(toReadingToken(conjugating('静か', '名詞', '*', '静か', 'シズカ')).stemLength, undefined);
   assert.equal(toReadingToken(conjugating('に', '助詞', '*', 'に', 'ニ')).stemLength, undefined);

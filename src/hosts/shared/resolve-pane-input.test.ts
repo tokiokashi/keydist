@@ -128,3 +128,22 @@ test('resolvePaneInput: 既定の物理配列が壊れていても配列対象�
   assert.notEqual(result.input.cascade.defaultShapeId.diagnostics[0]!.message, '');
   assert.doesNotMatch(result.input.cascade.defaultShapeId.diagnostics[0]!.message, /deleted-shape/);
 });
+
+test('resolvePaneInput: テキストが持つコンボを止める境を、記号を取り除いた評価に渡すテキストの位置へ写して渡す', () => {
+  const setup = setupFor('tk-onchoku');
+  const text = { ...resolvedTextOf('あ！はやく', 'ja'), comboBarriers: [4] };
+  const result = resolvePaneInput({ kind: 'setup', setupId: setup.id }, setupsMap(setup), CATALOG, EMPTY_SETTINGS_OVERRIDES, text);
+  assert.ok(result.ok);
+  if (!result.ok) return;
+  assert.equal(result.input.text, 'あはやく');
+  assert.deepEqual(result.input.comboBarriers, [3]);
+  const without = resolvePaneInput(
+    { kind: 'setup', setupId: setup.id },
+    setupsMap(setup),
+    CATALOG,
+    EMPTY_SETTINGS_OVERRIDES,
+    resolvedTextOf('あ！はやく', 'ja'),
+  );
+  assert.ok(without.ok);
+  if (without.ok) assert.deepEqual(without.input.comboBarriers, []);
+});
