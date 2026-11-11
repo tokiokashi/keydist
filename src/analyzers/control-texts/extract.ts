@@ -18,7 +18,7 @@ import { CONTROL_COLUMN_IDS, computeControlColumnValues, type ControlColumnId, t
 import { controlTextsOptions, DEFAULT_CONTROL_TEXTS_OPTIONS, type ControlTextsOptions } from './options.ts';
 
 /**
- * 対照テキストとの比較の抽出（定義は `docs/kana-chain-comparison.md`「対照テキストとの比較」）。
+ * 対照テキストとの比較の抽出（定義は`docs/kana-chain-comparison.md`「対照テキストとの比較」）。
  *
  * 距離モデルは変えない。メンバーの評価に渡したテキストから、順序破壊と一様ランダムの対照テキストを種ごとに作り、
  * メンバー自身の入力（配列・物理配列・指の割り当て・条件）のままTraceを生成して、実文と同じ関数（`computeControlColumnValues`）で測る。
@@ -145,7 +145,7 @@ function fixtureMembers(): readonly AnalyzerSetMember[] {
 
 const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
-/** engine（`engine/cache.ts` の `getSetExtraction`）が呼ぶ、Analyzer契約の実体。 */
+/** engine（`engine/cache.ts`の`getSetExtraction`）が呼ぶ、Analyzer契約の実体。 */
 export const controlTextsDefinition: SetAnalyzerDefinition<ControlTextsOptions, ControlTextsExtracted> = defineSetAnalyzer({
   id: 'control-texts',
   options: controlTextsOptions,

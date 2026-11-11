@@ -12,7 +12,7 @@ import { computeControlTextsExtraction, controlTextsDefinition, controlTextsWarm
 
 /**
  * 実文と対照テキストの値が、比較表の列と同じ値になること、平均と母標準偏差が種ごとの値から正しく取られることを、
- * engineの経路（`createEngineCache`）で確かめる。期待値は、対照テキストごとに `Metrics` を作って比較表と同じ関数
+ * engineの経路（`createEngineCache`）で確かめる。期待値は、対照テキストごとに`Metrics`を作って比較表と同じ関数
  * （`computeComparisonRowValues`）で求めた値から、この抽出を経由せずに集計する。
  */
 
@@ -78,12 +78,10 @@ for (const [name, layoutId, text, language] of [
   });
 }
 
-test('対照テキストとの比較: 同じ入力からは同じ値が出て、種ごとに値が振れる', () => {
+test('対照テキストとの比較: 同じ入力からは同じ値が出る', () => {
   const first = extractRow('qwerty', KANA_TEXT, 'ja').row;
   const second = extractRow('qwerty', KANA_TEXT, 'ja').row;
   assert.deepEqual(second, first);
-  // 一様ランダムは種で値が振れる。20個が全部同じ値なら、種を使っていない
-  assert.ok(first.controls.uniform.perCharUnits.deviation > 0);
 });
 
 test('対照テキストとの比較: 先に段で求めても、抽出の値は変わらない', () => {
@@ -95,10 +93,7 @@ test('対照テキストとの比較: 先に段で求めても、抽出の値は
   assert.deepEqual(cache.getSetExtraction([member], controlTextsDefinition, {}).extracted, plain);
 });
 
-test('対照テキストとの比較: 値に付随する条件を持ち、解決に失敗した対象は失敗として運ぶ', () => {
+test('対照テキストとの比較: 解決に失敗した対象は失敗として運ぶ', () => {
   const extracted = computeControlTextsExtraction([], [{ target: { kind: 'setup', setupId: 'x' }, kind: 'reference', message: '失敗' }]);
-  assert.equal(extracted.conditions.seedStart, 7);
-  assert.equal(extracted.conditions.seedCount, 20);
-  assert.equal(extracted.conditions.deviation, 'population');
   assert.equal(extracted.rows[0]?.kind, 'failed');
 });

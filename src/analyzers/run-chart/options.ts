@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import { defineOption, defineOptions, integerUrlCodec, picklistUrlCodec } from '#analyzers/options.ts';
+import { DEFAULT_SEED_START } from '#interpretation/segments.ts';
 import { DEFAULT_RUN_CHART_METRIC, RUN_CHART_METRIC_IDS, type RunChartMetricId } from './metric-catalog.ts';
 
 /**
@@ -39,7 +40,7 @@ export const DEFAULT_RUN_CHART_RANGE = 1;
 
 export const RUN_CHART_SEED_MIN = 0;
 export const RUN_CHART_SEED_MAX = 1_000_000_000;
-export const DEFAULT_RUN_CHART_SEED_START = 1;
+export const DEFAULT_RUN_CHART_SEED_START = DEFAULT_SEED_START;
 export const RUN_CHART_SEED_LABEL = 'ランダムの種の始まり';
 
 export const runChartOptions = defineOptions({

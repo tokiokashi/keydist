@@ -13,6 +13,9 @@ import { SPAN_METRIC_IDS, spanTotals, spanValue, type SpanIndex, type SpanMetric
 /** ランダムな区切りの種の数。設定にしない。 */
 export const SEGMENT_SEED_COUNT = 20;
 
+/** 種の始まりの値`s`の既定。Run Chartのランダムな区切り・生成文・対照テキストが、同じ種の組を使うための1か所の定義。 */
+export const DEFAULT_SEED_START = 1;
+
 /** 区間の長さの列。区切りが無ければテキスト全体の1区間。 */
 export function segmentLengths(boundaries: readonly number[], total: number): number[] {
   const lengths: number[] = [];

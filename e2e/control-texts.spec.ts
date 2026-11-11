@@ -27,13 +27,13 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-control-texts-table]')).toBeVisible({ timeout: 30_000 });
   });
 
-  test('対象ごとに実文と対照テキストの値が並び、条件の文に並べ替えて測った値であることと種の組が出る', { tag: PAGE_TAG }, async ({ page }) => {
+  test('対象ごとに実文と対照テキストの値が並び、条件の文に対照テキストで測った値であることと種の組が出る', { tag: PAGE_TAG }, async ({ page }) => {
     const table = feature(page).locator('[data-control-texts-table]');
     await expect(table.locator('tbody tr[data-control-texts-row="actual"]')).toHaveCount(2, { timeout: 60_000 });
     await expect(table.locator('tbody tr[data-control-texts-row="shuffled"]')).toHaveCount(2);
     await expect(table.locator('tbody tr[data-control-texts-row="uniform"]')).toHaveCount(2);
-    await expect(feature(page).locator('[data-control-texts-condition]')).toContainText('並べ替えて測った値');
-    await expect(feature(page).locator('[data-control-texts-condition]')).toContainText('種7〜26の20個');
+    await expect(feature(page).locator('[data-control-texts-condition]')).toContainText('対照テキストで測った値');
+    await expect(feature(page).locator('[data-control-texts-condition]')).toContainText('種1〜20の20個');
     // 実文は標準偏差を持たず、対照テキストは標準偏差の値を持つ
     const actual = table.locator('tbody tr[data-control-texts-row="actual"]').first();
     await expect(actual.locator('td[data-empty]')).toHaveCount(5);

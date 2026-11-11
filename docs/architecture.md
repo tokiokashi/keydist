@@ -352,7 +352,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **計算部**: 種の組と平均・母標準偏差は `interpretation/control-comparison.ts`（画面に依存しない純粋な関数）。対照テキストを作る関数は `interpretation/control-texts.ts`。Traceから値を取る関数は、比較表の列と同じ関数を使う `analyzers/comparison-column-values.ts` の `computeControlColumnValues`
 - **配線**: 抽出は `analyzers/control-texts/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/control-texts`。解析設定は持たない
 - **対照テキストのTraceは `TraceRequester` で頼む**（メンバーの配列・物理配列・指の割り当て・条件のまま、テキストだけを替える）。1配列あたり40本（順序破壊20・一様ランダム20）になるので、`warmup` で1本ずつの段に分け、結果はメンバーに覚えさせる
-- **条件の付随**: 対照テキストの値には、並べ替えて測った値であることと種の組を付ける。抽出の結果が `conditions` を持ち、画面は表の上の条件の文（`figcaption`。表と同じ `figure` に入れる）と行の名前に出す。表を選択してコピーしても、画面を撮っても、条件の文と行の名前が付いてくる。共有のリンクは対象と条件だけを運び、値は受け取った側が同じ定義で計算し直す
+- **条件の付随**: 対照テキストの値には、実文から作った対照テキストで測った値であることと種の組を付ける。抽出の結果が `conditions` を持ち、画面は表の上の条件の文（`figcaption`。表と同じ `figure` に入れる）と行の名前に出す。表を選択してコピーしても、画面を撮っても、条件の文と行の名前が付いてくる。共有のリンクは対象と条件だけを運び、値は受け取った側が同じ定義で計算し直す
 
 ### 箱ひげ図（文節ごとの1かな換算の移動距離の分布）
 

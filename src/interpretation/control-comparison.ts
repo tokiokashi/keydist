@@ -1,19 +1,20 @@
 import { CHAIN_SEED_COUNT } from './chain-comparison.ts';
 import { PRNG_NAME } from './prng.ts';
+import { DEFAULT_SEED_START } from './segments.ts';
 
 /**
  * 実文と対照テキスト（順序破壊・一様ランダム）を同じ条件で測った値を並べるための、種の組と集計の定義
- * （定義は `docs/kana-chain-comparison.md`「対照テキストとの比較」）。
+ * （定義は`docs/kana-chain-comparison.md`「対照テキストとの比較」）。
  * 測る側（Traceの生成と指標の計算）は呼び出し側が持ち、ここは測った値を集計するだけの純粋な関数にする。
  */
 
-/** 種の始まりの値 `s`。Run Chartの解析設定 `seedStart` の既定と同じ値にして、同じ種の組を使う。 */
-export const CONTROL_SEED_START = 7;
+/** 種の始まりの値`s`。Run Chartの解析設定`seedStart`の既定と同じ定義（`DEFAULT_SEED_START`）を使い、同じ種の組にする。 */
+export const CONTROL_SEED_START = DEFAULT_SEED_START;
 
 /** 種の数。生成文と対照テキストの数（`CHAIN_SEED_COUNT`）と同じ。 */
 export const CONTROL_SEED_COUNT = CHAIN_SEED_COUNT;
 
-/** 種の組 `s, s+1, …, s+19`。順序破壊と一様ランダムは同じ種の組で作る。 */
+/** 種の組`s, s+1, …, s+19`。順序破壊と一様ランダムは同じ種の組で作る。 */
 export function controlSeeds(start: number = CONTROL_SEED_START, count: number = CONTROL_SEED_COUNT): number[] {
   return Array.from({ length: count }, (_, offset) => start + offset);
 }
