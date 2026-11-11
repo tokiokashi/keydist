@@ -14,7 +14,7 @@ export const Route = createFileRoute('/analyzer/control-texts')({
       { title: `${CONTROL_TEXTS_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '評価に渡したテキストと、そこから作った対照テキストを、同じ配列・同じ条件で測った値を配列やSetupごとに並べます。',
+        content: '評価に渡したテキストから対照テキストを作り、2つを同じ配列・同じ条件で測った値を配列やSetupごとに並べます。',
       },
     ],
   }),
