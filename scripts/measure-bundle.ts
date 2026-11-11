@@ -77,7 +77,7 @@ export async function measureBundle(publicDir: string): Promise<Record<string, S
   if (worker.length !== 1) throw new Error(`engine-workerのチャンクが ${worker.length} 件ある（1件のはず）`);
   result['計算用Worker'] = await sizeOfAsset(`assets/${worker[0]}`);
   result['JavaScript全体'] = sum(await Promise.all(assets.filter((name) => name.endsWith('.js')).map((name) => sizeOfAsset(`assets/${name}`))));
-  result['CSS全体'] = sum(await Promise.all(assets.filter((name) => name.endsWith('.css')).map((name) => sizeOfAsset(`assets/${name}`))));
+  result.CSS全体 = sum(await Promise.all(assets.filter((name) => name.endsWith('.css')).map((name) => sizeOfAsset(`assets/${name}`))));
   return result;
 }
 

@@ -129,4 +129,4 @@ jobs:
           if [ -f "$PERF_OUT/bench-base-1.json" ] && [ -f "$PERF_OUT/bench-base-2.json" ]; then
             for f in "$PERF_OUT"/bench-base-*.json; do args+=(--bench-base "$f"); done
           fi
-          node --experimental-strip-types scripts/perf-report.ts "${args[@]}" >> "$GITHUB_STEP_SUMMARY"
+          node --experimental-strip-types scripts/perf-report.ts "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -103,8 +103,8 @@ function bundleSection(budgetPath: string, basePath: string | undefined, headPat
     const baseSize = base?.[name]?.gzip;
     const diff = baseSize === undefined ? '-' : `${signed(size.gzip - baseSize, 0, ' B')} (${percent(baseSize, size.gzip)})`;
     const exceeded = limit !== undefined && size.gzip > limit;
-    if (exceeded) over.push(`${name}: ${size.gzip} Bが上限の ${limit} Bを超えた`);
-    const ratio = limit === undefined ? '上限なし' : `${exceeded ? '❌ ' : ''}${((size.gzip / limit) * 100).toFixed(1)}%`;
+    if (exceeded) over.push(`${name}: ${size.gzip}Bが上限の${limit}Bを超えた`);
+    const ratio = limit === undefined ? '上限なし' : `${exceeded ? '超過 ' : ''}${((size.gzip / limit) * 100).toFixed(1)}%`;
     lines.push(
       `| ${name} | ${baseSize === undefined ? '-' : kib(baseSize)} | ${kib(size.gzip)} | ${diff} | ${limit === undefined ? '-' : kib(limit)} | ${ratio} |`,
     );
