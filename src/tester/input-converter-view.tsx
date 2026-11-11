@@ -742,17 +742,29 @@ export function InputConverterView({
     setLookupStepIndex(0);
   }, [layout.id, lookupQuery]);
 
+  // 手順を進めるのに使った認識の結果。次のactionのキーが同じでも、1回の押下の結果では1つしか進めない
+  const consumedRecognitionRef = useRef<readonly string[] | undefined>(undefined);
   useEffect(() => {
-    if (activeLookupAction === undefined || activeLookupAction.finalInRouteStep || session.recognitionKeys.length === 0) return;
+    if (activeLookupAction === undefined || session.recognitionKeys.length === 0) return;
+    if (consumedRecognitionRef.current === session.recognitionKeys) return;
+    // 次のstepの先頭が確定の打鍵なら、手前のstepの最後の打鍵を押した時点で確定の打鍵を示す。文字は確定の打鍵を押すまで保留されることがある
+    const nextAction = activeLookupGuideActions[activeLookupGuideIndex + 1];
+    if (activeLookupAction.finalInRouteStep && nextAction?.commit !== true) return;
     if (reverseLookupGuideActionMatchesKeys(activeLookupAction, session.recognitionKeys)) {
+      consumedRecognitionRef.current = session.recognitionKeys;
       setLookupStepIndex((current) => Math.min(activeLookupGuideActions.length - 1, current + 1));
     }
-  }, [activeLookupAction, activeLookupGuideActions.length, session.recognitionKeys]);
+  }, [activeLookupAction, activeLookupGuideActions, activeLookupGuideIndex, session.recognitionKeys]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recognitionKeysは文字が変わった時の値だけを読む。依存に入れると、押下のたびに文字から位置を求め直し、手順の中の進みが戻る
   useEffect(() => {
     if (activeLookupRoute === undefined || activeLookupGuideActions.length === 0) return;
-    setLookupStepIndex(reverseLookupGuideIndexForText(layout, activeLookupRoute, session.text));
-  }, [activeLookupGuideActions.length, activeLookupRoute, layout, session.text]);
+    const byText = reverseLookupGuideIndexForText(layout, activeLookupRoute, session.text);
+    // 確定の打鍵は文字を出さないので、文字が変わる押下（保留していた入力の確定）と同時に押された時は、確定の打鍵を押し終えた位置へ進める
+    const action = activeLookupGuideActions[byText];
+    const commitJustPressed = action?.commit === true && reverseLookupGuideActionMatchesKeys(action, session.recognitionKeys);
+    setLookupStepIndex(commitJustPressed ? Math.min(activeLookupGuideActions.length - 1, byText + 1) : byText);
+  }, [activeLookupGuideActions, activeLookupRoute, layout, session.text]);
 
   // layer guide panelはWorkspacePanelがdocked/floating切替時に丸ごとunmount/remountする
   // （portal化のため）。そのDOM再生成を検知してResizeObserverを張り直すのに、

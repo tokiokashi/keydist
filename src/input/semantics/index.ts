@@ -66,3 +66,13 @@ export {
   type TriggerRealizationPolicy,
   type TriggerRealizationResult,
 } from './trigger-realization.ts';
+
+export {
+  commitStrokeRulesEmpty,
+  commitStrokeRulesOf,
+  faceStrokeOf,
+  mayNeedCommitStroke,
+  needsCommitStroke,
+  type CommitStrokeRules,
+  type FaceStroke,
+} from './commit-stroke.ts';

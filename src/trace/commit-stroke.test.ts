@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { faceFromEntries, fromFaces, SINGLE_LAYER_ID, type Face, type Layout } from '#input/layouts/index.ts';
-import { compileSequenceInputAlternative } from '#input/semantics/index.ts';
+import { commitStrokeRulesOf, compileSequenceInputAlternative, needsCommitStroke } from '#input/semantics/index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { analyzeChains, DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
@@ -10,7 +10,6 @@ import { countBigramCombinations } from '#interpretation/bigram-combinations.ts'
 import { strokeOverheadSide } from '#interpretation/timing/stroke-structure.ts';
 import { playbackStrokeDisplay } from '#interpretation/timing/playback.ts';
 import { generateTrace, type Stroke, type TracePolicy } from './generate.ts';
-import { commitStrokeRulesOf, needsCommitStroke } from './commit-stroke.ts';
 
 const geometry = buildGeometry('row-staggered');
 const opts = (o: Partial<TracePolicy> = {}): TracePolicy => ({ windowSize: 3, sfbHomeCost: true, ...o });
