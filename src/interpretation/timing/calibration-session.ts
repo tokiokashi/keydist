@@ -1,6 +1,7 @@
 import {
   assignmentWithHomeKeys,
   buildGeometry,
+  isThumbKeyId,
   resolveKeyId,
   THUMB_KEY,
   type FingerAssignment,
@@ -8,6 +9,12 @@ import {
   type Geometry,
   type PhysicalShape,
 } from '#input/shapes/geometry.ts';
+import {
+  browserCodeLabel,
+  browserCodesOfKey,
+  EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+  type BrowserKeyBindingOverrides,
+} from '#input/shapes/browser-key-codes.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import {
   actionsPerSecondFromIntervals,
@@ -162,9 +169,20 @@ export function calibrationBasis(
   }
 }
 
-/** 測定の案内に出すキーの名前。配列の刻印が無いキーはキーidで出す。英字は大文字にする。右手の親指のキーはSpace。 */
-export function calibrationKeyLabel(legends: ReadonlyMap<string, string>, keyId: string): string {
-  if (resolveKeyId(keyId) === THUMB_KEY.RT) return 'Space';
+/**
+ * 測定の案内に出すキーの名前。配列の刻印が無いキーはキーidで出す。英字は大文字にする。
+ * 親指のキーは、`bindings`の対応で親指のキーに引ける`event.code`の名前（Space・変換など）を`/`でつないで出す。
+ * 引ける`event.code`が無い時は「割り当てなし」と出す。内部のキーid（`thumb-l`）は出さない。
+ */
+export function calibrationKeyLabel(
+  legends: ReadonlyMap<string, string>,
+  keyId: string,
+  bindings: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+): string {
+  if (isThumbKeyId(keyId)) {
+    const names = browserCodesOfKey(keyId, bindings).map(browserCodeLabel);
+    return names.length === 0 ? '割り当てなし' : names.join(' / ');
+  }
   const legend = legends.get(resolveKeyId(keyId));
   const label = legend !== undefined && legend.trim().length > 0 ? legend : keyId;
   return /^[a-z]$/i.test(label) ? label.toUpperCase() : label;
@@ -307,7 +325,7 @@ export function currentCalibrationTask(run: CalibrationRun): CalibrationTask | u
   return run.tasks[run.index];
 }
 
-/** 項目がSpace（右手の親指のキー）を打つか。打つ項目の間だけ、Spaceを測定の打鍵として受け付ける。 */
+/** 項目が右手の親指のキーを打つか。打つ項目の間だけ、親指のキー（Spaceを含む）を測定の打鍵として受け付ける。 */
 export function calibrationTaskAcceptsSpace(task: CalibrationTask | undefined): boolean {
   return task?.item.kind === 'simultaneous' && task.keys.some((key) => resolveKeyId(key) === THUMB_KEY.RT);
 }

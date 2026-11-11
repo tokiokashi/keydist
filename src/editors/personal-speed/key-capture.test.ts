@@ -5,6 +5,7 @@ import {
   captureCalibrationKeys,
   matchableKeyEvent,
   isCalibrationKeyPress,
+  isThumbKeyPress,
   isTypingTarget,
   swallowsPress,
   type KeyEventSource,
@@ -125,7 +126,7 @@ test('Spaceを受け付ける間だけ、Spaceの押下を渡し、押下と繰�
     (event) => {
       received.push(event.key);
     },
-    { acceptsSpace: () => accepts },
+    { acceptsThumbKeys: () => accepts },
   );
   assert.deepEqual(dispatch('keydown'), { prevented: 0, stopped: 0 });
   assert.deepEqual(dispatch('keyup'), { prevented: 0, stopped: 0 });
@@ -146,7 +147,7 @@ test('Spaceを受け付ける間も、修飾キーつきのSpaceは取らない'
     (event) => {
       received.push(event.key);
     },
-    { acceptsSpace: () => true },
+    { acceptsThumbKeys: () => true },
   );
   assert.deepEqual(dispatch('keydown', { ctrlKey: true }), { prevented: 0, stopped: 0 });
   assert.deepEqual(received, []);
@@ -154,7 +155,7 @@ test('Spaceを受け付ける間も、修飾キーつきのSpaceは取らない'
 
 test('Spaceを押したまま止めると、離した時の操作を1回だけ渡さず、その後は渡す', () => {
   const { source, listeners, dispatch } = typedSource();
-  const stop = captureCalibrationKeys(source, () => {}, { acceptsSpace: () => true });
+  const stop = captureCalibrationKeys(source, () => {}, { acceptsThumbKeys: () => true });
   dispatch('keydown');
   stop();
   assert.equal(listeners.keydown.size, 0);
@@ -165,7 +166,7 @@ test('Spaceを押したまま止めると、離した時の操作を1回だけ�
 
 test('Spaceを押していない時に止めても、離しの登録は残らない', () => {
   const { source, listeners } = typedSource();
-  const stop = captureCalibrationKeys(source, () => {}, { acceptsSpace: () => true });
+  const stop = captureCalibrationKeys(source, () => {}, { acceptsThumbKeys: () => true });
   stop();
   assert.equal(listeners.keydown.size + listeners.keyup.size, 0);
 });
@@ -289,4 +290,115 @@ test('文章を打つ測定の進行を通すと、次に打つキーがtabの�
   assert.equal(swallowsPress(afterTab.outcome.kind), false);
   // 次に打つキーがaの時のaは、渡さない
   assert.equal(swallowsPress(pressSentenceSessionKey(hit.session, a, 300, label).outcome.kind), true);
+});
+
+test('親指のキーを受け付ける間は、変換・無変換とSpaceの押下を渡し、押下と繰り返しと離しをブラウザの働きへ渡さない', () => {
+  const { source, dispatch } = typedSource();
+  const received: string[] = [];
+  captureCalibrationKeys(
+    source,
+    (event) => {
+      received.push(event.code ?? '');
+    },
+    { acceptsThumbKeys: () => true },
+  );
+  for (const [key, code] of [
+    ['Convert', 'Convert'],
+    ['NonConvert', 'NonConvert'],
+    [' ', 'Space'],
+  ]) {
+    assert.deepEqual(dispatch('keydown', { key, code }), { prevented: 1, stopped: 1 }, code);
+    assert.deepEqual(dispatch('keydown', { key, code, repeat: true }), { prevented: 1, stopped: 1 }, code);
+    assert.deepEqual(dispatch('keyup', { key, code }), { prevented: 1, stopped: 1 }, code);
+  }
+  assert.deepEqual(received, ['Convert', 'NonConvert', 'Space']);
+});
+
+test('親指のキーを受け付けない間は、変換・無変換の押下を取らず、ブラウザの働きへ渡す', () => {
+  const { source, dispatch } = typedSource();
+  const received: string[] = [];
+  captureCalibrationKeys(source, (event) => {
+    received.push(event.code ?? '');
+  });
+  assert.deepEqual(dispatch('keydown', { key: 'Convert', code: 'Convert' }), { prevented: 0, stopped: 0 });
+  assert.deepEqual(dispatch('keyup', { key: 'Convert', code: 'Convert' }), { prevented: 0, stopped: 0 });
+  assert.deepEqual(received, []);
+});
+
+test('Spaceを割り当てなしにした利用者のSpaceも、受け付ける間は止める', () => {
+  const { source, dispatch } = typedSource();
+  const received: string[] = [];
+  captureCalibrationKeys(
+    source,
+    (event) => {
+      received.push(event.code ?? '');
+    },
+    { acceptsThumbKeys: () => true, codeBindings: { Space: null } },
+  );
+  assert.deepEqual(dispatch('keydown'), { prevented: 1, stopped: 1 });
+  assert.deepEqual(received, ['Space']);
+});
+
+test('利用者が文字のキーを親指のキーに割り当てた時、そのキーの押下も受け付ける間は止める。割り当てなしのcodeは止めない', () => {
+  const { source, dispatch } = typedSource();
+  captureCalibrationKeys(source, () => {}, { acceptsThumbKeys: () => true, codeBindings: { KeyA: 'thumb-l', Convert: null } });
+  assert.deepEqual(dispatch('keydown', { key: 'a', code: 'KeyA' }), { prevented: 1, stopped: 1 });
+  assert.deepEqual(dispatch('keyup', { key: 'a', code: 'KeyA' }), { prevented: 1, stopped: 1 });
+  assert.deepEqual(dispatch('keydown', { key: 'Convert', code: 'Convert' }), { prevented: 0, stopped: 0 });
+});
+
+test('修飾キーつきと変換中の親指のキーは取らず、止めない', () => {
+  const { source, dispatch } = typedSource();
+  const received: string[] = [];
+  captureCalibrationKeys(
+    source,
+    (event) => {
+      received.push(event.code ?? '');
+    },
+    { acceptsThumbKeys: () => true },
+  );
+  assert.deepEqual(dispatch('keydown', { key: 'Convert', code: 'Convert', ctrlKey: true }), { prevented: 0, stopped: 0 });
+  assert.deepEqual(dispatch('keydown', { key: 'Process', code: 'Convert', isComposing: true }), { prevented: 0, stopped: 0 });
+  assert.deepEqual(received, []);
+  assert.equal(isThumbKeyPress(press('Convert', { code: 'Convert' })), true);
+  assert.equal(isThumbKeyPress(press('Convert', { code: 'Convert', isComposing: true })), false);
+  assert.equal(isThumbKeyPress(press('f', { code: 'KeyF' })), false);
+});
+
+test('押している親指のキーのidを、keydownから対のkeyupまでの間、押下と一緒に渡す', () => {
+  const { source, dispatch } = typedSource();
+  const heldAtPress: (readonly string[])[] = [];
+  captureCalibrationKeys(
+    source,
+    (_event, held) => {
+      heldAtPress.push(held);
+    },
+    { acceptsThumbKeys: () => true },
+  );
+  dispatch('keydown', { key: ' ', code: 'Space' });
+  // 押し続けて起こる繰り返しは、押下として渡さない
+  dispatch('keydown', { key: ' ', code: 'Space', repeat: true });
+  dispatch('keydown', { key: 'f', code: 'KeyF' });
+  dispatch('keydown', { key: 'j', code: 'KeyJ' });
+  dispatch('keyup', { key: ' ', code: 'Space' });
+  dispatch('keydown', { key: 'k', code: 'KeyK' });
+  // Spaceと変換は同じ親指のキー。片方を離しても、もう片方を押している間は押している
+  dispatch('keydown', { key: 'Convert', code: 'Convert' });
+  dispatch('keydown', { key: ' ', code: 'Space' });
+  dispatch('keyup', { key: ' ', code: 'Space' });
+  dispatch('keydown', { key: 'l', code: 'KeyL' });
+  assert.deepEqual(heldAtPress, [['thumb-r'], ['thumb-r'], ['thumb-r'], [], ['thumb-r'], ['thumb-r'], ['thumb-r']]);
+});
+
+test('親指のキーを押したまま止めると、離した時の操作を1回だけ渡さない', () => {
+  const { source, listeners, dispatch } = typedSource();
+  const stop = captureCalibrationKeys(source, () => {}, { acceptsThumbKeys: () => true });
+  dispatch('keydown', { key: 'Convert', code: 'Convert' });
+  dispatch('keydown', { key: ' ', code: 'Space' });
+  stop();
+  assert.equal(listeners.keydown.size, 0);
+  assert.deepEqual(dispatch('keyup', { key: 'Convert', code: 'Convert' }), { prevented: 1, stopped: 1 });
+  assert.deepEqual(dispatch('keyup', { key: ' ', code: 'Space' }), { prevented: 1, stopped: 1 });
+  assert.equal(listeners.keyup.size, 0);
+  assert.deepEqual(dispatch('keyup', { key: ' ', code: 'Space' }), { prevented: 0, stopped: 0 });
 });

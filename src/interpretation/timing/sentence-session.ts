@@ -1,4 +1,4 @@
-import { LEFT_COLUMN_KEYS } from '#input/shapes/geometry.ts';
+import { isThumbKeyId, LEFT_COLUMN_KEYS, resolveKeyId } from '#input/shapes/geometry.ts';
 import type { Stroke } from '#trace/generate.ts';
 import { calibrationKeyMatches } from './calibration.ts';
 import type { SentenceAnalysis, SentenceSample, SentenceSpellingSource, SentenceTap } from './sentence-measurement.ts';
@@ -32,11 +32,17 @@ function singleCharKey(keyId: string): boolean {
 }
 
 /**
- * 測定の打鍵として取れるキーか。取れるのは1文字のキーと、物理配列の左端の列のキー（CapsLock・Tab・半角/全角の位置。
- * `LEFT_COLUMN_KEYS`）で（`key-capture.ts`）、Space・Shiftなどの修飾キー・親指キー・名前を持たない追加のキーは取れない。
+ * 測定の打鍵として取れるキーか。取れるのは1文字のキー、物理配列の左端の列のキー（CapsLock・Tab・半角/全角の位置。
+ * `LEFT_COLUMN_KEYS`）、親指のキー（`thumb-l`・`thumb-r`）で（`key-capture.ts`）、
+ * 修飾キー・名前を持たない追加のキーは取れない。
  */
 function capturableKey(keyId: string): boolean {
-  return singleCharKey(keyId) || (LEFT_COLUMN_KEYS as readonly string[]).includes(keyId);
+  return singleCharKey(keyId) || (LEFT_COLUMN_KEYS as readonly string[]).includes(keyId) || isThumbKeyId(keyId);
+}
+
+/** 示す文の打つキーの列のどこかに親指のキーがあるか。ある時だけ、測定の間、親指のキーの押下を取る。 */
+export function sentenceUsesThumbKeys(plans: readonly SentencePlan[]): boolean {
+  return plans.some((plan) => plan.baseSteps.some((group) => group.some((step) => step.keys.some(isThumbKeyId))));
 }
 
 /** 打つキーの列を作るのに読むストロークの部分。 */
@@ -222,6 +228,11 @@ export interface SentenceKeyEvent {
   readonly code: string;
   /** Testerと同じ対応で`code`から引いたキーのid。引けなければ無い。 */
   readonly physicalKey?: string;
+  /**
+   * この押下が届いた時に押し続けている親指のキーのid。無ければ押し続けているものは無い。
+   * 文字のキーの押下が今のステップの押すキーに一致した時だけ読み、ステップの押すキーのうち、押し続けている親指のキーを押したものとみなす。
+   */
+  readonly heldThumbKeys?: readonly string[];
 }
 
 export type SentencePressOutcome =
@@ -241,7 +252,9 @@ export type SentencePressOutcome =
 /** 1本の綴りの進行が返す結果。`overflow`は、綴りを打ち終えた後の押下で、次の単位へ回す。 */
 type StepOutcome = SentencePressOutcome | { readonly kind: 'overflow' };
 
+/** 出力の文字の読み方の照合。親指のキーに引ける押下は、親指のキーとしてだけ扱うので、出力の文字に一致させない。 */
 function outputCharMatches(event: SentenceKeyEvent, char: string): boolean {
+  if (event.physicalKey !== undefined && isThumbKeyId(event.physicalKey)) return false;
   return event.key.toLowerCase() === char.toLowerCase();
 }
 
@@ -321,10 +334,18 @@ function pressStep(
     return { run, outcome: { kind: 'ignored' } };
   }
 
+  // 文字のキーの押下では、押し続けている親指のキーを、このステップで押したものとみなす。親指のキーの押下には使わない。
+  // 時刻は新しい押下だけが決めるので、押し続けは`firstAtMs`に関わらない。
+  const heldPressed =
+    pressMatch === undefined || isThumbKeyId(pressMatch) || event.heldThumbKeys === undefined
+      ? []
+      : remainingStepKeys(run).filter(
+          (key) => key !== pressMatch && isThumbKeyId(key) && event.heldThumbKeys?.some((held) => resolveKeyId(held) === resolveKeyId(key)) === true,
+        );
   const firstAtMs = run.firstAtMs ?? atMs;
   const advanced: StepRun = {
     ...run,
-    pressed: pressMatch === undefined ? run.pressed : [...run.pressed, pressMatch],
+    pressed: pressMatch === undefined ? run.pressed : [...run.pressed, pressMatch, ...heldPressed],
     outputCount: outputMatches ? run.outputCount + 1 : run.outputCount,
     pressReadingAlive: pressMatch !== undefined,
     outputReadingAlive: outputMatches,

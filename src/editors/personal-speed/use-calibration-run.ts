@@ -73,8 +73,8 @@ export function useCalibrationRun(options: CalibrationRunOptions): CalibrationRu
       },
       {
         codeBindings,
-        // 親指との同時押しを測る間だけSpaceを受け付ける。その間のSpaceは、スクロールとボタンの押下へ渡さない。
-        acceptsSpace: () => runRef.current !== undefined && calibrationTaskAcceptsSpace(currentCalibrationTask(runRef.current)),
+        // 親指との同時押しを測る間だけ、親指のキー（Spaceを含む）を受け付ける。その間の親指のキーは、スクロールとボタンの押下へ渡さない。
+        acceptsThumbKeys: () => runRef.current !== undefined && calibrationTaskAcceptsSpace(currentCalibrationTask(runRef.current)),
       },
     );
     return stop;

@@ -1,5 +1,5 @@
 import type { PhysicalKeyId } from '#input/semantics/types.ts';
-import { isPresetGeometryKind, presetGeometryStandard } from './geometry.ts';
+import { isPresetGeometryKind, presetGeometryStandard, resolveKeyId } from './geometry.ts';
 
 /** `KeyboardEvent.code`から物理キーのidへの、利用者が決めた対応。`null`はそのcodeを割り当てなしにする。 */
 export type BrowserKeyBindingOverrides = Readonly<Record<string, PhysicalKeyId | null>>;
@@ -63,4 +63,24 @@ export function browserKeyBindingsForShape(
     ...(isPresetGeometryKind(shapeId) && presetGeometryStandard(shapeId) === 'jis' ? JIS_BROWSER_BINDINGS : {}),
     ...userOverrides,
   };
+}
+
+/** 画面に出す`event.code`の名前。名前を決めていないcodeは、codeそのままにする。 */
+export function browserCodeLabel(code: string): string {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+  return { Convert: '変換', NonConvert: '無変換' }[code] ?? code;
+}
+
+/**
+ * `bindings`の対応で`keyId`に引ける`event.code`。標準の対応にあるcodeを先に、利用者の対応にだけあるcodeを後に、重複なく並べる。
+ * 割り当てなしにしたcodeと、別のキーに割り当て直したcodeは含まない。
+ */
+export function browserCodesOfKey(keyId: string, bindings: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES): string[] {
+  const target = resolveKeyId(keyId);
+  const codes = new Set([...Object.keys(CODE_TO_KEY), ...Object.keys(bindings)]);
+  return [...codes].filter((code) => {
+    const found = browserCodeToPhysicalKey(code, bindings);
+    return found !== undefined && resolveKeyId(found) === target;
+  });
 }

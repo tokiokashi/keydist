@@ -301,7 +301,7 @@ export const SENTENCE_LEARNING_ROUND_TEXT = '1回目は文を覚える回です�
 export function sentenceUnmeasurableText(reason: SentenceUnmeasurable): string {
   return reason === 'empty'
     ? 'この配列では、示す文を打つ打鍵の列を作れません。別の配列を選んでください。'
-    : 'この配列で示す文を打つには、親指キー・Space・修飾キーなど、1文字のキー以外が要るため、文章を打つ測定はできません。別の配列を選んでください。';
+    : 'この配列で示す文を打つには、修飾キーなど、文章を打つ測定で受け付けないキーが要るため、文章を打つ測定はできません。別の配列を選んでください。';
 }
 
 function countsText(measurement: SentenceMeasurement): string {
