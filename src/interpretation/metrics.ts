@@ -123,7 +123,7 @@ export interface Metrics {
   perCharUnits: number;
   /**
    * 入力1文字あたりのアクション（ステップ）数（仕様 §11.5）。
-   * コンボ・かな直接入力による打鍵数削減の効果はここに直接出る。
+   * コンボ・かな直接入力によるアクション数削減の効果はここに直接出る。
    */
   perCharSteps: number;
   /**

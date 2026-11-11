@@ -22,7 +22,7 @@ const opts = (o: Partial<TracePolicy> = {}): TracePolicy => ({
 const near = (a: number, b: number, msg?: string) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
 
 test('入力文字数はローマ字展開前の文字数になる', () => {
-  // 「し」はsiに展開されて2打鍵になるが、入力文字数は展開前の1
+  // 「し」はsiに展開されて2アクションになるが、入力文字数は展開前の1
   const t = generateTrace('し', qwerty, geometry, opts());
   assert.equal(t.strokes.length, 2);
   assert.equal(t.inputChars, 1);
@@ -81,15 +81,15 @@ test('スキップされた文字も入力文字数に数える', () => {
   assert.equal(t.inputChars, 3);
 });
 
-test('1文字で動く距離は打鍵数ではなく入力文字数を分母にする', () => {
-  // 「し」→ si（2打鍵、入力文字数は1）
+test('1文字で動く距離はアクション数ではなく入力文字数を分母にする', () => {
+  // 「し」→ si（2アクション、入力文字数は1）
   const m = computeMetrics(generateTrace('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);
   assert.equal(m.inputChars, 1);
   near(m.perCharUnits, m.totalUnits, '1文字あたり = 総距離 / 1');
   near(m.meanPerStroke, m.totalUnits / 2, '1アクションあたり = 総距離 / 2');
-  // 打鍵数を分母にすると、展開で打鍵が増えた分だけ小さく出てしまう
-  near(m.perCharUnits, m.meanPerStroke * 2, '打鍵数分母では展開の効果が消える');
+  // アクション数を分母にすると、展開でアクションが増えた分だけ小さく出てしまう
+  near(m.perCharUnits, m.meanPerStroke * 2, 'アクション数分母では展開の効果が消える');
 });
 
 test('コンボ相当（複数文字を1見出しで打つ）でも入力文字数は変わらない', () => {
@@ -111,12 +111,12 @@ test('コンボ相当（複数文字を1見出しで打つ）でも入力文字�
   assert.equal(split.strokes, 2);
   assert.equal(split.inputChars, 2);
 
-  // 打鍵数は減っても入力文字数は同じなので、削減の効果が1文字で動く距離に出る
+  // アクション数は減っても入力文字数は同じなので、削減の効果が1文字で動く距離に出る
   assert.ok(combo.perCharUnits <= split.perCharUnits + 1e-9);
 });
 
 test('1文字を打つアクション数はステップ数を入力文字数で割った値になる', () => {
-  // 「し」→ si（2打鍵、入力文字数は1）
+  // 「し」→ si（2アクション、入力文字数は1）
   const m = computeMetrics(generateTrace('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);
   assert.equal(m.inputChars, 1);
