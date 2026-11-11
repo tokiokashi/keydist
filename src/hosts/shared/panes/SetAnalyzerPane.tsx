@@ -180,6 +180,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
             {
               key,
               label: namedByKey.get(key)?.displayName ?? key,
+              shapeName: member.resolution.input.geometry.name,
               rows: traceConditionSummary(member.resolution.input.cascade, conditionNames, summaryScope),
             },
           ];

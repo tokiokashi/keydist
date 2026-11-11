@@ -34,7 +34,7 @@ export interface ScatterQuantityHelp {
 type ReadoutRow = { readonly label: string; readonly fullName: string; readonly x: number; readonly y: number; readonly values: ComparisonRowValues };
 
 /** 線の量の値。細い線を引く組で、その対象の線の量が値を持つ時だけ。 */
-function contourValue(row: ReadoutRow, contour: ScatterContour | undefined): number | undefined {
+export function contourValue(row: ReadoutRow, contour: ScatterContour | undefined): number | undefined {
   if (contour?.drawsLines !== true) return undefined;
   return contour.readoutAt(row.x, row.y, row.values[contour.column]);
 }

@@ -2,7 +2,7 @@ import { assignmentWithHomeKeys, buildGeometry, type FingerAssignment, type Geom
 import { describeShapeFallback } from '#input/setup/index.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { ExtractionAssets } from '#analyzers/contract.ts';
-import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
+import { withoutRomajiOnlyInputs, withRomaji } from '#input/layouts/types.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
@@ -185,7 +185,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   const romajiItem = cascade.romajiRuleId;
   const romajiRuleId = romajiItem.applicable ? romajiItem.value : null;
   // Setupが選んだコンボの組を、ローマ字の表を外す前の配列へ重ねる。重ねたコンボは`romajiOnly`なので、
-  // ローマ字を経ない打ち方では下の`withoutRomajiOnlyCombos`が外す
+  // ローマ字を経ない打ち方では下の`withoutRomajiOnlyInputs`が外す
   const setupForCombos = options.target.kind === 'setup' ? options.setups.get(options.target.setupId) : undefined;
   const comboOverlay = overlaySetupComboSet(
     setupForCombos,
@@ -194,12 +194,12 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
     options.comboSets,
   );
   const baseLayout = withoutRomaji(comboOverlay.layout);
-  // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）を外した配列を渡す。
+  // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）と、romajiOnlyOutputsの出力・刻印を外した配列を渡す。
   // Trace生成も同じ規則で外すが、ResolvedInput.layoutは表示側も読むので、ここで揃えておく。
   const layout =
     romajiRuleId !== null
       ? withRomaji(baseLayout, tableForRule(romajiRuleId, options.customRomajiRules ? [...options.customRomajiRules] : undefined))
-      : withoutRomajiOnlyCombos(baseLayout);
+      : withoutRomajiOnlyInputs(baseLayout);
 
   // 未知のidが渡ってきた時のfallback先は「その物理配列の既定」（defaultFingerAssignmentId）に揃える。
   // 上書きが無い時の既定値（settings-items.tsのdefaultValue）と同じ規則にすることで、

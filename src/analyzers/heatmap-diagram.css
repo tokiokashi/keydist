@@ -98,6 +98,14 @@
   white-space: nowrap;
 }
 
+/* 並べた対象が、Singleの対象と違う物理配列・条件。折り返して全部読めるようにする */
+.heatmap-set-diff {
+  margin: -0.2rem 0 0.35rem;
+  font-size: 0.75rem;
+  color: var(--accent-strong);
+  overflow-wrap: anywhere;
+}
+
 .heatmap-set-swatch {
   flex: none;
   width: 1.4rem;

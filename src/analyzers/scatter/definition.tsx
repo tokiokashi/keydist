@@ -14,6 +14,7 @@ import {
   type ComparisonColumnId,
 } from '../comparison-column-text.ts';
 import { CopyImageControl } from '../copy-image-control.tsx';
+import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
 import { SCATTER_PRESET_IDS, scatterPresetLabels, scatterAxisProblem, type ScatterAxisProblem } from './axes.ts';
@@ -27,6 +28,7 @@ import { SCATTER_PANE_META } from './pane-meta.ts';
 import { READING_NOTE, readoutAriaLabel, readoutParts, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 import { MARK_RADIUS, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH } from './plot-model.ts';
 import { readingTargets, stillPinned, togglePinned } from './reading.ts';
+import { scatterTableModel } from './table-model.ts';
 import './scatter-view.css';
 
 /**
@@ -120,12 +122,15 @@ interface FigureViewProps {
   readonly onHover: (targetKey: string) => void;
   readonly onLeave: (targetKey: string) => void;
   readonly onTogglePin: (targetKey: string) => void;
+  /** 値を表で読む表示にしているか。全ての図で同じ */
+  readonly asTable: boolean;
+  readonly onToggleTable: () => void;
   /** 図を画像にして書き出す手段（ホストが渡す）。無い画面ではボタンを出さない。 */
   readonly copyFigureImage: ((source: FigureImageSource) => Promise<boolean>) | undefined;
 }
 
 /** 組み合わせ1つぶんの図（見出し・知らせ・図・読み取り・描けない対象の一覧）。 */
-function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTogglePin, copyFigureImage }: FigureViewProps) {
+function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTogglePin, asTable, onToggleTable, copyFigureImage }: FigureViewProps) {
   const figureRef = useRef<HTMLElement>(null);
   const readoutsRef = useRef<HTMLDivElement>(null);
   // 画像に含めるのは、留めた点の読み取りだけ（ポインターを重ねた点の読み取りは含めない）
@@ -174,230 +179,243 @@ function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTog
               description={quantityHelp.description}
               help={{ ...quantityHelp.help, notes: [...quantityHelp.help.notes, READING_NOTE] }}
             />
-            {copyFigureImage === undefined ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
+            <FigureTableSwitch pressed={asTable} onToggle={onToggleTable} />
+            {copyFigureImage === undefined || asTable ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
           </div>
-          <figure ref={figureRef} className="scatter-figure">
-            <svg
-              viewBox={`${model.viewBoxX} 0 ${PLOT_WIDTH - model.viewBoxX} ${PLOT_HEIGHT}`}
-              aria-label={`${axisName(axes.x, language)}と${axisName(axes.y, language)}の散布図`}
-            >
-              <rect
-                className="scatter-frame"
-                x={PLOT_MARGIN.left}
-                y={PLOT_MARGIN.top}
-                width={PLOT_RIGHT - PLOT_MARGIN.left}
-                height={PLOT_BOTTOM - PLOT_MARGIN.top}
-              />
-              {model.yTicks.map((tick) => (
-                <g key={`y${tick.value}`}>
-                  <path
-                    className="scatter-tick-mark"
-                    d={`M${PLOT_MARGIN.left},${tick.position}h${TICK_LENGTH}M${PLOT_RIGHT},${tick.position}h${-TICK_LENGTH}`}
-                  />
-                  <text className="scatter-tick" x={PLOT_MARGIN.left - 8} y={tick.position + 4} textAnchor="end">
-                    {tick.text}
-                  </text>
-                </g>
-              ))}
-              {model.xTicks.map((tick) => (
-                <g key={`x${tick.value}`}>
-                  <path
-                    className="scatter-tick-mark"
-                    d={`M${tick.position},${PLOT_BOTTOM}v${-TICK_LENGTH}M${tick.position},${PLOT_MARGIN.top}v${TICK_LENGTH}`}
-                  />
-                  <text className="scatter-tick" x={tick.position} y={PLOT_BOTTOM + 16} textAnchor="middle">
-                    {tick.text}
-                  </text>
-                </g>
-              ))}
-              <text
-                className="scatter-axis-title"
-                x={0}
-                y={0}
-                transform={`translate(${model.yTitleX} ${(PLOT_MARGIN.top + PLOT_BOTTOM) / 2}) rotate(-90)`}
-                textAnchor="middle"
-                data-scatter-y-title=""
-              >
-                {axisPlotTitle(axes.y, language)}
-              </text>
-              <text
-                className="scatter-axis-title"
-                x={(PLOT_MARGIN.left + PLOT_RIGHT) / 2}
-                y={PLOT_HEIGHT - 8}
-                textAnchor="middle"
-                data-scatter-x-title=""
-              >
-                {axisPlotTitle(axes.x, language)}
-              </text>
-
-              {model.centerLines.map((line) => (
-                <line
-                  key={line.axis}
-                  className="scatter-center-line"
-                  data-scatter-center-line={line.axis}
-                  x1={line.axis === 'x' ? line.position : PLOT_MARGIN.left}
-                  x2={line.axis === 'x' ? line.position : PLOT_RIGHT}
-                  y1={line.axis === 'x' ? PLOT_MARGIN.top : line.position}
-                  y2={line.axis === 'x' ? PLOT_BOTTOM : line.position}
-                />
-              ))}
-
-              {model.contours.map((line) => (
-                <g key={line.level} className="scatter-contour" data-scatter-contour={line.level}>
-                  <path d={line.d} fill="none" />
-                  {line.labelAt === undefined ? null : (
-                    <text x={line.labelAt.x} y={line.labelAt.y} textAnchor="end">
-                      {line.text}
-                    </text>
-                  )}
-                </g>
-              ))}
-
-              {model.legend === undefined ? null : (
-                <g className="scatter-legend-box" data-scatter-legend-box="">
+          {asTable ? (
+            <FigureTable model={scatterTableModel(figure, language)} />
+          ) : (
+            <>
+              <figure ref={figureRef} className="scatter-figure">
+                <svg
+                  viewBox={`${model.viewBoxX} 0 ${PLOT_WIDTH - model.viewBoxX} ${PLOT_HEIGHT}`}
+                  aria-label={`${axisName(axes.x, language)}と${axisName(axes.y, language)}の散布図`}
+                >
                   <rect
-                    x={model.legend.x0}
-                    y={model.legend.y0}
-                    width={model.legend.x1 - model.legend.x0}
-                    height={model.legend.y1 - model.legend.y0}
-                    rx={3}
+                    className="scatter-frame"
+                    x={PLOT_MARGIN.left}
+                    y={PLOT_MARGIN.top}
+                    width={PLOT_RIGHT - PLOT_MARGIN.left}
+                    height={PLOT_BOTTOM - PLOT_MARGIN.top}
                   />
-                  {model.legend.rows.map((row, index) =>
-                    index < usedKinds.length ? (
-                      <g key={usedKinds[index]} data-scatter-legend={usedKinds[index]}>
-                        <g transform={`translate(${row.sampleX} ${row.y})`}>
-                          <KindMark kind={usedKinds[index]!} size={5} />
-                        </g>
-                        <text x={row.textX} y={row.y + 4}>
-                          {row.text}
+                  {model.yTicks.map((tick) => (
+                    <g key={`y${tick.value}`}>
+                      <path
+                        className="scatter-tick-mark"
+                        d={`M${PLOT_MARGIN.left},${tick.position}h${TICK_LENGTH}M${PLOT_RIGHT},${tick.position}h${-TICK_LENGTH}`}
+                      />
+                      <text className="scatter-tick" x={PLOT_MARGIN.left - 8} y={tick.position + 4} textAnchor="end">
+                        {tick.text}
+                      </text>
+                    </g>
+                  ))}
+                  {model.xTicks.map((tick) => (
+                    <g key={`x${tick.value}`}>
+                      <path
+                        className="scatter-tick-mark"
+                        d={`M${tick.position},${PLOT_BOTTOM}v${-TICK_LENGTH}M${tick.position},${PLOT_MARGIN.top}v${TICK_LENGTH}`}
+                      />
+                      <text className="scatter-tick" x={tick.position} y={PLOT_BOTTOM + 16} textAnchor="middle">
+                        {tick.text}
+                      </text>
+                    </g>
+                  ))}
+                  <text
+                    className="scatter-axis-title"
+                    x={0}
+                    y={0}
+                    transform={`translate(${model.yTitleX} ${(PLOT_MARGIN.top + PLOT_BOTTOM) / 2}) rotate(-90)`}
+                    textAnchor="middle"
+                    data-scatter-y-title=""
+                  >
+                    {axisPlotTitle(axes.y, language)}
+                  </text>
+                  <text
+                    className="scatter-axis-title"
+                    x={(PLOT_MARGIN.left + PLOT_RIGHT) / 2}
+                    y={PLOT_HEIGHT - 8}
+                    textAnchor="middle"
+                    data-scatter-x-title=""
+                  >
+                    {axisPlotTitle(axes.x, language)}
+                  </text>
+
+                  {model.centerLines.map((line) => (
+                    <line
+                      key={line.axis}
+                      className="scatter-center-line"
+                      data-scatter-center-line={line.axis}
+                      x1={line.axis === 'x' ? line.position : PLOT_MARGIN.left}
+                      x2={line.axis === 'x' ? line.position : PLOT_RIGHT}
+                      y1={line.axis === 'x' ? PLOT_MARGIN.top : line.position}
+                      y2={line.axis === 'x' ? PLOT_BOTTOM : line.position}
+                    />
+                  ))}
+
+                  {model.contours.map((line) => (
+                    <g key={line.level} className="scatter-contour" data-scatter-contour={line.level}>
+                      <path d={line.d} fill="none" />
+                      {line.labelAt === undefined ? null : (
+                        <text x={line.labelAt.x} y={line.labelAt.y} textAnchor="end">
+                          {line.text}
                         </text>
-                      </g>
-                    ) : (
-                      <g key="contour" data-scatter-legend-contour="">
-                        <line className="scatter-contour-sample" x1={row.sampleX - 10} x2={row.sampleX + 10} y1={row.y} y2={row.y} />
-                        <text x={row.textX} y={row.y + 4}>
-                          {row.text}
-                        </text>
-                      </g>
-                    ),
+                      )}
+                    </g>
+                  ))}
+
+                  {model.legend === undefined ? null : (
+                    <g className="scatter-legend-box" data-scatter-legend-box="">
+                      <rect
+                        x={model.legend.x0}
+                        y={model.legend.y0}
+                        width={model.legend.x1 - model.legend.x0}
+                        height={model.legend.y1 - model.legend.y0}
+                        rx={3}
+                      />
+                      {model.legend.rows.map((row, index) =>
+                        index < usedKinds.length ? (
+                          <g key={usedKinds[index]} data-scatter-legend={usedKinds[index]}>
+                            <g transform={`translate(${row.sampleX} ${row.y})`}>
+                              <KindMark kind={usedKinds[index]!} size={5} />
+                            </g>
+                            <text x={row.textX} y={row.y + 4}>
+                              {row.text}
+                            </text>
+                          </g>
+                        ) : (
+                          <g key="contour" data-scatter-legend-contour="">
+                            <line className="scatter-contour-sample" x1={row.sampleX - 10} x2={row.sampleX + 10} y1={row.y} y2={row.y} />
+                            <text x={row.textX} y={row.y + 4}>
+                              {row.text}
+                            </text>
+                          </g>
+                        ),
+                      )}
+                    </g>
                   )}
-                </g>
-              )}
 
-              {/* 名前の文字を押せるようにする透明な層。点の印より下に置き、名前の文字が別の点の印と重なる所では、点の印が操作を受ける。見える名前は、この層の上に点の印より手前で描く */}
-              {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
-              <g className="scatter-name-hits" aria-hidden="true">
-                {model.names.map((name) => (
-                  <g key={name.lines.map((line) => line.targetKey).join('\n')} textAnchor={name.anchor}>
-                    {name.lines.map((line) => (
-                      // biome-ignore lint/a11y/noStaticElementInteractions: ポインターだけの補助で、キーボードの操作と読み上げは点の要素が受け持つ
-                      <text
-                        key={line.targetKey}
-                        className="scatter-name-hit"
-                        data-scatter-name-hit-of={line.targetKey}
-                        x={line.x}
-                        y={line.y}
-                        onPointerEnter={() => onHover(line.targetKey)}
-                        onPointerLeave={() => onLeave(line.targetKey)}
-                        onClick={() => onTogglePin(line.targetKey)}
-                      >
-                        {line.text}
-                      </text>
+                  {/* 名前の文字を押せるようにする透明な層。点の印より下に置き、名前の文字が別の点の印と重なる所では、点の印が操作を受ける。見える名前は、この層の上に点の印より手前で描く */}
+                  {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
+                  <g className="scatter-name-hits" aria-hidden="true">
+                    {model.names.map((name) => (
+                      <g key={name.lines.map((line) => line.targetKey).join('\n')} textAnchor={name.anchor}>
+                        {name.lines.map((line) => (
+                          // biome-ignore lint/a11y/noStaticElementInteractions: ポインターだけの補助で、キーボードの操作と読み上げは点の要素が受け持つ
+                          <text
+                            key={line.targetKey}
+                            className="scatter-name-hit"
+                            data-scatter-name-hit-of={line.targetKey}
+                            x={line.x}
+                            y={line.y}
+                            onPointerEnter={() => onHover(line.targetKey)}
+                            onPointerLeave={() => onLeave(line.targetKey)}
+                            onClick={() => onTogglePin(line.targetKey)}
+                          >
+                            {line.text}
+                          </text>
+                        ))}
+                      </g>
                     ))}
                   </g>
-                ))}
-              </g>
 
-              {model.points.map((point) => {
-                const row = plottedByKey.get(point.targetKey)!;
-                const isPinned = pinned === point.targetKey;
-                return (
-                  // biome-ignore lint/a11y/useSemanticElements: SVGの<g>はbuttonに置き換えられない。押すと読み取りを留める操作の部品で、役割とキー操作をここで付けている
-                  <g
-                    key={point.targetKey}
-                    className="scatter-point"
-                    role="button"
-                    aria-pressed={isPinned}
-                    data-scatter-point={point.targetKey}
-                    data-kind={row.kind}
-                    data-active={hovered === point.targetKey || undefined}
-                    data-pinned={isPinned || undefined}
-                    tabIndex={0}
-                    aria-label={readoutAriaLabel({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
-                    style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
-                    onPointerEnter={() => onHover(point.targetKey)}
-                    onPointerLeave={() => onLeave(point.targetKey)}
-                    onFocus={() => onHover(point.targetKey)}
-                    onBlur={() => onLeave(point.targetKey)}
-                    onClick={() => onTogglePin(point.targetKey)}
-                    onKeyDown={(event) => {
-                      if (event.key !== 'Enter' && event.key !== ' ') return;
-                      event.preventDefault();
-                      onTogglePin(point.targetKey);
-                    }}
-                  >
-                    <circle className="scatter-point-ring" r={MARK_SIZE + 4} />
-                    <KindMark kind={row.kind} />
-                  </g>
-                );
-              })}
-
-              {/* 点の名前。印が重なる点の組は複数の点に属するので、点ごとの要素の外に描く。読み上げは点ごとの値の読み取りが担う。ポインターの操作は下の透明な層が受ける */}
-              {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
-              <g key={namesEpoch} className="scatter-names" data-settling={namesEpoch > 0 || undefined} aria-hidden="true">
-                {model.names.map((name) => (
-                  <g
-                    key={name.lines.map((line) => line.targetKey).join('\n')}
-                    className="scatter-name"
-                    data-scatter-name={name.lines.length}
-                    textAnchor={name.anchor}
-                  >
-                    {name.leader === undefined ? null : (
-                      <line className="scatter-leader" x1={name.leader.x1} y1={name.leader.y1} x2={name.leader.x2} y2={name.leader.y2} />
-                    )}
-                    {name.lines.map((line) => (
-                      <text
-                        key={line.targetKey}
-                        className="scatter-point-label"
-                        data-scatter-name-of={line.targetKey}
-                        data-active={hovered === line.targetKey || undefined}
-                        data-pinned={pinned === line.targetKey || undefined}
-                        x={line.x}
-                        y={line.y}
+                  {model.points.map((point) => {
+                    const row = plottedByKey.get(point.targetKey)!;
+                    const isPinned = pinned === point.targetKey;
+                    return (
+                      // biome-ignore lint/a11y/useSemanticElements: SVGの<g>はbuttonに置き換えられない。押すと読み取りを留める操作の部品で、役割とキー操作をここで付けている
+                      <g
+                        key={point.targetKey}
+                        className="scatter-point"
+                        role="button"
+                        aria-pressed={isPinned}
+                        data-scatter-point={point.targetKey}
+                        data-kind={row.kind}
+                        data-active={hovered === point.targetKey || undefined}
+                        data-pinned={isPinned || undefined}
+                        tabIndex={0}
+                        aria-label={readoutAriaLabel({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
+                        style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
+                        onPointerEnter={() => onHover(point.targetKey)}
+                        onPointerLeave={() => onLeave(point.targetKey)}
+                        onFocus={() => onHover(point.targetKey)}
+                        onBlur={() => onLeave(point.targetKey)}
+                        onClick={() => onTogglePin(point.targetKey)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return;
+                          event.preventDefault();
+                          onTogglePin(point.targetKey);
+                        }}
                       >
-                        {line.text}
-                      </text>
+                        <circle className="scatter-point-ring" r={MARK_SIZE + 4} />
+                        <KindMark kind={row.kind} />
+                      </g>
+                    );
+                  })}
+
+                  {/* 点の名前。印が重なる点の組は複数の点に属するので、点ごとの要素の外に描く。読み上げは点ごとの値の読み取りが担う。ポインターの操作は下の透明な層が受ける */}
+                  {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
+                  <g key={namesEpoch} className="scatter-names" data-settling={namesEpoch > 0 || undefined} aria-hidden="true">
+                    {model.names.map((name) => (
+                      <g
+                        key={name.lines.map((line) => line.targetKey).join('\n')}
+                        className="scatter-name"
+                        data-scatter-name={name.lines.length}
+                        textAnchor={name.anchor}
+                      >
+                        {name.leader === undefined ? null : (
+                          <line className="scatter-leader" x1={name.leader.x1} y1={name.leader.y1} x2={name.leader.x2} y2={name.leader.y2} />
+                        )}
+                        {name.lines.map((line) => (
+                          <text
+                            key={line.targetKey}
+                            className="scatter-point-label"
+                            data-scatter-name-of={line.targetKey}
+                            data-active={hovered === line.targetKey || undefined}
+                            data-pinned={pinned === line.targetKey || undefined}
+                            x={line.x}
+                            y={line.y}
+                          >
+                            {line.text}
+                          </text>
+                        ))}
+                      </g>
                     ))}
                   </g>
-                ))}
-              </g>
-            </svg>
-            <figcaption className="scatter-caption" data-scatter-caption="">
-              {scatterCaption(axes, language)}
-            </figcaption>
-          </figure>
-          <div ref={readoutsRef} className="scatter-readouts" data-scatter-readouts="" data-pinned={pinned !== undefined || undefined} aria-live="off">
-            {shownReadouts.map(({ role, key, parts }) => (
-              <p key={role} className="scatter-readout" data-scatter-readout={role} data-scatter-readout-of={key}>
-                {pinned === undefined ? null : <span className="scatter-readout-mark" aria-hidden="true" />}
-                <span className="scatter-readout-text">
-                  {parts.name}
-                  {'　'}
-                  <span className="scatter-readout-nowrap" data-scatter-readout-coordinates="">
-                    {parts.coordinates}
-                  </span>
-                  {parts.contour === undefined ? null : (
-                    <>
+                </svg>
+                <figcaption className="scatter-caption" data-scatter-caption="">
+                  {scatterCaption(axes, language)}
+                </figcaption>
+              </figure>
+              <div
+                ref={readoutsRef}
+                className="scatter-readouts"
+                data-scatter-readouts=""
+                data-pinned={pinned !== undefined || undefined}
+                aria-live="off"
+              >
+                {shownReadouts.map(({ role, key, parts }) => (
+                  <p key={role} className="scatter-readout" data-scatter-readout={role} data-scatter-readout-of={key}>
+                    {pinned === undefined ? null : <span className="scatter-readout-mark" aria-hidden="true" />}
+                    <span className="scatter-readout-text">
+                      {parts.name}
                       {'　'}
-                      <span className="scatter-readout-nowrap" data-scatter-readout-contour="">
-                        {parts.contour}
+                      <span className="scatter-readout-nowrap" data-scatter-readout-coordinates="">
+                        {parts.coordinates}
                       </span>
-                    </>
-                  )}
-                </span>
-              </p>
-            ))}
-          </div>
+                      {parts.contour === undefined ? null : (
+                        <>
+                          {'　'}
+                          <span className="scatter-readout-nowrap" data-scatter-readout-contour="">
+                            {parts.contour}
+                          </span>
+                        </>
+                      )}
+                    </span>
+                  </p>
+                ))}
+              </div>
+            </>
+          )}
         </>
       ) : null}
 
@@ -428,6 +446,8 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
   const width = useElementWidth(gridRef);
   const [hoveredKey, setHoveredKey] = useState<string | undefined>(undefined);
   const [pinnedKey, setPinnedKey] = useState<string | undefined>(undefined);
+  /** 図の値を表で読む表示にしているか。保存しない */
+  const [asTable, setAsTable] = useState(false);
 
   const slots = useMemo(
     () =>
@@ -478,6 +498,8 @@ export function ScatterBody({ extracted, order, rowContext, options, copyFigureI
               figure={slot.figure}
               language={language}
               copyFigureImage={copyFigureImage}
+              asTable={asTable}
+              onToggleTable={() => setAsTable((current) => !current)}
               pinned={reading.pinned}
               hovered={reading.hovered}
               onHover={setHoveredKey}
