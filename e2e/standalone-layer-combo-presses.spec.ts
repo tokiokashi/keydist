@@ -29,4 +29,6 @@ test('コンボを持つ配列: 表にコンボの行が出て、押下数の和
   const presses = await table(page).locator('tbody tr td:nth-child(2)').allTextContents();
   const total = await table(page).locator('tfoot td:nth-child(2)').textContent();
   expect(presses.reduce((sum, text) => sum + Number(text), 0)).toBe(Number(total));
+  // 切り替えのキーを使った打鍵の表も出る
+  await expect(feature(page).locator('[data-trigger-participation-table]')).toBeVisible();
 });
