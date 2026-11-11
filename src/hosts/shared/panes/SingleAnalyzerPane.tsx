@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
 import type { SegmentationStatus, SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
-import { conditionHeaderInfoFromResolvedInput, traceConditionSummary, type ConditionSummaryScope } from '../condition-summary.ts';
+import { conditionHeaderInfoFromResolvedInput, differencesFromBase, traceConditionSummary, type ConditionSummaryScope } from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
@@ -149,17 +149,33 @@ export function SingleAnalyzerPane<Options, Extracted>({
     ];
     return new Map(nameTargets(sources).map((item) => [item.key, item] as const));
   }, [besideMembers, target, resolution, setupsById, setupNumbers, catalog.setupCatalog, summaryScope]);
+  // 並べた対象のうち、Singleの対象と物理配列・条件が違うものの、違う部分。名前に入らない違いをhoverなしで読めるようにする
+  const besideDifferences = useMemo(() => {
+    const map = new Map<string, readonly string[]>();
+    if (!resolution.ok) return map;
+    const base = { shapeName: resolution.input.geometry.name, rows: traceConditionSummary(resolution.input.cascade, catalog.setupCatalog, summaryScope) };
+    for (const member of besideMembers) {
+      if (!member.resolution.ok) continue;
+      const other = {
+        shapeName: member.resolution.input.geometry.name,
+        rows: traceConditionSummary(member.resolution.input.cascade, catalog.setupCatalog, summaryScope),
+      };
+      map.set(member.key, differencesFromBase(base, other));
+    }
+    return map;
+  }, [besideMembers, resolution, catalog.setupCatalog, summaryScope]);
   const setTargetFigures = useMemo(
     (): readonly SetTargetFigure<Extracted>[] =>
       besideMembers.map((member) => ({
         key: member.key,
         label: besideNamed.get(member.key)?.displayName ?? member.key,
         fullName: besideNamed.get(member.key)?.fullName ?? '',
+        differences: besideDifferences.get(member.key) ?? [],
         color: setSelection.colorByKey.get(member.key),
         mark: setSelection.markByKey.get(member.key),
         state: setTargetFigureState(member.resolution, besideExtractions.get(member.key)),
       })),
-    [besideMembers, besideNamed, setSelection.colorByKey, setSelection.markByKey, besideExtractions],
+    [besideMembers, besideNamed, besideDifferences, setSelection.colorByKey, setSelection.markByKey, besideExtractions],
   );
 
   const onSetTargetsChange = setSource?.onTargetsChange;

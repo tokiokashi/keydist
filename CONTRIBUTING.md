@@ -357,6 +357,16 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 - すべての応答に `X-Robots-Tag: noindex` を付け、検索エンジンに載せない
 - リポジトリのSecretsに `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` が無い間は、配信せずに成功で終わる
 
+## 性能の予算
+
+`perf.yml` が、PRごとにベース（PRのbase）とheadを同じjobの中でビルドし、計算の時間とバンドルサイズの差分をjob summaryに出す。
+
+- 計算の時間（`scripts/bench-engine.ts`）: 既定の日本語テキストと英文サンプルを、代表的なSetupでTrace生成・解釈・主要な抽出に通した時間。漢字を読みに直す段は時間に入れない。ベースとheadを交互に2回ずつ測り、最小値を比べる。報告だけで、失敗にしない。共有のランナーは時間がばらつくので、ばらつきを見てから閾値を決める
+- バンドルサイズ（`scripts/measure-bundle.ts`）: 事前描画したページが最初に読み込むJavaScriptとCSS、計算用Worker、公開物全体のgzipサイズ。headが `scripts/bundle-budget.json` の上限を超えたらjobが失敗する
+- 上限は、導入時のgzipサイズの1.1倍を1000 byte単位に切り上げた値。意図した増加で超える時は、同じPRで上限を引き上げ、理由をPR本文に書く
+- 手元で測る時は、`npm run build` の後に `node --experimental-strip-types scripts/measure-bundle.ts --out <json>`、`node --expose-gc --experimental-strip-types scripts/bench-engine.ts --out <json> --texts-file <json>` を回す。差分の表は `scripts/perf-report.ts` が作る
+- 計算をWeb Workerへ移す基準は `docs/architecture.md` の「依存の規則」にある
+
 ## テスト
 
 `node --test` を使う。unit test は主対象のソース隣へ `src/**/*.test.ts` として置く。`test/*.test.ts` には architecture・commit-msg などリポジトリ横断の検査だけを置き、fixture は `test/fixtures/` に置く。
