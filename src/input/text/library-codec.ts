@@ -11,6 +11,7 @@ import {
 } from '#input/codec/index.ts';
 import { isCorrectableSurface, isCorrectionReading, type ReadingCorrections } from './reading.ts';
 import type { TextLibrary, UserText } from './library.ts';
+import { isWordCorrection, sameWordAnchor, sortedWordCorrections, type WordReadingCorrection, type WordReadingCorrections } from './word-reading.ts';
 
 /**
  * `TextLibrary`（ユーザーテキストの手持ち）のcodec。`setup/codec.ts`の
@@ -39,7 +40,15 @@ const requiredFieldsSchema = v.looseObject({
   text: v.string(),
 });
 
-const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text', 'languageOverride', 'unseen', 'readingCorrections']);
+const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set([
+  'id',
+  'name',
+  'text',
+  'languageOverride',
+  'unseen',
+  'readingCorrections',
+  'wordReadingCorrections',
+]);
 
 /**
  * 読みの直しを1項目ずつ読む。表記が漢字を含まない・読みが打てる文字（ひらがなと長音）でない項目は、
@@ -60,6 +69,56 @@ function decodeReadingCorrections(raw: unknown, path: string, diagnostics: Codec
     corrections[surface] = reading;
   }
   return Object.keys(corrections).length === 0 ? undefined : corrections;
+}
+
+/**
+ * 語ごとの読みの直しを1項目ずつ読む。形の違う項目・表記が漢字を含まない項目・読みが打てる文字でない項目・前後の文字が長すぎる項目は、
+ * 項目だけを診断付きで捨てる。同じ語の指定の項目が重なる時は、先に読んだ項目を残す。
+ */
+export function decodeWordReadingCorrections(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): WordReadingCorrections | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) {
+    diagnostics.push({ path, message: '語ごとの読みの直しの形が違うため捨てました' });
+    return undefined;
+  }
+  const kept: WordReadingCorrection[] = [];
+  raw.forEach((candidate, index) => {
+    if (!isWordCorrection(candidate)) {
+      diagnostics.push({ path: `${path}[${index}]`, message: '語ごとの読みの直しとして読めない項目を捨てました' });
+      return;
+    }
+    const entry: WordReadingCorrection = {
+      surface: candidate.surface,
+      order: candidate.order,
+      before: candidate.before,
+      after: candidate.after,
+      reading: candidate.reading,
+    };
+    if (kept.some((other) => sameWordAnchor(other, entry))) {
+      diagnostics.push({ path: `${path}[${index}]`, message: '同じ語を指す語ごとの読みの直しが重なるため、後の項目を捨てました' });
+      return;
+    }
+    kept.push(entry);
+  });
+  return kept.length === 0 ? undefined : sortedWordCorrections(kept);
+}
+
+export function decodeBuiltinWordReadingCorrections(
+  raw: unknown,
+  path: string,
+  diagnostics: CodecDiagnostic[],
+): Record<string, WordReadingCorrections> | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) {
+    diagnostics.push({ path, message: '組み込みのテキストの語ごとの読みの直しの形が違うため捨てました' });
+    return undefined;
+  }
+  const result: Record<string, WordReadingCorrections> = {};
+  for (const [id, entry] of Object.entries(raw)) {
+    const corrections = decodeWordReadingCorrections(entry, `${path}.${id}`, diagnostics);
+    if (corrections !== undefined) result[id] = corrections;
+  }
+  return Object.keys(result).length === 0 ? undefined : result;
 }
 
 export function decodeBuiltinReadingCorrections(
@@ -116,6 +175,12 @@ export function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDi
       diagnostics,
     );
 
+    const wordReadingCorrections = decodeWordReadingCorrections(
+      isRecord(candidate) ? candidate.wordReadingCorrections : undefined,
+      `${elementPath}.wordReadingCorrections`,
+      diagnostics,
+    );
+
     texts.push({
       id: decoded.id,
       name: decoded.name,
@@ -123,6 +188,7 @@ export function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDi
       ...(languageOverride === undefined ? {} : { languageOverride }),
       ...(unseen === undefined ? {} : { unseen }),
       ...(readingCorrections === undefined ? {} : { readingCorrections }),
+      ...(wordReadingCorrections === undefined ? {} : { wordReadingCorrections }),
     });
   });
   return texts;
@@ -133,13 +199,20 @@ export const TEXT_LIBRARY_CODEC: AssetCodec<TextLibrary> = defineAssetCodec<Text
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
     const builtinReadingCorrections = decodeBuiltinReadingCorrections(payload.builtinReadingCorrections, 'builtinReadingCorrections', diagnostics);
+    const builtinWordReadingCorrections = decodeBuiltinWordReadingCorrections(
+      payload.builtinWordReadingCorrections,
+      'builtinWordReadingCorrections',
+      diagnostics,
+    );
     return {
       texts: decodeUserTexts(payload.texts, 'texts', diagnostics),
       ...(builtinReadingCorrections === undefined ? {} : { builtinReadingCorrections }),
+      ...(builtinWordReadingCorrections === undefined ? {} : { builtinWordReadingCorrections }),
     };
   },
   encodePayload: (value) => ({
     texts: value.texts.map((text) => ({ ...text })),
     ...(value.builtinReadingCorrections === undefined ? {} : { builtinReadingCorrections: value.builtinReadingCorrections }),
+    ...(value.builtinWordReadingCorrections === undefined ? {} : { builtinWordReadingCorrections: value.builtinWordReadingCorrections }),
   }),
 });

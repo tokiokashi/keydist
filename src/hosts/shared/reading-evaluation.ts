@@ -3,12 +3,14 @@ import {
   convertToReading,
   listReadingWords,
   needsReading,
+  NO_WORD_READINGS,
   type NotationExcess,
   type ReadingConditions,
   type ReadingCorrections,
   type ReadingToken,
   type ReadingWord,
 } from '#input/text/reading.ts';
+import { NO_RESOLVED_WORD_CORRECTIONS, resolveWordCorrections, type ResolvedWordCorrections } from '#input/text/word-reading.ts';
 import type { ReadingCandidateTable } from '#input/text/reading-candidates.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 
@@ -84,6 +86,8 @@ export interface SegmentationBasis {
   readonly sourceText: string;
   readonly tokens: readonly ReadingToken[];
   readonly corrections: ReadingCorrections;
+  /** 語ごとの直しを当てた語の番号（語の列の添字）→ 読み */
+  readonly wordReadings: ReadonlyMap<number, string>;
   readonly origin: SegmentationOrigin;
 }
 
@@ -114,6 +118,8 @@ export interface ReadingEvaluation {
   readonly state: PaneReadingState;
   /** 読みを見て直せる語（表記ごと）。読みに直した時だけ持つ */
   readonly words: readonly ReadingWord[];
+  /** 語ごとの直しの当て方の結果。読みに直した時だけ持つ（辞書を読み込めない時と読み込み中は、語の列が無いので空） */
+  readonly wordCorrections: ResolvedWordCorrections;
 }
 
 /**
@@ -121,8 +127,9 @@ export interface ReadingEvaluation {
  * 結果がまだ無い（`outcome` がundefined）間は `loading`。評価に渡すテキストは原文のままだが、ペインは数値を出さない。
  */
 export function evaluationText(resolved: ResolvedText, source: ReadingSource, outcome: ReadingOutcome | undefined): ReadingEvaluation {
-  if (!needsReading(resolved.text, resolved.language)) return { text: resolved, state: { kind: 'none' }, words: [] };
-  if (outcome === undefined) return { text: resolved, state: { kind: 'loading' }, words: [] };
+  if (!needsReading(resolved.text, resolved.language))
+    return { text: resolved, state: { kind: 'none' }, words: [], wordCorrections: NO_RESOLVED_WORD_CORRECTIONS };
+  if (outcome === undefined) return { text: resolved, state: { kind: 'loading' }, words: [], wordCorrections: NO_RESOLVED_WORD_CORRECTIONS };
   if (outcome.kind === 'failed') {
     // 語の列が無いので直しを当てない
     return {
@@ -132,19 +139,34 @@ export function evaluationText(resolved: ResolvedText, source: ReadingSource, ou
       },
       state: { kind: 'failed' },
       words: [],
+      wordCorrections: NO_RESOLVED_WORD_CORRECTIONS,
     };
   }
-  const conversion = convertToReading(outcome.sourceText, outcome.tokens, resolved.readingCorrections);
+  const wordCorrections = resolveWordCorrections(outcome.sourceText, outcome.tokens, resolved.wordReadingCorrections);
+  const conversion = convertToReading(outcome.sourceText, outcome.tokens, resolved.readingCorrections, wordCorrections.readings);
   return {
     text: {
       ...resolved,
       text: conversion.text,
-      reading: { status: 'converted', ...source.conditions, corrections: conversion.appliedCorrections },
+      reading: {
+        status: 'converted',
+        ...source.conditions,
+        corrections: conversion.appliedCorrections,
+        // 語ごとの直しが当たらなかった数値は項目を持たない（直していない数値のスナップショットとキャッシュのキーを変えない）
+        ...(wordCorrections.applied.length === 0 ? {} : { wordCorrections: wordCorrections.applied }),
+      },
       notationExcess: conversion.notationExcess,
-      segmentationBasis: { sourceText: outcome.sourceText, tokens: outcome.tokens, corrections: resolved.readingCorrections, origin: 'dictionary' },
+      segmentationBasis: {
+        sourceText: outcome.sourceText,
+        tokens: outcome.tokens,
+        corrections: resolved.readingCorrections,
+        wordReadings: wordCorrections.readings,
+        origin: 'dictionary',
+      },
     },
     state: { kind: 'converted' },
     words: listReadingWords(outcome.tokens),
+    wordCorrections,
   };
 }
 
@@ -154,6 +176,12 @@ export interface ConditionProvenanceItem {
   readonly value: string;
 }
 
+/** 直した表記の数と語の数の言い方。0の方は言わない（「2表記と3語」「2表記」「3語」）。 */
+export function correctionCountText(surfaces: number, words: number): string {
+  const parts = [...(surfaces > 0 ? [`${surfaces}表記`] : []), ...(words > 0 ? [`${words}語`] : [])];
+  return parts.join('と');
+}
+
 /** 読みの変換を、条件の要約に出す項目にする。画面にはライブラリ名を出さず、辞書の名前と版だけを出す。 */
 export function readingProvenance(reading: ReadingConditions | null | undefined): readonly ConditionProvenanceItem[] {
   if (reading === null || reading === undefined) return [];
@@ -161,7 +189,9 @@ export function readingProvenance(reading: ReadingConditions | null | undefined)
   const items: ConditionProvenanceItem[] = [
     { label: '読みの辞書', value: reading.status === 'converted' ? dictionary : `${dictionary}を読み込めず、漢字は読みに直していません` },
   ];
-  if (reading.corrections.length > 0) items.push({ label: '読みの直し', value: `${reading.corrections.length}表記の読みを直して測定` });
+  const words = reading.wordCorrections?.length ?? 0;
+  if (reading.corrections.length > 0 || words > 0)
+    items.push({ label: '読みの直し', value: `${correctionCountText(reading.corrections.length, words)}の読みを直して測定` });
   return items;
 }
 
@@ -177,6 +207,7 @@ export function segmentationBasisOf(text: PaneText): SegmentationBasis | undefin
     sourceText: text.text,
     tokens: [],
     corrections: {},
+    wordReadings: NO_WORD_READINGS,
     origin: text.reading?.status === 'unavailable' ? 'dictionary-unavailable' : 'kana-only',
   };
 }

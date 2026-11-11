@@ -12,6 +12,17 @@ const FLOW_WIDTH_BASE = 0.25;
 const FLOW_WIDTH_RANGE = 3.2;
 
 /**
+ * 線の縁取りの色。値は、テーマの変数 `--viz-flow-casing`。
+ * ヒートマップの塗りは明るさも色相も幅広く、明るさの近い線の3色のどれもが塗りと重なる所が出る。
+ * 線の周りを暗い色で縁取ると、塗りに依らず、線と周りとの明るさの差が保たれる。
+ * Bigram Flowの図は地が暗いので縁取らない。
+ */
+export const FLOW_CASING_COLOR = 'var(--viz-flow-casing)';
+
+/** 縁取りが線の両側それぞれに出る太さ（描画の座標系）。縁取りの線幅は、線幅にこの2倍を足した値。 */
+export const FLOW_CASING_WIDTH = 0.3;
+
+/**
  * 持ち上げる量の限界を、Bigram Flowの図の座標系に対する比で表す。
  * ヒートマップの図はキー1個分が30、Bigram Flowの図はキー1個分が58。
  */

@@ -579,6 +579,36 @@ export function buildFaceLayout(id: string, name: string, body: UserFaceBody): L
   }
 }
 
+const isSingleCodePoint = (text: string): boolean => [...text].length === 1;
+const isAsciiLetter = (text: string): boolean => /^[A-Za-z]$/.test(text);
+
+/**
+ * Shiftのキーだけが切り替えのキーの面（左右どちらも）が置いた記号を、記号のShiftの組（作者の組）にする。
+ * 返す表は、基底の面（切り替えのキーを持たない面）の出力 -> Shiftの面の記号。
+ * 基底の出力が英字のキーと、Shiftの面の出力が英字・複数文字のキーは入れない（英字は大文字にする経路が決める）。
+ * 同じ基底の出力にShiftの面が別の記号を置いている時は、どちらを作者の組にするか決められないので、その出力を入れない。
+ */
+export function authoredShiftedSymbols(faces: readonly UserFace[]): Readonly<Record<string, string>> {
+  const shiftTriggers: readonly string[] = [SHIFT_KEY.L, SHIFT_KEY.R];
+  const baseOutputs = new Map<string, string>();
+  for (const face of faces) {
+    if (face.trigger.length > 0) continue;
+    for (const [key, output] of Object.entries(face.outputs)) if (!baseOutputs.has(key)) baseOutputs.set(key, output);
+  }
+  const symbols = new Map<string, Set<string>>();
+  for (const face of faces) {
+    if (face.trigger.length !== 1 || !shiftTriggers.includes(face.trigger[0])) continue;
+    for (const [key, shifted] of Object.entries(face.outputs)) {
+      if (!isSingleCodePoint(shifted) || isAsciiLetter(shifted)) continue;
+      // 基底の面が複数あっても、打鍵に使う先頭の面の出力を元にする
+      const base = baseOutputs.get(key);
+      if (base === undefined || !isSingleCodePoint(base) || isAsciiLetter(base)) continue;
+      symbols.set(base, (symbols.get(base) ?? new Set()).add(shifted));
+    }
+  }
+  return Object.fromEntries([...symbols].filter(([, shifted]) => shifted.size === 1).map(([base, shifted]) => [base, [...shifted][0]]));
+}
+
 /**
  * 同じ出力が2か所以上にある旨。組み込みの配列も使う正しい定義（代わりの打ち方）なので誤りにしない。
  * 場所は面の並びとキーで示す。

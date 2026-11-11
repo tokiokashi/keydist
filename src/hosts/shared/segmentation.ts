@@ -23,7 +23,7 @@ export type SegmentationState =
 /** 原文を分割器で区切り、読みのテキストの位置へ写す。 */
 export async function computeSegmentation(source: BunsetsuSource, basis: SegmentationBasis): Promise<SegmentationInput> {
   const chunks = await source.split(basis.sourceText);
-  const boundaries = mapBoundariesToReading(basis.sourceText, basis.tokens, offsetsOfChunks(chunks), basis.corrections);
+  const boundaries = mapBoundariesToReading(basis.sourceText, basis.tokens, offsetsOfChunks(chunks), basis.corrections, basis.wordReadings);
   return { boundaries, origin: basis.origin, splitter: source.info };
 }
 
