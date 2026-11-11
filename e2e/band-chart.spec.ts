@@ -128,7 +128,7 @@ test('見出しのボタンで、帯グラフの値を表に切り替えられ�
   await expect(table.locator('thead th[scope="col"]')).toHaveCount(6);
   await expect(table.locator('tbody th[scope="row"]')).toHaveCount(3);
   await expect(feature(page).locator('[data-band-row]').first()).toBeHidden();
-  // 表を入れた領域は、キーボードで focus できる（はみ出す時にスクロールできる）
+  // 表を入れた領域は、キーボードでフォーカスできる（はみ出す時にスクロールできる）
   await expect(feature(page).locator('[data-figure-table]')).toHaveAttribute('tabindex', '0');
 
   // もう一度押すと図へ戻る

@@ -3,7 +3,7 @@ import './figure-table-view.css';
 
 /**
  * 図の値を表で読む表示。見出しのセル（`th scope`）と表題（`caption`）を持つ `<table>` を、
- * キーボードで focus できる領域に入れる（横にはみ出す時、矢印キーでスクロールできる）。
+ * キーボードでフォーカスできる領域に入れる（横にはみ出す時、矢印キーでスクロールできる）。
  */
 export function FigureTable({ model }: { readonly model: FigureTableModel }) {
   return (
