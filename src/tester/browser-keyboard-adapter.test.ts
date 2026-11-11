@@ -1,12 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  browserCodeDisplayLabel,
-  browserKeyboardEventToPhysicalKeyEvent,
-  isBrowserTextInputCode,
-  shouldCaptureBrowserKeyDown,
-} from './browser-keyboard-adapter.ts';
-import { browserCodeToPhysicalKey } from '#input/shapes/browser-key-codes.ts';
+import { browserKeyboardEventToPhysicalKeyEvent, isBrowserTextInputCode, shouldCaptureBrowserKeyDown } from './browser-keyboard-adapter.ts';
+import { browserCodeDisplayLabel, browserCodeToPhysicalKey } from '#input/shapes/browser-key-codes.ts';
 
 test('browser adapterはKeyboardEvent.codeをQWERTY物理keyへ変換する', () => {
   assert.equal(browserCodeToPhysicalKey('KeyA'), 'a');

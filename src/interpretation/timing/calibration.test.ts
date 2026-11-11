@@ -294,3 +294,38 @@ test('押下の照合は、event.keyの経路に加えて、Testerと同じ対�
   assert.equal(calibrationKeyMatches({ key: 'き', code: 'KeyA' }, 'caps-lock', 'き'), true);
   assert.equal(calibrationKeyMatches({ key: 'F', code: 'KeyF' }, 'f'), true);
 });
+
+test('親指のキーの照合は、Testerと同じ対応で同じ親指のキーに引ける押下にだけ一致する', () => {
+  const space = { key: ' ', code: 'Space', physicalKey: 'thumb-r' };
+  const convert = { key: 'Convert', code: 'Convert', physicalKey: 'thumb-r' };
+  const nonConvert = { key: 'NonConvert', code: 'NonConvert', physicalKey: 'thumb-l' };
+  for (const event of [space, convert]) {
+    assert.equal(calibrationKeyMatches(event, 'thumb-r'), true, event.code);
+    assert.equal(calibrationKeyMatches(event, 'thumb-l'), false, event.code);
+  }
+  assert.equal(calibrationKeyMatches(nonConvert, 'thumb-l'), true);
+  assert.equal(calibrationKeyMatches(nonConvert, 'thumb-r'), false);
+  // 旧いidのspaceも右手の親指のキー
+  assert.equal(calibrationKeyMatches(space, 'space'), true);
+});
+
+test('Spaceを左手の親指のキーに割り当てた利用者のSpaceは、左手の親指のキーにだけ一致する', () => {
+  const space = { key: ' ', code: 'Space', physicalKey: 'thumb-l' };
+  assert.equal(calibrationKeyMatches(space, 'thumb-l'), true);
+  assert.equal(calibrationKeyMatches(space, 'thumb-r'), false);
+});
+
+test('Spaceを割り当てなしにした利用者のSpaceは、どの親指のキーにも一致しない', () => {
+  const space = { key: ' ', code: 'Space' };
+  assert.equal(calibrationKeyMatches(space, 'thumb-r'), false);
+  assert.equal(calibrationKeyMatches(space, 'thumb-l'), false);
+});
+
+test('文字のキーを親指のキーに割り当てた時、その押下は親指のキーとしてだけ一致し、文字のキーには一致しない', () => {
+  const a = { key: 'a', code: 'KeyA', physicalKey: 'thumb-l' };
+  assert.equal(calibrationKeyMatches(a, 'thumb-l'), true);
+  assert.equal(calibrationKeyMatches(a, 'a'), false);
+  assert.equal(calibrationKeyMatches(a, 'a', 'あ'), false);
+  // 割り当てなしの文字のキーの押下は、親指のキーに一致しない
+  assert.equal(calibrationKeyMatches({ key: 'a', code: 'KeyA' }, 'thumb-l'), false);
+});

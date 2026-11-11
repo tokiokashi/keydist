@@ -95,6 +95,12 @@ export const SHIFT_KEY = { L: 'shift-l', R: 'shift-r' } as const;
 /** 旧定義やlocalStorageに残る親指キーidを正式名へ解決する。 */
 export const resolveKeyId = (id: string): string => (id === 'space' ? THUMB_KEY.RT : id);
 
+/** 親指のキー（`thumb-l`・`thumb-r`。旧idの`space`を含む）のidか。 */
+export const isThumbKeyId = (id: string): boolean => {
+  const resolved = resolveKeyId(id);
+  return resolved === THUMB_KEY.LT || resolved === THUMB_KEY.RT;
+};
+
 /** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定の物理配列のrowWidthsに使う */
 const ROW_WIDTH = QWERTY_LEGEND.map((row) => row.length);
 const JIS_ROW_WIDTH = [13, 12, 12, 11] as const;
