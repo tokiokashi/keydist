@@ -218,8 +218,8 @@ const ALPHA: Layout[] = [
   ]),
   // レイヤー（左親指との同時押し）の面で ん っ ー を出す。綴りは対のせおと配列の綴り
   SEOTO,
-  // 数字段の右端（QWERTYの `-` のキー）の `/` は、日本語（ローマ字）の評価でだけ打てる（仕様 §4.6）。
-  // 配布物（Karabiner-Elementsの設定）が、このキーを `/` を出すキーにする。英文の物理キーには含めない
+  // 数字段の右端（QWERTYの`-`のキー）の`/`は、日本語（ローマ字）の評価でだけ打てる（仕様 §4.6）。
+  // 公式ページの練習場の配列図と配布物（Karabiner-Elementsの設定）が、このキーを`/`を出すキーにする。英文の物理キーには含めない
   withAliases(
     withRomajiOnlyOutputs(withShiftedOutputs(fromRows('oonishi', '大西配列', ['1234567890/', 'qlu,.fwryp', 'eiao-ktnsh', 'zxcv;gdmjb'])), ['/', '?']),
     ['おおにし', 'おおにしはいれつ'],

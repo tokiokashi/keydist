@@ -281,7 +281,7 @@ export interface Layout {
   requiresJisShape?: true;
   /**
    * ローマ字を経る日本語の評価でだけ打てる出力。配列の出典が記号の置き場を定めているが、英文を打つ配列の物理キーには
-   * 含めない記号を持つ（仕様 §4.6）。英文を打つ時は `withoutRomajiOnlyInputs` が、この出力と置き場の刻印を外す。
+   * 含めない記号を持つ（仕様 §4.6）。英文を打つ時は`withoutRomajiOnlyInputs`が、この出力と置き場の刻印を外す。
    */
   romajiOnlyOutputs?: readonly string[];
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
@@ -1074,7 +1074,7 @@ export function withRomajiOnlyOutputs(layout: Layout, outputs: readonly string[]
 
 /**
  * ローマ字を経ない打ち方（英文の直接入力）で見える配列にする。
- * `romajiOnly` のコンボ（仕様 §4.3）を定義ごと外し、`romajiOnlyOutputs` の出力と置き場の刻印を外して、単打配置だけを残す。
+ * `romajiOnly`のコンボ（仕様 §4.3）を定義ごと外し、`romajiOnlyOutputs`の出力と置き場の刻印を外して、単打配置だけを残す。
  *
  * 配列は言語によらず1つだが、英文ではそのコンボ・出力は「配列に無い」扱いなので、
  * 評価（見出し探索・定義数B）だけでなく配列図・逆引き等の表示にも出さない。

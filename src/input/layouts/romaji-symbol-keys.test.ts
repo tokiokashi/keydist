@@ -21,7 +21,7 @@ function typeWithSymbols(layoutId: string, text: string) {
   return { trace, keys: trace.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id)).sort()) };
 }
 
-test('大西配列は、日本語の評価で `・` を数字段の右端のキーで、`？` をShiftを足して打つ', () => {
+test('大西配列は、日本語の評価で `・`を数字段の右端のキーで、`？`をShiftを足して打つ', () => {
   const { trace, keys } = typeWithSymbols('oonishi', '・？');
   assert.equal(trace.skipped, 0);
   assert.deepEqual(trace.errors, []);
@@ -29,20 +29,20 @@ test('大西配列は、日本語の評価で `・` を数字段の右端のキ�
   assert.deepEqual(keys[1], ['-', 'shift-l']);
 });
 
-test('TK音直入力法は、`・` と `？` を、`/` を置いたキー（QWERTYの `b` の位置）で打つ', () => {
+test('TK音直入力法は、`・`と`？`を、`/`を置いたキー（QWERTYの`b`の位置）で打つ', () => {
   const { trace, keys } = typeWithSymbols('tk-onchoku', '・？');
   assert.equal(trace.skipped, 0);
   assert.deepEqual(keys[0], ['b']);
   assert.deepEqual(keys[1], ['b', 'shift-r']);
 });
 
-test('出典が置き場を定めない `「」` と `『』` は、大西配列でもTK音直入力法でも打てない文字に数える', () => {
+test('出典が置き場を定めない`「」`と`『』`は、大西配列でもTK音直入力法でも打てない文字に数える', () => {
   for (const layoutId of ['oonishi', 'tk-onchoku']) {
     assert.equal(typeWithSymbols(layoutId, '「」『』').trace.skipped, 4, layoutId);
   }
 });
 
-test('英文の大西配列は、日本語の評価でだけ打てる `/` と `？` のキーを持たない', () => {
+test('英文の大西配列は、日本語の評価でだけ打てる`/`と`？`のキーを持たない', () => {
   const english = LAYOUTS.find((layout) => layout.id === 'oonishi')!;
   assert.equal(english.canonicalInputs.has('/'), false);
   assert.equal(english.canonicalInputs.has('?'), false);
