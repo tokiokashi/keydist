@@ -20,13 +20,16 @@ export function chartTableModel(spec: ChartSpec): FigureTableModel {
   };
 }
 
+/** 分布の表の表題。切り替えのボタンの読み上げ名にも使う。 */
+export const DISTRIBUTION_TABLE_CAPTION = '隣り合う指の間隔の分布';
+
 /**
  * 隣り合う指の間隔の分布の表。行は図の行と同じ順（指の組ごとに、超過の小さい順）で、
  * 超過・全アクションに占める割合・アクションの数を、図の行の文字と同じ書式で並べる。
  */
 export function distributionTableModel(specs: readonly DistributionSpec[]): FigureTableModel {
   return {
-    caption: '隣り合う指の間隔の分布',
+    caption: DISTRIBUTION_TABLE_CAPTION,
     rowHeader: '指の組',
     columns: ['超過 [u]', '割合', 'アクション数'],
     rows: specs.flatMap((spec) =>

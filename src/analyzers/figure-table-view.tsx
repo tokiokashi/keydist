@@ -44,9 +44,25 @@ export function FigureTable({ model }: { readonly model: FigureTableModel }) {
  * 図と表を切り替えるボタン。見出しの行に置く。ラベルは変えず、押している状態を `aria-pressed` で伝える。
  * 状態は呼び出し側のcomponentが持ち、保存しない。
  */
-export function FigureTableSwitch({ pressed, onToggle }: { readonly pressed: boolean; readonly onToggle: () => void }) {
+export function FigureTableSwitch({
+  pressed,
+  onToggle,
+  target,
+}: {
+  readonly pressed: boolean;
+  readonly onToggle: () => void;
+  /** 同じ画面に切り替えのボタンが複数ある時、どの図のボタンかを読み上げで区別する名前 */
+  readonly target?: string;
+}) {
   return (
-    <button type="button" className="figure-table-switch" aria-pressed={pressed} data-figure-table-switch="" onClick={onToggle}>
+    <button
+      type="button"
+      className="figure-table-switch"
+      aria-pressed={pressed}
+      aria-label={target === undefined ? undefined : `${target}を表で見る`}
+      data-figure-table-switch=""
+      onClick={onToggle}
+    >
       表で見る
     </button>
   );

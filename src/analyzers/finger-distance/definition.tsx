@@ -6,7 +6,7 @@ import { FINGER_DISTANCE_PANE_META } from './pane-meta.ts';
 import { chartSpecOf, distributionSpecsOf, fingerDistanceScaleKey } from './chart-data.ts';
 import { FingerDistanceDistribution } from './finger-distance-distribution.tsx';
 import { FingerDistanceChart } from './finger-distance-chart.tsx';
-import { chartTableModel, distributionTableModel } from './table-model.ts';
+import { chartTableModel, DISTRIBUTION_TABLE_CAPTION, distributionTableModel } from './table-model.ts';
 import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
 import './finger-distance-view.css';
@@ -35,7 +35,7 @@ export function FingerDistanceBody({ extracted, options }: FingerDistanceBodyPro
     <section className="finger-distance-feature" data-react-feature="finger-distance">
       <div className="figure-table-heading">
         <h3 className="finger-distance-heading">{spec.title}</h3>
-        <FigureTableSwitch pressed={asTable} onToggle={toggleTable} />
+        <FigureTableSwitch pressed={asTable} onToggle={toggleTable} target={spec.title} />
       </div>
       {asTable ? (
         <FigureTable model={chartTableModel(spec)} />
@@ -47,7 +47,7 @@ export function FingerDistanceBody({ extracted, options }: FingerDistanceBodyPro
         <>
           <div className="figure-table-heading">
             <h3 className="finger-distance-heading">隣り合う指の間隔の分布 [%]</h3>
-            <FigureTableSwitch pressed={asTable} onToggle={toggleTable} />
+            <FigureTableSwitch pressed={asTable} onToggle={toggleTable} target={DISTRIBUTION_TABLE_CAPTION} />
           </div>
           {asTable ? (
             <FigureTable model={distributionTableModel(distributionSpecsOf(extracted))} />

@@ -68,7 +68,7 @@ function Distribution({
   readonly rows: readonly DistributionRow[];
   readonly asTable: boolean;
 }) {
-  if (asTable && rows.length > 0) {
+  if (asTable) {
     return (
       <div data-hand-rhythm-distribution={id}>
         <FigureTable model={handRhythmDistributionTableModel(title, rows)} />
