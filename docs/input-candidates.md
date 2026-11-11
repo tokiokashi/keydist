@@ -30,7 +30,7 @@ keydistが配列として追加を検討する日本語入力方式の調査と�
 | 5キーの同時打鍵 | メジロ式速記の規則で作る部分 | `src/input/semantics/input-principle-coverage.test.ts` |
 | 順序自由の同時打鍵 | Phoenixかな | `src/input/semantics/input-principle-stress.test.ts` |
 | 行キー→段キーの順次打鍵と、行・スペース・段の3打（途中は出力しない） | つばめ配列 | `src/tester/input-converter-phase2.test.ts`（2打）、`src/input/semantics/input-principle-coverage.test.ts`（3打） |
-| あ段省略（次の打鍵で直前の出力を置き換える） | ヤウ配列、ニャウ配列、カナガワ配列 | `src/input/semantics/input-principle-stress.test.ts` |
+| あ段省略（次の打鍵で直前の出力を置き換える） | ヤウ配列、ニャウ配列（暫定）、カナガワ配列（暫定） | `src/input/semantics/input-principle-stress.test.ts` |
 | 後置の印のキーで直前のかなを小書き・濁音へ置き換える | New Stickney、ベルダ配列 | `src/tester/input-converter-phase2.test.ts` |
 | スペースの単打と、押したままの前置シフト | New Stickneyのセンターシフト、薙刀式 | `src/tester/engine/input-converter-core.test.ts` |
 | ローマ字規則（1綴りに複数のかな、母音の集合の変更） | SKY、Km式、DvorakJP、ACT、JLOD、あかならべ、せおと | `src/input/romaji/romaji-rules.test.ts`、`src/input/romaji/romaji.test.ts` |
