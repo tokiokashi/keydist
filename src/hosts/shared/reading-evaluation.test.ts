@@ -271,6 +271,24 @@ test('辞書を読み込めない時と読み込み中は、語ごとの直し�
   assert.deepEqual(loading.wordCorrections.unfound, []);
 });
 
+test('語幹の長さを持つ活用語から、コンボを止める境を読みのテキストの位置で持つ。読みに直さない時は持たない', () => {
+  const hayaku: ReadingToken = { surface: '早く', byteStart: 0, byteEnd: 6, reading: 'ハヤク', isUnknown: false, stemLength: 1 };
+  const outcome: ReadingOutcome = { kind: 'analyzed', sourceText: '早く', tokens: [hayaku] };
+  const converted = evaluationText(
+    resolved('早く'),
+    source(async () => []),
+    outcome,
+  );
+  assert.equal(converted.text.text, 'はやく');
+  assert.deepEqual(converted.text.comboBarriers, [2]);
+  const failed = evaluationText(
+    resolved('早く'),
+    source(async () => []),
+    { kind: 'failed' },
+  );
+  assert.equal(failed.text.comboBarriers, undefined);
+});
+
 test('集合のペインの組の項目は、全対象が同じ組なら1つの値、違う時は組を使う対象だけを対象名つきで並べる', async () => {
   const { comboSetProvenanceOfTargets } = await import('./reading-evaluation.ts');
   const a = { name: '組A', romajiRuleId: 'kunrei', combos: [{ keys: ['s', 't'], output: 'site' }], dropped: 0 };

@@ -18,6 +18,11 @@ export interface ReadingToken {
   readonly reading: string | null;
   /** 辞書に無い語（未知語）か */
   readonly isUnknown: boolean;
+  /**
+   * 活用する語（動詞・形容詞）の語幹の長さ（表記のコードポイント数）。語幹と活用語尾の間でコンボを止めるのに使う（仕様 §4.3）。
+   * 活用語尾が無い語・語幹が取れない語・活用しない語は持たない。語幹は、表記と辞書の原形の共通の先頭部分
+   */
+  readonly stemLength?: number;
 }
 
 /** 漢字。CJK統合漢字と `々` を含む（`々` は文字のスクリプトが漢字）。 */

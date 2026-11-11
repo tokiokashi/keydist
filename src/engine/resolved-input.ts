@@ -53,6 +53,11 @@ export interface ResolvedInput {
    */
   readonly notationExcess: number;
   /**
+   * コンボを止める境（仕様 §4.3）。評価に渡すテキストのかなの位置（コードポイント。境は位置の直前。昇順で0と末尾を含まない）。
+   * 同じ`text`でも境が違えばTraceが変わるので、Traceのキーに入れる。境が無ければ空。
+   */
+  readonly comboBarriers: readonly number[];
+  /**
    * 抽出が読む資産の値。Traceと解釈のキーには入れず、抽出のキーにだけ、各Analyzerが決めた分を入れる
    * （`keys.ts`の`singleExtractionKeyOf`）。
    */
@@ -130,6 +135,11 @@ export interface ResolveEngineInputOptions {
   readonly reading?: ReadingConditions | null | undefined;
   /** `text` を作った時に読みに置き換えた語の、表記の字数と読みの字数の差。読みに直した時だけ渡す。無ければ差は0。 */
   readonly notationExcess?: NotationExcess | undefined;
+  /**
+   * コンボを止める境（仕様 §4.3）。`text`を作った語の列から求めた、読みのテキストの位置（`comboBarriersInReading`）。
+   * 評価に渡すテキストの位置へは、この対象の記号と英数字の範囲で写し直して`ResolvedInput.comboBarriers`に載せる。無ければ境は無い。
+   */
+  readonly comboBarriers?: readonly number[] | undefined;
   /**
    * 文節の区切り（読みのテキストの位置）。区切りを使うペインだけが渡す。評価に渡すテキストの位置へは、
    * この対象の記号と英数字の範囲（`keepSymbols`・`keepAlphanumerics`）で写し直して`extractionAssets.segmentation`に載せる。
@@ -316,6 +326,14 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
         options.verbatimText === true || options.notationExcess === undefined
           ? 0
           : notationExcessFor(options.notationExcess, {
+              keepSymbols: cascade.keepSymbols.value,
+              keepAlphanumerics: cascade.keepAlphanumerics.value,
+            }),
+      comboBarriers:
+        options.verbatimText === true || options.comboBarriers === undefined
+          ? []
+          : evaluationBoundaries(options.text, options.comboBarriers, {
+              language: options.language,
               keepSymbols: cascade.keepSymbols.value,
               keepAlphanumerics: cascade.keepAlphanumerics.value,
             }),

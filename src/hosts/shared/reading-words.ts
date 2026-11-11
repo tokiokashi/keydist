@@ -67,5 +67,5 @@ export function createStrokeCounter(
     const resolved = resolvePaneInput(target, setups, catalog, overrides, { ...text, text: 'あ', reading: null });
     if (resolved.ok) inputs.push(resolved.input);
   }
-  return (reading) => inputs.map((input) => generateEngineTrace({ ...input, text: reading }).trace.strokes.length);
+  return (reading) => inputs.map((input) => generateEngineTrace({ ...input, text: reading, comboBarriers: [] }).trace.strokes.length);
 }
