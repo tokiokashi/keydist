@@ -76,7 +76,7 @@ test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（散
   );
 });
 
-test('解析設定: 既定は1文字の動作数と1打鍵の距離の組み合わせ1つで、保存した値を読み書きできる', () => {
+test('解析設定: 既定は1文字のアクション数と1アクションの移動距離の組み合わせ1つで、保存した値を読み書きできる', () => {
   assert.deepEqual(DEFAULT_SCATTER_OPTIONS.presets, ['distance']);
   const decoded = scatterOptions.decodeOptions(
     { presets: ['hand', 'free'], xAxes: ['totalUnits'], yAxes: ['sameFinger'], freeOrder: 'byY', tickScale: 'log', columns: '2' },

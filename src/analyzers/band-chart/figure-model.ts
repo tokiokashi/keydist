@@ -235,6 +235,21 @@ export function bandLayout(width: number, rowCount: number, maxHeight?: number):
   };
 }
 
+/** 凡例とキャプションを固定した時に、その間に読める行として残したい本数。 */
+const PINNED_MIN_ROWS = 6;
+
+/**
+ * 凡例とキャプションを図の上下端に固定するか。`rowsMaxHeight` は、図の高さのうち帯の行に使える高さ。
+ * 固定すると、行を読める高さは凡例とキャプションの分だけ減る。
+ * 帯を最も細くした行の `PINNED_MIN_ROWS` 本分（行が少ない時はその全部）が残らないなら、固定せず、図の上下の元の位置に置く。
+ * 測れていない間（`undefined`）は固定する。
+ */
+export function pinsLegendAndCaption(mode: 'inline' | 'stacked', rowCount: number, rowsMaxHeight: number | undefined): boolean {
+  if (rowsMaxHeight === undefined) return true;
+  const rows = Math.min(rowCount, PINNED_MIN_ROWS);
+  return rowsMaxHeight >= rows * rowMetrics(mode, MIN_BAND_HEIGHT).pitch;
+}
+
 export interface SegmentGeometry {
   readonly index: number;
   readonly x: number;
