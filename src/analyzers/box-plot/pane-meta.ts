@@ -20,6 +20,9 @@ export const BOX_PLOT_FOCUS_CAPTION = `${BOX_PLOT_QUANTITY_NAME}（選んだ配�
 /** 縦軸の名前。 */
 export const BOX_PLOT_AXIS_TITLE = `${DISTANCE.label}（${DISTANCE.unit}）`;
 
+/** 縦軸の単位。 */
+export const BOX_PLOT_UNIT = DISTANCE.unit;
+
 /** 図の見方に足す、区切りの分割器と出どころ（抽出が持つ値なので、本体が足す）。文面は文節ごとの統計・Run Chartとそろえる。 */
 export function boxPlotSourceItems(source: BoxPlotSource): readonly { readonly name: string; readonly description: string }[] {
   return segmentationSourceItems(source.splitter, source.origin);

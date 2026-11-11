@@ -110,6 +110,35 @@ test('配列ごとに帯が出て、行を押して選んだ配列だけの図�
   await expect(quantity).not.toHaveAccessibleName('量: 段');
 });
 
+test('見出しのボタンで、帯グラフの値を表に切り替えられ、キーボードで図へ戻せる', { tag: PAGE_TAG }, async ({ page }) => {
+  await page.goto('/analyzer/band-chart');
+  await expect(feature(page).locator('[data-band-row]')).toHaveCount(3, { timeout: 15_000 });
+
+  const toggle = feature(page).getByRole('button', { name: '表で見る' });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(feature(page).locator('table.figure-table')).toHaveCount(0);
+
+  // キーボードで押すと、図の代わりに、表題と見出しのセルを持つ表が出る
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  const table = feature(page).locator('table.figure-table');
+  await expect(table).toBeVisible();
+  await expect(table.locator('caption')).toHaveText('1かなごとの移動距離の割合');
+  await expect(table.locator('thead th[scope="col"]')).toHaveCount(6);
+  await expect(table.locator('tbody th[scope="row"]')).toHaveCount(3);
+  await expect(feature(page).locator('[data-band-row]').first()).toBeHidden();
+  // 表を入れた領域は、キーボードで focus できる（はみ出す時にスクロールできる）
+  await expect(feature(page).locator('[data-figure-table]')).toHaveAttribute('tabindex', '0');
+
+  // もう一度押すと図へ戻る
+  await toggle.focus();
+  await page.keyboard.press('Space');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(feature(page).locator('[data-band-row]')).toHaveCount(3);
+  await expect(feature(page).locator('table.figure-table')).toHaveCount(0);
+});
+
 test('URLの量を読み、開き直しても同じ量が出る', { tag: PAGE_TAG }, async ({ page }) => {
   await page.goto('/analyzer/band-chart?quantity=row');
   await expect(feature(page).locator('[data-band-row]')).toHaveCount(3, { timeout: 15_000 });

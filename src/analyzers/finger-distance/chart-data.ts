@@ -26,6 +26,10 @@ export interface ChartBar {
   readonly value: number;
   /** 棒の上に出す値 */
   readonly valueText: string;
+  /** 縮めない値の文字（表とツールチップに出す） */
+  readonly exactText: string;
+  /** 全体に占める割合の文字。割合を持たない見る量（隣り合う指の間隔）は `undefined` */
+  readonly shareText: string | undefined;
   /** ツールチップ（割合などの補足を含む） */
   readonly tip: string;
 }
@@ -65,6 +69,8 @@ export function chartSpecOf(extracted: FingerDistanceExtracted, metric: FingerDi
           hand: item.hand,
           value,
           valueText: isDistance ? compact(value, value >= 1000 ? value.toFixed(0) : formatDistance(value)) : compact(value, String(value)),
+          exactText: isDistance ? formatDistance(value) : String(value),
+          shareText: formatShare(share),
           tip: `${FINGER_LABEL[item.finger]}: ${text}（全体の${formatShare(share)}）`,
         };
       }),
@@ -82,6 +88,8 @@ export function chartSpecOf(extracted: FingerDistanceExtracted, metric: FingerDi
         hand: item.hand,
         value,
         valueText: formatDeviation(value),
+        exactText: formatDeviation(value),
+        shareText: undefined,
         tip: `${HAND_LABEL[item.hand]} ${SHORT_FINGER[a]}–${SHORT_FINGER[b]}の${names[metric]}: ${formatDeviation(value)} u`,
       };
     }),
@@ -93,6 +101,8 @@ export interface DistributionBar {
   readonly state: number;
   /** 全アクションに対する割合 [%] */
   readonly share: number;
+  /** その状態のアクションの数 */
+  readonly count: number;
   readonly tip: string;
 }
 
@@ -125,6 +135,7 @@ export function distributionSpecsOf(extracted: FingerDistanceExtracted): readonl
       bars: item.distribution.map((entry) => ({
         state: entry.state,
         share: entry.share,
+        count: entry.count,
         tip: `${HAND_LABEL[item.hand]} ${label}: 超過${formatState(entry.state)}uのアクションが${formatPercent(entry.share)}（${entry.count}アクション）`,
       })),
     };
