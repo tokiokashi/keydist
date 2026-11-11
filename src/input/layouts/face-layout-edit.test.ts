@@ -85,8 +85,8 @@ test('ホームキーは空の指定を落とし、物理キーの名前でな�
   assert.deepEqual(checkFaceLayout(draft).content?.homeKeys, { LP: 'a' });
   const broken: FaceLayoutDraft = { ...draftOf(CONTENT), homeKeys: { LP: 'zz' } };
   assert.deepEqual(
-    checkFaceLayout(broken).problems.map((problem) => problem.path),
-    ['homeKeys.LP'],
+    checkFaceLayout(broken).problems.map((problem) => [problem.path, problem.message]),
+    [['homeKeys.LP', 'ホームキーのキー「zz」は、物理キーの名前ではありません']],
   );
 });
 

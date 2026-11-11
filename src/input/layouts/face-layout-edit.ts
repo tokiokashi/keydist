@@ -114,6 +114,9 @@ function compactHomeKeys(homeKeys: Readonly<Partial<Record<NonThumb, string>>>):
   return result;
 }
 
+/** ホームキーに物理キーの名前でない文字列を書いた時の診断。 */
+export const homeKeyNotPhysicalMessage = (key: string): string => `ホームキーのキー「${key}」は、物理キーの名前ではありません`;
+
 /**
  * 下書きを検査する。誤りは全部集めて返す。誤りが無ければ配列として組めることまで確かめ、
  * 打てないかなと、同じ出力が2か所以上にある旨を添える。
@@ -125,7 +128,7 @@ export function checkFaceLayout(draft: FaceLayoutDraft): FaceLayoutCheck {
   const homeKeys = compactHomeKeys(draft.homeKeys);
   for (const [finger, key] of Object.entries(homeKeys)) {
     if (!isFaceOutputKey(key)) {
-      problems.push({ path: `homeKeys.${finger}`, message: `ホームキーのキー ${JSON.stringify(key)} は、物理キーの名前ではありません` });
+      problems.push({ path: `homeKeys.${finger}`, message: homeKeyNotPhysicalMessage(key) });
     }
   }
 

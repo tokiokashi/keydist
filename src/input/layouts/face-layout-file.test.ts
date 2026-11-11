@@ -162,6 +162,23 @@ test('formatの診断は、期待する値も読んだ値も画面に出さず�
   }
 });
 
+test('版とホームキーの診断は、読んだ値をJSONの表記で出さない', () => {
+  const body = faceLayoutFileBody(ALPHA);
+  const cases: Array<[string, unknown, string, RegExp]> = [
+    ['版が文字列', { ...body, version: '1' }, 'version', /^版（version）は1以上の整数で書いてください$/],
+    ['版がnull', { ...body, version: null }, 'version', /^版（version）は1以上の整数で書いてください$/],
+    ['版が0', { ...body, version: 0 }, 'version', /^版（version）は1以上の整数で書いてください$/],
+    ['キーが物理キーの名前でない', { ...body, homeKeys: { LI: 'zz' } }, 'homeKeys.LI', /^ホームキーのキー「zz」は、物理キーの名前ではありません$/],
+    ['キーがnull', { ...body, homeKeys: { LI: null } }, 'homeKeys.LI', /^ホームキーのキーを、物理キーの名前の文字列で書いてください$/],
+    ['キーが数', { ...body, homeKeys: { LI: 1 } }, 'homeKeys.LI', /^ホームキーのキーを、物理キーの名前の文字列で書いてください$/],
+  ];
+  for (const [name, value, path, message] of cases) {
+    const problem = problemsOf(value, 'alpha').find((candidate) => candidate.path === path);
+    assert.ok(problem, name);
+    assert.match(problem.message, message, name);
+  }
+});
+
 test('下書きの検査を通した中身と、JSONから読んだ中身が一致する', () => {
   const draft = { ...blankFaceLayoutDraft('alpha', 'kunrei'), name: '英字の面', faces: structuredClone(ALPHA.faces) as never, homeKeys: { LI: 'f' } };
   const check = checkFaceLayout(draft);

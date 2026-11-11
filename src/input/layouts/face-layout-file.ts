@@ -12,7 +12,7 @@ import {
   type KanaFaceBody,
   type UserFaceBody,
 } from './face-layout.ts';
-import { checkFaceLayout, draftOf } from './face-layout-edit.ts';
+import { checkFaceLayout, draftOf, homeKeyNotPhysicalMessage } from './face-layout-edit.ts';
 import type { LayoutKind } from './kind.ts';
 
 /**
@@ -67,7 +67,9 @@ function readHomeKeys(raw: unknown, problems: FaceLayoutProblem[]): Partial<Reco
     if (!(FINGERS as readonly string[]).includes(finger)) {
       problems.push({ path, message: `ホームキーの指の名前「${finger}」は、${FINGERS.join('・')} のどれかで書いてください` });
     } else if (typeof key !== 'string' || !isFaceOutputKey(key)) {
-      problems.push({ path, message: `ホームキーのキー ${JSON.stringify(key) ?? String(key)} は、物理キーの名前ではありません` });
+      // 文字列でない値は、引用符やnullのようなJSONの表記でしか示せないので、値を出さずに書き方を示す
+      const message = typeof key === 'string' ? homeKeyNotPhysicalMessage(key) : 'ホームキーのキーを、物理キーの名前の文字列で書いてください';
+      problems.push({ path, message });
     } else {
       homeKeys[finger as NonThumb] = key;
     }
@@ -101,7 +103,7 @@ export function parseFaceLayoutFile(text: string, expected: LayoutKind): FaceLay
   }
   if (parsed.version === undefined) return fail({ path: 'version', message: '版（version）がありません' });
   if (typeof parsed.version !== 'number' || !Number.isInteger(parsed.version) || parsed.version < 1) {
-    return fail({ path: 'version', message: `版（version）は1以上の整数で書いてください（${JSON.stringify(parsed.version)}）` });
+    return fail({ path: 'version', message: '版（version）は1以上の整数で書いてください' });
   }
   if (parsed.version > FACE_LAYOUT_FILE_VERSION) {
     return fail({
