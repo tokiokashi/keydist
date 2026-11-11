@@ -113,12 +113,12 @@ export interface Metrics {
   totalUnits: number;
   /** 総移動距離 [mm] */
   totalMm: number;
-  /** 1打鍵あたりの平均移動距離 [u] */
+  /** 1アクションあたりの平均移動距離 [u] */
   meanPerStroke: number;
   /**
    * 入力1文字あたりの平均移動距離 [u]。
-   * 打鍵数はコンボ・かな直接入力で配列ごとに変わるため、`meanPerStroke` では
-   * 打鍵数削減の効果が相殺されて消える。分母を展開前の文字数に固定するとここに出る。
+   * アクション数はコンボ・かな直接入力で配列ごとに変わるため、`meanPerStroke` では
+   * アクション数削減の効果が相殺されて消える。分母を展開前の文字数に固定するとここに出る。
    */
   perCharUnits: number;
   /**

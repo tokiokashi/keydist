@@ -87,7 +87,7 @@ test('1文字で動く距離は打鍵数ではなく入力文字数を分母に�
   assert.equal(m.strokes, 2);
   assert.equal(m.inputChars, 1);
   near(m.perCharUnits, m.totalUnits, '1文字あたり = 総距離 / 1');
-  near(m.meanPerStroke, m.totalUnits / 2, '1打鍵あたり = 総距離 / 2');
+  near(m.meanPerStroke, m.totalUnits / 2, '1アクションあたり = 総距離 / 2');
   // 打鍵数を分母にすると、展開で打鍵が増えた分だけ小さく出てしまう
   near(m.perCharUnits, m.meanPerStroke * 2, '打鍵数分母では展開の効果が消える');
 });
