@@ -16,6 +16,7 @@ import {
   nonDefaultConditionRows,
   summarizeNonDefaultConditions,
   traceConditionSummary,
+  withComboSetSummary,
   type ConditionSummaryScope,
 } from './condition-summary.ts';
 
@@ -58,8 +59,10 @@ export function targetNameSource(
   };
   if (resolution?.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
-    const overrideSummary = summarizeNonDefaultConditions(
-      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, catalog, scope), excludeIds),
+    // 計算に入れたコンボの組は数値を変えるので、変えた条件と同じく名前に併記する（仕様 §4.3）
+    const overrideSummary = withComboSetSummary(
+      summarizeNonDefaultConditions(nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, catalog, scope), excludeIds)),
+      resolution.input.comboSet?.name,
     );
     return {
       ...base,

@@ -24,7 +24,7 @@ import { useTargetExtractions } from '../use-target-extractions.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { setTargetFigureState, setTargetsBesideSingle } from '../set-target-figures.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
-import { isWaitingForReading, readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
+import { isWaitingForReading, readingProvenance, comboSetProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
 import { useSegmentation } from '../segmentation.ts';
 import { PersonalSpeedSavedContext } from '#ui/primitives/personal-speed-link.tsx';
 
@@ -110,6 +110,8 @@ export function SingleAnalyzerPane<Options, Extracted>({
     (): ConditionSummaryScope => singlePaneConditionScope(analyzer.conditionExtraIds, resolvedText.language),
     [analyzer, resolvedText.language],
   );
+  const comboSetConditions = resolution.ok ? resolution.input.comboSet : undefined;
+  const provenanceItems = useMemo(() => [...conditionProvenance, ...comboSetProvenance(comboSetConditions)], [conditionProvenance, comboSetConditions]);
   const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog, summaryScope) : [];
   const header = resolution.ok ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry) : undefined;
   // Traceと抽出は別々に解決する。図と一緒に出すTrace由来の値（飛ばした文字・エラー）は、図と同じ入力の組から読む
@@ -197,6 +199,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
         layouts: catalog.setupCatalog.layouts,
         userLayouts: catalog.userLayouts,
         shapes: catalog.setupCatalog.shapes,
+        comboSets: catalog.comboSets,
         setups,
         selected: [target],
       }),
@@ -304,7 +307,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
           ...(resolution.ok ? { layout: { id: resolution.input.layout.id, name: resolution.input.layout.name } } : {}),
           ...(target.kind === 'setup' ? { openSetups: [{ id: target.setupId }] } : {}),
         }}
-        conditionProvenance={conditionProvenance}
+        conditionProvenance={provenanceItems}
         reading={env.reading}
         engineState={combinePaneStates(extraction, pane.trace)}
         traceErrors={traceErrors}

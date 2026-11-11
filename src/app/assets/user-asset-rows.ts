@@ -87,7 +87,7 @@ const DELETE_IMPACT: Readonly<Record<DeleteConfirmKind, string>> = {
   layout: `この配列を対象にしているペインは、「${LAYOUT_MISSING_REASON}」の表示になります。`,
   'romaji-rule': 'この規則を推奨にしている配列は、全体の値の規則で打つようになります。',
   'finger-assignment': 'この割り当てを選んでいる場所は、既定の割り当てで測るようになります。',
-  'combo-set': 'この組を選んでいるSetupは、コンボの組を重ねずに測るようになります。',
+  'combo-set': 'この組を選んでいるSetupは、コンボの組を使わずに測るようになります。',
   setup: `このSetupを対象にしているペインは、「${MISSING_SETUP_NAME}」の表示になります。`,
 };
 

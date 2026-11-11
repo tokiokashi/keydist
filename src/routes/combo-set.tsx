@@ -8,8 +8,7 @@ export const Route = createFileRoute('/combo-set')({
       { title: `${COMBO_SET_LABEL} | keydist` },
       {
         name: 'description',
-        content:
-          '押すキーを英字の文字で、出力をかなで入力して、自作のコンボを作ります。出力は選んだローマ字の綴りで展開して保存します。作った組はSetupで選べます。',
+        content: '自作のコンボをコンボの組として作ります。',
       },
     ],
   }),

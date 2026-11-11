@@ -1,3 +1,4 @@
+import type { ComboSetConditions } from '#interpretation/metrics.ts';
 import type { SegmentationOrigin } from '#input/text/segmentation.ts';
 import {
   convertToReading,
@@ -76,6 +77,13 @@ export interface PaneText extends ResolvedText {
   readonly notationExcess?: NotationExcess;
   /** 文節の区切りを作る材料。漢字を読みに直した時だけ持つ（語の列が要る）。それ以外は `segmentationBasisOf` が作る。 */
   readonly segmentationBasis?: SegmentationBasis;
+}
+
+/** 計算に入れたコンボの組を、条件の要約に出す項目にする（仕様 §12.3）。 */
+export function comboSetProvenance(comboSet: ComboSetConditions | undefined): readonly ConditionProvenanceItem[] {
+  if (comboSet === undefined) return [];
+  const dropped = comboSet.dropped > 0 ? `。${comboSet.dropped}件は計算に入れていません` : '';
+  return [{ label: 'コンボの組', value: `${comboSet.name}（${comboSet.combos.length}件を計算に入れて測定${dropped}）` }];
 }
 
 /**

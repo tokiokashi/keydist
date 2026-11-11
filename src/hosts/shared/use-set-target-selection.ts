@@ -22,6 +22,7 @@ export function useSetTargetSelection(selection: TargetSet, colorSlots: ColorSlo
         layouts: catalog.setupCatalog.layouts,
         userLayouts: catalog.userLayouts,
         shapes: catalog.setupCatalog.shapes,
+        comboSets: catalog.comboSets,
         setups,
         selected: selection.targets,
       }),

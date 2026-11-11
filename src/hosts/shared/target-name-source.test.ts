@@ -192,3 +192,28 @@ test('対象名の条件の併記: 再生のペインが宣言した時だけ、
   });
   assert.equal('overrideSummary' in scoped ? scoped.overrideSummary : undefined, 'チェーンの区切り: 1項目を変更');
 });
+
+test('同じ配列でも、コンボの組を計算に入れたSetupは、組の名前が名前に付いて、組を選ばないSetupと区別できる', () => {
+  const comboSet = { id: 'set-a', name: '私の組', romajiRuleId: 'kunrei', combos: [{ keys: ['s', 't'], output: 'site' }] };
+  const catalog: PaneCatalog = { ...CATALOG, comboSets: new Map([[comboSet.id, comboSet]]) };
+  const plain: Setup = { id: 'plain', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const withSet: Setup = { id: 'with-set', number: 2, layoutId: 'qwerty', shapeId: 'row-staggered', comboSetId: comboSet.id };
+  const ja: ResolvedText = { ...EN_TEXT, text: 'してください', language: 'ja' };
+  const setupsById = new Map([plain, withSet].map((setup) => [setup.id, setup] as const));
+  const numbers = setupNumbersOf([plain, withSet]);
+  const named = nameTargets(
+    [plain, withSet].map((setup) => {
+      const target: AnalysisTarget = { kind: 'setup', setupId: setup.id };
+      return targetNameSource(
+        target,
+        resolvePaneInput(target, setupsById, catalog, EMPTY_SETTINGS_OVERRIDES, ja),
+        setupsById,
+        numbers,
+        catalog.setupCatalog,
+      );
+    }),
+  );
+  assert.notEqual(named[0]!.fullName, named[1]!.fullName);
+  assert.ok(named[1]!.fullName.includes('コンボ: 私の組'), named[1]!.fullName);
+  assert.equal(named[0]!.fullName.includes('コンボ'), false);
+});

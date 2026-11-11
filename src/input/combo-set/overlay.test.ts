@@ -66,3 +66,28 @@ test('配列がその字を1キーで出せないコンボは、字を解決で�
   assert.equal(overlay.layout, nicola);
   assert.equal(applyComboSet(qwerty, set([])).layout, qwerty);
 });
+
+test('同じキーの組に別の出力を割り当てるコンボは、例外を出さず外し、外す理由を衝突とする', () => {
+  const qwerty = LAYOUT_BY_ID.get('qwerty')!;
+  // 組の中で前にあるコンボと、キーの集合が同じで出力が違う
+  const inSet = applyComboSet(
+    qwerty,
+    set([
+      { keys: ['s', 't'], output: 'site' },
+      { keys: ['t', 's'], output: 'sa' },
+    ]),
+  );
+  assert.equal(inSet.applied, 1);
+  assert.deepEqual(
+    inSet.dropped.map((item) => [item.combo.output, item.reason]),
+    [['sa', 'conflict']],
+  );
+  // 配列が持つコンボ（TK音直入力法のkr→kara）と、キーの集合が同じで出力が違う
+  const tk = LAYOUT_BY_ID.get('tk-onchoku')!;
+  const overlay = applyComboSet(tk, set([{ keys: ['k', 'r'], output: 'ka' }]));
+  assert.deepEqual(
+    overlay.dropped.map((item) => item.reason),
+    ['conflict'],
+  );
+  assert.equal(overlay.layout, tk);
+});

@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { addComboToSet, buildComboEntry, newComboSetId, type ComboSet, type ComboSetEntry } from '#input/combo-set/combo-set.ts';
 import { allRomajiRules, isBuiltin, tableForRule, ROMAJI_RULES, DEFAULT_ROMAJI_RULE_ID, type UserRomajiRule } from '#input/romaji/rules.ts';
+import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { COMBO_SET_LABEL } from './label.ts';
 import './combo-set.css';
@@ -159,7 +160,11 @@ export function ComboSetEditor({
     <article className="combo-set" data-combo-set-editor>
       <h1>{COMBO_SET_LABEL}</h1>
       <p className="combo-set-note">
-        押すキーを英字の文字で、出力をかなで入力して、コンボを作ります。出力は、組を作る時に選んだ基準の綴りで展開して保存します。作った組は、Setupで選びます。
+        自作のコンボを組にして作ります。
+        <InfoButton
+          name="コンボの組"
+          description="押すキーは英字の文字で、出力はかなで入れます。出力は、組を作る時に選んだ基準の綴りでローマ字へ展開して保存します。作った組はSetupで選びます。"
+        />
       </p>
       <div className="combo-set-toolbar">
         <button type="button" disabled={!canUndo} onClick={onUndo}>
@@ -255,7 +260,7 @@ export function ComboSetEditor({
                       <td>
                         <button
                           type="button"
-                          aria-label={`コンボ「${keysText(combo.keys)}」から「${combo.output}」を削除`}
+                          aria-label={`コンボ「${keysText(combo.keys)} → ${combo.output}」を削除`}
                           onClick={() => onRemoveCombo(comboSet.id, index)}
                         >
                           削除

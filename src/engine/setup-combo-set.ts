@@ -1,5 +1,5 @@
 import { applyComboSet, type DroppedCombo } from '#input/combo-set/overlay.ts';
-import type { ComboSet } from '#input/combo-set/combo-set.ts';
+import type { ComboSet, ComboSetEntry } from '#input/combo-set/combo-set.ts';
 import type { LayoutKind } from '#input/layouts/kind.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Setup } from '#input/setup/index.ts';
@@ -52,4 +52,10 @@ export function overlaySetupComboSet(
  */
 export function comboSetSpellingDiffers(comboSet: Pick<ComboSet, 'romajiRuleId'>, effectiveRuleId: string | null): boolean {
   return effectiveRuleId !== null && effectiveRuleId !== comboSet.romajiRuleId;
+}
+
+/** 組のコンボのうち、計算に入るもの。 */
+export function appliedCombos(status: Extract<SetupComboSetStatus, { kind: 'applied' }>): readonly ComboSetEntry[] {
+  const droppedEntries = new Set(status.dropped.map((item) => item.combo));
+  return status.comboSet.combos.filter((combo) => !droppedEntries.has(combo));
 }

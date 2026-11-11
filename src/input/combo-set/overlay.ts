@@ -1,5 +1,6 @@
 import { resolveKeyId } from '../shapes/geometry.ts';
-import { singleActionKeyChoicesOf, withCombos, type ComboDefinition, type Layout } from '../layouts/types.ts';
+import { ActivationConflictError } from '../semantics/index.ts';
+import { singleActionKeyChoicesOf, withCombos, type Layout } from '../layouts/types.ts';
 import type { ComboSet, ComboSetEntry } from './combo-set.ts';
 
 /**
@@ -12,7 +13,9 @@ export type DroppedComboReason =
   /** キーの字が、配列で1キー1アクションとして出せない。 */
   | 'key-unresolved'
   /** 解決したキーが、配列で修飾や層のトリガーとして働く。 */
-  | 'trigger-key';
+  | 'trigger-key'
+  /** 解決したキーの組が、配列の既存の経路や組の中で前にあるコンボと同じで、出力だけが違う。 */
+  | 'conflict';
 
 export interface DroppedCombo {
   readonly combo: ComboSetEntry;
@@ -73,12 +76,22 @@ function dropReason(layout: Layout, combo: ComboSetEntry, triggerKeys: ReadonlyS
 export function applyComboSet(layout: Layout, comboSet: ComboSet): ComboSetOverlay {
   const triggerKeys = layoutTriggerKeys(layout);
   const dropped: DroppedCombo[] = [];
-  const definitions: ComboDefinition[] = [];
+  let current = layout;
+  let applied = 0;
   for (const combo of comboSet.combos) {
     const reason = dropReason(layout, combo, triggerKeys);
-    if (reason !== undefined) dropped.push({ combo, reason });
-    else definitions.push([combo.output, [...combo.keys], { romajiOnly: true }]);
+    if (reason !== undefined) {
+      dropped.push({ combo, reason });
+      continue;
+    }
+    // 1件ずつ重ね、同じキーの組に別の出力を割り当てて経路が衝突するコンボだけを外す
+    try {
+      current = withCombos(layout.id, layout.name, current, [[combo.output, [...combo.keys], { romajiOnly: true }]]);
+      applied += 1;
+    } catch (error) {
+      if (!(error instanceof ActivationConflictError)) throw error;
+      dropped.push({ combo, reason: 'conflict' });
+    }
   }
-  if (definitions.length === 0) return { layout, applied: 0, dropped };
-  return { layout: withCombos(layout.id, layout.name, layout, definitions), applied: definitions.length, dropped };
+  return { layout: current, applied, dropped };
 }

@@ -5,8 +5,8 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { generateEngineTrace } from './pipeline.ts';
-import { comboSetSpellingDiffers, overlaySetupComboSet } from './setup-combo-set.ts';
+import { generateEngineTrace, interpretEngineTrace } from './pipeline.ts';
+import { overlaySetupComboSet } from './setup-combo-set.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from './settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
 
@@ -40,6 +40,10 @@ function resolve(setup: Setup, text: string, language: 'ja' | 'en', comboSets?: 
   });
   assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
   return result.input;
+}
+
+function generateAndMeasureConditions(input: ResolvedInput) {
+  return interpretEngineTrace(generateEngineTrace(input), input).metrics.conditions.comboSet;
 }
 
 function measure(input: ResolvedInput) {
@@ -97,8 +101,11 @@ test('かな配列のSetupには、組を重ねない', () => {
   assert.equal(overlay.status.kind, 'kana-layout');
 });
 
-test('組の基準の綴りとSetupの実効の綴りが違う時だけ、作り直しが要る', () => {
-  assert.equal(comboSetSpellingDiffers(SET, 'kunrei'), false);
-  assert.equal(comboSetSpellingDiffers(SET, 'oonishi'), true);
-  assert.equal(comboSetSpellingDiffers(SET, null), false);
+test('組を使って測った数値は、条件のスナップショットに組の名前とコンボを持ち、使っていなければ持たない', () => {
+  const withSet = resolve(WITH_SET, TEXT, 'ja', SETS);
+  const snapshot = generateAndMeasureConditions(withSet);
+  assert.deepEqual(snapshot, { name: '私の組', romajiRuleId: 'kunrei', combos: SET.combos, dropped: 0 });
+  assert.equal(generateAndMeasureConditions(resolve(BASE_SETUP, TEXT, 'ja', SETS)), undefined);
+  // ローマ字を経ない英文では組のコンボが成立しないので、組を使って測ったとは記録しない
+  assert.equal(generateAndMeasureConditions(resolve(WITH_SET, 'the site', 'en', SETS)), undefined);
 });

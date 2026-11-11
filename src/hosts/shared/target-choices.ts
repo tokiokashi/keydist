@@ -12,6 +12,7 @@ import {
   type AnalysisTarget,
   type Setup,
 } from '#input/setup/index.ts';
+import { withComboSetSummary } from './condition-summary.ts';
 
 /**
  * 対象の選択（docs/architecture.md「対象の選択」）に並べる候補。
@@ -55,6 +56,8 @@ export interface TargetChoiceSource {
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   readonly shapes: ReadonlyMap<string, PhysicalShape>;
   readonly setups: readonly Setup[];
+  /** コンボの組。Setupが選んだ組の名前を、Setupの名前に併記する。 */
+  readonly comboSets?: ReadonlyMap<string, { readonly name: string }> | undefined;
   /**
    * 今選んでいる対象。候補に無いもの（削除されたSetup・見つからない配列）は「見つからない」区分に
    * 出し、外せるようにする（実際の状態をそのまま見せる）。
@@ -66,7 +69,10 @@ function missingName(target: AnalysisTarget): string {
   return target.kind === 'setup' ? MISSING_SETUP_NAME : MISSING_LAYOUT_NAME;
 }
 
-export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, selected }: TargetChoiceSource): readonly TargetChoiceGroup[] {
+const overrideSummaryOf = (summary: string | undefined): { readonly overrideSummary?: string } =>
+  summary === undefined ? {} : { overrideSummary: summary };
+
+export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, comboSets, selected }: TargetChoiceSource): readonly TargetChoiceGroup[] {
   const alphabet: TargetChoice[] = [];
   const kana: TargetChoice[] = [];
   const user: TargetChoice[] = [];
@@ -95,6 +101,7 @@ export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, selec
       kind: 'setup' as const,
       layoutName: layouts.get(setup.layoutId)?.name ?? MISSING_LAYOUT_NAME,
       shapeName: shapes.get(setup.shapeId)?.name ?? MISSING_SHAPE_NAME,
+      ...overrideSummaryOf(withComboSetSummary(undefined, setup.comboSetId === undefined ? undefined : comboSets?.get(setup.comboSetId)?.name)),
     })),
   );
   const setupChoices: TargetChoice[] = setups.map((setup, index) => {

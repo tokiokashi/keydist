@@ -188,6 +188,10 @@ export function addComboToSet(sets: readonly ComboSet[], id: string, entry: Comb
   if (target.combos.some((combo) => comboIdentity(combo) === identity)) {
     return { ok: false, problem: '同じコンボが既にあります' };
   }
+  const keySet = comboKeySetKey(entry.keys);
+  if (target.combos.some((combo) => comboKeySetKey(combo.keys) === keySet)) {
+    return { ok: false, problem: '同じキーの組に別の出力のコンボが既にあります' };
+  }
   const added = { keys: [...entry.keys], output: entry.output };
   return { ok: true, sets: sets.map((set) => (set.id === id ? { ...set, combos: [...set.combos, added] } : set)) };
 }

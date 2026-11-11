@@ -18,14 +18,16 @@ export function comboSetStatusNotes(view: SetupComboSetView): readonly ComboSetN
   if (!view.selectable) {
     notes.push({ kind: 'kana-layout', text: 'かな配列のSetupでは、コンボの組を選べません。' });
   } else if (status.kind === 'missing') {
-    notes.push({ kind: 'missing', text: '選んだコンボの組が見つかりません。コンボの組を重ねずに測っています。' });
+    notes.push({ kind: 'missing', text: '選んだコンボの組が見つかりません。コンボの組を使わずに測っています。' });
   }
   if (status.kind === 'applied' && status.dropped.length > 0) {
     const unresolved = status.dropped.filter((item) => item.reason === 'key-unresolved').length;
     const trigger = status.dropped.filter((item) => item.reason === 'trigger-key').length;
+    const conflict = status.dropped.filter((item) => item.reason === 'conflict').length;
     const reasons = [
       ...(unresolved === 0 ? [] : [`この配列で出せない文字のキーを使うものが${unresolved}件`]),
       ...(trigger === 0 ? [] : [`修飾や層のキーを使うものが${trigger}件`]),
+      ...(conflict === 0 ? [] : [`同じキーの組を別の出力に使う、配列や組の中の別のコンボとぶつかるものが${conflict}件`]),
     ];
     notes.push({
       kind: 'dropped',

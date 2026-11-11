@@ -18,6 +18,7 @@ import {
   nonDefaultConditionRows,
   summarizeNonDefaultConditions,
   traceConditionSummary,
+  withComboSetSummary,
   type ConditionSummaryRow,
 } from '#hosts/shared/condition-summary.ts';
 
@@ -68,14 +69,12 @@ export function setupListItems(setups: readonly Setup[], catalog: PaneCatalog, o
     if (rows === undefined) return { ...base, failed: true, description: failedDescription(setup, catalog.setupCatalog) };
     // 選んだコンボの組は数値を変えるので、変えた条件と同じく名前の併記に入れる（仕様 §4.3）
     const comboName = setup.comboSetId === undefined ? undefined : catalog.comboSets?.get(setup.comboSetId)?.name;
-    const overrideSummary = [summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), comboName === undefined ? undefined : `コンボ: ${comboName}`]
-      .filter((part): part is string => part !== undefined)
-      .join(' ・ ');
+    const overrideSummary = withComboSetSummary(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), comboName);
     return {
       ...base,
       layoutName: catalog.setupCatalog.layouts.get(setup.layoutId)!.name,
       shapeName: catalog.setupCatalog.shapes.get(setup.shapeId)!.name,
-      ...(overrideSummary === '' ? {} : { overrideSummary }),
+      ...(overrideSummary === undefined ? {} : { overrideSummary }),
     };
   });
   const named = nameTargets(sources);
