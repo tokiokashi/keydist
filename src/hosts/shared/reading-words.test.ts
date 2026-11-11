@@ -62,6 +62,7 @@ const TEXT: PaneText = {
   languageOverride: undefined,
   isBuiltin: false,
   readingCorrections: {},
+  wordReadingCorrections: [],
 };
 
 test('createStrokeCounter: 読みを単独のテキストとして、比べている配列ごとの打鍵数を数える', () => {

@@ -26,6 +26,7 @@ const EN_TEXT: ResolvedText = {
   languageOverride: undefined,
   isBuiltin: false,
   readingCorrections: {},
+  wordReadingCorrections: [],
 };
 
 /** 比較表・N感度のページと同じ経路（解決→名前の材料→nameTargets）で表示名を求める。 */

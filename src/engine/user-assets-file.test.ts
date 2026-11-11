@@ -874,12 +874,22 @@ test('取り込みの診断: JSONとして読めない・版が合わない・�
 });
 
 const BUILTIN_ID = 'builtin:ja.legacy';
+const WORD_FIX = { surface: '吾輩', order: 0, before: '', after: 'は猫で', reading: 'われわれ' };
 const TEXT_HOLDINGS: TextLibrary = {
   texts: [
-    { id: 't1', name: '吾輩', text: '吾輩は猫である。', languageOverride: 'ja', readingCorrections: { 吾輩: 'わがはい' }, unseen: true },
+    {
+      id: 't1',
+      name: '吾輩',
+      text: '吾輩は猫である。',
+      languageOverride: 'ja',
+      readingCorrections: { 吾輩: 'わがはい' },
+      wordReadingCorrections: [WORD_FIX],
+      unseen: true,
+    },
     { id: 't2', name: 'plain', text: 'hello' },
   ],
   builtinReadingCorrections: { [BUILTIN_ID]: { 吾輩: 'わがはい' }, 'builtin:gone.id': { 猫: 'ねこ' } },
+  builtinWordReadingCorrections: { [BUILTIN_ID]: [WORD_FIX], 'builtin:gone.id': [WORD_FIX] },
 };
 
 function readFile(textLibrary: TextLibrary, assets: UserAssetsHoldings = EMPTY) {
@@ -891,15 +901,23 @@ function readFile(textLibrary: TextLibrary, assets: UserAssetsHoldings = EMPTY) 
   return parsed;
 }
 
-test('自作のテキストは、名前・本文・言語の手動指定・直した読みが戻り、「新しい」の印と組み込みに無いidの直しは運ばない', () => {
+test('自作のテキストは、名前・本文・言語の手動指定・直した読み（表記ごと・語ごと）が戻り、「新しい」の印と組み込みに無いidの直しは運ばない', () => {
   const parsed = readFile(TEXT_HOLDINGS);
   const merged = mergeUserTexts(emptyTextLibrary(), parsed.userTexts, STAMP);
   assert.deepEqual(merged.library, {
     texts: [
-      { id: 't1', name: '吾輩', text: '吾輩は猫である。', languageOverride: 'ja', readingCorrections: { 吾輩: 'わがはい' } },
+      {
+        id: 't1',
+        name: '吾輩',
+        text: '吾輩は猫である。',
+        languageOverride: 'ja',
+        readingCorrections: { 吾輩: 'わがはい' },
+        wordReadingCorrections: [WORD_FIX],
+      },
       { id: 't2', name: 'plain', text: 'hello' },
     ],
     builtinReadingCorrections: { [BUILTIN_ID]: { 吾輩: 'わがはい' } },
+    builtinWordReadingCorrections: { [BUILTIN_ID]: [WORD_FIX] },
   });
   assert.ok(parsed.dropped.length === 0);
 });
@@ -907,7 +925,7 @@ test('自作のテキストは、名前・本文・言語の手動指定・直�
 test('テキストを持たない古いファイルは、テキストが0件のファイルとして読む', () => {
   const parsed = parseUserAssetsFile(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, version: 1, layouts: [LAYOUT] }));
   assert.ok(parsed.ok);
-  if (parsed.ok) assert.deepEqual(parsed.userTexts, { texts: [], builtinReadingCorrections: {} });
+  if (parsed.ok) assert.deepEqual(parsed.userTexts, { texts: [], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} });
 });
 
 test('テキストだけのファイルも読め、同じファイルを2回読んでもテキストが増えない', () => {
@@ -921,7 +939,10 @@ test('テキストだけのファイルも読め、同じファイルを2回読�
 test('テキストの中身の比較は名前を見ず、同じidで中身が違えば別のidと別名で足す', () => {
   const parsed = readFile(TEXT_HOLDINGS);
   const renamedLocal: TextLibrary = { texts: [{ id: 't2', name: '手元の名前', text: 'hello' }] };
-  assert.equal(mergeUserTexts(renamedLocal, { texts: [TEXT_HOLDINGS.texts[1]!], builtinReadingCorrections: {} }, STAMP).library, renamedLocal);
+  assert.equal(
+    mergeUserTexts(renamedLocal, { texts: [TEXT_HOLDINGS.texts[1]!], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} }, STAMP).library,
+    renamedLocal,
+  );
   const differing: TextLibrary = { texts: [{ id: 't2', name: 'plain', text: 'hello!' }] };
   const merged = mergeUserTexts(differing, parsed.userTexts, STAMP);
   const added = merged.library.texts.find((text) => text.text === 'hello');
@@ -929,7 +950,11 @@ test('テキストの中身の比較は名前を見ず、同じidで中身が違
   assert.equal(merged.library.texts.length, 3);
   // 言語の手動指定と直した読みも中身に数える
   const other: TextLibrary = { texts: [{ id: 't1', name: '吾輩', text: '吾輩は猫である。' }] };
-  assert.equal(mergeUserTexts(other, { texts: [TEXT_HOLDINGS.texts[0]!], builtinReadingCorrections: {} }, STAMP).library.texts.length, 2);
+  assert.equal(
+    mergeUserTexts(other, { texts: [TEXT_HOLDINGS.texts[0]!], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} }, STAMP).library.texts
+      .length,
+    2,
+  );
 });
 
 test('組み込みのテキストの読みの直しは、手元に無ければ足し、手元に別の直しがあれば手元を残す', () => {
@@ -994,4 +1019,24 @@ test('1MiBを超え上限以下のファイルを、読み込み口（上限つ�
   const parsed = parseUserAssetsFile(read.text);
   assert.ok(parsed.ok);
   if (parsed.ok) assert.deepEqual(parsed.userTexts.texts, library.texts);
+});
+
+test('語ごとの直しだけが違う自作のテキストは、中身が違うので別のテキストとして足す', () => {
+  const parsed = readFile(TEXT_HOLDINGS);
+  const without: TextLibrary = {
+    texts: [{ id: 't1', name: '吾輩', text: '吾輩は猫である。', languageOverride: 'ja', readingCorrections: { 吾輩: 'わがはい' } }],
+  };
+  assert.equal(
+    mergeUserTexts(without, { texts: [parsed.userTexts.texts[0]!], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} }, STAMP).library
+      .texts.length,
+    2,
+  );
+});
+
+test('組み込みのテキストの語ごとの直しだけを持つ手元と、表記ごとの直しだけを持つファイルは、中身が違うので手元を残す', () => {
+  const incoming = readFile({ texts: [], builtinReadingCorrections: { [BUILTIN_ID]: { 吾輩: 'わがはい' } } }).userTexts;
+  const own: TextLibrary = { texts: [], builtinWordReadingCorrections: { [BUILTIN_ID]: [WORD_FIX] } };
+  const kept = mergeUserTexts(own, incoming, STAMP);
+  assert.equal(kept.library, own);
+  assert.ok(kept.entries.some((entry) => entry.assetKind === 'builtin-text-reading' && entry.outcome.kind === 'kept-own'));
 });

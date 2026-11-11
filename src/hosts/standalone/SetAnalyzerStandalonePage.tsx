@@ -1,6 +1,12 @@
 import { useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setMultiBaselineCommand, setMultiTargetsCommand, setReadingCorrectionCommand, type KeydistAssets } from '#engine/commands.ts';
+import {
+  setMultiBaselineCommand,
+  setMultiTargetsCommand,
+  setReadingCorrectionCommand,
+  setWordReadingCorrectionCommand,
+  type KeydistAssets,
+} from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import { analysisTargetKey, layoutIdsOfTargets } from '#input/setup/index.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
@@ -232,6 +238,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
           catalog={catalog}
           overrides={assets.setupLibrary.overrides}
           onCorrect={(ref, surface, value) => dispatch(setReadingCorrectionCommand(ref, surface, value))}
+          onCorrectWord={(ref, remove, add) => dispatch(setWordReadingCorrectionCommand(ref, remove, add))}
         />
         <DefaultShapeChip
           overrides={assets.setupLibrary.overrides}
