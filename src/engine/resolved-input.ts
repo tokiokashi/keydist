@@ -125,7 +125,7 @@ export interface ResolveEngineInputOptions {
   /** `text` を作った時に読みに置き換えた語の、表記の字数と読みの字数の差。読みに直した時だけ渡す。無ければ差は0。 */
   readonly notationExcess?: NotationExcess | undefined;
   /**
-   * コンボを止める境（仕様 §4.3）。`text` を作った語の列から求めた、読みのテキストの位置（`comboBarriersInReading`）。
+   * コンボを止める境（仕様 §4.3）。`text`を作った語の列から求めた、読みのテキストの位置（`comboBarriersInReading`）。
    * 評価に渡すテキストの位置へは、この対象の記号と英数字の範囲で写し直して`ResolvedInput.comboBarriers`に載せる。無ければ境は無い。
    */
   readonly comboBarriers?: readonly number[] | undefined;

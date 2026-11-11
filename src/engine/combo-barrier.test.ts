@@ -20,9 +20,9 @@ const CATALOG = {
 };
 
 /** TK音直入力法（コンボを持つ組み込みの配列）で、読みに直した後のテキストと境から評価する。 */
-function measure(text: string, comboBarriers?: readonly number[]) {
+function measure(text: string, comboBarriers?: readonly number[], layoutId = 'tk-onchoku') {
   const result = resolveEngineInput({
-    target: { kind: 'layout', layoutId: 'tk-onchoku' },
+    target: { kind: 'layout', layoutId },
     setups: new Map(),
     catalog: CATALOG,
     userLayouts: new Map(),
@@ -60,6 +60,29 @@ test('境をまたがないコンボは、境があっても使う', () => {
 test('入力は活用語でなく境が無いので、4アクションのまま', () => {
   const { trace } = measure('にゅうりょく', []);
   assert.equal(trace.strokes.length, 4);
+});
+
+test('かな配列（かわせみ配列+）でも、境をまたぐコンボ枠の見出しを当てない', () => {
+  assert.deepEqual(measure('いい', undefined, 'kawasemi-plus').trace.comboHits, ['いい']);
+  assert.deepEqual(measure('いい', [1], 'kawasemi-plus').trace.comboHits, []);
+});
+
+test('コンボ枠でない複数かなの見出し（きゃ）は、境をまたいでも1つの入力で打つ', () => {
+  const without = measure('きゃ', undefined, 'naginata-v18').trace;
+  const crossing = measure('きゃ', [1], 'naginata-v18').trace;
+  assert.deepEqual(
+    crossing.strokes.map((stroke) => stroke.inputChar),
+    without.strokes.map((stroke) => stroke.inputChar),
+  );
+  assert.equal(crossing.strokes.length, without.strokes.length);
+  assert.equal(crossing.skipped, 0);
+});
+
+test('境は、記号を取り除いた後の評価に渡すテキストの位置へ写し直す', () => {
+  // 読みのテキスト 'あ！はやく' の境（くの直前 = 4）は、！を取り除くと 3
+  assert.deepEqual(measure('あ！はやく', [4]).input.comboBarriers, [3]);
+  assert.deepEqual(measure('あ！はやく', [4]).trace.comboHits, []);
+  assert.deepEqual(measure('あ！はやく').trace.comboHits, ['aku']);
 });
 
 test('境はTraceのキーに入る。同じテキストでも境が違えば別のキーになる', () => {

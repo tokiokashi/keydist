@@ -305,7 +305,7 @@ export function generateTrace(
    */
   romajiChunks?: readonly RomajiChunk[],
   /**
-   * コンボを止める境（仕様 §4.3）。`text` のかなの位置（コードポイント。境は位置の直前）。コンボ枠の見出しは、境をまたぐ範囲では当てない。
+   * コンボを止める境（仕様 §4.3）。`text`のかなの位置（コードポイント。境は位置の直前）。コンボ枠の見出しは、境をまたぐ範囲では当てない。
    * 渡さなければ、コンボは境に止められない。
    */
   comboBarriers: readonly number[] = [],
@@ -826,8 +826,8 @@ interface RomajiChunkRange {
 }
 
 /**
- * コンボを止める境（`text` のかなの位置）を、見出しを引く列（`chars`）の位置にする。
- * ローマ字の配列は、境の位置から始まる綴りの単位の先頭の英字の位置。複数のかなを1つにまとめた綴りの単位（`kya` など）の内側に来た境は、
+ * コンボを止める境（`text`のかなの位置）を、見出しを引く列（`chars`）の位置にする。
+ * ローマ字の配列は、境の位置から始まる綴りの単位の先頭の英字の位置。複数のかなを1つにまとめた綴りの単位（`kya`など）の内側に来た境は、
  * 単位を割れないので置かない。かな配列は、かなの位置がそのまま列の位置になる。
  */
 function comboBarrierPositions(barriers: readonly number[], chunkRanges: readonly RomajiChunkRange[], romaji: boolean): ReadonlySet<number> {

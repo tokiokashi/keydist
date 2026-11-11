@@ -5,7 +5,7 @@ import type { ReadingToken } from './reading.ts';
 
 const bytes = (text: string) => new TextEncoder().encode(text).length;
 
-/** `tokens` を原文の先頭から隙間なく並べた語の列にする。 */
+/** `tokens`を原文の先頭から隙間なく並べた語の列にする。 */
 function line(parts: readonly (readonly [string, string | null, number | undefined])[]): { text: string; tokens: ReadingToken[] } {
   let position = 0;
   const tokens = parts.map(([surface, reading, stemLength]): ReadingToken => {

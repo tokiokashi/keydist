@@ -270,3 +270,21 @@ test('辞書を読み込めない時と読み込み中は、語ごとの直し�
   assert.equal(loading.state.kind, 'loading');
   assert.deepEqual(loading.wordCorrections.unfound, []);
 });
+
+test('語幹の長さを持つ活用語から、コンボを止める境を読みのテキストの位置で持つ。読みに直さない時は持たない', () => {
+  const hayaku: ReadingToken = { surface: '早く', byteStart: 0, byteEnd: 6, reading: 'ハヤク', isUnknown: false, stemLength: 1 };
+  const outcome: ReadingOutcome = { kind: 'analyzed', sourceText: '早く', tokens: [hayaku] };
+  const converted = evaluationText(
+    resolved('早く'),
+    source(async () => []),
+    outcome,
+  );
+  assert.equal(converted.text.text, 'はやく');
+  assert.deepEqual(converted.text.comboBarriers, [2]);
+  const failed = evaluationText(
+    resolved('早く'),
+    source(async () => []),
+    { kind: 'failed' },
+  );
+  assert.equal(failed.text.comboBarriers, undefined);
+});

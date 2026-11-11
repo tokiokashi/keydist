@@ -34,8 +34,7 @@ test('活用する語は、表記と原形の共通の先頭部分を語幹と�
   assert.equal(toReadingToken(conjugating('嬉しかっ', '形容詞', '連用タ接続', '嬉しい', 'ウレシカッ')).stemLength, 2);
   assert.equal(toReadingToken(conjugating('行か', '動詞', '未然形', '行く', 'イカ')).stemLength, 1);
   assert.equal(toReadingToken(conjugating('思い出し', '動詞', '連用形', '思い出す', 'オモイダシ')).stemLength, 3);
-  assert.equal(toReadingToken(conjugating('ましょ', '助動詞', '未然ウ接続', 'ます', 'マショ')).stemLength, 1);
-  assert.equal(toReadingToken(conjugating('なかっ', '助動詞', '連用タ接続', 'ない', 'ナカッ')).stemLength, 1);
+  assert.equal(toReadingToken(conjugating('書い', '動詞', '連用タ接続', '書く', 'カイ')).stemLength, 1);
 });
 
 test('語幹を出さない語: 活用語尾が無い・語幹が空・活用しない品詞・未知語・読みを割れない語', () => {
@@ -43,6 +42,9 @@ test('語幹を出さない語: 活用語尾が無い・語幹が空・活用し
   assert.equal(toReadingToken(conjugating('食べる', '動詞', '基本形', '食べる', 'タベル')).stemLength, undefined);
   // 一段活用の連用形は、表記が原形の語幹と同じで、活用語尾が無い
   assert.equal(toReadingToken(conjugating('食べ', '動詞', '連用形', '食べる', 'タベ')).stemLength, undefined);
+  // 助動詞は、ましょ／ます や なかっ／ない のように語幹と語尾に割れても、境を置かない
+  assert.equal(toReadingToken(conjugating('ましょ', '助動詞', '未然ウ接続', 'ます', 'マショ')).stemLength, undefined);
+  assert.equal(toReadingToken(conjugating('なかっ', '助動詞', '連用タ接続', 'ない', 'ナカッ')).stemLength, undefined);
   // 語幹と原形が先頭から食い違う（し／する、で／だ）
   assert.equal(toReadingToken(conjugating('し', '動詞', '連用形', 'する', 'シ')).stemLength, undefined);
   assert.equal(toReadingToken(conjugating('で', '助動詞', '連用形', 'だ', 'デ')).stemLength, undefined);
@@ -119,7 +121,7 @@ test('実際の辞書で、活用する語だけが語幹の長さを持つ', { 
   ]);
   assert.deepEqual(stems('行きましょう'), [
     ['行き', 1],
-    ['ましょ', 1],
+    ['ましょ', undefined],
     ['う', undefined],
   ]);
   assert.deepEqual(stems('入力'), [['入力', undefined]]);
