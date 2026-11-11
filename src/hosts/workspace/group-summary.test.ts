@@ -34,6 +34,7 @@ const EN_TEXT: ResolvedText = {
   languageOverride: undefined,
   isBuiltin: false,
   readingCorrections: {},
+  wordReadingCorrections: [],
 };
 
 function envWith(setups: readonly Setup[]): PaneEnvironment {
