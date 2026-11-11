@@ -365,6 +365,18 @@
   text-align: center;
 }
 
+/*
+ * Workspaceのペインが低く、固定すると帯の行を読める高さが残らない時は、凡例とキャプションを固定せず、
+ * 図の上下の元の位置に置いて、帯の行と一緒にスクロールさせる（固定するかはJSが `data-band-pinned` に書く）。
+ * 個別画面は本体の領域に高さが無いので、この規則は適用されず、常に固定する。
+ */
+@container pane-body (min-height: 1px) {
+  .band-figure[data-band-pinned='false'] .band-legend,
+  .band-figure[data-band-pinned='false'] .band-caption {
+    position: static;
+  }
+}
+
 /* 選んだ配列の4区分の割合 */
 .band-detail {
   display: flex;
