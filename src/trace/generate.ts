@@ -1,7 +1,7 @@
 import { ALL_FINGERS, THUMB_KEY, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
 import { commitAction, commitKeyOf, commitStrokeRulesOf, needsCommitStroke } from './commit-stroke.ts';
 import { decidePress, selectFingers, strokeFingerChoices, targetOf, type PlannedInput, type PlannedStroke } from './finger-selection.ts';
-import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyCombos } from '#input/layouts/types.ts';
+import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyInputs } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
 import { canTypeSpaceWithLeftThumb, isLoneRightThumbPress } from '#input/layouts/space-thumb.ts';
 import { bracketAliasesFor } from '#input/text/bracket-alias.ts';
@@ -266,7 +266,7 @@ function evaluationUnitsOf(text: string, layout: Layout, romajiChunks: readonly 
  * （`youonOnly`・`romajiOnly`）だけで、条件が付くのは英字の出力の見出しだけである。
  */
 export function uncoveredTextPositions(text: string, sourceLayout: Layout): number[] {
-  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyCombos(sourceLayout);
+  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyInputs(sourceLayout);
   const { chunks, chars, chunkRanges, canonicalInputs } = evaluationUnitsOf(text, layout, undefined);
   const maxLen = Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
   const uncovered: number[] = [];
@@ -313,7 +313,7 @@ export function generateTrace(
   // 仕様 §4.3。ローマ字を経ない打ち方ではromajiOnlyのコンボを配列に無いものとして扱う。
   // 見出し探索だけでなく定義数B（§11.8）とコンボ枠の有無も揃えるため、alternativeの
   // filterだけで済ませず、評価前に配列ごと外す。
-  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyCombos(sourceLayout);
+  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyInputs(sourceLayout);
   const prev = {} as Record<Finger, Point>;
   const last = {} as Record<Finger, number>;
   const lastInputEnd = {} as Record<Finger, number>;
