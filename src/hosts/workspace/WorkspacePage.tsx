@@ -6,7 +6,7 @@ import { createPlaybackSeekStore } from '#hosts/shared/playback-seek.ts';
 import { PlaybackBroadcastProvider } from '#analyzers/playback/playback-broadcast.tsx';
 import { SharedScaleProvider } from '#analyzers/shared-scale.tsx';
 import type { Command } from '#input/commands/index.ts';
-import { setReadingCorrectionCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setReadingCorrectionCommand, setWordReadingCorrectionCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import {
   addWorkspacePaneCommand,
@@ -498,6 +498,7 @@ export function WorkspacePage({
                   catalog={catalog}
                   overrides={overrides}
                   onCorrect={(ref, surface, value) => dispatch(setReadingCorrectionCommand(ref, surface, value))}
+                  onCorrectWord={(ref, remove, add) => dispatch(setWordReadingCorrectionCommand(ref, remove, add))}
                 />
               )}
               <DefaultShapeChip

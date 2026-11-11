@@ -63,3 +63,40 @@
   margin: 0;
   color: var(--danger, inherit);
 }
+
+.reading-unfound {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid var(--warning, var(--border));
+  border-radius: 8px;
+}
+
+.reading-places {
+  display: grid;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.reading-places-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reading-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+.reading-place-snippet {
+  color: var(--text-muted, inherit);
+  overflow-wrap: anywhere;
+}

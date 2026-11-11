@@ -2,6 +2,7 @@ import { TEXT_ASSET_NOUNS } from '#hosts/shared/asset-import-text.ts';
 import { CONDITIONS_LABEL, isEmptyConditionLevels } from '#engine/user-assets-conditions.ts';
 import {
   userAssetsExtrasOf,
+  builtinTextReadingIds,
   userTextsBundleOf,
   type UserAssetImportEntry,
   type UserAssetKind,
@@ -40,7 +41,7 @@ export function exportedText(assets: UserAssetsFileHoldings): string {
     ['finger-assignment', assets.fingerAssignments.length],
     ['setup', assets.setupLibrary.setups.length],
     ['text', assets.textLibrary.texts.length],
-    ['builtin-text-reading', Object.keys(userTextsBundleOf(assets.textLibrary).builtinReadingCorrections).length],
+    ['builtin-text-reading', builtinTextReadingIds(userTextsBundleOf(assets.textLibrary)).length],
     ['preset', assets.presetLibrary.presets.length],
     ['workspace', assets.workspaces.length],
   ] as const;

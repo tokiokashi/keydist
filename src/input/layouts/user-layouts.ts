@@ -7,9 +7,9 @@ import {
   type InputAlternative,
 } from '../semantics/index.ts';
 import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from '../shapes/geometry.ts';
-import { fromRows, SINGLE_LAYER_ID, withRomaji, withShiftedOutputs, type Layout } from './index.ts';
+import { fromRows, SINGLE_LAYER_ID, withAuthoredShiftedSymbols, withRomaji, withShiftedOutputs, type Layout } from './index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from '../romaji/rules.ts';
-import { buildFaceLayout, FACE_BODY_PROPERTIES, readFaceBody, type AlphaFaceBody, type KanaFaceBody } from './face-layout.ts';
+import { authoredShiftedSymbols, buildFaceLayout, FACE_BODY_PROPERTIES, readFaceBody, type AlphaFaceBody, type KanaFaceBody } from './face-layout.ts';
 import type { Sequence } from './types.ts';
 
 export type {
@@ -215,8 +215,8 @@ export function toLayout(def: UserLayout): Layout {
   if (def.faces !== undefined) {
     const built = buildFaceLayout(def.id, def.name, def);
     // 英字の種類は、定義に無い大文字・記号を通常Shiftで打てるようにする。かなの種類はShiftのキーを
-    // 切り替えのキーに使う配列があるので足さない
-    const layout = def.kind === 'alpha' ? withShiftedOutputs(built) : built;
+    // 切り替えのキーに使う配列があるので足さない。Shiftの面が記号を置いたキーは、その記号を作者の組にする
+    const layout = def.kind === 'alpha' ? withAuthoredShiftedSymbols(built, authoredShiftedSymbols(def.faces)) : built;
     return def.homeKeys === undefined ? layout : { ...layout, homeKeys: def.homeKeys };
   }
   const imported = def.sequences !== undefined || def.legends !== undefined;
