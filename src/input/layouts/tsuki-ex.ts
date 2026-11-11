@@ -10,6 +10,7 @@ import { THUMB_KEY } from '../shapes/geometry.ts';
  * 単打の面は33キー。`d`（、）`k`（。）`l`（？）も単打で句読点を出し、同時に前置のトリガーになる。
  * `d` `k` `l` を押してから次のキーを打つと、その前置の面（D面・K面・L面）の文字が出る。
  * D面とK面は、反対の手のキーに加えて同じ手のキーにも文字を持つ（作者の言う「同手シフト」）。
+ * 単打の面の ー は `-` と `/` の2つのキーにある。作者の配列図（http://enin-world.sakura.ne.jp/blog-bbs/image/160320.png）は `/` だけに ー を描くので、`/` を既定にする。
  * 同じ句読点は面にもあり（、はD面の `f`、。はK面の `j`、？はK面の `;`）、単打で打てない環境のために作者が置いている。
  * 面を並べる順で打鍵の既定が決まるので、単打の面を先頭に置き、句読点は単打を既定にする。
  * 単打の句読点に続けて前置の面のキーを打つと、前置の面の入力と読まれるので、継ぎ目に確定の打鍵が入る（仕様 §4.7）。
@@ -20,9 +21,10 @@ import { THUMB_KEY } from '../shapes/geometry.ts';
  * JISの `@` はANSIの `[`、`:` は `'`、`^` は `=` に写している。
  */
 
-const face = (trigger: string[], entries: Record<string, string>): Face => ({
+const face = (trigger: string[], entries: Record<string, string>, defaultCells?: readonly string[]): Face => ({
   ...faceFromEntries(trigger, 'prefix', entries),
   inputRole: 'layer',
+  ...(defaultCells === undefined ? {} : { defaultCells }),
   ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
 });
 
@@ -159,7 +161,7 @@ const AFTER_L: Record<string, string> = {
   m: '』',
 };
 
-export const TSUKI_EX_FACES: Face[] = [face([], BASE), face(['d'], AFTER_D), face(['k'], AFTER_K), face(['l'], AFTER_L)];
+export const TSUKI_EX_FACES: Face[] = [face([], BASE, ['/']), face(['d'], AFTER_D), face(['k'], AFTER_K), face(['l'], AFTER_L)];
 
 const layout: Layout = fromFaces('tsuki-ex', '月配列E-X', TSUKI_EX_FACES);
 layout.legends.delete(THUMB_KEY.LT);

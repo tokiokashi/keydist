@@ -394,6 +394,9 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
               dictionary: { ...conditions.reading.dictionary },
               library: { ...conditions.reading.library },
               corrections: conditions.reading.corrections.map((entry) => ({ ...entry })),
+              ...(conditions.reading.wordCorrections === undefined
+                ? {}
+                : { wordCorrections: conditions.reading.wordCorrections.map((entry) => ({ ...entry })) }),
             },
     },
     strokes: scalars.actions,
