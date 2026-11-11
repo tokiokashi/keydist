@@ -304,6 +304,11 @@ export function generateTrace(
    * この列を打つ。配列がローマ字表を持たない時は読まない。
    */
   romajiChunks?: readonly RomajiChunk[],
+  /**
+   * コンボを止める境（仕様 §4.3）。`text` のかなの位置（コードポイント。境は位置の直前）。コンボ枠の見出しは、境をまたぐ範囲では当てない。
+   * 渡さなければ、コンボは境に止められない。
+   */
+  comboBarriers: readonly number[] = [],
 ): Trace {
   // 仕様 §4.3。ローマ字を経ない打ち方ではromajiOnlyのコンボを配列に無いものとして扱う。
   // 見出し探索だけでなく定義数B（§11.8）とコンボ枠の有無も揃えるため、alternativeの
@@ -337,6 +342,7 @@ export function generateTrace(
   const inputs: PlannedGeneratedInput[] = [];
 
   const { rawChars, chunks, chars, chunkRanges, canonicalInputs } = evaluationUnitsOf(text, layout, romajiChunks);
+  const barrierPositions = comboBarrierPositions(comboBarriers, chunkRanges, chunks !== undefined);
   const commitRules = commitStrokeRulesOf(canonicalInputs);
   const commitKey = commitKeyOf(geometry);
   // 直前の入力が選んだpath。打てない文字を挟んだら継ぎ目として扱わないので、そこで外す
@@ -352,8 +358,11 @@ export function generateTrace(
     for (let len = Math.min(maxLen, chars.length - cursor); len >= 1; len--) {
       const candidate = chars.slice(cursor, cursor + len).join('');
       const found = canonicalInputs.get(candidate);
-      const eligible = found?.filter((alternative) =>
-        alternativeContextSatisfied(alternative.contextRequirements, cursor, cursor + len, chars, chunkRanges, chunks !== undefined),
+      const crossesBarrier = spansBarrier(barrierPositions, cursor, cursor + len);
+      const eligible = found?.filter(
+        (alternative) =>
+          !(crossesBarrier && isComboFrameAlternative(alternative)) &&
+          alternativeContextSatisfied(alternative.contextRequirements, cursor, cursor + len, chars, chunkRanges, chunks !== undefined),
       );
       if (eligible && eligible.length > 0) {
         alternatives = eligible;
@@ -814,6 +823,32 @@ interface RomajiChunkRange {
   /** 綴りの単位の最初のかなの、テキストの中の位置 */
   kanaStart: number;
   kanaLength: number;
+}
+
+/**
+ * コンボを止める境（`text` のかなの位置）を、見出しを引く列（`chars`）の位置にする。
+ * ローマ字の配列は、境の位置から始まる綴りの単位の先頭の英字の位置。複数のかなを1つにまとめた綴りの単位（`kya` など）の内側に来た境は、
+ * 単位を割れないので置かない。かな配列は、かなの位置がそのまま列の位置になる。
+ */
+function comboBarrierPositions(barriers: readonly number[], chunkRanges: readonly RomajiChunkRange[], romaji: boolean): ReadonlySet<number> {
+  if (barriers.length === 0) return NO_BARRIERS;
+  if (!romaji) return new Set(barriers);
+  const startByKana = new Map(chunkRanges.map((range) => [range.kanaStart, range.start]));
+  const positions = new Set<number>();
+  for (const barrier of barriers) {
+    const start = startByKana.get(barrier);
+    if (start !== undefined) positions.add(start);
+  }
+  return positions;
+}
+
+const NO_BARRIERS: ReadonlySet<number> = new Set();
+
+/** 列の範囲[start, end)の内側（先頭の直前と末尾の直後を除く）に境があるか。 */
+function spansBarrier(barriers: ReadonlySet<number>, start: number, end: number): boolean {
+  if (barriers.size === 0) return false;
+  for (let position = start + 1; position < end; position++) if (barriers.has(position)) return true;
+  return false;
 }
 
 function alternativeContextSatisfied(

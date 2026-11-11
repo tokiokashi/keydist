@@ -36,6 +36,8 @@ export function createTraceRequesterFor(lookup: TraceLookup, baseInput: Resolved
         ...restRequest,
         // tracePolicyだけは丸ごと差し替えでなく項目単位でマージする（上のコメント参照）。
         tracePolicy: { ...baseInput.tracePolicy, ...requestTracePolicy },
+        // 境は土台のテキストの位置なので、テキストを差し替えて境を渡さない依頼には引き継がない
+        comboBarriers: request.comboBarriers ?? (request.text === undefined ? baseInput.comboBarriers : []),
       };
       return lookup.getTrace(merged).trace;
     },

@@ -60,6 +60,7 @@ export function resolvePaneInput(
     language: resolvedText.language,
     reading: resolvedText.reading,
     notationExcess: resolvedText.notationExcess,
+    comboBarriers: resolvedText.comboBarriers,
     segmentation,
   });
 }

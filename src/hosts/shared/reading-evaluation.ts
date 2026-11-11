@@ -1,3 +1,4 @@
+import { comboBarriersInReading } from '#input/text/combo-barriers.ts';
 import type { SegmentationOrigin } from '#input/text/segmentation.ts';
 import {
   convertToReading,
@@ -76,6 +77,11 @@ export interface PaneText extends ResolvedText {
   readonly notationExcess?: NotationExcess;
   /** 文節の区切りを作る材料。漢字を読みに直した時だけ持つ（語の列が要る）。それ以外は `segmentationBasisOf` が作る。 */
   readonly segmentationBasis?: SegmentationBasis;
+  /**
+   * コンボを止める境（仕様 §4.3）。活用する語の語幹と活用語尾の間の位置で、読みのテキストのコードポイントの位置（境は位置の直前。昇順）。
+   * 漢字を読みに直した時だけ持つ。語の列が無いテキスト（かなだけ・辞書を読み込めなかった）は持たず、コンボは境に止められない。
+   */
+  readonly comboBarriers?: readonly number[];
 }
 
 /**
@@ -156,6 +162,7 @@ export function evaluationText(resolved: ResolvedText, source: ReadingSource, ou
         ...(wordCorrections.applied.length === 0 ? {} : { wordCorrections: wordCorrections.applied }),
       },
       notationExcess: conversion.notationExcess,
+      comboBarriers: comboBarriersInReading(outcome.sourceText, outcome.tokens, resolved.readingCorrections, wordCorrections.readings),
       segmentationBasis: {
         sourceText: outcome.sourceText,
         tokens: outcome.tokens,

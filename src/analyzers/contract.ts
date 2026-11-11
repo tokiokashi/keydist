@@ -34,7 +34,7 @@ export type { OptionsRegistry } from './options.ts';
 /**
  * Traceを依頼する引数。`engine/resolved-input.ts` の `ResolvedInput` を丸ごと渡さない。
  * `ResolvedInput` は engine 層の型で、analyzers はengineをimportできない（依存の規則）ため、
- * Trace生成に実際に要る4フィールドだけをここで複製する（`engine/keys.ts` の `traceKeyOf` が
+ * Trace生成に実際に要る5フィールドだけをここで複製する（`engine/keys.ts` の `traceKeyOf` が
  * キーに使うフィールドと同じ）。
  *
  * 全フィールド省略可（`tracePolicy`の中身も省略可）: 依頼元（Analyzerの抽出）は
@@ -49,6 +49,8 @@ export interface TraceRequestInput {
   readonly layout?: Layout;
   readonly geometry?: Geometry;
   readonly tracePolicy?: Partial<TracePolicy>;
+  /** コンボを止める境（`ResolvedInput.comboBarriers`）。`text` を差し替えて境を渡さない時は、境は無い。 */
+  readonly comboBarriers?: readonly number[];
 }
 
 /**
