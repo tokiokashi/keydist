@@ -133,3 +133,38 @@ test('組み込みの全配列の面が、extraCellsの検査を通る', () => {
     assert.doesNotThrow(() => validateFaceAuthoring(layout.faces ?? []), layout.id);
   }
 });
+
+const routeKeys = (layout: ReturnType<typeof fromFaces>, output: string): string[] =>
+  (layout.canonicalInputs.get(output) ?? []).map((alternative) =>
+    alternative.baseRealizations
+      .flatMap((r) => r.actions)
+      .flat()
+      .join(''),
+  );
+
+const baseFace = (entries: Record<string, string>, defaultCells?: readonly string[]): Face => ({
+  ...faceFromEntries([], 'simultaneous', entries),
+  inputRole: 'layer',
+  ...(defaultCells === undefined ? {} : { defaultCells }),
+});
+
+test('defaultCellsは、同じ面の中の同じ出力の先頭の経路を決め、他の出力の並びを変えない', () => {
+  const entries = { '1': 'ー', q: 'あ', w: 'ー', e: 'い', r: 'ー', t: 'う' };
+  const plain = fromFaces('plain', 'plain', [baseFace(entries)]);
+  assert.deepEqual(routeKeys(plain, 'ー'), ['1', 'w', 'r']);
+  const marked = fromFaces('marked', 'marked', [baseFace(entries, ['r'])]);
+  assert.deepEqual(routeKeys(marked, 'ー'), ['r', '1', 'w']);
+  for (const output of ['あ', 'い', 'う']) assert.deepEqual(routeKeys(marked, output), routeKeys(plain, output));
+});
+
+test('defaultCellsは、面をまたぐ並びを変えない', () => {
+  const trigger: Face = { ...faceFromEntries(['d'], 'prefix', { a: 'ー' }), inputRole: 'layer', triggerPersistence: 'single' };
+  const marked = fromFaces('cross', 'cross', [baseFace({ q: 'ー', w: 'ー' }, ['w']), trigger]);
+  assert.deepEqual(routeKeys(marked, 'ー'), ['w', 'q', 'da']);
+});
+
+test('defaultCellsは、面に出力が無いキー・同じ出力の他のセルが無いキー・同じ出力を2つ指す定義を弾く', () => {
+  assert.throws(() => fromFaces('a', 'a', [baseFace({ q: 'あ', w: 'あ' }, ['e'])]), /defaultCellsのキー「e」は面に出力が無い/);
+  assert.throws(() => fromFaces('b', 'b', [baseFace({ q: 'あ', w: 'い' }, ['q'])]), /面の中に他のセルが無い/);
+  assert.throws(() => fromFaces('c', 'c', [baseFace({ q: 'あ', w: 'あ' }, ['q', 'w'])]), /同じ出力「あ」のセルを2つ以上指している/);
+});

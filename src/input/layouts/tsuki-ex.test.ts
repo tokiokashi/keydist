@@ -103,6 +103,11 @@ test('d・k・lは単打で、。？を出し、ょは単打で、ゃゅはD面�
   assert.deepEqual(typedKeys('ー').sort(), ['-', '/']);
 });
 
+test('ー の既定の経路は、作者の配列図が ー を描く / で、- の経路は代替の経路に残る', () => {
+  assert.deepEqual(typedKeys('ー'), ['/', '-']);
+  assert.deepEqual(strokesOf('ー'), ['/']);
+});
+
 test('同じ句読点の経路は、単打を先頭にし、面の経路は代替の経路に残る', () => {
   assert.deepEqual(typedKeys('、'), ['d', 'df']);
   assert.deepEqual(typedKeys('。'), ['k', 'kj']);
@@ -177,7 +182,7 @@ test('確定の打鍵: 。と？の後も、K面・L面の出力キーなら入�
   assert.deepEqual(strokesOf('。、'), ['k', 'thumb-r*', 'd']);
   assert.deepEqual(strokesOf('？の'), ['l', 'thumb-r*', 'a']);
   assert.deepEqual(strokesOf('？し'), ['l', 'o']);
-  assert.deepEqual(strokesOf('？ー'), ['l', '-']);
+  assert.deepEqual(strokesOf('？ー'), ['l', '/']);
 });
 
 test('確定の打鍵: 前置の面の2打で出した文字の後や、単打の文字の後に句読点が続く時は入らない', () => {
