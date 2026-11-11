@@ -14,7 +14,7 @@ import {
 } from '../semantics/index.ts';
 import { keyId, LEFT_COLUMN_KEYS, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY, type NonThumb } from '../shapes/geometry.ts';
 import { validateFaceAuthoring } from './face-authoring-validation.ts';
-import { faceCells } from './face-geometry.ts';
+import { faceCellsInAlternativeOrder, faceCells } from './face-geometry.ts';
 
 /** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
 export type Step = string[];
@@ -60,6 +60,12 @@ export interface Face {
    * `rows` の位置では指せないキーの出力だけを持つ（仕様 §4）。
    */
   extraCells?: Readonly<Record<string, string>>;
+  /**
+   * この面の中で、同じ出力を持つセルが複数ある時に、その出力の既定の経路にするセルのキーid。
+   * 指定の無い出力は、行の順・行の中の左からの並びで先頭のセルが既定になる（仕様 §4）。
+   * 同じ出力を持つ他のセルが面の中に無いキーは指せない。
+   */
+  defaultCells?: readonly string[];
   /** 同じ値を持つ単一キー面は1レイヤーへ畳む。省略時はその面が単独で1レイヤー */
   layer?: string;
   /** 面の表示分類。既存UI互換用。省略時はlayer。canonical semanticには使わない。 */
@@ -490,7 +496,7 @@ export function fromFaces(id: string, name: string, faces: readonly Face[], thum
       },
       isCombo ? undefined : face.presentationLabel,
     );
-    faceCells(face).forEach((output, key) => {
+    faceCellsInAlternativeOrder(face).forEach(([key, output]) => {
       const semanticInput = semanticByMembership.get(`${faceIndex}\u0000${resolveKeyId(key)}`);
       if (!semanticInput) {
         throw new Error(`Face compilerのmembershipが見つからない（face:${faceIndex}, key:${key}）`);
