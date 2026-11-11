@@ -289,6 +289,31 @@ h2.pane-frame-title {
 }
 
 /*
+ * 対象の欄の隣に量の札のような選択を持つペイン（data-extra）は、1段に入れると対象の欄と札の文字が読めなくなる幅がある。
+ * 札の名前（最長で「指ごとの移動距離」）・対象の選択・条件の文字のchip・解析設定・⋯を1段に並べて読める幅の目安が48rem。
+ * 48rem以下では、先頭・解析設定・⋯を1段目、対象の欄全体を2段目に置く。
+ * 対象の欄は1段目の列の幅を占めないので、対象の選択・札・連動・条件・状態が2段目の幅を使える。
+ * 札は縮めず（名前を省略しない）、縮むのは対象の選択だけにする。
+ * 2段にした見出しは、状態のバッジを点で出す（文字で出す判定は1段の見出しだけ）。
+ */
+@container pane (width > 19.4rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead][data-extra] .pane-frame-target-extra {
+    flex: none;
+  }
+}
+
+@container pane (19.4rem < width <= 48rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead][data-extra] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "lead settings menu"
+      "target target target";
+    gap: 0.5rem 0.35rem;
+  }
+}
+
+/*
  * 状態のバッジ（Workspaceのペイン）。既定は文字の無い点で、状態の文は読み上げ（隠した文字）とtitleに残す。
  * 全文が入る時（下のdata-text）は、今までどおり文字で出す。
  * 点は、対象の欄の下限に0.5remの場所を確保してある。入らない文字でボタンの下に隠れたり、
