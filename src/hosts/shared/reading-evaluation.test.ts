@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { stableStringify } from '#engine/cache-key.ts';
 import type { ReadingToken } from '#input/text/reading.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 import {
@@ -16,7 +17,16 @@ import {
 const CONDITIONS = { dictionary: { name: 'IPADIC', version: '6.2.0' }, library: { name: 'lindera-wasm', version: '6.2.0' } } as const;
 
 function resolved(text: string, language: ResolvedText['language'] = 'ja'): ResolvedText {
-  return { ref: { kind: 'user', id: 't' }, name: 't', text, language, languageOverride: undefined, isBuiltin: false, readingCorrections: {} };
+  return {
+    ref: { kind: 'user', id: 't' },
+    name: 't',
+    text,
+    language,
+    languageOverride: undefined,
+    isBuiltin: false,
+    readingCorrections: {},
+    wordReadingCorrections: [],
+  };
 }
 
 /** 語を1つずつ返す偽の入口。呼ばれた回数も数える。 */
@@ -201,4 +211,62 @@ test('ペインが数値を出すのを待つのは、読みの結果が出る�
   assert.equal(waiting('hello', 'en', undefined), false);
   // 読みの状態を持たない画面は待たない
   assert.equal(isWaitingForReading(undefined), false);
+});
+
+// 「今日は雨。今日は雪。」。同じ表記の「今日」が2回現れる
+const TWICE = '今日は雨。今日は雪。';
+const TWICE_TOKENS: ReadingToken[] = [
+  kyou,
+  wa,
+  { surface: '雨', byteStart: 9, byteEnd: 12, reading: 'アメ', isUnknown: false },
+  { surface: '。', byteStart: 12, byteEnd: 15, reading: '。', isUnknown: false },
+  { surface: '今日', byteStart: 15, byteEnd: 21, reading: 'キョウ', isUnknown: false },
+  { surface: 'は', byteStart: 21, byteEnd: 24, reading: 'ハ', isUnknown: false },
+  { surface: '雪', byteStart: 24, byteEnd: 27, reading: 'ユキ', isUnknown: false },
+  { surface: '。', byteStart: 27, byteEnd: 30, reading: '。', isUnknown: false },
+];
+const SECOND_KYOU = { surface: '今日', order: 1, before: '日は雨。', after: 'は雪。', reading: 'こんにち' };
+
+test('語ごとの直しは同じ表記の1語だけの読みを変え、当たった語を条件に持つ。直しが無い数値は語ごとの項目を持たない', () => {
+  const reading = source(async () => []);
+  const outcome = analyzed(TWICE, TWICE_TOKENS);
+  const plain = evaluationText(resolved(TWICE), reading, outcome);
+  assert.equal(plain.text.text, 'きょうはあめ。きょうはゆき。');
+  assert.equal(Object.hasOwn(plain.text.reading!, 'wordCorrections'), false);
+  const fixed = evaluationText({ ...resolved(TWICE), wordReadingCorrections: [SECOND_KYOU] }, reading, outcome);
+  assert.equal(fixed.text.text, 'きょうはあめ。こんにちはゆき。');
+  assert.deepEqual(fixed.text.reading?.corrections, []);
+  assert.deepEqual(fixed.text.reading?.wordCorrections, [SECOND_KYOU]);
+  // 同じ表記・同じ読みでも、当たった語が違えば条件が変わる
+  const first = evaluationText(
+    { ...resolved(TWICE), wordReadingCorrections: [{ ...SECOND_KYOU, order: 0, before: '', after: 'は雨。今' }] },
+    reading,
+    outcome,
+  );
+  assert.notEqual(stableStringify(first.text.reading), stableStringify(fixed.text.reading));
+});
+
+test('語ごとの直しは表記ごとの直しより優先され、見つからない直しは数値にも条件にも入れず、別の語に当てない', () => {
+  const reading = source(async () => []);
+  const outcome = analyzed(TWICE, TWICE_TOKENS);
+  const both = evaluationText({ ...resolved(TWICE), readingCorrections: { 今日: 'ほんじつ' }, wordReadingCorrections: [SECOND_KYOU] }, reading, outcome);
+  assert.equal(both.text.text, 'ほんじつはあめ。こんにちはゆき。');
+  assert.deepEqual(both.text.reading?.corrections, [{ surface: '今日', reading: 'ほんじつ' }]);
+  const stale = { ...SECOND_KYOU, before: '日は曇。' };
+  const lost = evaluationText({ ...resolved(TWICE), wordReadingCorrections: [stale] }, reading, outcome);
+  assert.equal(lost.text.text, 'きょうはあめ。きょうはゆき。');
+  assert.equal(Object.hasOwn(lost.text.reading!, 'wordCorrections'), false);
+  assert.deepEqual(lost.wordCorrections.unfound, [stale]);
+});
+
+test('辞書を読み込めない時と読み込み中は、語ごとの直しを当てず、条件に入れず、見つからない直しにもしない', () => {
+  const reading = source(async () => []);
+  const input = { ...resolved(TWICE), wordReadingCorrections: [SECOND_KYOU] };
+  const failed = evaluationText(input, reading, { kind: 'failed' });
+  assert.equal(failed.text.text, TWICE);
+  assert.deepEqual(failed.text.reading, { status: 'unavailable', ...CONDITIONS, corrections: [] });
+  assert.deepEqual(failed.wordCorrections.unfound, []);
+  const loading = evaluationText(input, reading, undefined);
+  assert.equal(loading.state.kind, 'loading');
+  assert.deepEqual(loading.wordCorrections.unfound, []);
 });

@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setMultiTargetsCommand, setReadingCorrectionCommand, setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts';
+import {
+  setMultiTargetsCommand,
+  setReadingCorrectionCommand,
+  setWordReadingCorrectionCommand,
+  setSingleTargetCommand,
+  type KeydistAssets,
+} from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { analysisTargetKey, layoutIdsOfTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
@@ -234,6 +240,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
           catalog={catalog}
           overrides={assets.setupLibrary.overrides}
           onCorrect={(ref, surface, value) => dispatch(setReadingCorrectionCommand(ref, surface, value))}
+          onCorrectWord={(ref, remove, add) => dispatch(setWordReadingCorrectionCommand(ref, remove, add))}
         />
         <DefaultShapeChip
           overrides={assets.setupLibrary.overrides}

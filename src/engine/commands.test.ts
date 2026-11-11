@@ -41,6 +41,7 @@ import {
   setStandaloneAnalyzerOptionsCommand,
   setTextContentCommand,
   setReadingCorrectionCommand,
+  setWordReadingCorrectionCommand,
   markTextsSeenCommand,
   setTextLanguageOverrideCommand,
   setUserRomajiRuleContentCommand,
@@ -1148,4 +1149,31 @@ test('duplicateTextCommand: 直した読みも複製先に持たせる', () => {
   assert.deepEqual(copied.assets.textLibrary.texts[1]!.readingCorrections, { 今日: 'こんにち' });
   const fresh = applyCommand(copied.assets, copied.history, createTextCommand('standalone', generateTextId));
   assert.equal(fresh.assets.textLibrary.texts[2]!.readingCorrections, undefined);
+});
+
+const WORD_FIX = { surface: '今日', order: 1, before: '日は晴。', after: 'は雨。今', reading: 'こんにち' };
+
+test('setWordReadingCorrectionCommand: 自作のテキストの語ごとの直しを資産に保存し、undo/redoで往復できる', () => {
+  const created = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), createTextCommand('standalone', generateTextId));
+  const id = created.assets.textLibrary.texts[0]!.id;
+  const step = applyCommand(created.assets, created.history, setWordReadingCorrectionCommand({ kind: 'user', id }, [], WORD_FIX));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.textLibrary.texts[0]!.wordReadingCorrections, [WORD_FIX]);
+  assert.equal(undo(step.assets, step.history).assets.textLibrary.texts[0]!.wordReadingCorrections, undefined);
+  const cleared = applyCommand(step.assets, step.history, setWordReadingCorrectionCommand({ kind: 'user', id }, [WORD_FIX], undefined));
+  assert.equal(cleared.assets.textLibrary.texts[0]!.wordReadingCorrections, undefined);
+  assert.equal(applyCommand(step.assets, step.history, setWordReadingCorrectionCommand({ kind: 'user', id }, [], WORD_FIX)).outcome.kind, 'no-op');
+});
+
+test('組み込みのテキストの語ごとの直しは、解決後のテキストに載り、編集して自作へ写す時と複製の時に写した先でも持つ', () => {
+  const fixed = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setWordReadingCorrectionCommand(DEFAULT_TEXT_REF, [], WORD_FIX));
+  assert.deepEqual(fixed.assets.textLibrary.texts, []);
+  assert.deepEqual(resolveTextSelection(fixed.assets.standaloneTextSelection, fixed.assets.textLibrary).wordReadingCorrections, [WORD_FIX]);
+  // 複製は、選んでいる組み込みのテキストの直しを写す
+  const copied = applyCommand(fixed.assets, fixed.history, duplicateTextCommand('standalone', generateTextId));
+  assert.deepEqual(copied.assets.textLibrary.texts[0]!.wordReadingCorrections, [WORD_FIX]);
+  // 編集で自作へ写す時は、見つからなくなる直しも、そのまま写す
+  const edited = applyCommand(fixed.assets, fixed.history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '吾輩は猫', generateTextId));
+  assert.deepEqual(edited.assets.textLibrary.texts[0]!.wordReadingCorrections, [WORD_FIX]);
+  assert.deepEqual(edited.assets.textLibrary.builtinWordReadingCorrections, { [DEFAULT_TEXT_REF.id]: [WORD_FIX] });
 });

@@ -1,5 +1,6 @@
 import { countCharsAfterPreparation, type PreparationScope } from './evaluation-text.ts';
 import type { TextLanguage } from './language.ts';
+import type { AppliedWordCorrection } from './word-reading.ts';
 
 /**
  * 漢字を読みに直す段（仕様 §4.6の1段目）。形態素解析そのものは計算部の外（`platform/reading/`）が行い、
@@ -123,23 +124,36 @@ export interface ReadingConversion {
   readonly text: string;
   /** 読みに置き換えた語の数（辞書の読みと直した読みの合計） */
   readonly replacedWords: number;
-  /** 直しが当たった表記と読み。表記の順に並べる。テキストに現れなかった直しは含まない */
+  /** 表記ごとの直しが当たった表記と読み。表記の順に並べる。テキストに現れなかった直しと、語ごとの直しに取られた語だけの表記は含まない */
   readonly appliedCorrections: readonly ReadingCorrectionEntry[];
   /** 置き換えた語の、表記の字数と読みの字数の差の合計 */
   readonly notationExcess: NotationExcess;
 }
 
+/** 語ごとの直しを当てた語が無い時の、語の番号と読みの対応。 */
+export const NO_WORD_READINGS: ReadonlyMap<number, string> = new Map();
+
 /**
  * 語を置き換える読み。置き換えない語はundefined。`corrected` は利用者の直しを当てたか。
  * `convertToReading` と、原文の位置を読みのテキストの位置へ写す処理（`segmentation.ts`）が同じ判定を使う。
  */
-export function replacementFor(token: ReadingToken, corrections: ReadingCorrections): { readonly text: string; readonly corrected: boolean } | undefined {
+export function replacementFor(
+  token: ReadingToken,
+  corrections: ReadingCorrections,
+  wordReading?: string,
+): { readonly text: string; readonly source: 'word' | 'surface' | 'dictionary' } | undefined {
   const hasKanji = KANJI.test(token.surface);
-  if (hasKanji && Object.hasOwn(corrections, token.surface)) return { text: corrections[token.surface]!, corrected: true };
-  if (!token.isUnknown && token.reading !== null && hasKanji && KATAKANA_READING.test(token.reading)) {
-    return { text: katakanaToHiragana(token.reading), corrected: false };
-  }
-  return undefined;
+  if (hasKanji && wordReading !== undefined) return { text: wordReading, source: 'word' };
+  if (hasKanji && Object.hasOwn(corrections, token.surface)) return { text: corrections[token.surface]!, source: 'surface' };
+  const dictionary = dictionaryReadingOf(token);
+  return dictionary === undefined ? undefined : { text: dictionary, source: 'dictionary' };
+}
+
+/** 辞書が返した読み（ひらがな）。漢字を含む語で、辞書の読みがカタカナと長音だけの時に限る。それ以外はundefined。 */
+export function dictionaryReadingOf(token: ReadingToken): string | undefined {
+  if (!KANJI.test(token.surface)) return undefined;
+  if (token.isUnknown || token.reading === null || !KATAKANA_READING.test(token.reading)) return undefined;
+  return katakanaToHiragana(token.reading);
 }
 
 /**
@@ -150,7 +164,8 @@ export function replacementFor(token: ReadingToken, corrections: ReadingCorrecti
  *
  * 置き換えるのは、表記に漢字を含み、直しがあるか辞書の読みがカタカナと長音だけの語。
  * 利用者の直し（`corrections`）は表記が一致する語すべての読みを置き換え、辞書の読みの有無を問わない
- * （未知語・読みが無い語・`々`だけの語にも当たる）。直しの無い未知語・読みが無い語・`々`だけの語は
+ * （未知語・読みが無い語・`々`だけの語にも当たる）。語ごとの直し（`wordReadings`。語の番号 → 読み。`word-reading.ts`が求める）は
+ * 当たった1語だけの読みを置き換え、同じ語の表記ごとの直しより優先する。直しの無い未知語・読みが無い語・`々`だけの語は
  * 表記のまま残し、配列が打てない文字として数える。
  * 漢字を含まない語（全角数字を含む）は、辞書が読みを返しても、直しがあっても置き換えない。
  *
@@ -160,6 +175,7 @@ export function convertToReading(
   text: string,
   tokens: readonly ReadingToken[],
   corrections: ReadingCorrections = NO_READING_CORRECTIONS,
+  wordReadings: ReadonlyMap<number, string> = NO_WORD_READINGS,
 ): ReadingConversion {
   const bytes = new TextEncoder().encode(text);
   // 先頭のBOM（U+FEFF）を読み飛ばさない。原文の文字として残す
@@ -169,14 +185,14 @@ export function convertToReading(
   let replacedWords = 0;
   const excess = { base: 0, symbols: 0, alphanumerics: 0, both: 0 };
   const applied = new Set<string>();
-  for (const token of tokens) {
+  for (const [index, token] of tokens.entries()) {
     if (token.byteStart < position || token.byteEnd < token.byteStart || token.byteEnd > bytes.length) {
       throw new Error(TOKEN_POSITION_MISMATCH);
     }
     out += decoder.decode(bytes.subarray(position, token.byteStart));
     const original = decoder.decode(bytes.subarray(token.byteStart, token.byteEnd));
     if (original !== token.surface) throw new Error(TOKEN_SURFACE_MISMATCH);
-    const replacement = replacementFor(token, corrections);
+    const replacement = replacementFor(token, corrections, wordReadings.get(index));
     if (replacement === undefined) {
       out += original;
     } else {
@@ -186,7 +202,7 @@ export function convertToReading(
       excess.symbols += countCharsAfterPreparation(original, { keepSymbols: true, keepAlphanumerics: false }) - readingLength;
       excess.alphanumerics += countCharsAfterPreparation(original, { keepSymbols: false, keepAlphanumerics: true }) - readingLength;
       excess.both += countCharsAfterPreparation(original, { keepSymbols: true, keepAlphanumerics: true }) - readingLength;
-      if (replacement.corrected) applied.add(token.surface);
+      if (replacement.source === 'surface') applied.add(token.surface);
       replacedWords++;
     }
     position = token.byteEnd;
@@ -219,10 +235,8 @@ export function listReadingWords(tokens: readonly ReadingToken[]): ReadingWord[]
       bySurface.set(token.surface, entry);
     }
     entry.count++;
-    if (!token.isUnknown && token.reading !== null && KATAKANA_READING.test(token.reading)) {
-      const reading = katakanaToHiragana(token.reading);
-      entry.readings.set(reading, (entry.readings.get(reading) ?? 0) + 1);
-    }
+    const reading = dictionaryReadingOf(token);
+    if (reading !== undefined) entry.readings.set(reading, (entry.readings.get(reading) ?? 0) + 1);
   }
   return [...bySurface].map(([surface, entry]) => ({
     surface,
@@ -243,8 +257,13 @@ export interface ReadingConditions {
   /** 解析器。スナップショットと書き出しにだけ入れる（画面には出さない） */
   readonly library: { readonly name: string; readonly version: string };
   /**
-   * 直しが当たった表記と読み（表記の順）。直していなければ空。辞書を読み込めなかった数値は直しを当てないので空。
+   * 表記ごとの直しが当たった表記と読み（表記の順）。直していなければ空。辞書を読み込めなかった数値は直しを当てないので空。
    * 同じ数でも中身の違う直しを区別するため、数ではなく対応そのものを持つ。
    */
   readonly corrections: readonly ReadingCorrectionEntry[];
+  /**
+   * 語ごとの直しが当たった語（語の出現順）。表記・順番・前後の文字は当たった語のもの。
+   * 当たった直しが無ければ項目ごと持たない（直していない数値のスナップショットとキャッシュのキーを、直しの機能が無い時と同じにするため）。
+   */
+  readonly wordCorrections?: readonly AppliedWordCorrection[];
 }
