@@ -1,0 +1,112 @@
+.control-texts-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.control-texts-notice,
+.control-texts-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.control-texts-figure {
+  margin: 0;
+  min-width: 0;
+}
+
+/* 条件の文は表の外に置き、表を横にスクロールしても画面の幅で折り返す。 */
+.control-texts-condition {
+  padding: 0 0.6rem 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.control-texts-scroll {
+  overflow-x: auto;
+}
+
+.control-texts-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.82rem;
+}
+
+.control-texts-table th,
+.control-texts-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.4rem 0.6rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.control-texts-table th[scope='rowgroup'],
+.control-texts-table th[scope='row'],
+.control-texts-table thead th:first-child,
+.control-texts-table thead th:nth-child(2) {
+  text-align: left;
+  font-weight: 600;
+}
+
+.control-texts-table th[scope='col'],
+.control-texts-table th[scope='colgroup'] {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.control-texts-table th[scope='colgroup'] {
+  text-align: center;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+/*
+ * 対象名の列は、横にスクロールしても左端に残す。どの対象の行か分からなくなるため。
+ * 背景を敷くのは、下をスクロールする数値が透けないようにするため。
+ * border-collapseでは固定したセルの罫線がスクロールに付いてこないので、右の境界はbox-shadowで描く。
+ */
+.control-texts-table tbody th[scope='rowgroup'],
+.control-texts-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg);
+  box-shadow: 1px 0 0 var(--border-strong);
+}
+
+@container (max-width: 40rem) {
+  .control-texts-table tbody th[scope='rowgroup'] {
+    max-width: 7.5rem;
+    white-space: normal;
+    min-width: 5rem;
+    overflow-wrap: break-word;
+  }
+}
+
+/* 対象ごとのまとまりの先頭の行に、まとまりの境の線を引く。 */
+.control-texts-table tr[data-control-texts-row='actual'] > * {
+  border-top: 1px solid var(--border-strong);
+}
+
+/* 値のまとまり（値と標準偏差）の左右の境。 */
+.control-texts-table .control-texts-edge-start {
+  border-left: 1px solid var(--border-strong);
+}
+
+.control-texts-table .control-texts-edge-end {
+  border-right: 1px solid var(--border-strong);
+}
+
+.control-texts-table td[data-empty] {
+  color: var(--text-muted);
+}
+
+.control-texts-table tr[data-control-texts-row='failed'] td,
+.control-texts-table tr[data-control-texts-row='pending'] td {
+  color: var(--text-muted);
+  text-align: left;
+  white-space: normal;
+}

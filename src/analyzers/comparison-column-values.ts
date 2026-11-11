@@ -1,6 +1,6 @@
 import { countBigramCombinations } from '#interpretation/bigram-combinations.ts';
 import { analyzeHandRhythm, type HandRhythmAggregate } from '#interpretation/structure/hand-rhythm.ts';
-import { adjacentMeanStdDev, rightHandShare, sameFingerRate, type Metrics } from '#interpretation/metrics.ts';
+import { adjacentMeanStdDev, computeTraceScalars, rightHandShare, sameFingerRate, type Metrics, type MetricConditions } from '#interpretation/metrics.ts';
 import type { Trace } from '#trace/generate.ts';
 import type { ComparisonColumnId } from './comparison-column-text.ts';
 
@@ -63,5 +63,41 @@ export function computeComparisonRowValues(metrics: Metrics, trace: Trace): Comp
     // 連続が0件の時は平均も最長も値が無い。0を当てはめず、表では「—」、並び替えでは末尾に置く。
     alternationMeanLength: handRhythm.alternation.runs === 0 ? NaN : handRhythm.alternation.meanLength,
     alternationMaxLength: handRhythm.alternation.runs === 0 ? NaN : handRhythm.alternation.maxLength,
+  };
+}
+
+/**
+ * 対照テキストとの比較（`control-texts/`）が並べる列。`Trace`だけから求まる列のうち、並び（連接）と頻度の両方を読める5つ。
+ * 1かな換算の移動距離（`perCharUnits`）は必ず含める。
+ */
+export const CONTROL_COLUMN_IDS = [
+  'perCharUnits',
+  'perCharPresses',
+  'sameFingerRate',
+  'sameHandContinuationRate',
+  'rightHandDistanceShare',
+] as const satisfies readonly ComparisonColumnId[];
+
+export type ControlColumnId = (typeof CONTROL_COLUMN_IDS)[number];
+
+export type ControlColumnValues = Readonly<Record<ControlColumnId, number>>;
+
+/**
+ * `Trace`から`CONTROL_COLUMN_IDS`の列の値を求める。`Metrics`を作り直さずに、任意のテキストのTraceで測れる。
+ * 求め方は`computeComparisonRowValues`と同じ関数（`computeTraceScalars`・`analyzeHandRhythm`）で、同じTraceからは同じ値になる。
+ * 条件は、そのTraceを生成した条件のスナップショット（`Metrics.conditions`）を渡す。
+ */
+export function computeControlColumnValues(
+  trace: Trace,
+  conditions: Pick<MetricConditions, 'triggerRealizationPolicy' | 'actionRealizationPolicy'>,
+): ControlColumnValues {
+  const scalars = computeTraceScalars(trace);
+  const handRhythm = analyzeHandRhythm(trace.strokes, conditions.triggerRealizationPolicy, conditions.actionRealizationPolicy).aggregate;
+  return {
+    perCharUnits: scalars.perCharUnits,
+    perCharPresses: scalars.perCharPresses,
+    sameFingerRate: scalars.sameFingerRate,
+    sameHandContinuationRate: handRhythm.continuationRate * 100,
+    rightHandDistanceShare: scalars.rightHandDistanceShare,
   };
 }

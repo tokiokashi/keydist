@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { bunsetsuStatsDefinition } from '#analyzers/bunsetsu-stats/extract.ts';
+import { controlTextsDefinition } from '#analyzers/control-texts/extract.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
 import { handRhythmDefinition } from '#analyzers/hand-rhythm/extract.ts';
@@ -22,6 +23,7 @@ import { ANALYZER_OPTIONS_DECODERS } from './analyzer-options-decoders.ts';
 const DEFINITIONS = [
   bigramFlowDefinition,
   bunsetsuStatsDefinition,
+  controlTextsDefinition,
   comparisonDefinition,
   fingerDistanceDefinition,
   fingerMatrixDefinition,

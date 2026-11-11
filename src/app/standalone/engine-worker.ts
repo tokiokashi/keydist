@@ -17,6 +17,7 @@ import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { runChartDefinition } from '#analyzers/run-chart/extract.ts';
 import { bunsetsuStatsDefinition } from '#analyzers/bunsetsu-stats/extract.ts';
+import { controlTextsDefinition } from '#analyzers/control-texts/extract.ts';
 
 /**
  * 計算用Workerの入口（Vite が別チャンクとして切り出す。`engine-computer.ts`が起動する）。
@@ -42,6 +43,7 @@ const handle = createEngineWorkerHandler(createEngineCache(), {
     nSensitivityDefinition,
     runChartDefinition,
     bunsetsuStatsDefinition,
+    controlTextsDefinition,
     scatterDefinition,
     bandChartDefinition,
     boxPlotDefinition,

@@ -1,4 +1,5 @@
 import { bunsetsuStatsAnalyzer } from '#analyzers/bunsetsu-stats/definition.tsx';
+import { controlTextsAnalyzer } from '#analyzers/control-texts/definition.tsx';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import { fingerMatrixAnalyzer } from '#analyzers/finger-matrix/definition.tsx';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
@@ -25,6 +26,7 @@ export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
   nSensitivityAnalyzer,
   runChartAnalyzer,
   bunsetsuStatsAnalyzer,
+  controlTextsAnalyzer,
   scatterAnalyzer,
   bandChartAnalyzer,
   boxPlotAnalyzer,
