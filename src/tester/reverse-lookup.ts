@@ -1,5 +1,12 @@
-import { inputAlternativeSelectionIdentity, type InputAlternative, type InputContextRequirement } from '#input/semantics/index.ts';
-import { resolveKeyId, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
+import {
+  commitStrokeRulesOf,
+  inputAlternativeSelectionIdentity,
+  needsCommitStroke,
+  type CommitStrokeRules,
+  type InputAlternative,
+  type InputContextRequirement,
+} from '#input/semantics/index.ts';
+import { resolveKeyId, THUMB_KEY, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 import { evaluationCanonicalInputs, normalizeEvaluationHeading } from '#input/text/char-alias.ts';
@@ -27,6 +34,8 @@ export interface ReverseLookupStep {
   readonly aggregationGroupIds: readonly string[];
   /** physical alternativeだけ異なる等価経路をまとめても全canonical identityを受理する。 */
   readonly acceptedAlternativeSelectionIdentities: readonly string[];
+  /** 先頭のactionが、直前のstepとの継ぎ目に入る確定の打鍵（仕様 §4.7）なら真。確定の打鍵は右親指のキーを打つ。 */
+  readonly commitBefore?: true;
 }
 
 export interface ReverseLookupGuideAction {
@@ -39,6 +48,8 @@ export interface ReverseLookupGuideAction {
   readonly finalInRouteStep: boolean;
   /** この動作を含む入力単位が属する層。キーの呼び名を決める時に使う。 */
   readonly aggregationGroupIds: readonly string[];
+  /** 継ぎ目の確定の打鍵（仕様 §4.7）なら真。 */
+  readonly commit?: true;
 }
 
 export interface ReverseLookupRoute {
@@ -212,6 +223,34 @@ function mergeEquivalentRoutes(layout: Layout, routes: readonly ReverseLookupRou
   return [...grouped.values()];
 }
 
+/**
+ * 隣り合うstepの継ぎ目に、確定の打鍵（仕様 §4.7）のactionを入れる。継ぎ目の判定は距離の測定（Trace）と同じ `needsCommitStroke` で行う。
+ * 確定の打鍵は次のstepの先頭のactionにする。次のstepの出力が確定する前の打鍵なので、案内の進み方は他のactionと同じになる。
+ */
+function withCommitStrokes(
+  rules: CommitStrokeRules,
+  route: ReverseLookupRoute,
+  alternativeOfStep: ReadonlyMap<ReverseLookupStep, InputAlternative>,
+): ReverseLookupRoute {
+  let commits = 0;
+  const steps = route.steps.map((step, index): ReverseLookupStep => {
+    const previous = route.steps[index - 1];
+    const previousAlternative = previous === undefined ? undefined : alternativeOfStep.get(previous);
+    const alternative = alternativeOfStep.get(step);
+    if (previousAlternative === undefined || alternative === undefined || !needsCommitStroke(rules, previousAlternative, alternative)) return step;
+    commits += 1;
+    const committed: ReverseLookupStep = {
+      ...step,
+      actions: [[THUMB_KEY.RT], ...step.actions],
+      actionKeyAlternatives: [[[THUMB_KEY.RT]], ...step.actionKeyAlternatives],
+      actionParticipationAlternatives: [[{ outputKeys: [], triggerKeys: [] }], ...step.actionParticipationAlternatives],
+      commitBefore: true,
+    };
+    return committed;
+  });
+  return commits === 0 ? route : { steps, actionCount: route.actionCount + commits, keyCount: route.keyCount + commits };
+}
+
 function prependStep(step: ReverseLookupStep, tail: ReverseLookupRoute): ReverseLookupRoute {
   const actionCount = step.actions.length + tail.actionCount;
   const keyCount = step.actions.reduce((total, action) => total + action.length, 0) + tail.keyCount;
@@ -252,6 +291,10 @@ export function reverseLookup(layout: Layout, query: string, limit = 5, availabl
     .filter((output) => output.length > 0)
     .sort((left, right) => [...right].length - [...left].length || left.localeCompare(right));
 
+  // 確定の打鍵の継ぎ目は、選んだ候補どうしの組で決まるので、stepと選んだ候補の対応を持つ
+  const alternativeOfStep = new Map<ReverseLookupStep, InputAlternative>();
+  const commitRules = commitStrokeRulesOf(layout.canonicalInputs);
+
   const memo = new Map<number, ReverseLookupRoute[]>();
 
   const search = (cursor: number): ReverseLookupRoute[] => {
@@ -276,6 +319,7 @@ export function reverseLookup(layout: Layout, query: string, limit = 5, availabl
         )
           continue;
         const step = stepFromAlternative(originalHeadingOf.get(alternative) ?? output, alternative);
+        alternativeOfStep.set(step, alternative);
         if (step.actions.length === 0) continue;
         // 選んでいる物理配列に無いキーを含む打ち方は答えにしない。
         // 実際には打てないキーを案内すると、利用者が探しても見つからないため。
@@ -294,7 +338,9 @@ export function reverseLookup(layout: Layout, query: string, limit = 5, availabl
     return unique;
   };
 
-  const candidates = search(0).sort(compareRoutes);
+  const candidates = search(0)
+    .map((route) => withCommitStrokes(commitRules, route, alternativeOfStep))
+    .sort(compareRoutes);
   return mergeEquivalentRoutes(layout, candidates).slice(0, limit);
 }
 
@@ -338,6 +384,7 @@ export function reverseLookupGuideActions(route: ReverseLookupRoute): readonly R
       participationAlternatives: step.actionParticipationAlternatives[actionIndex] ?? [],
       finalInRouteStep: actionIndex === step.actions.length - 1,
       aggregationGroupIds: step.aggregationGroupIds,
+      ...(step.commitBefore === true && actionIndex === 0 ? { commit: true as const } : {}),
     })),
   );
 }

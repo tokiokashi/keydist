@@ -3,6 +3,8 @@ import { TypingInputEngine, type RecognizedTypingInput, type TypingInputResult }
 import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
+import { commitStrokeRulesEmpty, commitStrokeRulesOf } from '#input/semantics/index.ts';
+import { THUMB_KEY } from '#input/shapes/geometry.ts';
 import {
   advanceKeyPatternPresentation,
   EMPTY_KEY_PATTERN_PRESENTATION_STATE,
@@ -43,11 +45,17 @@ export function useTypingSession(layout: Layout, browserBindings: BrowserKeyBind
     () =>
       new TypingInputEngine(layout.canonicalInputs, {
         triggerRealizationPolicy: { useHold: true },
+        commitKey: THUMB_KEY.RT,
         contextSatisfied: (requirements) => liveRomajiContextSatisfied(requirements, rawTextRef.current, layout.romajiTable !== undefined),
       }),
     [layout],
   );
-  const ownedPhysicalKeys = useMemo(() => physicalKeysUsedByLayout(layout), [layout]);
+  // 確定の打鍵が要る継ぎ目を持つ配列は、右親指のキーを確定の打鍵として受ける（ブラウザの働きへ渡さない）
+  const ownedPhysicalKeys = useMemo(() => {
+    const keys = new Set(physicalKeysUsedByLayout(layout));
+    if (!commitStrokeRulesEmpty(commitStrokeRulesOf(layout.canonicalInputs))) keys.add(THUMB_KEY.RT);
+    return keys;
+  }, [layout]);
 
   const [text, setText] = useState('');
   const [pressedKeys, setPressedKeys] = useState<readonly string[]>([]);

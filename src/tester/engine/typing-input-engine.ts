@@ -1,12 +1,17 @@
 import { resolveKeyId } from '#input/shapes/geometry.ts';
 import {
   applyActionRealizationPolicy,
+  commitStrokeRulesEmpty,
+  commitStrokeRulesOf,
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
+  faceStrokeOf,
+  mayNeedCommitStroke,
   realizeTriggerActions,
   type ActionRealizationPolicy,
   type BaseActionRealization,
   type CanonicalInputMap,
+  type CommitStrokeRules,
   type InputAlternative,
   type InputContextRequirement,
   type PhysicalKeyId,
@@ -25,6 +30,12 @@ export interface TypingInputEngineOptions {
   readonly triggerRealizationPolicy?: TriggerRealizationPolicy;
   readonly actionRealizationPolicy?: ActionRealizationPolicy;
   readonly contextSatisfied?: (requirements: readonly InputContextRequirement[]) => boolean;
+  /**
+   * 確定の打鍵（仕様 §4.7）を打つキー。配列が確定の打鍵が要る継ぎ目を持つ時だけ、
+   * 直前の入力が継ぎ目になりうる形の間にこのキーを押すと、そこまでの入力を確定して次の入力を新しく始める。
+   * 確定の打鍵は文字を出さない。指定しなければ、確定の打鍵を扱わない。
+   */
+  readonly commitKey?: PhysicalKeyId;
 }
 
 export interface RecognizedTypingInput {
@@ -131,6 +142,8 @@ export class TypingInputEngine {
   readonly #triggerPolicy: TriggerRealizationPolicy;
   readonly #actionPolicy: ActionRealizationPolicy;
   readonly #contextSatisfied: (requirements: readonly InputContextRequirement[]) => boolean;
+  readonly #commitKey: PhysicalKeyId | undefined;
+  readonly #commitRules: CommitStrokeRules;
 
   readonly #pressed = new Set<PhysicalKeyId>();
   readonly #windowKeys = new Set<PhysicalKeyId>();
@@ -144,6 +157,8 @@ export class TypingInputEngine {
   readonly #shadowKeys = new Map<PhysicalKeyId, { readonly order: number; released: boolean }>();
   readonly #segments: RecognitionSegment[] = [];
 
+  /** 直前に認識した入力の打鍵。確定の打鍵が要る継ぎ目かの判定に使う。履歴の長さを問わず持つ（`#segments` は1打だけの配列では空になる）。 */
+  #lastActions: readonly RealizedSemanticAction[] | undefined;
   #nextOrder = 1;
   #pending: StepCandidate | undefined;
   #holdState: TriggerHoldState | undefined;
@@ -176,6 +191,8 @@ export class TypingInputEngine {
     this.#triggerPolicy = options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY;
     this.#actionPolicy = options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY;
     this.#contextSatisfied = options.contextSatisfied ?? ((requirements) => requirements.length === 0);
+    this.#commitRules = commitStrokeRulesOf(canonicalInputs);
+    this.#commitKey = options.commitKey !== undefined && !commitStrokeRulesEmpty(this.#commitRules) ? resolveKeyId(options.commitKey) : undefined;
   }
 
   handle(event: PhysicalKeyEvent): TypingInputResult {
@@ -209,9 +226,21 @@ export class TypingInputEngine {
       recognized.push(...this.#commitStep(this.#pending));
     }
 
+    if (key === this.#commitKey && this.#pending === undefined && this.#atCommitSeam()) {
+      // 確定の打鍵は文字を出さない。そこまでの入力を履歴から外し、次の入力を1つの面として読まない状態で始める。
+      this.#pressed.add(key);
+      this.#holdState = undefined;
+      this.#shadowKeys.clear();
+      this.#segments.length = 0;
+      this.#lastActions = undefined;
+      this.#resetRecognitionWindow();
+      return this.#result(recognized, [key]);
+    }
+
     this.#pressed.add(key);
 
     if (!this.#knownPhysicalKeys.has(key)) {
+      this.#lastActions = undefined;
       this.#shadowKeys.clear();
       this.#resetRecognitionWindow();
       return this.#result(recognized);
@@ -240,6 +269,7 @@ export class TypingInputEngine {
   flush(): TypingInputResult {
     const recognized = this.#pending === undefined ? [] : this.#commitStep(this.#pending);
     this.#segments.length = 0;
+    this.#lastActions = undefined;
     return this.#result(recognized);
   }
 
@@ -251,6 +281,7 @@ export class TypingInputEngine {
     this.#seededHoldKeys.clear();
     this.#shadowKeys.clear();
     this.#segments.length = 0;
+    this.#lastActions = undefined;
     this.#nextOrder = 1;
     this.#pending = undefined;
     this.#holdState = undefined;
@@ -277,12 +308,21 @@ export class TypingInputEngine {
     }
   }
 
-  #result(recognized: readonly RecognizedTypingInput[]): TypingInputResult {
+  #result(recognized: readonly RecognizedTypingInput[], extraRecognitionKeys: readonly PhysicalKeyId[] = []): TypingInputResult {
     return {
       recognized,
       pressedKeys: [...this.#pressed],
-      recognitionKeys: [...this.#windowKeys],
+      recognitionKeys: [...this.#windowKeys, ...extraRecognitionKeys],
     };
+  }
+
+  /** 直前に認識した入力が、続く入力によっては確定の打鍵が要る形か（仕様 §4.7）。 */
+  #atCommitSeam(): boolean {
+    if (this.#lastActions === undefined) return false;
+    return mayNeedCommitStroke(
+      this.#commitRules,
+      this.#lastActions.map((action) => faceStrokeOf(action.keys)),
+    );
   }
 
   #eligible(candidate: Candidate): boolean {
@@ -585,6 +625,7 @@ export class TypingInputEngine {
         this.#segments.splice(this.#segments.length - previousSegments.length, previousSegments.length);
       }
 
+      this.#lastActions = actions;
       const replacePreviousText = previousSegments.map((segment) => segment.visibleOutput).join('');
       this.#segments.push({
         operationSignatures: multiStep.candidate.operationSignatures,
@@ -611,6 +652,7 @@ export class TypingInputEngine {
     if (direct !== undefined) {
       const realized = this.#realize(direct.alternative.baseRealizations, holdStateBefore);
       this.#holdState = realized.holdState;
+      this.#lastActions = realized.actions;
       this.#segments.push({
         operationSignatures: direct.operationSignatures,
         visibleOutput: direct.output,
@@ -631,6 +673,7 @@ export class TypingInputEngine {
       ];
     }
 
+    this.#lastActions = provisional.actions;
     this.#segments.push({
       operationSignatures: [step.signature],
       visibleOutput: '',

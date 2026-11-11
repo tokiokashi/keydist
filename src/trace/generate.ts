@@ -1,5 +1,5 @@
 import { ALL_FINGERS, THUMB_KEY, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
-import { commitAction, commitKeyOf, commitStrokeRulesOf, needsCommitStroke } from './commit-stroke.ts';
+import { commitAction, commitKeyOf } from './commit-stroke.ts';
 import { decidePress, selectFingers, strokeFingerChoices, targetOf, type PlannedInput, type PlannedStroke } from './finger-selection.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyCombos } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
@@ -11,11 +11,13 @@ import { isKanjiChar } from '#input/text/reading.ts';
 import { kanaToRomajiChunks, type RomajiChunk } from '#input/romaji/kunrei.ts';
 import {
   applyActionRealizationPolicy,
+  commitStrokeRulesOf,
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   inputAlternativeSelectionIdentity,
   isComboFrameAlternative,
   mapInputAlternativePhysicalKeys,
+  needsCommitStroke,
   realizeTriggerActions,
   type ActionRealizationPolicy,
   type InputAlternative,
