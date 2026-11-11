@@ -1,14 +1,14 @@
-// Trace生成・解釈・主要な抽出の時間を、固定のテキストと代表的なSetupで測る。結果はJSONで書き出し、差分の表は `perf-report.ts` が作る。
+// Trace生成・解釈・主要な抽出の時間を、固定のテキストと代表的なSetupで測る。結果はJSONで書き出し、差分の表は`perf-report.ts`が作る。
 //
 // 使い方: node --experimental-strip-types scripts/bench-engine.ts --out <json> [--texts-file <json>] [--runs <回数>]
-// `--expose-gc` を付けて呼ぶと、測定の前にGCを走らせる
+// `--expose-gc`を付けて呼ぶと、測定の前にGCを走らせる
 //
-// - 測る経路は、アプリが計算に使う `createEngineCache`（`src/engine/cache.ts`）の窓口。段ごとの時間は、同じキャッシュに段を順に頼み、
+// - 測る経路は、アプリが計算に使う`createEngineCache`（`src/engine/cache.ts`）の窓口。段ごとの時間は、同じキャッシュに段を順に頼み、
 //   頼む前後の時刻の差を取る（解釈はTraceを、抽出は解釈とキーの詳細を、前の段のキャッシュから読む）
-// - 漢字を読みに直す段（辞書）は時間に入れない。日本語の既定のテキストは、読みに直した後の文を `--texts-file` に書き出して使う。
+// - 漢字を読みに直す段（辞書）は時間に入れない。日本語の既定のテキストは、読みに直した後の文を`--texts-file`に書き出して使う。
 //   ファイルがあればそれを読む。ベースとheadの測定が同じ文を使えるよう、CIでは先にheadで書き出す
-// - 1つの計測値は、`--runs` 回（既定15）測った最小値（集合の測定は、1回が長いので3分の1の回数）。先に3回（集合の測定は1回）測って捨てる（JITの温まりを除く）。測定のたびにGCを走らせ、空のキャッシュから始める。
-//   最小値を使うのは、GCや他のプロセスによる遅れが時間を伸ばす向きにしか乱れないため。中央値も `median` に残す
+// - 1つの計測値は、`--runs`回（既定15）測った最小値（集合の測定は、1回が長いので3分の1の回数）。先に3回（集合の測定は1回）測って捨てる（JITの温まりを除く）。測定のたびにGCを走らせ、空のキャッシュから始める。
+//   最小値を使うのは、GCや他のプロセスによる遅れが時間を伸ばす向きにしか乱れないため。中央値も`median`に残す
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
@@ -86,7 +86,7 @@ interface Measured {
   readonly median: number;
 }
 
-/** `fn` が返す {名前: ms} を `runs` 回集め、名前ごとの最小値と中央値にする。先に `warmupRuns` 回測って捨てる。 */
+/** `fn`が返す {名前: ms} を`runs`回集め、名前ごとの最小値と中央値にする。先に`warmupRuns`回測って捨てる。 */
 function measure(runs: number, warmupRuns: number, fn: () => Record<string, number>): Record<string, Measured> {
   for (let i = 0; i < warmupRuns; i++) fn();
   const samples: Record<string, number[]> = {};
@@ -146,7 +146,7 @@ async function loadTexts(file: string | undefined): Promise<BenchText[]> {
 }
 
 const { values } = parseArgs({ options: { out: { type: 'string' }, 'texts-file': { type: 'string' }, runs: { type: 'string', default: '15' } } });
-if (values.out === undefined) throw new Error('--out が要る');
+if (values.out === undefined) throw new Error('--outが要る');
 const runs = Number(values.runs);
 // 集合の測定は1回が1秒を超える（N感度）ので、回数を減らす
 const setRuns = Math.max(3, Math.ceil(runs / 3));

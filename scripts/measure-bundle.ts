@@ -1,10 +1,10 @@
-// `npm run build` の出力（`.output/public`）のサイズを測る。結果はJSONで書き出し、上限との比較と差分の表は `perf-report.ts` が作る。
+// `npm run build`の出力（`.output/public`）のサイズを測る。結果はJSONで書き出し、上限との比較と差分の表は`perf-report.ts`が作る。
 //
 // 使い方: node --experimental-strip-types scripts/measure-bundle.ts --out <json> [--dir <公開物のディレクトリ>]
 //
-// 測るもの（どれも圧縮前 `raw` と gzip の byte 数）。ファイル名のハッシュは版ごとに変わるので、ファイル単位でなく次のまとまりで持つ。
-// - ページの初期読み込み: 事前描画したHTMLが最初に読み込むJavaScript（`<script type="module">` とmodulepreload）とCSS（`<link rel="stylesheet">`）の合計。
-//   トップ `/`、Workspace `/workspace/_`（保存したWorkspaceを開く画面の殻）、個別画面の代表 `/analyzer/heatmap/` の3ページ
+// 測るもの（どれも圧縮前`raw`とgzipのbyte数）。ファイル名のハッシュは版ごとに変わるので、ファイル単位でなく次のまとまりで持つ。
+// - ページの初期読み込み: 事前描画したHTMLが最初に読み込むJavaScript（`<script type="module">`とmodulepreload）とCSS（`<link rel="stylesheet">`）の合計。
+//   トップ`/`、Workspace `/workspace/_`（保存したWorkspaceを開く画面の殻）、個別画面の代表`/analyzer/heatmap/`の3ページ
 // - 計算用Worker: `engine-worker-<hash>.js`
 // - 公開物のJavaScript全体・CSS全体（遅延読み込みのチャンクを含む）
 import { readdir, readFile } from 'node:fs/promises';
@@ -31,7 +31,7 @@ function sum(sizes: readonly Size[]): Size {
   return { raw: sizes.reduce((a, s) => a + s.raw, 0), gzip: sizes.reduce((a, s) => a + s.gzip, 0) };
 }
 
-/** 公開パス（`/keydist/assets/x.js` 等）を、出力の `assets/x.js` に寄せる。base path に依らないため。 */
+/** 公開パス（`/keydist/assets/x.js`等）を、出力の`assets/x.js`に寄せる。base pathに依らないため。 */
 function assetPath(url: string): string | undefined {
   const index = url.lastIndexOf('/assets/');
   return index === -1 ? undefined : url.slice(index + 1);
@@ -83,7 +83,7 @@ export async function measureBundle(publicDir: string): Promise<Record<string, S
 
 if (import.meta.main) {
   const { values } = parseArgs({ options: { out: { type: 'string' }, dir: { type: 'string', default: '.output/public' } } });
-  if (values.out === undefined) throw new Error('--out が要る');
+  if (values.out === undefined) throw new Error('--outが要る');
   const sizes = await measureBundle(resolve(values.dir));
   const { writeFile } = await import('node:fs/promises');
   await writeFile(values.out, `${JSON.stringify({ sizes }, null, 2)}\n`);

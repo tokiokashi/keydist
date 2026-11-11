@@ -1,4 +1,4 @@
-// `bench-engine.ts` と `measure-bundle.ts` の結果から、ベースとheadの差分の表（Markdown）を標準出力へ出す。
+// `bench-engine.ts`と`measure-bundle.ts`の結果から、ベースとheadの差分の表（Markdown）を標準出力へ出す。
 //
 // 使い方:
 //   node --experimental-strip-types scripts/perf-report.ts --budget scripts/bundle-budget.json \
@@ -6,7 +6,7 @@
 //
 // - ベンチマークは報告だけで、結果によって失敗にしない。ベースかheadを複数回測った時は、計測名ごとに最小値を取る
 //   （遅れは時間を伸ばす向きにしか乱れないため）
-// - バンドルは、headのgzipサイズが `bundle-budget.json` の上限を超えた計測名があれば、標準エラーに `::error::` を出して終了コード1で終わる
+// - バンドルは、headのgzipサイズが`bundle-budget.json`の上限を超えた計測名があれば、標準エラーに`::error::`を出して終了コード1で終わる
 // - ベースの結果が無い（ベースの版に測定の対象が無い等）時は、headの値だけを出す
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
@@ -103,7 +103,7 @@ function bundleSection(budgetPath: string, basePath: string | undefined, headPat
     const baseSize = base?.[name]?.gzip;
     const diff = baseSize === undefined ? '-' : `${signed(size.gzip - baseSize, 0, ' B')} (${percent(baseSize, size.gzip)})`;
     const exceeded = limit !== undefined && size.gzip > limit;
-    if (exceeded) over.push(`${name}: ${size.gzip} B が上限 ${limit} B を超えた`);
+    if (exceeded) over.push(`${name}: ${size.gzip} Bが上限の ${limit} Bを超えた`);
     const ratio = limit === undefined ? '上限なし' : `${exceeded ? '❌ ' : ''}${((size.gzip / limit) * 100).toFixed(1)}%`;
     lines.push(
       `| ${name} | ${baseSize === undefined ? '-' : kib(baseSize)} | ${kib(size.gzip)} | ${diff} | ${limit === undefined ? '-' : kib(limit)} | ${ratio} |`,
@@ -118,7 +118,7 @@ function bundleSection(budgetPath: string, basePath: string | undefined, headPat
   return { lines, over };
 }
 
-if (values.budget === undefined || values['bundle-head'] === undefined) throw new Error('--budget と --bundle-head が要る');
+if (values.budget === undefined || values['bundle-head'] === undefined) throw new Error('--budgetと--bundle-headの指定が要る');
 const bundle = bundleSection(values.budget, values['bundle-base'], values['bundle-head']);
 console.log(['## 性能の予算', '', ...bundle.lines, ...benchSection(values['bench-base'], values['bench-head'])].join('\n'));
 for (const message of bundle.over) console.error(`::error title=バンドルサイズの上限::${message}`);

@@ -2,7 +2,7 @@ name: Performance
 
 # PRごとに、ベースとheadの計算の時間とバンドルサイズを同じjobの中で測り、差分をjob summaryに出す。
 # 計算の時間は報告だけで、結果によって失敗にしない（共有のランナーは時間がばらつくので、ばらつきを見てから閾値を決める）。
-# バンドルサイズは、headが scripts/bundle-budget.json の上限を超えたらjobを失敗にする。
+# バンドルサイズは、headがscripts/bundle-budget.jsonの上限を超えたらjobを失敗にする。
 on:
   pull_request:
   workflow_dispatch:
@@ -38,7 +38,7 @@ jobs:
           node-version: 22
           package-manager-cache: false
 
-      # ci.yml と同じ理由で、npm のキャッシュは自前で持つ
+      # ci.ymlと同じ理由で、npmのキャッシュは自前で持つ
       - name: Cache npm
         uses: actions/cache@v6
         with:
