@@ -17,10 +17,11 @@ concurrency:
 jobs:
   perf:
     runs-on: ubuntu-latest
-    env:
-      # 測定の出力の置き場。リポジトリの中に置かない
-      PERF_OUT: ${{ runner.temp }}/perf
     steps:
+      # 測定の出力の置き場。リポジトリの中に置かない。runnerコンテキストはjobのenvで使えないので、stepで決める
+      - name: Set output directory
+        run: echo "PERF_OUT=$RUNNER_TEMP/perf" >> "$GITHUB_ENV"
+
       - name: Checkout head
         uses: actions/checkout@v7
 
