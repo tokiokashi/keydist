@@ -742,12 +742,16 @@ export function InputConverterView({
     setLookupStepIndex(0);
   }, [layout.id, lookupQuery]);
 
+  // 手順を進めるのに使った認識の結果。次のactionのキーが同じでも、1回の押下の結果では1つしか進めない
+  const consumedRecognitionRef = useRef<readonly string[] | undefined>(undefined);
   useEffect(() => {
     if (activeLookupAction === undefined || session.recognitionKeys.length === 0) return;
+    if (consumedRecognitionRef.current === session.recognitionKeys) return;
     // 次のstepの先頭が確定の打鍵なら、手前のstepの最後の打鍵を押した時点で確定の打鍵を示す。文字は確定の打鍵を押すまで保留されることがある
     const nextAction = activeLookupGuideActions[activeLookupGuideIndex + 1];
     if (activeLookupAction.finalInRouteStep && nextAction?.commit !== true) return;
     if (reverseLookupGuideActionMatchesKeys(activeLookupAction, session.recognitionKeys)) {
+      consumedRecognitionRef.current = session.recognitionKeys;
       setLookupStepIndex((current) => Math.min(activeLookupGuideActions.length - 1, current + 1));
     }
   }, [activeLookupAction, activeLookupGuideActions, activeLookupGuideIndex, session.recognitionKeys]);
