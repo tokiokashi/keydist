@@ -60,7 +60,7 @@ function outputHandsOf(stroke: TriggerParticipationStroke): Set<Hand> {
 /**
  * triggerが参加したStrokeの、比べる出力の手。
  * 出力を持つStrokeは自分の出力とだけ比べる。triggerだけのStrokeは、同じ入力の選択・同じ帰属先のすぐ隣の出力のStrokeと比べる
- * （出力より前に押す前置・同時なら、すぐ後。後置ならすぐ前）。
+ * 前置と、分けた実現で出力のStrokeより前に置かれる同時はすぐ後、後置はすぐ前と比べる。
  */
 function comparedOutputHands(strokes: readonly TriggerParticipationStroke[], index: number, orders: ReadonlySet<TriggerOrder>): Set<Hand> {
   const stroke = strokes[index]!;
