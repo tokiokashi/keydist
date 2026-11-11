@@ -145,3 +145,47 @@ test('decode: 直しとして読めない項目だけを診断付きで捨て、
     assert.equal(result.diagnostics.length, 3);
   }
 });
+
+const WORD_FIX = { surface: '今日', order: 1, before: '日は晴。', after: 'は雨。今', reading: 'こんにち' };
+
+test('encode/decode: 語ごとの読みの直しを往復できる（自作と組み込み）', () => {
+  const library = {
+    texts: [{ id: 'a', name: 'A', text: '今日', wordReadingCorrections: [WORD_FIX] }],
+    builtinWordReadingCorrections: { 'builtin:ja.legacy': [{ surface: '吾輩', order: 0, before: '', after: 'は猫で', reading: 'わがはい' }] },
+  };
+  const result = TEXT_LIBRARY_CODEC.decode(TEXT_LIBRARY_CODEC.encode(library));
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value, library);
+    assert.deepEqual(result.diagnostics, []);
+  }
+});
+
+test('decode: 語ごとの直しとして読めない項目と、同じ語を指す重なりだけを診断付きで捨て、本文と他の直しは残す', () => {
+  const result = TEXT_LIBRARY_CODEC.decode({
+    version: 1,
+    texts: [
+      {
+        id: 'a',
+        name: 'A',
+        text: '今日',
+        wordReadingCorrections: [
+          WORD_FIX,
+          { ...WORD_FIX, reading: 'ほんじつ' },
+          { ...WORD_FIX, order: 2, reading: 'キョウ' },
+          { ...WORD_FIX, order: -1 },
+          { ...WORD_FIX, order: 1.5 },
+          { ...WORD_FIX, surface: 'あい' },
+          { ...WORD_FIX, before: 'あいうえお' },
+          { ...WORD_FIX, after: 3 },
+          'x',
+        ],
+      },
+    ],
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value.texts[0]!.wordReadingCorrections, [WORD_FIX]);
+    assert.equal(result.diagnostics.length, 8);
+  }
+});

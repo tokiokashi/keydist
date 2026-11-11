@@ -1,5 +1,12 @@
 import type { TextLanguage } from './samples.ts';
 import { NO_READING_CORRECTIONS, withReadingCorrection, type ReadingCorrections } from './reading.ts';
+import {
+  NO_WORD_READING_CORRECTIONS,
+  withWordReadingCorrection,
+  type WordAnchor,
+  type WordReadingCorrection,
+  type WordReadingCorrections,
+} from './word-reading.ts';
 
 /**
  * ユーザーが自作したテキスト（`docs/architecture.md`
@@ -26,6 +33,11 @@ export interface UserText {
    * テキストと一緒に持ち、別のテキストには当たらない。
    */
   readonly readingCorrections?: ReadingCorrections;
+  /**
+   * 利用者が直した、1つの語ごとの読み。無ければ直していない。語は表記・順番・前後の文字で指定し、本文を編集した後も見つけ直す
+   * （`word-reading.ts`）。1つの語に表記ごとの直しもある時は、こちらを使う。
+   */
+  readonly wordReadingCorrections?: WordReadingCorrections;
 }
 
 export interface TextLibrary {
@@ -35,6 +47,8 @@ export interface TextLibrary {
    * 本文を自作のテキストへ写さずに直しだけを保存するため、ここに持つ。
    */
   readonly builtinReadingCorrections?: Readonly<Record<string, ReadingCorrections>>;
+  /** 組み込みのテキストの語ごとの読みの直し（組み込みのテキストのid → 直し）。本文を写さずに持つ。 */
+  readonly builtinWordReadingCorrections?: Readonly<Record<string, WordReadingCorrections>>;
 }
 
 /**
@@ -63,6 +77,7 @@ export function appendCopiedUserText(
     readonly languageOverride?: TextLanguage;
     readonly unseen?: true;
     readonly readingCorrections?: ReadingCorrections;
+    readonly wordReadingCorrections?: WordReadingCorrections;
   },
   name?: string,
 ): { readonly library: TextLibrary; readonly created: UserText } {
@@ -73,10 +88,14 @@ export function appendCopiedUserText(
       ? { id, name: entryName, text: source.text }
       : { id, name: entryName, text: source.text, languageOverride: source.languageOverride };
   const withUnseen: UserText = source.unseen === true ? { ...base, unseen: true } : base;
-  const created: UserText =
+  const withSurfaceCorrections: UserText =
     source.readingCorrections === undefined || Object.keys(source.readingCorrections).length === 0
       ? withUnseen
       : { ...withUnseen, readingCorrections: { ...source.readingCorrections } };
+  const created: UserText =
+    source.wordReadingCorrections === undefined || source.wordReadingCorrections.length === 0
+      ? withSurfaceCorrections
+      : { ...withSurfaceCorrections, wordReadingCorrections: source.wordReadingCorrections.map((entry) => ({ ...entry })) };
   return { library: { ...library, texts: [...library.texts, created] }, created };
 }
 
@@ -165,6 +184,37 @@ export function setTextReadingCorrection(
   const nextAll = Object.keys(next).length === 0 ? others : { ...others, [ref.id]: next };
   const { builtinReadingCorrections: _old, ...base } = library;
   return Object.keys(nextAll).length === 0 ? base : { ...base, builtinReadingCorrections: nextAll };
+}
+
+/**
+ * テキストの語ごとの読みの直しを、差し替える。`remove`の語の指定の直しをすべて消し、`add`があれば足す（同じ指定の直しは置き換える）。
+ * 自作のテキストは`UserText`に、組み込みのテキストは`builtinWordReadingCorrections`に持つ。
+ * 対象が無い（手持ちに無い自作のテキスト）・変化が無い時は`library`をそのまま返す。
+ */
+export function setTextWordReadingCorrection(
+  library: TextLibrary,
+  ref: { readonly kind: 'user' | 'builtin'; readonly id: string },
+  remove: readonly WordAnchor[],
+  add: WordReadingCorrection | undefined,
+): TextLibrary {
+  if (ref.kind === 'user') {
+    const target = library.texts.find((text) => text.id === ref.id);
+    if (target === undefined) return library;
+    const current = target.wordReadingCorrections ?? NO_WORD_READING_CORRECTIONS;
+    const next = withWordReadingCorrection(current, remove, add);
+    if (next === current) return library;
+    const { wordReadingCorrections: _drop, ...rest } = target;
+    const updated: UserText = next.length === 0 ? rest : { ...rest, wordReadingCorrections: next };
+    return { ...library, texts: library.texts.map((text) => (text.id === ref.id ? updated : text)) };
+  }
+  const all = library.builtinWordReadingCorrections ?? {};
+  const current = all[ref.id] ?? NO_WORD_READING_CORRECTIONS;
+  const next = withWordReadingCorrection(current, remove, add);
+  if (next === current) return library;
+  const { [ref.id]: _drop, ...others } = all;
+  const nextAll = next.length === 0 ? others : { ...others, [ref.id]: next };
+  const { builtinWordReadingCorrections: _old, ...base } = library;
+  return Object.keys(nextAll).length === 0 ? base : { ...base, builtinWordReadingCorrections: nextAll };
 }
 
 function withoutLanguageOverride(text: UserText): UserText {

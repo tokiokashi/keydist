@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { ResolvedText } from '#input/text/resolve.ts';
+import { NO_RESOLVED_WORD_CORRECTIONS } from '#input/text/word-reading.ts';
 import { corpusBodyStatus, requestCorpusBody } from '#input/text/corpus-bodies.ts';
 import { holdEvaluation } from './use-resolved-text-selection.ts';
 import { isWaitingForReading, type ReadingEvaluation } from './reading-evaluation.ts';
@@ -13,8 +14,9 @@ const resolved: ResolvedText = {
   languageOverride: undefined,
   isBuiltin: true,
   readingCorrections: {},
+  wordReadingCorrections: [],
 };
-const evaluation: ReadingEvaluation = { text: resolved, state: { kind: 'none' }, words: [] };
+const evaluation: ReadingEvaluation = { text: resolved, state: { kind: 'none' }, words: [], wordCorrections: NO_RESOLVED_WORD_CORRECTIONS };
 
 test('本文が使えない間は、読み込み中でも読み込みに失敗した後でも、ペインは計算を依頼しない', () => {
   for (const body of ['loading', 'failed'] as const) {
