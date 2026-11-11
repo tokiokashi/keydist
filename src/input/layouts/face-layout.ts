@@ -127,7 +127,8 @@ const isTriggerKey = (key: string): boolean => TRIGGER_NAMED_KEYS.has(key) || is
 
 const keyName = (key: string): string => `${physicalKeyDisplayLabel(key)}（${key}）`;
 
-const describeValue = (value: unknown): string => JSON.stringify(value) ?? String(value);
+// 文字列でない値は、引用符やnullのようなJSONの表記でしか示せないので、診断に値を出さない
+const quotedString = (value: unknown): string | undefined => (typeof value === 'string' ? `「${value}」` : undefined);
 
 /** 面の名前。利用者は面を並びの順で数える。 */
 const faceLabel = (index: number): string => `面${index + 1}`;
@@ -146,7 +147,8 @@ class Problems {
 function readEnum<T extends string>(value: unknown, allowed: readonly T[], path: string, label: string, problems: Problems): Parsed<T> {
   if (typeof value === 'string' && (allowed as readonly string[]).includes(value)) return { ok: true, value: value as T };
   // 欄が無い時は、書かれていない値を並べず、欄の名前と選べる値だけを伝える
-  const detail = value === undefined ? '' : `（${describeValue(value)}）`;
+  const quoted = quotedString(value);
+  const detail = quoted === undefined ? '' : `（${quoted}）`;
   problems.add(path, `${label}は ${allowed.map((entry) => `「${entry}」`).join('・')} のどれかで書いてください${detail}`);
   return { ok: false };
 }
@@ -173,7 +175,13 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
     raw.trigger.forEach((entry: unknown, triggerIndex) => {
       const triggerPath = `${path}.trigger[${triggerIndex}]`;
       if (typeof entry !== 'string' || !isTriggerKey(entry)) {
-        problems.add(triggerPath, `${label}の切り替えのキー ${describeValue(entry)} は、物理キーの名前ではありません`);
+        const quoted = quotedString(entry);
+        problems.add(
+          triggerPath,
+          quoted === undefined
+            ? `${label}の切り替えのキーを、物理キーの名前の文字列で書いてください`
+            : `${label}の切り替えのキー${quoted}は、物理キーの名前ではありません`,
+        );
         return;
       }
       const resolved = resolveKeyId(entry);
@@ -418,7 +426,7 @@ export function readFaceBody(raw: Record<string, unknown>): { readonly body: Use
     }
     if (raw.romaji !== undefined) {
       if (typeof raw.romaji === 'string') romaji = raw.romaji;
-      else problems.add('romaji', `ローマ字規則（romaji）を文字列で書いてください（${describeValue(raw.romaji)}）`);
+      else problems.add('romaji', 'ローマ字規則（romaji）を文字列で書いてください');
     }
   }
 

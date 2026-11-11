@@ -363,6 +363,26 @@ test('読み込みの誤り: 出力が空・値の型が違う', () => {
   );
 });
 
+test('読み込みの誤り: 選べる値・切り替えのキー・ローマ字規則の診断は、読んだ値をJSONの表記で出さない', () => {
+  const messageAt = (problems: readonly { path: string; message: string }[], path: string) => {
+    const problem = problems.find((candidate) => candidate.path === path);
+    assert.ok(problem, path);
+    return problem.message;
+  };
+  const withFace1 = (face: Record<string, unknown>) => {
+    const file = validFile();
+    const faces = file.faces as Record<string, unknown>[];
+    faces[1] = { ...faces[1], ...face };
+    return problemsOf(file);
+  };
+  assert.match(messageAt(withFace1({ mode: 'later' }), 'faces[1].mode'), /のどれかで書いてください（「later」）$/);
+  assert.match(messageAt(withFace1({ mode: 3 }), 'faces[1].mode'), /のどれかで書いてください$/);
+  assert.equal(messageAt(withFace1({ trigger: ['nokey'] }), 'faces[1].trigger[0]'), '面2の切り替えのキー「nokey」は、物理キーの名前ではありません');
+  assert.equal(messageAt(withFace1({ trigger: [null] }), 'faces[1].trigger[0]'), '面2の切り替えのキーを、物理キーの名前の文字列で書いてください');
+  const { problems } = readFaceBody({ kind: 'alpha', faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'a' } }], romaji: 1 });
+  assert.equal(messageAt(problems, 'romaji'), 'ローマ字規則（romaji）を文字列で書いてください');
+});
+
 /** 利用者に見せる文に、内部の語（型名・内部の検査の語）が入っていないこと。 */
 function assertUserFacing(problems: readonly { path: string; message: string }[]) {
   for (const problem of problems) {
