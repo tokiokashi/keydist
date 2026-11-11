@@ -571,18 +571,17 @@ export function multiTargetConditionSummary(
 
 /**
  * 並べた対象について、基準の対象（主の対象）と違う物理配列・条件を、短い断片の並びにする。
- * 物理配列は名前で比べ、条件は効く値（`valueKey`）で比べる。どちらかに効かない項目は数えない。
+ * 物理配列は名前で比べ、条件は反映される値（`valueKey`）で比べる。どちらかで使われない項目は数えない。
  * 「既定の物理配列」の行は、物理配列名として別に出すので条件には数えない。
  */
 export function differencesFromBase(
   base: { readonly shapeName: string; readonly rows: readonly ConditionSummaryRow[] },
   other: { readonly shapeName: string; readonly rows: readonly ConditionSummaryRow[] },
-  excludeIds: readonly SettingsItemId[] = [],
 ): readonly string[] {
   const notes: string[] = [];
   if (other.shapeName !== base.shapeName) notes.push(`物理配列: ${other.shapeName}`);
   for (const row of other.rows) {
-    if (!row.applicable || SHOWN_AS_SHAPE_NAME.includes(row.id) || excludeIds.includes(row.id)) continue;
+    if (!row.applicable || SHOWN_AS_SHAPE_NAME.includes(row.id)) continue;
     const baseRow = base.rows.find((r) => r.id === row.id);
     if (baseRow === undefined || !baseRow.applicable || baseRow.valueKey === row.valueKey) continue;
     notes.push(`${row.label}: ${row.displayValue}`);

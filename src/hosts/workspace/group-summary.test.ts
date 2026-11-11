@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { LinkGroup } from '#engine/workspace.ts';
-import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride } from '#engine/settings-items.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
@@ -64,4 +64,17 @@ test('summarizeLinkGroups: 区別の要らない組と、同じ対象を持つ�
     summaries.map((summary) => summary.single),
     [LAYOUT_BY_ID.get('qwerty')!.name, LAYOUT_BY_ID.get('colemak-dh')!.name, LAYOUT_BY_ID.get('qwerty')!.name],
   );
+});
+
+test('summarizeLinkGroups: 配列も物理配列も同じで条件だけが違う組は、メニュー上で名前が分かれる', () => {
+  const a: Setup = { id: 'a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const b: Setup = { id: 'b', number: 2, layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const withWindow = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'setup', setupId: 'b' }, 'windowSize', 7);
+  assert.ok(withWindow.ok);
+  if (!withWindow.ok) return;
+  const env = { ...envWith([a, b]), overrides: withWindow.overrides };
+  const targetA: AnalysisTarget = { kind: 'setup', setupId: 'a' };
+  const targetB: AnalysisTarget = { kind: 'setup', setupId: 'b' };
+  const summaries = summarizeLinkGroups(env, [groupOf('g1', targetA), groupOf('g2', targetB)]);
+  assert.notEqual(summaries[0]!.single, summaries[1]!.single);
 });

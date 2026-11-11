@@ -851,7 +851,7 @@ test('multiTargetConditionSummary: 物理配列が全対象で同じなら、物
   );
 });
 
-test('differencesFromBase: 物理配列と条件の違いだけを返し、同じ物でも効かない項目でも出さない', () => {
+test('differencesFromBase: 物理配列と条件の違いだけを返し、同じ値の項目は出さない', () => {
   const [a, b, c] = targetsWith([], [[], [['s2', 'windowSize', 7]], []]);
   assert.ok(a && b && c);
   const base = { shapeName: '同じ', rows: a.rows };
@@ -860,5 +860,4 @@ test('differencesFromBase: 物理配列と条件の違いだけを返し、同�
   const notes = differencesFromBase(base, { shapeName: '同じ', rows: b.rows });
   assert.equal(notes.length, 1);
   assert.match(notes[0]!, /: 7$/);
-  assert.deepEqual(differencesFromBase(base, { shapeName: '同じ', rows: b.rows }, ['windowSize']), []);
 });
