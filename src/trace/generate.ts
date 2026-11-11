@@ -23,6 +23,7 @@ import {
   type RealizedSemanticAction,
   type InputClassification,
   type InputContextRequirement,
+  type Requirement,
   type TriggerHoldState,
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
@@ -64,12 +65,23 @@ export const DEFAULT_TRACE_POLICY: TracePolicy = {
 
 export type ParticipationRole = 'output' | 'trigger' | 'held-trigger';
 
+/**
+ * triggerのキーが、成立した入力のRequirementのどこに現れるか（仕様 §11.10.1）。
+ * `overlap` は同時押し、`before` は前置、`after` は後置。
+ */
+export type TriggerOrder = 'overlap' | 'before' | 'after';
+
 export interface StrokeParticipation {
   hand: 'left' | 'right';
   finger: Finger;
   keys: readonly Key[];
   roles: readonly ParticipationRole[];
   holdPhase?: HoldPhase;
+  /**
+   * この指のtriggerのキー（`trigger`・`held-trigger` の役のキー）が、入力のRequirementに現れる位置。
+   * triggerの役を持つ参加だけが持ち、Requirementに現れないキーしか無ければ持たない。
+   */
+  triggerOrders?: readonly TriggerOrder[];
 }
 
 /** 距離が採用した候補の起点。 */
@@ -518,7 +530,16 @@ export function generateTrace(
 
       const participations = internParticipations(
         participationPool,
-        normalizeParticipations(presses, action.outputKeys, action.triggerKeys, action.heldKeys, action.holdPhase, geometry, heldFingerOf),
+        normalizeParticipations(
+          presses,
+          action.outputKeys,
+          action.triggerKeys,
+          action.heldKeys,
+          action.holdPhase,
+          action.input.requirements,
+          geometry,
+          heldFingerOf,
+        ),
       );
 
       let total = 0;
@@ -629,6 +650,7 @@ function normalizeParticipations(
   triggerKeys: readonly string[],
   heldTriggerKeys: readonly string[],
   holdPhase: HoldPhase | undefined,
+  requirements: readonly Requirement[],
   geometry: Geometry,
   heldFingerOf: (id: string) => Finger | undefined,
 ): readonly StrokeParticipation[] {
@@ -664,13 +686,41 @@ function normalizeParticipations(
     current.roles.add('held-trigger');
   }
 
-  return [...byFinger].map(([finger, value]) => ({
-    hand: finger.startsWith('L') ? 'left' : 'right',
-    finger,
-    keys: value.keys,
-    roles: [...value.roles],
-    ...(value.roles.has('held-trigger') && holdPhase !== undefined ? { holdPhase } : {}),
-  }));
+  return [...byFinger].map(([finger, value]) => {
+    const orders = value.roles.has('trigger') || value.roles.has('held-trigger') ? triggerOrdersOf(value.keys, triggers, held, requirements) : [];
+    return {
+      hand: finger.startsWith('L') ? 'left' : 'right',
+      finger,
+      keys: value.keys,
+      roles: [...value.roles],
+      ...(value.roles.has('held-trigger') && holdPhase !== undefined ? { holdPhase } : {}),
+      ...(orders.length > 0 ? { triggerOrders: orders } : {}),
+    };
+  });
+}
+
+const TRIGGER_ORDER_SEQUENCE: readonly TriggerOrder[] = ['overlap', 'before', 'after'];
+
+/** triggerのキーがRequirementのどこに現れるかを、`overlap`・`before`・`after` の順に重複なく返す。 */
+function triggerOrdersOf(
+  keys: readonly Key[],
+  triggers: ReadonlySet<string>,
+  held: ReadonlySet<string>,
+  requirements: readonly Requirement[],
+): TriggerOrder[] {
+  const found = new Set<TriggerOrder>();
+  for (const key of keys) {
+    if (!triggers.has(key.id) && !held.has(key.id)) continue;
+    for (const requirement of requirements) {
+      if (requirement.kind === 'overlap') {
+        if (requirement.keys.some((candidate) => resolveKeyId(candidate) === key.id)) found.add('overlap');
+      } else {
+        if (requirement.before.some((candidate) => resolveKeyId(candidate) === key.id)) found.add('before');
+        if (requirement.after.some((candidate) => resolveKeyId(candidate) === key.id)) found.add('after');
+      }
+    }
+  }
+  return TRIGGER_ORDER_SEQUENCE.filter((order) => found.has(order));
 }
 
 /**
@@ -947,7 +997,10 @@ function internParticipations(
   participations: readonly StrokeParticipation[],
 ): readonly StrokeParticipation[] {
   const signature = participations
-    .map((entry) => `${entry.hand}|${entry.finger}|${entry.keys.map((key) => key.id).join(',')}|${entry.roles.join(',')}|${entry.holdPhase ?? ''}`)
+    .map(
+      (entry) =>
+        `${entry.hand}|${entry.finger}|${entry.keys.map((key) => key.id).join(',')}|${entry.roles.join(',')}|${entry.holdPhase ?? ''}|${(entry.triggerOrders ?? []).join(',')}`,
+    )
     .join(';');
   const known = pool.get(signature);
   if (known !== undefined) return known;
