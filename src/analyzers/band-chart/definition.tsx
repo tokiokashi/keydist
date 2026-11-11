@@ -18,6 +18,7 @@ import {
   legendBandIndices,
   legendLayout,
   nextLegendSort,
+  pinsLegendAndCaption,
   percentText,
   segmentGeometries,
   type BandDisplayRow,
@@ -152,6 +153,7 @@ function BandFigure({
   const [chromeHeight, setChromeHeight] = useState<number | undefined>(undefined);
   const rowsMaxHeight = visibleHeight === undefined || chromeHeight === undefined ? undefined : visibleHeight - chromeHeight;
   const layout = useMemo(() => bandLayout(width, rows.length, rowsMaxHeight), [width, rows.length, rowsMaxHeight]);
+  const pinned = pinsLegendAndCaption(layout.mode, rows.length, rowsMaxHeight);
   const legend = useMemo(() => legendLayout(width, labels, legendIndices), [width, labels, legendIndices]);
   // 凡例の右端の項目は、左端からそこまでの割合がどの配列でも100%になり、並べ替えが決まらない
   const lastLegendIndex = legendIndices[legendIndices.length - 1];
@@ -194,7 +196,7 @@ function BandFigure({
   })();
 
   return (
-    <figure ref={figureRef} className="band-figure" data-band-mode={layout.mode}>
+    <figure ref={figureRef} className="band-figure" data-band-mode={layout.mode} data-band-pinned={pinned}>
       <div className="band-legend" {...mark('legend')}>
         {/* biome-ignore lint/a11y/useSemanticElements: SVGの図の中の凡例の項目（button）をまとめる役割で、fieldsetには置き換えられない */}
         <svg className="band-legend-svg" viewBox={`0 0 ${width} ${legend.height}`} aria-label="区分の凡例" role="group">
