@@ -253,3 +253,20 @@ test('実際の配列: 前置の面のtriggerだけのStrokeは、次のStroke�
   assert.deepEqual(result.all, { participated: 3, sameHand: 0 });
   assert.deepEqual(result.orders.before, { participated: 3, sameHand: 0 });
 });
+
+test('実際の配列: 同時押しを別のStrokeに分けた実現でも、triggerだけのStrokeは次の出力と比べ、同手が0にならない', () => {
+  const layout = LAYOUT_BY_ID.get('nicola');
+  assert.ok(layout);
+  const text = 'あいうえおかきくけこさしすせそ';
+  const policy = {
+    ...DEFAULT_TRACE_POLICY,
+    actionRealizationPolicy: { triggerActivation: 'semantic' as const, triggerActivationClassOverrides: { 'order-free': 'separate' as const } },
+  };
+  const combined = computeTriggerParticipation(generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY));
+  const trace = generateTrace(text, layout, geometry, policy);
+  const separated = computeTriggerParticipation(trace);
+  // 分けると打鍵が増える。trigger参加の打鍵数は、同じStrokeに出力がある時も無い時も数える
+  assert.ok(separated.strokes > combined.strokes);
+  assert.ok(separated.all.sameHand > 0);
+  assert.ok(separated.all.sameHand <= separated.all.participated);
+});

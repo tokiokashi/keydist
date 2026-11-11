@@ -60,7 +60,7 @@ function outputHandsOf(stroke: TriggerParticipationStroke): Set<Hand> {
 /**
  * triggerが参加したStrokeの、比べる出力の手。
  * 出力を持つStrokeは自分の出力とだけ比べる。triggerだけのStrokeは、同じ入力の選択・同じ帰属先のすぐ隣の出力のStrokeと比べる
- * （前置の順序を持つならすぐ後、後置ならすぐ前）。
+ * （出力より前に押す前置・同時なら、すぐ後。後置ならすぐ前）。
  */
 function comparedOutputHands(strokes: readonly TriggerParticipationStroke[], index: number, orders: ReadonlySet<TriggerOrder>): Set<Hand> {
   const stroke = strokes[index]!;
@@ -71,7 +71,7 @@ function comparedOutputHands(strokes: readonly TriggerParticipationStroke[], ind
     if (neighbor === undefined || neighbor.selectionIndex !== stroke.selectionIndex || neighbor.aggregationGroupId !== stroke.aggregationGroupId) return;
     for (const hand of outputHandsOf(neighbor)) hands.add(hand);
   };
-  if (orders.has('before')) take(strokes[index + 1]);
+  if (orders.has('before') || orders.has('overlap')) take(strokes[index + 1]);
   if (orders.has('after')) take(strokes[index - 1]);
   return hands;
 }

@@ -1967,9 +1967,9 @@ Traceが持つ参加の役と、成立した入力の `Requirement`・`roles`・
 |---|---|---|
 | 全体 | triggerが参加したStroke | trigger参加がある |
 | 面 | 層・コンボ枠ごと | trigger参加があり、Strokeの `aggregationGroupId` がその層・コンボ枠のid（§11.10の帰属先）。Strokeは自分の帰属先の1行にだけ入る |
-| 順序 | 同時・前置・後置 | trigger参加の `Requirement` が、`overlap` なら同時、`order` の `before` 側なら前置、`after` 側なら後置 |
+| 順序 | 同時・前置・後置（画面の行名は「同時に押す」「先に押す」「後に押す」） | trigger参加の `Requirement` が、`overlap` なら同時、`order` の `before` 側なら前置、`after` 側なら後置 |
 | 持続 | 単発・保持 | 保持は、参加に「押したままのトリガー」の役がある（`TriggerRealizationPolicy` で保持を実現した結果）。単発は、trigger参加があり保持が無い。入力の定義が宣言する `while-held` の能力では分けない |
-| 入力の意味 | レイヤーの切り替え・修飾キー・合成（層に計上）・合成（コンボ枠に計上） | `classifications` に `composition` を含めば合成で、`aggregationGroupId` がコンボ枠なら「コンボ枠に計上」、そうでなければ「層に計上」。合成でなく、triggerのキーが入力の `roles` で `modifier` の役を持つなら修飾キー。どちらでもなければレイヤーの切り替え |
+| 入力の意味 | レイヤーの切り替え・修飾キー・合成（層に計上）・合成（コンボ枠に計上）（画面の行名は「合成（レイヤーに数える）」「合成（コンボ枠に数える）」） | `classifications` に `composition` を含めば合成で、`aggregationGroupId` がコンボ枠なら「コンボ枠に計上」、そうでなければ「層に計上」。合成でなく、triggerのキーが入力の `roles` で `modifier` の役を持つなら修飾キー。どちらでもなければレイヤーの切り替え |
 
 順序の対応は、`Requirement` の `overlap`（キーを同時に押す）を同時、`order` の `before` を前置、`after` を後置とする。
 trigger参加の順序は、そのStrokeのtriggerのキー（保持を続けているtriggerのキーを含む）が、成立した入力の `Requirement` のどこに現れるかで決める。
@@ -1982,7 +1982,7 @@ trigger参加の順序は、そのStrokeのtriggerのキー（保持を続けて
 - triggerの手は、そのStrokeの、役に「トリガー」か「押したままのトリガー」を持つ参加の手
 - 出力の手は、次のとおり決める
   - 役に「出力」を持つ参加があるStrokeは、そのStrokeの出力の手とだけ比べる。同じ入力が複数のStrokeに分かれていても（たとえば同じ面で2ステップに分かれる出力）、他のStrokeの出力は混ぜない
-  - triggerだけのStrokeは出力を持たない。前置の面のtriggerは、既定の実現でもtriggerだけのStrokeになる（§11.5）。このStrokeは、同じ入力の選択（Traceの `selectionIndex`）・同じ `aggregationGroupId` のすぐ隣の、出力を持つStrokeの出力の手と比べる。順序が前置ならすぐ後、後置ならすぐ前のStrokeである。隣がその条件を満たさなければ、出力の手は無い
+  - triggerだけのStrokeは出力を持たない。前置の面のtriggerは、既定の実現でもtriggerだけのStrokeになる（§11.5）。このStrokeは、同じ入力の選択（Traceの `selectionIndex`）・同じ `aggregationGroupId` のすぐ隣の、出力を持つStrokeの出力の手と比べる。順序が前置か同時ならすぐ後、後置ならすぐ前のStrokeである。同時に押す入力でも、`ActionRealizationPolicy` でtriggerを別のStrokeに分けた実現では、triggerだけのStrokeになる。隣がその条件を満たさなければ、出力の手は無い
 - triggerの手と出力の手を合わせて、手が1つだけで、かつ出力の手が1つ以上ある時に同手とする。出力の手が無い時は同手に数えない（分母には入れる）
 - 親指は、指の割り当てが決める側の手に数える
 
