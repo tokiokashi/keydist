@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { checkFaceLayout, createUserFaceLayout, draftOf } from './face-layout-edit.ts';
-import type { AlphaLayoutContent } from './face-layout-file.ts';
+import { faceLayoutFileText, parseFaceLayoutFile, type AlphaLayoutContent } from './face-layout-file.ts';
+import type { AlphaFaceBody } from './face-layout.ts';
 import { authoredShiftedSymbols } from './face-layout.ts';
 import { importBenizara, importDvorakJ, importKanaLayoutFile, importRomajiLayoutFile, importVial, type ImportedDefinition } from './import.ts';
 import { isAlphaFaceUserLayout, toJapaneseLayout, toLayout, type UserLayout } from './user-layouts.ts';
@@ -325,7 +326,9 @@ test('JIS配列の記号の組をShiftの面に置いた定義は、取り込ん
   // 通常Shiftの組の `2`→`@` は、Shiftの面が `2` に別の記号を置いたので作られない
   assert.equal(layout.canonicalInputs.has('@'), false);
   // 保存した定義の書き出しと読み込みを経ても、同じ打鍵になる
-  const reloaded = toLayout(JSON.parse(JSON.stringify(saved)) as UserLayout);
+  const file = parseFaceLayoutFile(faceLayoutFileText({ name: saved.name, ...(saved as AlphaFaceBody) }), 'alpha');
+  assert.ok(file.ok);
+  const reloaded = toLayout(savedLayout(file.layout as AlphaLayoutContent));
   assert.deepEqual(keysTyped(reloaded, '"&\''), keysTyped(layout, '"&\''));
 });
 
@@ -344,6 +347,14 @@ test('Shiftの面に大文字だけを置く定義は、記号の組を作らず
   const layout = toLayout(savedLayout(alphaOf(importDvorakJ(source)).content));
   assert.equal(layout.canonicalInputs.has('@'), true);
   assert.equal(layout.canonicalInputs.has('!'), true);
+});
+
+test('基底の面が同じ出力を2つのキーに置き、Shiftの面が片方にだけ記号を置く定義は、どちらのキーもUS配列の組を使わない', () => {
+  const source = ['同時に打鍵する配列', '[', '  1|2|', '  q|w|', '  a|-|', '  z|-|', ']', '-shift[', '  !|"|', '  Q|W|', '  A|=|', ']'].join('\n');
+  const layout = toLayout(savedLayout(alphaOf(importDvorakJ(source)).content));
+  // `-` を出す2つのキーのどちらでも `_` は出ず、Shiftの面が置いた `=` だけが残る
+  assert.equal(layout.canonicalInputs.has('_'), false);
+  assert.equal(layout.canonicalInputs.has('='), true);
 });
 
 test('Shiftの面の記号の組は、記号どうしのキーだけから作り、英字や食い違うキーは入れない', () => {
