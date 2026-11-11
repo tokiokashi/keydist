@@ -130,6 +130,21 @@
   transition: transform 0.28s ease;
 }
 
+/* 点が動いている間は隠し、動き終わってから出す。点の動く時間（0.28s）と合わせる */
+.scatter-names[data-settling] {
+  animation: scatter-names-settle 0.4s linear;
+}
+
+@keyframes scatter-names-settle {
+  0%,
+  70% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .scatter-point-label {
   fill: var(--text);
   font-size: 11px;
@@ -188,6 +203,10 @@
 @media (prefers-reduced-motion: reduce) {
   .scatter-point {
     transition: none;
+  }
+
+  .scatter-names[data-settling] {
+    animation: none;
   }
 }
 
