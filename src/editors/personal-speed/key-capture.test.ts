@@ -402,3 +402,14 @@ test('親指のキーを押したまま止めると、離した時の操作を1�
   assert.equal(listeners.keyup.size, 0);
   assert.deepEqual(dispatch('keyup', { key: ' ', code: 'Space' }), { prevented: 0, stopped: 0 });
 });
+
+test('親指のキーを止めた押下の離しは、受け付けない状態に変わった後も止める', () => {
+  const { source, dispatch } = typedSource();
+  let accepts = true;
+  captureCalibrationKeys(source, () => {}, { acceptsThumbKeys: () => accepts });
+  dispatch('keydown', { key: ' ', code: 'Space' });
+  accepts = false;
+  assert.deepEqual(dispatch('keyup', { key: ' ', code: 'Space' }), { prevented: 1, stopped: 1 });
+  // 止めていない押下の離しは、受け付けない間は止めない
+  assert.deepEqual(dispatch('keyup', { key: ' ', code: 'Space' }), { prevented: 0, stopped: 0 });
+});

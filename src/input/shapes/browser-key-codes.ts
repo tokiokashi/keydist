@@ -1,5 +1,5 @@
 import type { PhysicalKeyId } from '#input/semantics/types.ts';
-import { isPresetGeometryKind, presetGeometryStandard, resolveKeyId } from './geometry.ts';
+import { isPresetGeometryKind, presetGeometryStandard, resolveKeyId, type PhysicalKeyboardStandard } from './geometry.ts';
 
 /** `KeyboardEvent.code`から物理キーのidへの、利用者が決めた対応。`null`はそのcodeを割り当てなしにする。 */
 export type BrowserKeyBindingOverrides = Readonly<Record<string, PhysicalKeyId | null>>;
@@ -65,11 +65,69 @@ export function browserKeyBindingsForShape(
   };
 }
 
-/** 画面に出す`event.code`の名前。名前を決めていないcodeは、codeそのままにする。 */
-export function browserCodeLabel(code: string): string {
+// KeyboardEvent.codeはブラウザの識別子（KeyA・NonConvert等）なので、画面にはキーキャップの刻印で出す。
+// codeはUS配列の位置で名付けられているため、JISキーボードでは刻印が違うキーを引き直す。
+const CODE_LABELS: Readonly<Record<string, string>> = {
+  Minus: '-',
+  Equal: '=',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Semicolon: ';',
+  Quote: "'",
+  Comma: ',',
+  Period: '.',
+  Slash: '/',
+  Backquote: '`',
+  Backslash: '\\',
+  IntlYen: '¥',
+  IntlRo: '\\ (ろ)',
+  Space: 'Space',
+  Convert: '変換',
+  NonConvert: '無変換',
+  KanaMode: 'かな',
+  Lang1: 'かな',
+  Lang2: '英数',
+  Tab: 'Tab',
+  Escape: 'Esc',
+  CapsLock: 'Caps Lock',
+  Enter: 'Enter',
+  Backspace: 'Backspace',
+  Delete: 'Delete',
+  ShiftLeft: '左Shift',
+  ShiftRight: '右Shift',
+  ControlLeft: '左Ctrl',
+  ControlRight: '右Ctrl',
+  AltLeft: '左Alt',
+  AltRight: '右Alt',
+  MetaLeft: '左Win/⌘',
+  MetaRight: '右Win/⌘',
+  ContextMenu: 'メニュー',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
+};
+
+const JIS_CODE_LABELS: Readonly<Record<string, string>> = {
+  Equal: '^',
+  BracketLeft: '@',
+  BracketRight: '[',
+  Quote: ':',
+  Backslash: ']',
+  Backquote: '半角/全角',
+};
+
+/** ブラウザのキーcodeを、利用者が手元のキーボードで見る刻印に直す。 */
+export function browserCodeDisplayLabel(code: string, standard?: PhysicalKeyboardStandard): string {
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit[0-9]$/.test(code)) return code.slice(5);
-  return { Convert: '変換', NonConvert: '無変換' }[code] ?? code;
+  if (/^Numpad[0-9]$/.test(code)) return `テンキー${code.slice(6)}`;
+  if (/^F[0-9]{1,2}$/.test(code)) return code;
+  if (standard === 'jis') {
+    const jis = JIS_CODE_LABELS[code];
+    if (jis !== undefined) return jis;
+  }
+  return CODE_LABELS[code] ?? code;
 }
 
 /**

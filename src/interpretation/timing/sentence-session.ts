@@ -40,6 +40,11 @@ function capturableKey(keyId: string): boolean {
   return singleCharKey(keyId) || (LEFT_COLUMN_KEYS as readonly string[]).includes(keyId) || isThumbKeyId(keyId);
 }
 
+/** 示す文の打つキーのid（親指のキーを含む。重複なし）。 */
+export function sentenceKeyIds(plans: readonly SentencePlan[]): string[] {
+  return [...new Set(plans.flatMap((plan) => plan.baseSteps.flatMap((group) => group.flatMap((step) => step.keys))))];
+}
+
 /** 示す文の打つキーの列のどこかに親指のキーがあるか。ある時だけ、測定の間、親指のキーの押下を取る。 */
 export function sentenceUsesThumbKeys(plans: readonly SentencePlan[]): boolean {
   return plans.some((plan) => plan.baseSteps.some((group) => group.some((step) => step.keys.some(isThumbKeyId))));

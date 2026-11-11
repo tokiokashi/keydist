@@ -7,7 +7,7 @@ import {
   applyCalibrationRun,
   calibrationItemId,
   calibrationRunFinished,
-  calibrationTaskAcceptsSpace,
+  calibrationTaskAcceptsThumbKeys,
   planCalibration,
   pressCalibrationKey,
   startCalibrationRun,
@@ -69,10 +69,10 @@ test('row-staggeredでは、同時押しの測定は両手・片手・親指の3
 });
 
 test('親指との同時押しの項目だけが親指のキーを受け付け、測る親指のキーは対応で右手の親指のキーに引ける押下に一致する', () => {
-  assert.equal(calibrationTaskAcceptsSpace(taskOf('thumb')), true);
-  assert.equal(calibrationTaskAcceptsSpace(taskOf('one-hand')), false);
-  assert.equal(calibrationTaskAcceptsSpace(PLAN.byItem.get('actions')), false);
-  assert.equal(calibrationTaskAcceptsSpace(undefined), false);
+  assert.equal(calibrationTaskAcceptsThumbKeys(taskOf('thumb')), true);
+  assert.equal(calibrationTaskAcceptsThumbKeys(taskOf('one-hand')), false);
+  assert.equal(calibrationTaskAcceptsThumbKeys(PLAN.byItem.get('actions')), false);
+  assert.equal(calibrationTaskAcceptsThumbKeys(undefined), false);
   assert.equal(calibrationKeyMatches({ key: ' ', code: 'Space', physicalKey: THUMB }, THUMB), true);
   assert.equal(calibrationKeyMatches({ key: ' ', code: '' }, THUMB), false);
   assert.equal(calibrationKeyMatches({ key: 'j', code: 'KeyJ' }, THUMB), false);

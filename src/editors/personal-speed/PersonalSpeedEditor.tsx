@@ -3,7 +3,7 @@ import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { Fragment, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import { browserKeyBindingsForShape, EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
-import { FINGERS, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { FINGERS, isPresetGeometryKind, presetGeometryStandard, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { OVERHEAD_KINDS, SIMULTANEOUS_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import {
   applyCalibrationField,
@@ -19,6 +19,7 @@ import {
   calibrationBasis,
   calibrationKeyLabel,
   planCalibration,
+  unassignedThumbKeys,
   type CalibrationPlan,
   type CalibrationRun,
   type CalibrationScope,
@@ -35,6 +36,7 @@ import {
 import {
   remainingSentenceKeys,
   remainingSentenceStrokes,
+  sentenceKeyIds,
   sentenceSamples,
   upcomingSentenceSteps,
   type SentencePlan,
@@ -58,6 +60,7 @@ import {
   zeroMoveRowNote,
   calibrationProgressText,
   clearedSimultaneousText,
+  unassignedThumbKeysText,
   simultaneousWrongKeyText,
   MEASUREMENT_DESCRIPTION,
   MEASUREMENT_HOW_TO,
@@ -448,10 +451,11 @@ export function PersonalSpeedEditor({
   // 測定を始めた時のキーの対応。案内に出す親指のキーの名前は、測定が使う対応で決める。
   const [measureBindings, setMeasureBindings] = useState<BrowserKeyBindingOverrides>(EMPTY_BROWSER_KEY_BINDING_OVERRIDES);
   const measureBindingsRef = useRef<BrowserKeyBindingOverrides>(EMPTY_BROWSER_KEY_BINDING_OVERRIDES);
+  const standard = shape !== undefined && isPresetGeometryKind(shape.id) ? presetGeometryStandard(shape.id) : undefined;
   const keyLabel = useMemo(() => {
     const legends = basis?.ok ? basis.basis.legends : new Map<string, string>();
-    return (keyId: string) => calibrationKeyLabel(legends, keyId, measureBindings);
-  }, [basis, measureBindings]);
+    return (keyId: string) => calibrationKeyLabel(legends, keyId, measureBindings, standard);
+  }, [basis, measureBindings, standard]);
 
   const opener = useRef<HTMLElement | null>(null);
   const regionRef = useRef<HTMLDivElement>(null);
@@ -500,6 +504,7 @@ export function PersonalSpeedEditor({
     const bindings = codeBindings();
     measureBindingsRef.current = bindings;
     setMeasureBindings(bindings);
+    return bindings;
   };
   const runner = useCalibrationRun({ keyLabel, codeBindings: () => measureBindingsRef.current, onFinished: finished });
 
@@ -591,7 +596,15 @@ export function PersonalSpeedEditor({
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setNotices({});
     setSentencePending(undefined);
-    snapshotBindings();
+    const bindings = snapshotBindings();
+    const unassigned = unassignedThumbKeys(
+      tasks.filter((task) => task.item.kind === 'simultaneous').flatMap((task) => task.keys),
+      bindings,
+    );
+    if (unassigned.length > 0) {
+      setNotices({ simultaneous: { kind: 'error', text: unassignedThumbKeysText(unassigned) } });
+      return;
+    }
     runner.start(scope, tasks);
   };
 
@@ -601,13 +614,19 @@ export function PersonalSpeedEditor({
 
   const startSentence = () => {
     if (sentence?.ok !== true || calibration === undefined) return;
+    // 打つ親指のキーに割り当てたキーが無ければ、打てないので始めない。
+    const bindings = snapshotBindings();
+    const unassigned = unassignedThumbKeys(sentenceKeyIds(sentence.plans), bindings);
+    if (unassigned.length > 0) {
+      setNotices({ sentence: { kind: 'error', text: unassignedThumbKeysText(unassigned) } });
+      return;
+    }
     const started: SentenceStart = { setup: sentence, calibration };
     sentenceStartRef.current = started;
     setSentenceStart(started);
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setNotices({});
     setSentencePending(undefined);
-    snapshotBindings();
     sentenceRunner.start(sentence.plans);
   };
   const cancelSentence = () => {

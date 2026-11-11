@@ -5,10 +5,11 @@ import { sentenceSetupOf } from '#editors/personal-speed/sentence-setup.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { browserCodeToPhysicalKey } from '#input/shapes/browser-key-codes.ts';
 import { isThumbKeyId } from '#input/shapes/geometry.ts';
-import { calibrationKeyLabel } from '#interpretation/timing/calibration-session.ts';
+import { calibrationKeyLabel, unassignedThumbKeys } from '#interpretation/timing/calibration-session.ts';
 import {
   pressSentenceSessionKey,
   sentenceSessionFinished,
+  sentenceKeyIds,
   sentenceUsesThumbKeys,
   startSentenceSession,
   type SentenceKeyEvent,
@@ -22,7 +23,7 @@ const build = personalSpeedSentenceBuilder({ ...BASE, setupLibrary: { setups: []
 const catalog = paneCatalog(BASE).setupCatalog;
 
 /** 親指のキーを使う組み込みのかな配列。 */
-const THUMB_LAYOUTS = ['naginata-v18', 'shin-jis-prefix', 'shin-jis-simultaneous', 'nicola', 'shin-koume', 'asuka', 'kawasemi-plus'] as const;
+const THUMB_LAYOUTS = ['naginata-v18', 'shin-jis-prefix', 'shin-jis-simultaneous', 'nicola', 'shin-koume', 'asuka', 'kawasemi-plus', 'seoto'] as const;
 
 /** 同じ親指のキーを含むストロークが続く箇所がある配列。 */
 const HOLDING_LAYOUTS: readonly string[] = ['naginata-v18', 'shin-jis-simultaneous', 'nicola', 'shin-koume', 'asuka'];
@@ -105,3 +106,14 @@ for (const layoutId of THUMB_LAYOUTS) {
     });
   }
 }
+
+test('親指のキーに引ける押下が無い利用者は、その親指のキーを打てないので、測定を始める前に分かる', () => {
+  const setup = setupOf('nicola');
+  assert.ok(setup.ok);
+  const keys = sentenceKeyIds(setup.plans);
+  assert.deepEqual(unassignedThumbKeys(keys, {}), []);
+  assert.deepEqual(unassignedThumbKeys(keys, { NonConvert: null }), ['thumb-l']);
+  assert.deepEqual(unassignedThumbKeys(keys, { NonConvert: null, Space: null, Convert: null }).sort(), ['thumb-l', 'thumb-r']);
+  // 別のcodeを割り当て直せば打てる
+  assert.deepEqual(unassignedThumbKeys(keys, { NonConvert: null, Lang2: 'thumb-l' }), []);
+});

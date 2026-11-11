@@ -294,6 +294,12 @@ export function sentenceProgressText(sentence: number, sentences: number, round:
   return `${sentence + 1}本目 / 全${sentences}本、${round + 1}回目 / 全${rounds}回`;
 }
 
+/** 打つ親指のキーに割り当てたキーが無くて、測定を始められない時の文。`sides`は割り当てが無い親指のキーの側（左手・右手）。 */
+export function unassignedThumbKeysText(keyIds: readonly string[]): string {
+  const sides = keyIds.map((keyId) => (keyId === 'thumb-l' ? '左手' : '右手')).join('・');
+  return `${sides}の親指のキーに割り当てたキーが無いため、測定を始められません。Testerの画面でキーを割り当ててください。`;
+}
+
 /** 1回目は文を覚える回で、数えないことを示す文。 */
 export const SENTENCE_LEARNING_ROUND_TEXT = '1回目は文を覚える回です。この回は数えません。';
 

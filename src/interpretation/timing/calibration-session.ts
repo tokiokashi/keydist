@@ -7,10 +7,11 @@ import {
   type FingerAssignment,
   type Finger,
   type Geometry,
+  type PhysicalKeyboardStandard,
   type PhysicalShape,
 } from '#input/shapes/geometry.ts';
 import {
-  browserCodeLabel,
+  browserCodeDisplayLabel,
   browserCodesOfKey,
   EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
   type BrowserKeyBindingOverrides,
@@ -171,21 +172,32 @@ export function calibrationBasis(
 
 /**
  * 測定の案内に出すキーの名前。配列の刻印が無いキーはキーidで出す。英字は大文字にする。
- * 親指のキーは、`bindings`の対応で親指のキーに引ける`event.code`の名前（Space・変換など）を`/`でつないで出す。
- * 引ける`event.code`が無い時は「割り当てなし」と出す。内部のキーid（`thumb-l`）は出さない。
+ * 親指のキーは、`bindings`の対応で親指のキーに引ける`event.code`を、Testerと同じ表（`browserCodeDisplayLabel`。`standard`がJISならJISの刻印）の名前で`/`でつないで出す。
+ * 内部のキーid（`thumb-l`）は出さない。引ける`event.code`が無い時は「割り当てなし」と出す（測定を始める前に`unassignedThumbKeys`で止めるので、測定中は出ない）。
  */
 export function calibrationKeyLabel(
   legends: ReadonlyMap<string, string>,
   keyId: string,
   bindings: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+  standard?: PhysicalKeyboardStandard,
 ): string {
   if (isThumbKeyId(keyId)) {
-    const names = browserCodesOfKey(keyId, bindings).map(browserCodeLabel);
+    const names = browserCodesOfKey(keyId, bindings).map((code) => browserCodeDisplayLabel(code, standard));
     return names.length === 0 ? '割り当てなし' : names.join(' / ');
   }
   const legend = legends.get(resolveKeyId(keyId));
   const label = legend !== undefined && legend.trim().length > 0 ? legend : keyId;
   return /^[a-z]$/i.test(label) ? label.toUpperCase() : label;
+}
+
+/** `bindings`の対応で、引ける`event.code`が1つも無い親指のキーのid（重複なし）。この親指のキーは打てないので、測定を始められない。 */
+export function unassignedThumbKeys(keyIds: Iterable<string>, bindings: BrowserKeyBindingOverrides): string[] {
+  const result: string[] = [];
+  for (const keyId of keyIds) {
+    const resolved = resolveKeyId(keyId);
+    if (isThumbKeyId(resolved) && !result.includes(resolved) && browserCodesOfKey(resolved, bindings).length === 0) result.push(resolved);
+  }
+  return result;
 }
 
 function fingerOf(geometry: Geometry, keyId: string): Finger | undefined {
@@ -326,7 +338,7 @@ export function currentCalibrationTask(run: CalibrationRun): CalibrationTask | u
 }
 
 /** 項目が右手の親指のキーを打つか。打つ項目の間だけ、親指のキー（Spaceを含む）を測定の打鍵として受け付ける。 */
-export function calibrationTaskAcceptsSpace(task: CalibrationTask | undefined): boolean {
+export function calibrationTaskAcceptsThumbKeys(task: CalibrationTask | undefined): boolean {
   return task?.item.kind === 'simultaneous' && task.keys.some((key) => resolveKeyId(key) === THUMB_KEY.RT);
 }
 
