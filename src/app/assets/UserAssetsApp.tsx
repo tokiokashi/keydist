@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import {
+  deleteComboSetCommand,
   deleteFingerAssignmentCommand,
   deleteSetupCommand,
   resetCascadeItemCommand,
@@ -61,6 +62,7 @@ export function UserAssetsApp() {
       onDeleteLayout={(id) => dispatch(deleteUserLayoutCommand(id))}
       onDeleteRomajiRule={(id) => dispatch(deleteUserRomajiRuleCommand(id))}
       onDeleteFingerAssignment={(id) => dispatch(deleteFingerAssignmentCommand(id))}
+      onDeleteComboSet={(id) => dispatch(deleteComboSetCommand(id))}
       onDeleteSetup={(id) => dispatch(deleteSetupCommand(id))}
       conditionTable={
         <ConditionTable

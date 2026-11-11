@@ -288,3 +288,23 @@ test('語幹の長さを持つ活用語から、コンボを止める境を読�
   );
   assert.equal(failed.text.comboBarriers, undefined);
 });
+
+test('集合のペインの組の項目は、全対象が同じ組なら1つの値、違う時は組を使う対象だけを対象名つきで並べる', async () => {
+  const { comboSetProvenanceOfTargets } = await import('./reading-evaluation.ts');
+  const a = { name: '組A', romajiRuleId: 'kunrei', combos: [{ keys: ['s', 't'], output: 'site' }], dropped: 0 };
+  assert.deepEqual(
+    comboSetProvenanceOfTargets([
+      { targetName: 'X', comboSet: a },
+      { targetName: 'Y', comboSet: a },
+    ]),
+    [{ label: 'コンボの組', value: '組A（1件を計算に入れて測定）' }],
+  );
+  assert.deepEqual(
+    comboSetProvenanceOfTargets([
+      { targetName: 'X', comboSet: a },
+      { targetName: 'Y', comboSet: undefined },
+    ]),
+    [{ label: 'コンボの組', value: 'X: 組A（1件を計算に入れて測定）' }],
+  );
+  assert.deepEqual(comboSetProvenanceOfTargets([{ targetName: 'X', comboSet: undefined }]), []);
+});

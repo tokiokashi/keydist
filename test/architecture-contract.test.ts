@@ -248,8 +248,17 @@ test('combo fold presentation provenanceはcanonicalInputsをauthorityにする'
   assert.notEqual(end, -1);
   const comboSource = source.slice(start, end + 2);
 
-  assert.match(comboSource, /layout\.canonicalInputs\.get\(input\)/);
-  assert.doesNotMatch(comboSource, /layout\.map\.get\(/, 'combo presentation provenance must not resolve physical keys from the legacy default map');
+  const helperStart = source.indexOf('export function singleActionKeyChoicesOf');
+  const helperSource = source.slice(helperStart, source.indexOf('\n}', helperStart) + 2);
+
+  assert.notEqual(helperStart, -1);
+  assert.match(comboSource, /singleActionKeyChoicesOf\(layout, input\)/);
+  assert.match(helperSource, /layout\.canonicalInputs\.get\(input\)/);
+  assert.doesNotMatch(
+    comboSource + helperSource,
+    /layout\.map\.get\(/,
+    'combo presentation provenance must not resolve physical keys from the legacy default map',
+  );
 });
 
 test('composed outputのsemantic availabilityはcanonicalInputsをauthorityにする', async () => {

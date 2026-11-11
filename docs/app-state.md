@@ -36,7 +36,7 @@ AppState側にsliceが既にある場合も、残存する旧keyはcleanupする
 次のstorageはUI AppStateではなく独立したdomain/user assetなので吸収しない。
 
 - `keydist:input-key-bindings`（および旧 `keydist:input-thumb-key-bindings`）
-- `keydist:user-layouts`・`keydist:user-romaji-rules`・`keydist:finger-assignments`（版付きのcodecで読み書きする自作の資産）
+- `keydist:user-layouts`・`keydist:user-romaji-rules`・`keydist:finger-assignments`・`keydist:combo-sets`（版付きのcodecで読み書きする自作の資産）
 - `keydist:setup-library`・`keydist:presets`・`keydist:workspaces`・`keydist:text-library`
 - `keydist:single-target-selection`・`keydist:multi-target-selection`・`keydist:standalone-text-selection`・`keydist:standalone-analyzer-options`
 - `keydist:personal-speed`（個人速度。版付きのcodecで読み書きする）

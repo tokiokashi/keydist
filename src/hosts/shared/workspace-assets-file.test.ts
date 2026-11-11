@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import type { ComboSet } from '#input/combo-set/combo-set.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import { emptyCascadeOverrides, withLevelOverrides } from '#input/settings/index.ts';
@@ -59,6 +60,7 @@ interface Holdings {
   userLayouts: readonly UserLayout[];
   userRomajiRules: readonly UserRomajiRule[];
   fingerAssignments: readonly FingerAssignment[];
+  comboSets: readonly ComboSet[];
   setupLibrary: Library;
 }
 
@@ -67,6 +69,7 @@ const EXPORTER: Holdings = {
   userLayouts: [layout('user-a', 'rule-a'), layout('user-b', 'rule-c'), layout('user-z', 'rule-z')],
   userRomajiRules: [rule('rule-a', 'shi'), rule('rule-b', 'si'), rule('rule-c', 'ci'), rule('rule-z', 'zi')],
   fingerAssignments: [finger('finger-a'), finger('finger-b', 1), finger('finger-z', 2)],
+  comboSets: [],
   setupLibrary: library([setup('s1', 1, 'user-b'), setup('s2', 2, 'user-z')], { s1: { romajiRuleId: 'rule-b', fingerAssignmentId: 'finger-b' } }),
 };
 
@@ -144,7 +147,7 @@ test('同梱: 参照をたどって届く自作の資産だけを入れる', () 
 test('同梱: 組み込みだけを指すWorkspaceは何も同梱せず、ファイルにuserAssetsを出さない', () => {
   const created = createWorkspace(initialWorkspaceLibrary(), () => 'w0', '組み込み').created;
   const bundle = workspaceAssetsOf([created], EXPORTER);
-  assert.deepEqual([bundle.layouts, bundle.romajiRules, bundle.fingerAssignments, bundle.setups], [[], [], [], []]);
+  assert.deepEqual([bundle.layouts, bundle.romajiRules, bundle.fingerAssignments, bundle.comboSets, bundle.setups], [[], [], [], [], []]);
   assert.equal('userAssets' in presetFileBody({ workspaces: [created], userAssets: bundle }), false);
 });
 
@@ -161,6 +164,7 @@ const CLASHING: Holdings = {
   userLayouts: [layout('user-a', 'rule-a', OTHER_ROWS), layout('user-b', 'rule-c', OTHER_ROWS)],
   userRomajiRules: [rule('rule-a', 'xa'), rule('rule-b', 'xb'), rule('rule-c', 'xc')],
   fingerAssignments: [finger('finger-a', 3), finger('finger-b', 4)],
+  comboSets: [],
   setupLibrary: library([setup('s1', 1, 'user-b')]),
 };
 
@@ -221,6 +225,7 @@ test('読み込み: 同じ中身のSetupが別のidで手元にあれば、Works
     userLayouts: EXPORTER.userLayouts.slice(0, 2),
     userRomajiRules: EXPORTER.userRomajiRules.slice(0, 3),
     fingerAssignments: EXPORTER.fingerAssignments.slice(0, 2),
+    comboSets: [],
     setupLibrary: library([setup('mine', 1, 'user-b')], { mine: { romajiRuleId: 'rule-b', fingerAssignmentId: 'finger-b' } }),
   };
   const { after, plan } = importInto(assetsOf([], local), fileOf(makeWorkspace(), EXPORTER));
@@ -234,7 +239,7 @@ test('読み込み: 同じ中身のSetupが別のidで手元にあれば、Works
 
 test('読み込み: 手元に何も無い保存先へは、同梱した資産をそのidで足す', () => {
   const { after, plan } = importInto(
-    assetsOf([], { userLayouts: [], userRomajiRules: [], fingerAssignments: [], setupLibrary: library([]) }),
+    assetsOf([], { userLayouts: [], userRomajiRules: [], fingerAssignments: [], comboSets: [], setupLibrary: library([]) }),
     fileOf(makeWorkspace(), EXPORTER),
   );
   assert.deepEqual(idsOf(after.userLayouts), ['user-a', 'user-b']);
@@ -333,6 +338,7 @@ const FACE_HOLDINGS: Holdings = {
   userLayouts: [FACE_LAYOUT, layout('user-z', 'rule-z')],
   userRomajiRules: [rule('rule-z', 'zi')],
   fingerAssignments: [],
+  comboSets: [],
   setupLibrary: library([]),
 };
 
@@ -357,7 +363,7 @@ test('面で定義する配列: 同梱され（推奨の規則を持たないの
   assert.deepEqual(idsOf(bundle.layouts), ['user-face']);
   assert.deepEqual(bundle.romajiRules, []);
   const { after } = importInto(
-    assetsOf([], { userLayouts: [], userRomajiRules: [], fingerAssignments: [], setupLibrary: library([]) }),
+    assetsOf([], { userLayouts: [], userRomajiRules: [], fingerAssignments: [], comboSets: [], setupLibrary: library([]) }),
     fileOf(faceWorkspace(), FACE_HOLDINGS),
   );
   assert.deepEqual(after.userLayouts, [FACE_LAYOUT]);
@@ -366,7 +372,7 @@ test('面で定義する配列: 同梱され（推奨の規則を持たないの
 
 test('面で定義する配列: 同じidで中身の違う配列が手元にあっても、Workspaceは同梱した配列を指す', () => {
   const clashing: UserLayout = { ...FACE_LAYOUT, composition: { dakuten: true, handakuten: true } };
-  const local: Holdings = { userLayouts: [clashing], userRomajiRules: [], fingerAssignments: [], setupLibrary: library([]) };
+  const local: Holdings = { userLayouts: [clashing], userRomajiRules: [], fingerAssignments: [], comboSets: [], setupLibrary: library([]) };
   const { after } = importInto(assetsOf([], local), fileOf(faceWorkspace(), FACE_HOLDINGS));
   assert.deepEqual(after.userLayouts[0], clashing);
   const binding = after.workspaces[0]!.panes[0]!.binding;

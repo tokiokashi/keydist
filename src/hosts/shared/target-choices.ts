@@ -12,6 +12,9 @@ import {
   type AnalysisTarget,
   type Setup,
 } from '#input/setup/index.ts';
+import { comboSetInUse } from '#engine/setup-combo-set.ts';
+import type { ComboSet } from '#input/combo-set/combo-set.ts';
+import { withComboSetSummary } from './condition-summary.ts';
 
 /**
  * 対象の選択（docs/architecture.md「対象の選択」）に並べる候補。
@@ -55,6 +58,8 @@ export interface TargetChoiceSource {
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   readonly shapes: ReadonlyMap<string, PhysicalShape>;
   readonly setups: readonly Setup[];
+  /** コンボの組。Setupが選んだ組の名前を、Setupの名前に併記する。 */
+  readonly comboSets?: ReadonlyMap<string, ComboSet> | undefined;
   /**
    * 今選んでいる対象。候補に無いもの（削除されたSetup・見つからない配列）は「見つからない」区分に
    * 出し、外せるようにする（実際の状態をそのまま見せる）。
@@ -66,7 +71,22 @@ function missingName(target: AnalysisTarget): string {
   return target.kind === 'setup' ? MISSING_SETUP_NAME : MISSING_LAYOUT_NAME;
 }
 
-export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, selected }: TargetChoiceSource): readonly TargetChoiceGroup[] {
+/** Setupが選んで計算に入れる組の名前。かな配列のSetupなど、組を使わない時は`undefined`。 */
+function comboSetNameInUse(
+  setup: Setup,
+  layouts: ReadonlyMap<string, Layout>,
+  userLayouts: ReadonlyMap<string, UserLayout>,
+  comboSets: ReadonlyMap<string, ComboSet> | undefined,
+): string | undefined {
+  const layout = layouts.get(setup.layoutId);
+  if (layout === undefined || setup.comboSetId === undefined) return undefined;
+  return comboSetInUse(setup, layoutKind(layout, userLayouts), comboSets)?.name;
+}
+
+const overrideSummaryOf = (summary: string | undefined): { readonly overrideSummary?: string } =>
+  summary === undefined ? {} : { overrideSummary: summary };
+
+export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, comboSets, selected }: TargetChoiceSource): readonly TargetChoiceGroup[] {
   const alphabet: TargetChoice[] = [];
   const kana: TargetChoice[] = [];
   const user: TargetChoice[] = [];
@@ -95,6 +115,7 @@ export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, selec
       kind: 'setup' as const,
       layoutName: layouts.get(setup.layoutId)?.name ?? MISSING_LAYOUT_NAME,
       shapeName: shapes.get(setup.shapeId)?.name ?? MISSING_SHAPE_NAME,
+      ...overrideSummaryOf(withComboSetSummary(undefined, comboSetNameInUse(setup, layouts, userLayouts, comboSets))),
     })),
   );
   const setupChoices: TargetChoice[] = setups.map((setup, index) => {

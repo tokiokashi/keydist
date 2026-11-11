@@ -952,6 +952,27 @@ export function withRomaji(layout: Layout, table: Map<string, string>): Layout {
 }
 
 /**
+ * 文字を1キー1アクションで出す経路ごとの、そのキーと経路の文脈条件。経路が無ければ空。
+ * コンボの入力の文字を物理キーへ解決する規則で、`withCombos`と利用者が定義したコンボの重ね方（`input/combo-set/`）が共有する。
+ */
+export function singleActionKeyChoicesOf(
+  layout: Pick<Layout, 'canonicalInputs'>,
+  input: string,
+): readonly { readonly key: string; readonly contextRequirements: readonly InputContextRequirement[] }[] {
+  return (layout.canonicalInputs.get(input) ?? []).flatMap((alternative) => {
+    if (alternative.baseRealizations.length !== 1) return [];
+    const realization = alternative.baseRealizations[0];
+    if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
+    return [
+      {
+        key: resolveKeyId(realization.actions[0][0]),
+        contextRequirements: alternative.contextRequirements,
+      },
+    ];
+  });
+}
+
+/**
  * コンボを足す。入力は「その文字を出すキー」で指定する。
  * 物理位置ではなく文字で指すので、同じ定義を別の英字配列にも適用できる。
  */
@@ -961,18 +982,7 @@ export function withCombos(id: string, name: string, layout: Layout, combos: Com
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
-  const singleActionKeyChoices = (input: string) =>
-    (layout.canonicalInputs.get(input) ?? []).flatMap((alternative) => {
-      if (alternative.baseRealizations.length !== 1) return [];
-      const realization = alternative.baseRealizations[0];
-      if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
-      return [
-        {
-          key: resolveKeyId(realization.actions[0][0]),
-          contextRequirements: alternative.contextRequirements,
-        },
-      ];
-    });
+  const singleActionKeyChoices = (input: string) => singleActionKeyChoicesOf(layout, input);
   for (const [output, inputs, condition, presentation, classifications = []] of combos) {
     const keyChoices = inputs.map(singleActionKeyChoices);
     if (keyChoices.some((choices) => choices.length === 0)) continue;

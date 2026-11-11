@@ -41,6 +41,7 @@ function assets(overrides: SettingsCascadeOverrides = emptyCascadeOverrides()): 
   return {
     setupLibrary,
     fingerAssignments: [],
+    comboSets: [],
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},

@@ -41,6 +41,7 @@ function assetsWithWorkspaces(...ids: string[]): KeydistAssets {
   return {
     setupLibrary,
     fingerAssignments: [],
+    comboSets: [],
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},

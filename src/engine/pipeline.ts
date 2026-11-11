@@ -79,6 +79,7 @@ export function interpretEngineTrace(traceResult: EngineTraceResult, input: Reso
       keepSymbols: input.keepSymbols,
       keepAlphanumerics: input.keepAlphanumerics,
       reading: input.reading,
+      ...(input.comboSet === undefined ? {} : { comboSet: input.comboSet }),
     },
     input.notationExcess,
   );

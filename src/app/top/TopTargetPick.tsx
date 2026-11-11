@@ -67,6 +67,7 @@ export function TopTargetPick() {
         layouts: catalog.setupCatalog.layouts,
         userLayouts: catalog.userLayouts,
         shapes: catalog.setupCatalog.shapes,
+        comboSets: catalog.comboSets,
         setups,
         selected: [target],
       }),

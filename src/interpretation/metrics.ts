@@ -208,6 +208,17 @@ export interface Metrics {
   keyDistance: Map<string, number>;
 }
 
+/** 計算に入れたコンボの組（仕様 §4.3「利用者が定義したコンボ」・§12.3）。 */
+export interface ComboSetConditions {
+  readonly name: string;
+  /** 組の基準の綴り（ローマ字規則の識別子）。 */
+  readonly romajiRuleId: string;
+  /** 計算に入れたコンボ。 */
+  readonly combos: readonly { readonly keys: readonly string[]; readonly output: string }[];
+  /** 計算から外したコンボの数。 */
+  readonly dropped: number;
+}
+
 export interface MetricConditions {
   /** 先読みNかな。テキストのかなの位置で数える（仕様 §7 R3） */
   windowSize: number;
@@ -236,6 +247,8 @@ export interface MetricConditions {
    * 読みに直す対象でないテキスト（漢字を含まない・英語）はnull。
    */
   reading: ReadingConditions | null;
+  /** Setupが選んだコンボの組を計算に入れたか。入れていなければ持たない。 */
+  comboSet?: ComboSetConditions;
 }
 
 export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
@@ -386,6 +399,11 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
       arpeggioInterpretation: { ...conditions.arpeggioInterpretation },
       triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
       actionRealizationPolicy: { ...conditions.actionRealizationPolicy },
+      ...(conditions.comboSet === undefined
+        ? {}
+        : {
+            comboSet: { ...conditions.comboSet, combos: conditions.comboSet.combos.map((combo) => ({ keys: [...combo.keys], output: combo.output })) },
+          }),
       reading:
         conditions.reading === null
           ? null
