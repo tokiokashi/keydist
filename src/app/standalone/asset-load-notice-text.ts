@@ -18,6 +18,7 @@ export const ASSET_NOTICE_LABELS: { readonly [K in keyof KeydistAssets]: string 
   presetLibrary: 'プリセット',
   userLayouts: '自作の配列',
   userRomajiRules: '自作のローマ字規則',
+  comboSets: 'コンボの組',
   personalSpeed: PERSONAL_SPEED_LABEL,
 };
 

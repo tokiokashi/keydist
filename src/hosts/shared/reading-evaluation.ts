@@ -1,3 +1,4 @@
+import type { ComboSetConditions } from '#interpretation/metrics.ts';
 import type { SegmentationOrigin } from '#input/text/segmentation.ts';
 import {
   convertToReading,
@@ -76,6 +77,30 @@ export interface PaneText extends ResolvedText {
   readonly notationExcess?: NotationExcess;
   /** 文節の区切りを作る材料。漢字を読みに直した時だけ持つ（語の列が要る）。それ以外は `segmentationBasisOf` が作る。 */
   readonly segmentationBasis?: SegmentationBasis;
+}
+
+/** 計算に入れたコンボの組を、条件の要約に出す項目にする（仕様 §12.3）。 */
+export function comboSetProvenance(comboSet: ComboSetConditions | undefined): readonly ConditionProvenanceItem[] {
+  if (comboSet === undefined) return [];
+  return [{ label: 'コンボの組', value: comboSetText(comboSet) }];
+}
+
+function comboSetText(comboSet: ComboSetConditions): string {
+  const dropped = comboSet.dropped > 0 ? `。${comboSet.dropped}件は計算に入れていません` : '';
+  return `${comboSet.name}（${comboSet.combos.length}件を計算に入れて測定${dropped}）`;
+}
+
+/**
+ * 複数の対象を持つペインの、コンボの組の項目。全対象が同じ組・同じ件数なら1つの値で、
+ * 対象ごとに違う時（組を使わない対象が混ざる時を含む）は、組を使う対象を「対象の名前: 組」の形で並べる。
+ */
+export function comboSetProvenanceOfTargets(
+  entries: readonly { readonly targetName: string; readonly comboSet: ComboSetConditions | undefined }[],
+): readonly ConditionProvenanceItem[] {
+  const used = entries.flatMap((entry) => (entry.comboSet === undefined ? [] : [{ targetName: entry.targetName, text: comboSetText(entry.comboSet) }]));
+  if (used.length === 0) return [];
+  if (used.length === entries.length && used.every((item) => item.text === used[0]!.text)) return [{ label: 'コンボの組', value: used[0]!.text }];
+  return [{ label: 'コンボの組', value: used.map((item) => `${item.targetName}: ${item.text}`).join('、') }];
 }
 
 /**

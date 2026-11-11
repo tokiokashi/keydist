@@ -414,6 +414,15 @@ export function summarizeNonDefaultConditions(rows: readonly ConditionSummaryRow
   return rows.map((row) => `${row.label}: ${row.displayValue}`).join(' ・ ');
 }
 
+/** 選んだコンボの組の名前を、名前の併記に足す形にする（仕様 §4.3）。 */
+export const comboSetSummary = (name: string): string => `コンボ: ${name}`;
+
+/** 併記の1行に、選んだコンボの組の名前を足す。 */
+export function withComboSetSummary(summary: string | undefined, comboSetName: string | undefined): string | undefined {
+  const parts = [summary, comboSetName === undefined ? undefined : comboSetSummary(comboSetName)].filter((part): part is string => part !== undefined);
+  return parts.length === 0 ? undefined : parts.join(' ・ ');
+}
+
 /**
  * 条件の要約で「変えた項目」とみなすか（docs/architecture.md「条件の要約」）。
  * カスケードのどこかで上書きされていて、その対象に効き、効く値が既定と違う行だけ。

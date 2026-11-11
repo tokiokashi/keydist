@@ -38,7 +38,7 @@ import { importUserAssetsCommand } from './user-assets-import.ts';
 const SHAPES = new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const));
 const ROWS: UserLayout['rows'] = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
 const NO_SETUPS: SetupLibrary<SettingsValueMap> = { setups: [], overrides: emptyCascadeOverrides() };
-const EMPTY: UserAssetsHoldings = { userLayouts: [], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS };
+const EMPTY: UserAssetsHoldings = { userLayouts: [], userRomajiRules: [], fingerAssignments: [], comboSets: [], setupLibrary: NO_SETUPS };
 const STAMP = 'stamp';
 /** ファイルに入れる、配列などの資産以外の項目が空の手元。 */
 const FILE_EXTRAS = {
@@ -57,7 +57,13 @@ const FINGER: FingerAssignment = columnFingerAssignment(
   ['RP', 'RR', 'RM', 'RI', 'RI', 'LI', 'LI', 'LM', 'LR', 'LP', 'LP', 'LP', 'LP'],
   { LP: 9, LR: 8, LM: 7, LI: 6, RI: 3, RM: 2, RR: 1, RP: 0 },
 );
-const HOLDINGS: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [RULE], fingerAssignments: [FINGER], setupLibrary: NO_SETUPS };
+const HOLDINGS: UserAssetsHoldings = {
+  userLayouts: [LAYOUT],
+  userRomajiRules: [RULE],
+  fingerAssignments: [FINGER],
+  comboSets: [],
+  setupLibrary: NO_SETUPS,
+};
 
 function fileText(assets: UserAssetsHoldings): string {
   return JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...userAssetsFileBody({ ...assets, ...FILE_EXTRAS, textLibrary: emptyTextLibrary() }) });
@@ -113,7 +119,13 @@ test('書き出して空の手元へ読み込むと同じ資産が戻り、同�
 
 test('複数の指が担当するキーを持つ指の割り当ては、書き出し・読み込みで担当と基本の指が保たれ、同じ数値が出る', () => {
   const multi: FingerAssignment = { ...structuredClone(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT), id: 'finger-multi', name: '自作の最適化' };
-  const holdings: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [RULE], fingerAssignments: [multi], setupLibrary: NO_SETUPS };
+  const holdings: UserAssetsHoldings = {
+    userLayouts: [LAYOUT],
+    userRomajiRules: [RULE],
+    fingerAssignments: [multi],
+    comboSets: [],
+    setupLibrary: NO_SETUPS,
+  };
   const merged = mergeUserAssets(EMPTY, read(holdings), STAMP);
   assert.deepEqual(merged.assets.fingerAssignments, [multi]);
   const loaded = merged.assets.fingerAssignments[0]!;
@@ -146,6 +158,7 @@ test('中身が同じで名前だけ違う時は足さず、手元の名前を�
     userLayouts: [{ ...LAYOUT, name: '手元の名前' }],
     userRomajiRules: [{ ...RULE, name: '手元の規則' }],
     fingerAssignments: [{ ...FINGER, name: '手元の指' }],
+    comboSets: [],
     setupLibrary: NO_SETUPS,
   };
   const merged = mergeUserAssets(local, read(HOLDINGS), STAMP);
@@ -162,7 +175,11 @@ test('中身が同じで名前だけ違う時は足さず、手元の名前を�
 
 test('中身の比較: 数値に関わる項目はどれが違っても別の中身で、キーの並びは同じ中身', () => {
   const differs = (a: UserLayout, b: UserLayout): boolean => {
-    const merged = mergeUserAssets({ ...EMPTY, userLayouts: [a] }, { layouts: [b], romajiRules: [], fingerAssignments: [], setups: [] }, STAMP);
+    const merged = mergeUserAssets(
+      { ...EMPTY, userLayouts: [a] },
+      { layouts: [b], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [] },
+      STAMP,
+    );
     return merged.entries[0]!.outcome.kind === 'added-renamed';
   };
   const base: UserLayout = { kind: 'alpha', id: 'u', name: 'U', rows: ROWS, romaji: 'kunrei' };
@@ -174,16 +191,19 @@ test('中身の比較: 数値に関わる項目はどれが違っても別の中
   assert.equal(differs({ ...base, homeKeys: { LI: 'f', RI: 'j' } }, { ...base, homeKeys: { RI: 'j', LI: 'f' } }), false);
 
   const ruleDiffers = (rule: UserRomajiRule) =>
-    mergeUserAssets({ ...EMPTY, userRomajiRules: [RULE] }, { layouts: [], romajiRules: [rule], fingerAssignments: [], setups: [] }, STAMP).entries[0]!
-      .outcome.kind === 'added-renamed';
+    mergeUserAssets({ ...EMPTY, userRomajiRules: [RULE] }, { layouts: [], romajiRules: [rule], fingerAssignments: [], comboSets: [], setups: [] }, STAMP)
+      .entries[0]!.outcome.kind === 'added-renamed';
   assert.equal(ruleDiffers({ ...RULE, base: 'azik' }), true);
   assert.equal(ruleDiffers({ ...RULE, generateSokuon: false }), true);
   assert.equal(ruleDiffers({ ...RULE, overrides: { し: 'si' } }), true);
   assert.equal(ruleDiffers({ ...RULE, overrides: { ち: 'chi', し: 'shi' } }), false);
 
   const fingerDiffers = (assignment: FingerAssignment) =>
-    mergeUserAssets({ ...EMPTY, fingerAssignments: [FINGER] }, { layouts: [], romajiRules: [], fingerAssignments: [assignment], setups: [] }, STAMP)
-      .entries[0]!.outcome.kind === 'added-renamed';
+    mergeUserAssets(
+      { ...EMPTY, fingerAssignments: [FINGER] },
+      { layouts: [], romajiRules: [], fingerAssignments: [assignment], comboSets: [], setups: [] },
+      STAMP,
+    ).entries[0]!.outcome.kind === 'added-renamed';
   assert.equal(fingerDiffers({ ...FINGER, homeKey: { ...FINGER.homeKey, LI: 'g' } }), true);
   assert.equal(fingerDiffers(assignKeyFinger(FINGER, 'q', 'LP')), true);
   assert.equal(fingerDiffers({ ...FINGER, name: '別の名前' }), false);
@@ -194,6 +214,7 @@ test('同じidで中身が違う時は手元を残し、読み込んだ側を新
     userLayouts: [{ ...LAYOUT, rows: ROWS }],
     userRomajiRules: [{ ...RULE, overrides: { し: 'si' } }],
     fingerAssignments: [{ ...FINGER, homeKey: { ...FINGER.homeKey, LI: 'g' } }],
+    comboSets: [],
     setupLibrary: NO_SETUPS,
   };
   const merged = mergeUserAssets(local, read(HOLDINGS), STAMP);
@@ -227,7 +248,7 @@ test('別名「(2)」が手元で使われていれば(3)にする', () => {
       { ...LAYOUT, id: 'user-b', name: '自作A (2)', rows: ROWS },
     ],
   };
-  const merged = mergeUserAssets(local, { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [], setups: [] }, STAMP);
+  const merged = mergeUserAssets(local, { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [] }, STAMP);
   assert.equal(merged.assets.userLayouts[2]!.name, '自作A (3)');
 });
 
@@ -236,6 +257,7 @@ test('中身の違うものを別名で足した後に同じファイルを読�
     userLayouts: [{ ...LAYOUT, rows: ROWS }],
     userRomajiRules: [{ ...RULE, overrides: { し: 'si' } }],
     fingerAssignments: [{ ...FINGER, homeKey: { ...FINGER.homeKey, LI: 'g' } }],
+    comboSets: [],
     setupLibrary: NO_SETUPS,
   };
   const bundle = read(HOLDINGS);
@@ -292,7 +314,8 @@ test('組み込みの配列と同じidは別のidで足し、組み込みの規�
 
 test('手元と重なって別名で足した時、重なった相手の手元の名前を持つ', () => {
   const local: UserAssetsHoldings = { ...EMPTY, userLayouts: [{ ...LAYOUT, name: '手元で名前を変えた配列', rows: ROWS }] };
-  const outcome = mergeUserAssets(local, { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [], setups: [] }, STAMP).entries[0]!.outcome;
+  const outcome = mergeUserAssets(local, { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [] }, STAMP).entries[0]!
+    .outcome;
   assert.deepEqual(outcome.kind === 'added-renamed' ? outcome.overlap : undefined, { with: 'own', name: '手元で名前を変えた配列' });
 });
 
@@ -300,6 +323,7 @@ function emptyAssets(): KeydistAssets {
   return {
     setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
     fingerAssignments: [],
+    comboSets: [],
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},
@@ -317,6 +341,7 @@ test('コマンド: 1回で3つの資産を足し、元に戻すと全部が戻�
   const assets: KeydistAssets = {
     setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
     fingerAssignments: [],
+    comboSets: [],
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},
@@ -340,9 +365,9 @@ test('コマンド: 1回で3つの資産を足し、元に戻すと全部が戻�
 
 test('ファイルに無い規則を指す配列は、手元の同じidの規則に結び付けず、書き出した側と同じ数値で打つ', () => {
   // 書き出した側: 規則を消した後で、配列だけがその規則のidを指している（全体の値の規則で打つ）
-  const exporter: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS };
+  const exporter: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [], fingerAssignments: [], comboSets: [], setupLibrary: NO_SETUPS };
   // 読み込む側: 同じidで別の中身の規則（し・ちをshi・chiで打つ）を持っている
-  const importer: UserAssetsHoldings = { userLayouts: [], userRomajiRules: [RULE], fingerAssignments: [], setupLibrary: NO_SETUPS };
+  const importer: UserAssetsHoldings = { userLayouts: [], userRomajiRules: [RULE], fingerAssignments: [], comboSets: [], setupLibrary: NO_SETUPS };
   const text = 'こんにちは、きょうはしゃしんをとりにいきます。ちしきをしる。';
   const before = measure(exporter, LAYOUT.id, 'ja', text, EMPTY_SETTINGS_OVERRIDES);
 
@@ -374,7 +399,7 @@ test('ファイルに無い規則を指す配列は、手元の同じidの規則
 });
 
 test('ファイルに無い規則を指す配列は、手元で規則を指す同じ中身の配列とは別の中身として足す', () => {
-  const dangling: UserAssetsBundle = { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [], setups: [] };
+  const dangling: UserAssetsBundle = { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [] };
   const merged = mergeUserAssets({ ...EMPTY, userLayouts: [LAYOUT], userRomajiRules: [RULE] }, dangling, STAMP);
   assert.deepEqual(
     merged.entries.map((entry) => entry.outcome.kind),
@@ -408,7 +433,7 @@ test('読み込みの内訳は、書き込みを決めた突き合わせから�
 });
 
 test('消した規則を指す手元の配列を書き出して自分へ読み直すと、同じ中身として足さない', () => {
-  const holdings: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS };
+  const holdings: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [], fingerAssignments: [], comboSets: [], setupLibrary: NO_SETUPS };
   const merged = mergeUserAssets(holdings, read(holdings), STAMP);
   assert.deepEqual(
     merged.entries.map((entry) => entry.outcome.kind),
@@ -531,7 +556,13 @@ test('Setup: 中身が同じなら、idが違っても、ラベルが違って�
   };
   const merged = mergeUserAssets(
     local,
-    { layouts: [], romajiRules: [], fingerAssignments: [], setups: [{ id: 's2', layoutId: 'qwerty', shapeId: 'row-staggered', label: '別の名前' }] },
+    {
+      layouts: [],
+      romajiRules: [],
+      fingerAssignments: [],
+      comboSets: [],
+      setups: [{ id: 's2', layoutId: 'qwerty', shapeId: 'row-staggered', label: '別の名前' }],
+    },
     STAMP,
   );
   assert.equal(merged.assets.setupLibrary, local.setupLibrary);
@@ -545,7 +576,7 @@ test('Setup: 中身の比較は、配列・物理配列・Setupのレベルの�
   const base = { id: 'b', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const local: UserAssetsHoldings = { ...EMPTY, setupLibrary: libraryOf([{ ...base, number: 1 }], { b: { windowSize: 5 } }) };
   const kindOf = (setup: UserAssetsBundle['setups'][number]) =>
-    mergeUserAssets(local, { layouts: [], romajiRules: [], fingerAssignments: [], setups: [setup] }, STAMP).entries[0]!.outcome.kind;
+    mergeUserAssets(local, { layouts: [], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [setup] }, STAMP).entries[0]!.outcome.kind;
   assert.equal(kindOf({ ...base, id: 'x', overrides: { windowSize: 5 } }), 'skipped-same');
   assert.equal(kindOf({ ...base, id: 'x', overrides: { windowSize: 6 } }), 'added');
   assert.equal(kindOf({ ...base, id: 'x' }), 'added');
@@ -565,6 +596,7 @@ test('Setup: 同じidで中身が違う時は手元を残し、新しいidでラ
     layouts: [],
     romajiRules: [],
     fingerAssignments: [],
+    comboSets: [],
     setups: [
       { id: 's1', layoutId: 'qwerty', shapeId: 'ortho', label: '練習用' },
       { id: 'fresh', layoutId: 'colemak', shapeId: 'row-staggered' },
@@ -595,6 +627,7 @@ test('Setup: 読み込みで別のidになった配列・指の割り当て・�
     userLayouts: [{ ...LAYOUT, rows: ROWS }],
     userRomajiRules: [{ ...RULE, overrides: { し: 'si' } }],
     fingerAssignments: [{ ...FINGER, homeKey: { ...FINGER.homeKey, LI: 'g' } }],
+    comboSets: [],
     setupLibrary: NO_SETUPS,
   };
   const merged = mergeUserAssets(local, read(SETUP_HOLDINGS), STAMP);
@@ -611,6 +644,7 @@ test('Setup: 書き出しでは、ファイルに入れない自作の資産を�
   const holdings: UserAssetsHoldings = {
     ...EMPTY,
     fingerAssignments: [FINGER],
+    comboSets: [],
     setupLibrary: libraryOf(
       [
         { id: 'a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' },
@@ -644,6 +678,7 @@ test('Setup: 配列がファイルにも手元にも無いSetupと、分から�
       layouts: [],
       romajiRules: [],
       fingerAssignments: [],
+      comboSets: [],
       setups: [{ id: 'gone', layoutId: 'user-not-here', shapeId: 'future-shape', label: '古い' }],
     },
     STAMP,
@@ -708,6 +743,7 @@ test('Setup: ファイルにも組み込みにも無い自作の指の割り当�
     layouts: [],
     romajiRules: [],
     fingerAssignments: [],
+    comboSets: [],
     setups: [
       { id: 'x', layoutId: 'qwerty', shapeId: 'row-staggered', overrides: { windowSize: 5, fingerAssignmentId: FINGER.id, romajiRuleId: RULE.id } },
     ],
@@ -735,6 +771,7 @@ test('Setup: 参照を外した結果が手元と同じ中身なら足さず、�
     layouts: [],
     romajiRules: [],
     fingerAssignments: [],
+    comboSets: [],
     setups: [{ id: 'x', layoutId: 'qwerty', shapeId: 'row-staggered', overrides: { fingerAssignmentId: 'finger-gone', romajiRuleId: 'romaji-gone' } }],
   };
   const first = mergeUserAssets(EMPTY, incoming, STAMP);
@@ -765,7 +802,13 @@ const FACE_LAYOUT: UserLayout = {
   ],
   composition: { dakuten: true, handakuten: false },
 };
-const FACE_HOLDINGS: UserAssetsHoldings = { userLayouts: [LAYOUT, FACE_LAYOUT], userRomajiRules: [RULE], fingerAssignments: [], setupLibrary: NO_SETUPS };
+const FACE_HOLDINGS: UserAssetsHoldings = {
+  userLayouts: [LAYOUT, FACE_LAYOUT],
+  userRomajiRules: [RULE],
+  fingerAssignments: [],
+  comboSets: [],
+  setupLibrary: NO_SETUPS,
+};
 
 test('面で定義する配列は、書き出して空の手元へ読み込むと同じ配列が戻り、同じ条件で同じ打鍵列が出る', () => {
   const merged = mergeUserAssets(EMPTY, read(FACE_HOLDINGS), STAMP);
@@ -800,8 +843,8 @@ test('面で定義する配列は、二度読んでも増えず、面の中身�
 
 test('面で定義する配列の比較: 合成の有無・面の並びのどれが違っても別の中身で、出力のキーの並びは同じ中身', () => {
   const differs = (a: UserLayout, b: UserLayout): boolean =>
-    mergeUserAssets({ ...EMPTY, userLayouts: [a] }, { layouts: [b], romajiRules: [], fingerAssignments: [], setups: [] }, STAMP).entries[0]!.outcome
-      .kind === 'added-renamed';
+    mergeUserAssets({ ...EMPTY, userLayouts: [a] }, { layouts: [b], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [] }, STAMP)
+      .entries[0]!.outcome.kind === 'added-renamed';
   assert.equal(differs(FACE_LAYOUT, { ...FACE_LAYOUT, composition: { dakuten: true, handakuten: true } }), true);
   const reordered: UserLayout = {
     ...FACE_LAYOUT,

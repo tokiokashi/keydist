@@ -61,6 +61,7 @@ function emptyAssets(): KeydistAssets {
   return {
     setupLibrary,
     fingerAssignments: [],
+    comboSets: [],
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},

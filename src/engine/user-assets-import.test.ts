@@ -61,6 +61,7 @@ function emptyAssets(): KeydistAssets {
   return {
     setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
     fingerAssignments: [],
+    comboSets: [],
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},
@@ -121,7 +122,7 @@ function fileOf(assets: KeydistAssets): UserAssetsFileContents {
 
 function layoutOnlyFile(layout: UserLayout): UserAssetsFileContents {
   return {
-    bundle: { layouts: [layout], romajiRules: [], fingerAssignments: [], setups: [] },
+    bundle: { layouts: [layout], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [] },
     userTexts: { texts: [], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} },
     extras: EMPTY_USER_ASSETS_EXTRAS,
   };
@@ -375,7 +376,7 @@ test('読み込まない: 解析設定が手元と重なる時は、手元に無
   const hand = { ...emptyAssets(), standaloneAnalyzerOptions: { 'bigram-flow': { source: 'all' } } };
   const source = { ...emptyAssets(), standaloneAnalyzerOptions: { 'bigram-flow': { source: 'within-hand' }, other: { a: 1 } } };
   const file: UserAssetsFileContents = {
-    bundle: { layouts: [], romajiRules: [], fingerAssignments: [], setups: [] },
+    bundle: { layouts: [], romajiRules: [], fingerAssignments: [], comboSets: [], setups: [] },
     userTexts: { texts: [], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} },
     extras: { ...EMPTY_USER_ASSETS_EXTRAS, analyzerOptions: source.standaloneAnalyzerOptions },
   };

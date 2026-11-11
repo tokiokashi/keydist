@@ -1,6 +1,7 @@
 import { LAYOUT_MISSING_REASON, MISSING_SETUP_NAME } from '#input/setup/index.ts';
 import { isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
+import type { ComboSet } from '#input/combo-set/combo-set.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 
@@ -54,6 +55,19 @@ export function userFingerAssignmentRows(assignments: readonly FingerAssignment[
   }));
 }
 
+/** コンボの組の行。補足は、基準の綴りとコンボの件数。 */
+export function userComboSetRows(comboSets: readonly ComboSet[], userRomajiRules: readonly UserRomajiRule[]): readonly UserAssetRow[] {
+  const ruleNames = new Map(userRomajiRules.map((rule) => [rule.id, rule.name] as const));
+  return comboSets.map((set) => {
+    const ruleName = isBuiltin(set.romajiRuleId) ? ROMAJI_RULES[set.romajiRuleId].name : ruleNames.get(set.romajiRuleId);
+    return {
+      id: set.id,
+      name: set.name,
+      detail: `${ruleName === undefined ? '基準の綴りが見つかりません' : `基準の綴り: ${ruleName}`}・コンボ${set.combos.length}件`,
+    };
+  });
+}
+
 /** Setupの行。名前は手持ちのSetup全部に対して付けた表示名で、補足は配列・物理配列・変えた条件を含むフルの名前。 */
 export function userSetupRows(
   items: readonly { readonly setup: { readonly id: string }; readonly displayName: string; readonly fullName: string }[],
@@ -66,13 +80,14 @@ export function userSetupRows(
 }
 
 /** 削除の確認の対象。種類のほかに、手持ちに無いSetupへの上書きを消す確認がある。 */
-export type DeleteConfirmKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'setup' | 'missing-setup-override';
+export type DeleteConfirmKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'combo-set' | 'setup' | 'missing-setup-override';
 
 const DELETE_IMPACT: Readonly<Record<DeleteConfirmKind, string>> = {
   'missing-setup-override': 'このSetupが手持ちに無いため、変更を戻した後は「元に戻す」で戻せません。',
   layout: `この配列を対象にしているペインは、「${LAYOUT_MISSING_REASON}」の表示になります。`,
   'romaji-rule': 'この規則を推奨にしている配列は、全体の値の規則で打つようになります。',
   'finger-assignment': 'この割り当てを選んでいる場所は、既定の割り当てで測るようになります。',
+  'combo-set': 'この組を選んでいるSetupは、コンボの組を使わずに測るようになります。',
   setup: `このSetupを対象にしているペインは、「${MISSING_SETUP_NAME}」の表示になります。`,
 };
 

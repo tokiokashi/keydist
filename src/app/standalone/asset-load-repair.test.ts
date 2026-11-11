@@ -43,6 +43,7 @@ const REPAIRABLE: { readonly [K in keyof KeydistAssets]: { readonly raw: Record<
   presetLibrary: { raw: { presets: 5 }, root: 'presets' },
   userLayouts: { raw: { layouts: 5 }, root: 'layouts' },
   userRomajiRules: { raw: { rules: 5 }, root: 'rules' },
+  comboSets: { raw: { comboSets: 5 }, root: 'comboSets' },
   personalSpeed: { raw: { calibration: 5 }, root: 'calibration' },
 };
 
