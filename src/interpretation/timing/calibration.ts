@@ -1,5 +1,5 @@
 import { isRecord } from '#input/codec/index.ts';
-import { ALL_FINGERS, FINGERS, HOME_ROW, THUMB_KEY, dist, resolveKeyId, type Finger, type Geometry, type Key } from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, FINGERS, HOME_ROW, dist, isThumbKeyId, resolveKeyId, type Finger, type Geometry, type Key } from '#input/shapes/geometry.ts';
 
 /**
  * 遷移（直前のストロークから今のストロークへ）が属する構造の種類。打鍵の上乗せ（`keystrokeOverheadMs`）を選ぶ。
@@ -410,14 +410,17 @@ export function calibrationDirectedSameHandPairs(geometry: Geometry, eligibleKey
  * `event.key`を配列の文字・キーidと比べる経路、`event.code`の標準の表でキーidを引く経路、
  * `physicalKey`（Testerと同じ対応で`event.code`から引いたキーのid）がキーidと一致する経路。
  * OSでキーを入れ替えている利用者は、`event.key`が配列の文字と合わないので、`physicalKey`の経路で照合する。
+ * 例外は親指のキー。`physicalKey`が親指のキーの押下は親指のキーとしてだけ扱い、`physicalKey`が同じ親指のキーの時だけ一致する
+ * （`event.key`の経路と標準の表の経路で文字のキーにも一致させない）。親指のキーのidを打つ押下も、`physicalKey`が同じ親指のキーでなければ一致しない
+ * （Spaceを割り当てなしにした利用者のSpaceは、どの親指のキーにも一致しない）。
  */
 export function calibrationKeyMatches(
   event: { readonly key: string; readonly code: string; readonly physicalKey?: string },
   keyId: string,
   keyLabel = keyId,
 ): boolean {
-  // 右手の親指のキーはSpace。物理配列はSpaceを右手の親指のキーとして扱う。
-  if (resolveKeyId(keyId) === THUMB_KEY.RT) return event.code === 'Space' || event.key === ' ';
+  if (event.physicalKey !== undefined && isThumbKeyId(event.physicalKey)) return resolveKeyId(event.physicalKey) === resolveKeyId(keyId);
+  if (isThumbKeyId(keyId)) return false;
   if (event.physicalKey !== undefined && event.physicalKey === keyId) return true;
   const eventKey = event.key.toLowerCase();
   if (eventKey === keyId.toLowerCase() || eventKey === keyLabel.toLowerCase()) return true;

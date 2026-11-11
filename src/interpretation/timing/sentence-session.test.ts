@@ -6,6 +6,7 @@ import {
   pressSentenceSessionKey,
   sentenceSamples,
   sentenceSessionFinished,
+  sentenceUsesThumbKeys,
   startSentenceSession,
   remainingSentenceKeys,
   sentenceRunFinished,
@@ -90,13 +91,118 @@ test('前のストロークの時刻より後でない押下は無視する', ()
   assert.equal(ignored.run, run);
 });
 
-test('Space・修飾キー・親指キーなど、取れないキーが要る列は測れない', () => {
+test('修飾キー・名前を持たない追加のキーなど、取れないキーが要る列は測れない。親指のキーは取れる', () => {
   assert.equal(sentenceUnmeasurable([]), 'empty');
-  assert.equal(sentenceUnmeasurable([step(['a'], 0), step(['thumb-r'], 1)]), 'uncapturable-key');
   assert.equal(sentenceUnmeasurable([step(['shift-l', 'a'], 0)]), 'uncapturable-key');
   assert.equal(sentenceUnmeasurable([step(['r0c13'], 0)]), 'uncapturable-key');
   assert.equal(sentenceUnmeasurable([step([], 0)]), 'uncapturable-key');
   assert.equal(sentenceUnmeasurable([step(['a'], 0), step([';'], 1)]), undefined);
+  assert.equal(sentenceUnmeasurable([step(['a'], 0), step(['thumb-r'], 1), step(['thumb-l', 'k'], 2)]), undefined);
+});
+
+const thumbEvent = (physicalKey: 'thumb-l' | 'thumb-r') => ({
+  key: physicalKey === 'thumb-r' ? ' ' : 'NonConvert',
+  code: physicalKey === 'thumb-r' ? 'Space' : 'NonConvert',
+  physicalKey,
+});
+const charEvent = (key: string, heldThumbKeys?: readonly string[]) => ({
+  ...keyEvent(key),
+  physicalKey: key,
+  ...(heldThumbKeys === undefined ? {} : { heldThumbKeys }),
+});
+
+test('親指のキーは、対応で引いた同じ親指のキーの押下にだけ一致し、押下だけで1ストロークになる', () => {
+  let run = startSentenceRun(planOf([step(['a'], 0), step(['thumb-r'], 1), step(['thumb-l'], 2)]));
+  run = pressSentenceKey(run, charEvent('a'), 100, label).run;
+  // 左手の親指のキーは、今打つキーでなく、違うキーの押下になる
+  const wrong = pressSentenceKey(run, thumbEvent('thumb-l'), 150, label);
+  assert.equal(wrong.outcome.kind, 'wrong-key');
+  run = pressSentenceKey(wrong.run, thumbEvent('thumb-r'), 200, label).run;
+  const last = pressSentenceKey(run, thumbEvent('thumb-l'), 300, label);
+  assert.equal(last.outcome.kind, 'run-finished');
+  assert.deepEqual(
+    last.run.taps.map((tap) => [tap.atMs, tap.clean]),
+    [
+      [100, true],
+      [200, false],
+      [300, true],
+    ],
+  );
+});
+
+test('親指のキーに引ける押下は、event.keyが文字のキーと同じでも、文字のキーとして扱わない', () => {
+  const run = startSentenceRun(planOf([step(['a'], 0)]));
+  // 文字のキーaを左手の親指のキーに割り当てた利用者のaの押下
+  const pressed = pressSentenceKey(run, { key: 'a', code: 'KeyA', physicalKey: 'thumb-l' }, 100, label);
+  assert.equal(pressed.outcome.kind, 'wrong-key');
+});
+
+test('コンボの出力の文字の読み方にも、親指のキーに引ける押下は一致しない', () => {
+  const comboStep: SentenceStep = { keys: ['a', 'e'], inputIndex: 0, inputChar: 'x', outputChars: ['k', 'k'] };
+  let run = startSentenceRun(planOf([comboStep]));
+  const rejected = pressSentenceKey(run, { key: 'k', code: 'KeyK', physicalKey: 'thumb-r' }, 100, label);
+  assert.equal(rejected.outcome.kind, 'wrong-key');
+  run = rejected.run;
+  assert.equal(pressSentenceKey(run, { key: 'k', code: 'KeyK', physicalKey: 'k' }, 110, label).outcome.kind, 'partial');
+});
+
+test('押し続けている親指のキーは、文字のキーが届いたストロークでは押したものとみなし、時刻は文字のキーの押下で数える', () => {
+  let run = startSentenceRun(planOf([step(['thumb-r', 'k'], 0), step(['thumb-r', 'l'], 1), step(['thumb-r', 'j'], 2)]));
+  // 1つ目は、親指のキーを新しく押してから文字のキーを押す。時刻は親指のキーの押下
+  run = pressSentenceKey(run, thumbEvent('thumb-r'), 100, label).run;
+  const first = pressSentenceKey(run, charEvent('k', ['thumb-r']), 130, label);
+  assert.equal(first.outcome.kind, 'step-finished');
+  // 2つ目と3つ目は、親指のキーを押し続けたまま文字のキーだけを押す。時刻は文字のキーの押下
+  const second = pressSentenceKey(first.run, charEvent('l', ['thumb-r']), 250, label);
+  assert.equal(second.outcome.kind, 'step-finished');
+  const third = pressSentenceKey(second.run, charEvent('j', ['thumb-r']), 400, label);
+  assert.equal(third.outcome.kind, 'run-finished');
+  assert.deepEqual(
+    third.run.taps.map((tap) => [tap.atMs, tap.clean]),
+    [
+      [100, true],
+      [250, true],
+      [400, true],
+    ],
+  );
+});
+
+test('押し続けは、押している親指のキーだけに使い、押していない親指のキーと別の親指のキーは補わない', () => {
+  const run = startSentenceRun(planOf([step(['thumb-r', 'k'], 0)]));
+  // 押し続けが無い、または別の親指のキーの押し続けでは、文字のキーだけで1ストロークにならない
+  for (const held of [undefined, [], ['thumb-l']] as const) {
+    const pressed = pressSentenceKey(run, charEvent('k', held), 100, label);
+    assert.equal(pressed.outcome.kind, 'partial', JSON.stringify(held));
+  }
+  // 残りの親指のキーを新しく押せば揃う。時刻は先に届いた文字のキーの押下
+  const partial = pressSentenceKey(run, charEvent('k'), 100, label).run;
+  const done = pressSentenceKey(partial, thumbEvent('thumb-r'), 130, label);
+  assert.equal(done.outcome.kind, 'run-finished');
+  assert.deepEqual(done.run.taps, [{ atMs: 100, clean: true }]);
+});
+
+test('親指のキーだけのストロークは、押し続けを使わず、新しい押下を求める', () => {
+  let run = startSentenceRun(planOf([step(['thumb-r'], 0), step(['k'], 1)]));
+  // 文字のキーの押下は、親指のキーを押し続けていても親指のキーだけのストロークを進めない
+  const wrong = pressSentenceKey(run, charEvent('k', ['thumb-r']), 100, label);
+  assert.equal(wrong.outcome.kind, 'wrong-key');
+  run = pressSentenceKey(wrong.run, thumbEvent('thumb-r'), 200, label).run;
+  assert.equal(pressSentenceKey(run, charEvent('k', ['thumb-r']), 300, label).outcome.kind, 'run-finished');
+});
+
+test('親指のキーが2つ要るストロークは、押し続けを使わない', () => {
+  const run = startSentenceRun(planOf([step(['thumb-l', 'thumb-r'], 0)]));
+  const first = pressSentenceKey(run, thumbEvent('thumb-r'), 100, label);
+  assert.equal(first.outcome.kind, 'partial');
+  const done = pressSentenceKey(first.run, thumbEvent('thumb-l'), 120, label);
+  assert.equal(done.outcome.kind, 'run-finished');
+  assert.deepEqual(done.run.taps, [{ atMs: 100, clean: true }]);
+});
+
+test('押し続けの親指のキーは、示す文の打つキーに親指のキーがある計画だけが受け付ける', () => {
+  assert.equal(sentenceUsesThumbKeys([planOf([step(['a'], 0), step(['thumb-l', 'k'], 1)])]), true);
+  assert.equal(sentenceUsesThumbKeys([planOf([step(['a'], 0)]), planOf([step(['thumb-r'], 0)])]), true);
+  assert.equal(sentenceUsesThumbKeys([planOf([step(['a'], 0), step([';'], 1)])]), false);
 });
 
 test('同じ入力単位を打つステップをまとめて、かな1文字ずつにする', () => {

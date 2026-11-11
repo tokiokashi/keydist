@@ -13,7 +13,8 @@ import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.
 import { decodeUserRomajiRules, isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { builtinTextById } from '#input/text/builtin.ts';
 import type { TextLibrary, UserText } from '#input/text/library.ts';
-import { decodeBuiltinReadingCorrections, decodeUserTexts } from '#input/text/library-codec.ts';
+import { decodeBuiltinReadingCorrections, decodeBuiltinWordReadingCorrections, decodeUserTexts } from '#input/text/library-codec.ts';
+import type { WordReadingCorrections } from '#input/text/word-reading.ts';
 import type { ReadingCorrections } from '#input/text/reading.ts';
 import { completeLeftColumnKeys, decodeUserFingerAssignments } from '#input/shapes/user-finger-assignments.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
@@ -34,7 +35,7 @@ import {
 /**
  * 「データ・設定の管理」の書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
  *
- * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, setups, texts, builtinReadingCorrections,
+ * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, setups, texts, builtinReadingCorrections, builtinWordReadingCorrections,
  * presets, workspaces, personalSpeed, analyzerOptions }`。後ろの4つは`UserAssetsExtras`（`user-assets-extras.ts`）で、無ければ空として読む。
  * 配列・規則・指の割り当て・Setupの4つは、プリセットとWorkspaceのファイルに同梱する資産（`UserAssetsBundle`）と共通で、
  * テキストはこのファイルだけが持つ（`UserTextsBundle`。ほかのファイルはテキストを参照（id）でしか持たない）。`format` は書く直前に
@@ -73,12 +74,19 @@ export interface UserTextsBundle {
   readonly texts: readonly UserText[];
   /** 組み込みのテキストのid → 表記 → 読み。組み込みのテキストは本文を写さず、直しだけを持つ。 */
   readonly builtinReadingCorrections: Readonly<Record<string, ReadingCorrections>>;
+  /** 組み込みのテキストのid → 語ごとの直し。表記ごとの直しと同じく、本文を写さずに持つ。 */
+  readonly builtinWordReadingCorrections: Readonly<Record<string, WordReadingCorrections>>;
 }
 
-export const EMPTY_USER_TEXTS_BUNDLE: UserTextsBundle = { texts: [], builtinReadingCorrections: {} };
+export const EMPTY_USER_TEXTS_BUNDLE: UserTextsBundle = { texts: [], builtinReadingCorrections: {}, builtinWordReadingCorrections: {} };
 
 export function isEmptyUserTextsBundle(bundle: UserTextsBundle): boolean {
-  return bundle.texts.length === 0 && Object.keys(bundle.builtinReadingCorrections).length === 0;
+  return bundle.texts.length === 0 && builtinTextReadingIds(bundle).length === 0;
+}
+
+/** 読みの直し（表記ごと・語ごとのどちらか）を持つ組み込みのテキストのid。資産の画面の件数と読み込みの突き合わせは、この単位で数える。 */
+export function builtinTextReadingIds(bundle: UserTextsBundle): string[] {
+  return [...new Set([...Object.keys(bundle.builtinReadingCorrections), ...Object.keys(bundle.builtinWordReadingCorrections)])];
 }
 
 /** 書き出しファイルの中身。 */
@@ -104,7 +112,16 @@ function decodeUserTextsBundle(payload: Record<string, unknown>, diagnostics: Co
     }
     builtinReadingCorrections[id] = corrections;
   }
-  return { texts, builtinReadingCorrections };
+  const decodedWords = decodeBuiltinWordReadingCorrections(payload.builtinWordReadingCorrections, 'builtinWordReadingCorrections', diagnostics) ?? {};
+  const builtinWordReadingCorrections: Record<string, WordReadingCorrections> = {};
+  for (const [id, corrections] of Object.entries(decodedWords)) {
+    if (builtinTextById(id) === undefined) {
+      diagnostics.push({ path: `builtinWordReadingCorrections.${id}`, message: '組み込みのテキストに無いidの語ごとの読みの直しを捨てました' });
+      continue;
+    }
+    builtinWordReadingCorrections[id] = corrections;
+  }
+  return { texts, builtinReadingCorrections, builtinWordReadingCorrections };
 }
 
 function encodeUserTextsBundle(value: UserTextsBundle): Record<string, unknown> {
@@ -112,8 +129,12 @@ function encodeUserTextsBundle(value: UserTextsBundle): Record<string, unknown> 
     texts: value.texts.map((text) => ({
       ...withoutUnseen(text),
       ...(text.readingCorrections === undefined ? {} : { readingCorrections: { ...text.readingCorrections } }),
+      ...(text.wordReadingCorrections === undefined ? {} : { wordReadingCorrections: text.wordReadingCorrections.map((entry) => ({ ...entry })) }),
     })),
     builtinReadingCorrections: Object.fromEntries(Object.entries(value.builtinReadingCorrections).map(([id, corrections]) => [id, { ...corrections }])),
+    builtinWordReadingCorrections: Object.fromEntries(
+      Object.entries(value.builtinWordReadingCorrections).map(([id, corrections]) => [id, corrections.map((entry) => ({ ...entry }))]),
+    ),
   };
 }
 
@@ -214,7 +235,12 @@ export function userAssetsFileBody(assets: UserAssetsFileHoldings): Record<strin
 /** 手元のテキストを、ファイルに入れる形にする。組み込みのテキストに無いidの読みの直しは入れない。 */
 export function userTextsBundleOf(library: TextLibrary): UserTextsBundle {
   const corrections = Object.entries(library.builtinReadingCorrections ?? {}).filter(([id]) => builtinTextById(id) !== undefined);
-  return { texts: library.texts, builtinReadingCorrections: Object.fromEntries(corrections) };
+  const wordCorrections = Object.entries(library.builtinWordReadingCorrections ?? {}).filter(([id]) => builtinTextById(id) !== undefined);
+  return {
+    texts: library.texts,
+    builtinReadingCorrections: Object.fromEntries(corrections),
+    builtinWordReadingCorrections: Object.fromEntries(wordCorrections),
+  };
 }
 
 const FILE_KEY_LABELS: Readonly<Record<string, string>> = {
@@ -570,7 +596,13 @@ function textContent(text: UserText): string {
   const cached = textContentCache.get(text);
   if (cached !== undefined) return cached;
   const corrections = text.readingCorrections !== undefined && Object.keys(text.readingCorrections).length > 0 ? text.readingCorrections : undefined;
-  const content = canonical({ text: text.text, languageOverride: text.languageOverride, readingCorrections: corrections });
+  const wordCorrections = text.wordReadingCorrections !== undefined && text.wordReadingCorrections.length > 0 ? text.wordReadingCorrections : undefined;
+  const content = canonical({
+    text: text.text,
+    languageOverride: text.languageOverride,
+    readingCorrections: corrections,
+    wordReadingCorrections: wordCorrections,
+  });
   textContentCache.set(text, content);
   return content;
 }
@@ -606,32 +638,58 @@ export function mergeUserTexts(current: TextLibrary, incoming: UserTextsBundle, 
   );
   const entries = [...texts.entries];
   let builtinCorrections = current.builtinReadingCorrections;
+  let builtinWordCorrections = current.builtinWordReadingCorrections;
   const overwriteCorrections = importPolicyOf(policies, 'builtin-text-reading') === 'overwrite';
-  for (const [id, corrections] of Object.entries(incoming.builtinReadingCorrections)) {
+  // 組み込みのテキストごとに、表記ごとの直しと語ごとの直しを1組として比べる
+  for (const id of builtinTextReadingIds(incoming)) {
     const name = builtinTextById(id)?.name;
     if (name === undefined) continue;
-    const own = builtinCorrections?.[id];
-    if (own === undefined) {
-      builtinCorrections = { ...builtinCorrections, [id]: corrections };
+    const incomingSurfaces = incoming.builtinReadingCorrections[id];
+    const incomingWords = incoming.builtinWordReadingCorrections[id];
+    const ownSurfaces = builtinCorrections?.[id];
+    const ownWords = builtinWordCorrections?.[id];
+    const take = (): void => {
+      if (incomingSurfaces !== undefined) builtinCorrections = { ...builtinCorrections, [id]: incomingSurfaces };
+      else if (ownSurfaces !== undefined) builtinCorrections = withoutKey(builtinCorrections, id);
+      if (incomingWords !== undefined) builtinWordCorrections = { ...builtinWordCorrections, [id]: incomingWords };
+      else if (ownWords !== undefined) builtinWordCorrections = withoutKey(builtinWordCorrections, id);
+    };
+    if (ownSurfaces === undefined && ownWords === undefined) {
+      take();
       entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'added' } });
-    } else if (canonical(own) === canonical(corrections)) {
+    } else if (canonical([ownSurfaces, ownWords]) === canonical([incomingSurfaces, incomingWords])) {
       entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'skipped-same', existingName: name } });
     } else if (overwriteCorrections) {
-      builtinCorrections = { ...builtinCorrections, [id]: corrections };
+      take();
       entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'overwritten', previousName: name } });
     } else {
       entries.push({ assetKind: 'builtin-text-reading', name, outcome: { kind: 'kept-own' } });
     }
   }
-  if (texts.items === current.texts && builtinCorrections === current.builtinReadingCorrections) {
+  if (
+    texts.items === current.texts &&
+    builtinCorrections === current.builtinReadingCorrections &&
+    builtinWordCorrections === current.builtinWordReadingCorrections
+  ) {
     return { library: current, idMap: texts.idMap, entries };
   }
-  const { builtinReadingCorrections: _old, ...base } = current;
+  const { builtinReadingCorrections: _old, builtinWordReadingCorrections: _oldWords, ...base } = current;
   return {
-    library: { ...base, texts: texts.items, ...(builtinCorrections === undefined ? {} : { builtinReadingCorrections: builtinCorrections }) },
+    library: {
+      ...base,
+      texts: texts.items,
+      ...(builtinCorrections === undefined ? {} : { builtinReadingCorrections: builtinCorrections }),
+      ...(builtinWordCorrections === undefined ? {} : { builtinWordReadingCorrections: builtinWordCorrections }),
+    },
     idMap: texts.idMap,
     entries,
   };
+}
+
+function withoutKey<T>(record: Readonly<Record<string, T>> | undefined, key: string): Readonly<Record<string, T>> | undefined {
+  if (record === undefined) return undefined;
+  const { [key]: _drop, ...rest } = record;
+  return Object.keys(rest).length === 0 ? undefined : rest;
 }
 
 /** 突き合わせで変わった資産だけの変更。何も変わらなければ空。 */

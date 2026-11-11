@@ -125,10 +125,12 @@ test('示す文は句読点を含まないので、句読点の前後を数え�
   assert.ok(MEASUREMENT_SENTENCES.every((sentence) => !/[、。，．！？]/.test(sentence)));
 });
 
-test('Spaceや修飾キーを押しながら打つ配列は作れるが、測れない', () => {
+test('親指のキーを押しながら打つ配列は、親指のキーを含む打鍵の列になり、測れる', () => {
   const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'nicola' }, MEASUREMENT_SENTENCES[0]);
   assert.ok(result.ok);
-  assert.equal(sentenceUnmeasurable(sentenceSteps(result.analysis)), 'uncapturable-key');
+  const steps = sentenceSteps(result.analysis);
+  assert.ok(steps.some((step) => step.keys.some((key) => key.startsWith('thumb-'))));
+  assert.equal(sentenceUnmeasurable(steps), undefined);
 });
 
 test('配列が無い、または打てない文字がある時は、打鍵の列を作らず理由を返す', () => {

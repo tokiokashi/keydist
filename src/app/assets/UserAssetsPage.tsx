@@ -10,6 +10,7 @@ import {
   userAssetsFileBody,
   userAssetsFileExportProblem,
   userAssetsExtrasOf,
+  builtinTextReadingIds,
   userTextsBundleOf,
   type ImportPolicies,
   type ImportPolicy,
@@ -335,7 +336,7 @@ export function UserAssetsPage({
       assets.fingerAssignments.length +
       assets.setupLibrary.setups.length +
       assets.textLibrary.texts.length +
-      Object.keys(userTextsBundleOf(assets.textLibrary).builtinReadingCorrections).length +
+      builtinTextReadingIds(userTextsBundleOf(assets.textLibrary)).length +
       assets.presetLibrary.presets.length +
       assets.workspaces.length >
       0 ||
