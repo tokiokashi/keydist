@@ -51,3 +51,4 @@
 | [0009](0009-worker-for-standalone-computation.md) | 単体ページの計算をWeb Workerで走らせる | 採用 |
 | [0010](0010-conditions-travel-with-numbers.md) | 測定条件を数値に付随させ、比較の可否は裁定しない | 採用 |
 | [0011](0011-keep-localstorage.md) | 資産の保存をlocalStorageのまま続ける | 採用 |
+| [0012](0012-corpus-ngram-tables-without-layout.md) | コーパスのn-gramの表を、配列に依らない前処理と、走りごとの数え方で作る | 採用 |

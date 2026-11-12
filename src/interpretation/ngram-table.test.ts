@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { addNgramTables, countNgrams, countNgramsOverlapping, ngramTablesWithoutRange, subtractNgramTables } from './ngram-table.ts';
+import { addNgramTables, countNgrams, countNgramsInRuns, countNgramsOverlapping, ngramTablesWithoutRange, subtractNgramTables } from './ngram-table.ts';
 
+const SEP = '\u0000';
+const plainTable = (table: ReadonlyMap<string, number>) => Object.fromEntries([...table].sort());
 const plain = (tables: readonly ReadonlyMap<string, number>[]) => tables.map((table) => Object.fromEntries([...table].sort()));
 
 test('0次から2次までの出現回数を数える', () => {
@@ -72,4 +74,17 @@ test('引いて0になった並びは表から外す', () => {
     { ab: 1, ba: 1 },
   ]);
   assert.equal(result[0]!.has('c'), false);
+});
+
+test('文字列の単位は区切りを鍵に入れて数え、区切りの違う並びを同じ鍵にしない', () => {
+  assert.deepEqual(plainTable(countNgrams(['ab', 'c'], 1, SEP)[1]!), { [`ab${SEP}c`]: 1 });
+  assert.deepEqual(plainTable(countNgrams(['a', 'bc'], 1, SEP)[1]!), { [`a${SEP}bc`]: 1 });
+  assert.throws(() => countNgrams([`a${SEP}b`], 1, SEP));
+});
+
+test('走りごとに数え、走りをまたぐ並びを作らない', () => {
+  const tables = countNgramsInRuns([['a', 'b'], ['b', 'c'], ['a']], 2);
+  assert.deepEqual(plainTable(tables[0]!), { a: 2, b: 2, c: 1 });
+  assert.deepEqual(plainTable(tables[1]!), { ab: 1, bc: 1 });
+  assert.deepEqual(plainTable(tables[2]!), {});
 });

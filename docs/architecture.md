@@ -303,6 +303,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
   - 読み込み中は依頼を出さない。分割器を読み込めなかった時と、日本語以外のテキストの時は、区切りなしで計算して、ペインの中でその旨を知らせる
 - **かな3文字までの並びとの比べ方**（定義は `docs/kana-chain-comparison.md`）。n-gramの表の数え方（`interpretation/ngram-table.ts`）、2次マルコフ連鎖の生成文（`interpretation/markov-text.ts`）、元のテキスト・生成文・対照テキストの比べ方と順位・判定（`interpretation/chain-comparison.ts`）は、画面に依存しない純粋な関数。評価（Traceの生成）は呼び出し側が渡す関数で行う。連鎖・生成文・判定は画面に出さず、`scripts/kana-chain-comparison.ts` がコーパスの範囲で実行して表を出す。対照テキストの値は、画面の「対照テキストとの比較」に出す
 - **境目のまわりの並びを揃えたランダムな区切りとの比べ方**（定義は `docs/boundary-context-comparison.md`）。並びの型ごとの区切りの数を文節と揃えたランダムな区切りの作成、選ぶ余地が無い区切りの割合、順位と判定、境目の打鍵が占める割合（`interpretation/boundary-context.ts`）は、画面に依存しない純粋な関数。今は画面に出さず、`scripts/kana-chain-comparison.ts` の `--stage boundary` が全文で実行して表を出す
+- **コーパスの文節の読みとかなのn-gramの表と、統計が足りているかの量**（定義は `docs/corpus-ngram.md`）。系列の作り方、次数ごとの表、統計が足りているかの量（続きが1種類の文脈の出現の割合ほか。`interpretation/corpus-ngram.ts`）は、配列の定義を参照しない純粋な関数。今は画面に出さず、`scripts/corpus-ngram-tables.ts` が全文で実行して次数ごとの量を出す
 
 ### 文節ごとの統計（文節の区切りを使う、もう1つのMulti）
 
