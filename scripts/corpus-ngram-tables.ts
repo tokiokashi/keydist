@@ -16,7 +16,7 @@ import { mapBoundariesToReading, offsetsOfChunks } from '#input/text/segmentatio
 import {
   BUNSETSU_KEY_SEPARATOR,
   buildCorpusNgramTables,
-  CONTEXT_SINGLETON_LIMIT,
+  SINGLE_CONTINUATION_LIMIT,
   sufficientOrder,
   type OrderSufficiency,
 } from '#interpretation/corpus-ngram.ts';
@@ -64,10 +64,12 @@ function sufficiencyTable(rows: readonly OrderSufficiency[]): string {
       '並びの種類',
       '1回だけの並び',
       '文脈の種類',
+      '続きが1種類の文脈の出現',
+      '続きが1種類の文脈の出現の割合（判定）',
       '文脈が1回だけ',
-      '文脈が1回だけの割合',
+      '文脈が1回だけの割合（参考）',
       '並びが1回だけの割合',
-      `上限${percent(CONTEXT_SINGLETON_LIMIT)}`,
+      `上限${percent(SINGLE_CONTINUATION_LIMIT)}`,
     ],
     rows.map((row) => [
       String(row.order),
@@ -75,10 +77,12 @@ function sufficiencyTable(rows: readonly OrderSufficiency[]): string {
       String(row.grams),
       String(row.singletonGrams),
       String(row.contexts),
+      String(row.singleContinuationOccurrences),
+      percent(row.singleContinuationRatio),
       String(row.singletonContexts),
       percent(row.contextSingletonRatio),
       percent(row.gramSingletonRatio),
-      row.contextSingletonRatio === undefined ? '–' : row.contextSingletonRatio <= CONTEXT_SINGLETON_LIMIT ? '以下' : '超えた',
+      row.singleContinuationRatio === undefined ? '判定しない' : row.singleContinuationRatio <= SINGLE_CONTINUATION_LIMIT ? '以下' : '超えた',
     ]),
   );
 }
@@ -133,10 +137,10 @@ async function main(): Promise<void> {
     '- 前処理: 仕様 §4.6の2段目から4段目のうち配列に依らない分（記号は `、` `。` だけ残し、英字と数字を取り除く。半角の `,` `.` は `、` `。` へ書き換える）。片仮名は書き換えない',
   );
   out.push(
-    `- 系列を切った文字: 空白と改行${sequences.cuts.whitespace}個、読みに直らなかった漢字${sequences.cuts.unreadableKanji}個。前処理の後の文字数${sequences.chars}`,
+    `- 系列を切った文字: 空白と改行${sequences.cuts.whitespace}個、読みに直らなかった漢字${sequences.cuts.unreadableKanji}個、かなと句読点と漢字と空白のどれでもない文字${sequences.cuts.otherUnreadable}個。前処理の後の文字数${sequences.chars}`,
   );
   out.push(`- 走りの数: かな${sequences.kana.length}、文節${sequences.bunsetsu.length}。単位の数: かな${kanaCount}、文節${unitCount}`);
-  out.push(`- 表の最大の次数: ${args.maxOrder}。上限: 文脈が1回だけの割合 ${percent(CONTEXT_SINGLETON_LIMIT)}`, '');
+  out.push(`- 表の最大の次数: ${args.maxOrder}。上限: 続きが1種類の文脈の出現の割合 ${percent(SINGLE_CONTINUATION_LIMIT)}`, '');
 
   for (const [title, side, separator] of [
     ['文節の読みの系列', result.bunsetsu, BUNSETSU_KEY_SEPARATOR],
@@ -145,7 +149,7 @@ async function main(): Promise<void> {
     const order = sufficientOrder(side.sufficiency);
     out.push(`## ${title}`, '');
     out.push(sufficiencyTable(side.sufficiency), '');
-    out.push(`足りている最大の次数: ${order === undefined ? '決まらない' : order}`, '');
+    out.push(`足りている最大の次数: ${order === undefined ? '無い（次数1で上限を超えた）' : order}`, '');
     if (args.top > 0) out.push(topTable(side.tables, separator, args.top), '');
   }
   console.log(out.join('\n'));

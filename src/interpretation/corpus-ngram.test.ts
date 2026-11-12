@@ -1,27 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BUNSETSU_KEY_SEPARATOR, buildCorpusNgramTables, buildCorpusSequences, ngramSufficiency, sufficientOrder } from './corpus-ngram.ts';
-import { countNgrams, countNgramsInRuns } from './ngram-table.ts';
+import { countNgramsInRuns } from './ngram-table.ts';
 
-const plain = (table: ReadonlyMap<string, number>) => Object.fromEntries([...table].sort());
 const S = BUNSETSU_KEY_SEPARATOR;
-
-test('文字列の単位は区切りを鍵に入れて数え、区切りの違う並びを同じ鍵にしない', () => {
-  assert.deepEqual(plain(countNgrams(['ab', 'c'], 1, S)[1]!), { [`ab${S}c`]: 1 });
-  assert.deepEqual(plain(countNgrams(['a', 'bc'], 1, S)[1]!), { [`a${S}bc`]: 1 });
-  assert.throws(() => countNgrams([`a${S}b`], 1, S));
-});
-
-test('単位が1コードポイントで区切りが空なら、従来どおり文字を続けた鍵になる', () => {
-  assert.deepEqual(plain(countNgrams([...'ありあ'], 1)[1]!), { あり: 1, りあ: 1 });
-});
-
-test('走りごとに数え、走りをまたぐ並びを作らない', () => {
-  const tables = countNgramsInRuns([['a', 'b'], ['b', 'c'], ['a']], 2);
-  assert.deepEqual(plain(tables[0]!), { a: 2, b: 2, c: 1 });
-  assert.deepEqual(plain(tables[1]!), { ab: 1, bc: 1 });
-  assert.deepEqual(plain(tables[2]!), {});
-});
 
 test('系列: 区切りで文節に分け、空白と改行と読みの無い漢字で走りを切る', () => {
   // 読みのテキスト「きょうは　はれ。\nあしたは雨」。区切りは「きょうは」の後・「あ」の前・「雨」の前
@@ -36,7 +18,7 @@ test('系列: 区切りで文節に分け、空白と改行と読みの無い漢
     sequences.kana.map((run) => run.join('')),
     ['きょうは', 'はれ。', 'あしたは', 'ですね'],
   );
-  assert.deepEqual(sequences.cuts, { whitespace: 2, unreadableKanji: 1 });
+  assert.deepEqual(sequences.cuts, { whitespace: 2, unreadableKanji: 1, otherUnreadable: 0 });
 });
 
 test('系列: 句読点は切らずに文節の末尾に残り、取り除く記号の分だけ区切りが詰まる', () => {
@@ -53,40 +35,59 @@ test('系列: 片仮名は書き換えず、英字と数字は取り除く', () 
   assert.deepEqual(sequences.kana[0]!.join(''), 'ニャーねこ');
 });
 
-test('文脈が1回だけの割合: 手で数えた値と一致する', () => {
+test('系列: かなと句読点以外の文字（ギリシャ文字など）でも走りを切る', () => {
+  const sequences = buildCorpusSequences('わたしαはねこ', []);
+  assert.deepEqual(
+    sequences.kana.map((run) => run.join('')),
+    ['わたし', 'はねこ'],
+  );
+  assert.deepEqual(sequences.cuts, { whitespace: 0, unreadableKanji: 0, otherUnreadable: 1 });
+});
+
+test('次数ごとの量: 手で数えた値と一致する', () => {
   // 系列はa,b,a,b,cの5単位で、1つの走りに置く。2次の並びはaba・bab・abcが各1回、1次の並びはabが2回・baとbcが各1回
-  const tables = countNgramsInRuns([['a', 'b', 'a', 'b', 'c']], 2);
-  const rows = ngramSufficiency(tables);
-  // 0次: 5回。文脈は空で全体で1つ
+  const rows = ngramSufficiency(countNgramsInRuns([['a', 'b', 'a', 'b', 'c']], 2));
+  // 0次: 5回。文脈は空で全体で1つ。文脈で条件付けないので、文脈の割合は決めない。1回だけの並びはcの1つ
   assert.equal(rows[0]!.occurrences, 5);
-  assert.equal(rows[0]!.contexts, 1);
-  assert.equal(rows[0]!.singletonContexts, 0);
-  assert.equal(rows[0]!.contextSingletonRatio, 0);
-  // 0次の1回だけの並び: cの1つ
+  assert.equal(rows[0]!.contextSingletonRatio, undefined);
+  assert.equal(rows[0]!.singleContinuationRatio, undefined);
   assert.equal(rows[0]!.singletonGrams, 1);
   assert.equal(rows[0]!.gramSingletonRatio, 1 / 5);
-  // 1次: 4組。文脈aは2回、文脈bは2回（baとbc）。1回だけの文脈は無い
+  // 1次: 4組。文脈aは2回で続きがbだけ、文脈bは2回で続きがaとc。1回だけの文脈は無い
   assert.equal(rows[1]!.occurrences, 4);
   assert.equal(rows[1]!.contexts, 2);
   assert.equal(rows[1]!.singletonContexts, 0);
-  // 2次: 3組。文脈abは2回（abaとabc）、文脈baは1回（bab）。1回だけの文脈はbaの1つ
+  assert.equal(rows[1]!.contextSingletonRatio, 0);
+  assert.equal(rows[1]!.singleContinuationOccurrences, 2);
+  assert.equal(rows[1]!.singleContinuationRatio, 2 / 4);
+  // 2次: 3組。文脈abは2回で続きがaとc、文脈baは1回（bab）で続きがbだけ。1回だけの文脈はbaの1つ
   assert.equal(rows[2]!.occurrences, 3);
   assert.equal(rows[2]!.contexts, 2);
   assert.equal(rows[2]!.singletonContexts, 1);
   assert.equal(rows[2]!.contextSingletonRatio, 1 / 3);
+  assert.equal(rows[2]!.singleContinuationRatio, 1 / 3);
   assert.equal(rows[2]!.singletonGrams, 3);
+});
+
+test('続きが1種類の文脈は、何回出ても数える', () => {
+  // abcabcabc。1次の文脈はa,b,cがそれぞれ続きを1種類だけ持ち、2回以上出る。文脈が1回だけの割合は0、続きが1種類の割合は1
+  const rows = ngramSufficiency(countNgramsInRuns([[...'abcabcabc']], 1));
+  assert.equal(rows[1]!.singletonContexts, 0);
+  assert.equal(rows[1]!.contextSingletonRatio, 0);
+  assert.equal(rows[1]!.singleContinuationRatio, 1);
 });
 
 test('文脈の切り出しは、文字列の単位でも最後の1単位だけを除く', () => {
   const tables = countNgramsInRuns([['ab', 'c', 'ab', 'c', 'd']], 2, S);
   const rows = ngramSufficiency(tables, S);
-  // 2次の並びは(ab,c,ab)・(c,ab,c)・(ab,c,d)。文脈は(ab,c)が2回、(c,ab)が1回
+  // 2次の並びは(ab,c,ab)・(c,ab,c)・(ab,c,d)。文脈は(ab,c)が2回で続きが2種類、(c,ab)が1回
   assert.equal(rows[2]!.occurrences, 3);
   assert.equal(rows[2]!.contexts, 2);
   assert.equal(rows[2]!.singletonContexts, 1);
+  assert.equal(rows[2]!.singleContinuationRatio, 1 / 3);
 });
 
-test('足りている最大の次数は、割合が上限以下の間の最後の次数で、超えた次数より上は見ない', () => {
+test('足りている最大の次数は、1次から見て割合が上限以下の間の最後の次数で、0次は判定しない', () => {
   const row = (order: number, ratio: number | undefined) => ({
     order,
     occurrences: 100,
@@ -94,13 +95,15 @@ test('足りている最大の次数は、割合が上限以下の間の最後�
     singletonGrams: 0,
     contexts: 0,
     singletonContexts: 0,
-    contextSingletonRatio: ratio,
+    singleContinuationOccurrences: 0,
+    contextSingletonRatio: undefined,
+    singleContinuationRatio: ratio,
     gramSingletonRatio: undefined,
   });
-  assert.equal(sufficientOrder([row(0, 0), row(1, 0.05), row(2, 0.1), row(3, 0.3), row(4, 0.05)]), 2);
-  assert.equal(sufficientOrder([row(0, 0), row(1, 0.11)]), 0);
+  assert.equal(sufficientOrder([row(0, undefined), row(1, 0.05), row(2, 0.1), row(3, 0.3), row(4, 0.05)]), 2);
+  assert.equal(sufficientOrder([row(0, undefined), row(1, 0.11)]), undefined);
   assert.equal(sufficientOrder([row(0, undefined)]), undefined);
-  assert.equal(sufficientOrder([row(0, 0), row(1, 0.2)], 0.25), 1);
+  assert.equal(sufficientOrder([row(0, undefined), row(1, 0), row(2, 0.2)], 0.25), 2);
 });
 
 test('2つの系列は同じ文字を数え、文節の表の0次の出現数は走りの文節数の合計になる', () => {
