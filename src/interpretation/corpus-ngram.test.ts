@@ -54,7 +54,7 @@ test('系列: 片仮名は書き換えず、英字と数字は取り除く', () 
 });
 
 test('文脈が1回だけの割合: 手で数えた値と一致する', () => {
-  // 系列 a b a b c を1つの走りに置く。2次の並び: aba, bab, abc（各1回）。1次: ab(2) ba(1) bc(1)
+  // 系列はa,b,a,b,cの5単位で、1つの走りに置く。2次の並びはaba・bab・abcが各1回、1次の並びはabが2回・baとbcが各1回
   const tables = countNgramsInRuns([['a', 'b', 'a', 'b', 'c']], 2);
   const rows = ngramSufficiency(tables);
   // 0次: 5回。文脈は空で全体で1つ
@@ -62,14 +62,14 @@ test('文脈が1回だけの割合: 手で数えた値と一致する', () => {
   assert.equal(rows[0]!.contexts, 1);
   assert.equal(rows[0]!.singletonContexts, 0);
   assert.equal(rows[0]!.contextSingletonRatio, 0);
-  // 0次の1回だけの並び: c の1つ
+  // 0次の1回だけの並び: cの1つ
   assert.equal(rows[0]!.singletonGrams, 1);
   assert.equal(rows[0]!.gramSingletonRatio, 1 / 5);
-  // 1次: 4組。文脈 a(2回) b(2回: ba, bc)。1回だけの文脈は無い
+  // 1次: 4組。文脈aは2回、文脈bは2回（baとbc）。1回だけの文脈は無い
   assert.equal(rows[1]!.occurrences, 4);
   assert.equal(rows[1]!.contexts, 2);
   assert.equal(rows[1]!.singletonContexts, 0);
-  // 2次: 3組。文脈 ab(2回: aba, abc)と ba(1回)。1回だけの文脈は ba の1つ
+  // 2次: 3組。文脈abは2回（abaとabc）、文脈baは1回（bab）。1回だけの文脈はbaの1つ
   assert.equal(rows[2]!.occurrences, 3);
   assert.equal(rows[2]!.contexts, 2);
   assert.equal(rows[2]!.singletonContexts, 1);
@@ -80,7 +80,7 @@ test('文脈が1回だけの割合: 手で数えた値と一致する', () => {
 test('文脈の切り出しは、文字列の単位でも最後の1単位だけを除く', () => {
   const tables = countNgramsInRuns([['ab', 'c', 'ab', 'c', 'd']], 2, S);
   const rows = ngramSufficiency(tables, S);
-  // 2次: ab c ab / c ab c / ab c d。文脈は「ab,c」(2回)と「c,ab」(1回)
+  // 2次の並びは(ab,c,ab)・(c,ab,c)・(ab,c,d)。文脈は(ab,c)が2回、(c,ab)が1回
   assert.equal(rows[2]!.occurrences, 3);
   assert.equal(rows[2]!.contexts, 2);
   assert.equal(rows[2]!.singletonContexts, 1);
