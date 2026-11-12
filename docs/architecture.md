@@ -532,7 +532,7 @@ src/
   router.tsx
 ```
 
-`src/` の外にある `scripts/` は、ビルドや運用で単体実行する道具。`src/` の層に属さず、依存の規則の検査対象でもない。`src/` から `scripts/` をimportしない。単体実行するファイルの純粋な部分は `scripts/<名前>-core.ts` に分け、`test/` からテストする（例: `scripts/agent-usage.ts`）。
+`src/` の外にある `scripts/` は、ビルドや運用で単体実行する道具。`src/` の層に属さず、依存の規則の検査対象でもない。`src/` から `scripts/` をimportしない。単体実行するファイルの純粋な部分は `scripts/<名前>-core.ts` に分け、`test/` からテストする（例: `scripts/generate-reading-candidates.ts`）。
 
 ## 依存の規則
 
