@@ -35,7 +35,7 @@ export interface CorpusSequences {
 
 const WHITESPACE = /\s/u;
 
-/** 系列に入れる文字。ひらがな・片仮名・長音・濁点と半濁点の結合文字と、前処理が残す`、``。`。 */
+/** 系列に入れる文字。ひらがな・片仮名・長音・濁点と半濁点（結合文字を含む）と、前処理が残す`、``。`。 */
 const SEQUENCE_CHAR = /[\p{Script=Hiragana}\p{Script=Katakana}\u30FC\u3099-\u309C、。]/u;
 
 /**
