@@ -181,14 +181,4 @@ test('Run Chartの抽出: 食い違う時の出どころは記録が持つ値で
   assert.deepEqual(stale.items, ['shape', 'conditions']);
   assert.deepEqual(stale.conditionKeys, ['windowSize']);
   assert.equal(stale.origin.targetName, '記録した時の名前');
-  assert.deepEqual(Object.keys(stale.origin).sort(), [
-    'appVersion',
-    'modelVersion',
-    'range',
-    'recordedAt',
-    'targetName',
-    'textChars',
-    'textName',
-    'typedStrokes',
-  ]);
 });

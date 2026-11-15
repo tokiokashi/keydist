@@ -102,7 +102,7 @@ export function rangeNumberOf(bounds: readonly number[], range: { readonly start
 const MISMATCH_LABELS: Readonly<Record<RecordMismatchItem, string>> = {
   target: '対象',
   shape: '物理配列',
-  fingerAssignment: '指の割り当て',
+  fingerAssignment: '指の割当',
   conditions: '条件',
   version: 'モデルの版',
   text: 'テキスト',
