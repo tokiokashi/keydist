@@ -89,7 +89,7 @@ function RecordOrigin({ origin }: { readonly origin: RunChartRecordOrigin }) {
     ['アプリの版', `${origin.appVersion}（モデルの版 ${origin.modelVersion}）`],
     ['前処理', `記号を${origin.keepSymbols ? '残す' : '除く'}、英数字を${origin.keepAlphanumerics ? '残す' : '除く'}`],
     ['ローマ字の規則', origin.romajiRuleId ?? 'なし'],
-    ['先読み幅 N', String(origin.windowSize)],
+    ['先読み幅N', String(origin.windowSize)],
   ];
   return (
     <dl className="run-chart-record-origin" data-run-chart-record-origin="">
