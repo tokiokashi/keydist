@@ -25,9 +25,9 @@ export function unmeasurableText(reason: RecordUnmeasurable | 'no-range'): strin
   }
 }
 
-/** 打ち終えた記録を保存できない時の文。同じ範囲を同じ打ち方で打っても同じ結果になるので、打ち直しは頼まない。 */
+/** 打ち終えた記録を保存できない時の文。規則と違う綴りで打った時に起きるので、規則の綴りで打つことを案内する。 */
 export function failureText(): string {
-  return 'この範囲の記録を保存できませんでした。別の範囲か、別の配列で記録してください。';
+  return 'この範囲の記録を保存できませんでした。ローマ字規則のとおりの綴りで打つと保存できます。';
 }
 
 export const COMPUTING_TEXT = '打鍵の列を作っています…';

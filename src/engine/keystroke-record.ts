@@ -38,6 +38,8 @@ export interface RecordRangeStatus {
   /** 範囲に入る最初のストロークの位置と、ストロークの数。打てない範囲では無い。 */
   readonly firstStroke?: number;
   readonly strokeCount?: number;
+  /** 範囲の中で、打鍵の列から飛ばされた改行・空白の文字位置。打てる範囲だけが持つ。 */
+  readonly skippedBlanks?: readonly number[];
   /** 打てない理由。打てる範囲では無い。 */
   readonly unmeasurable?: RecordUnmeasurable;
 }
@@ -107,7 +109,8 @@ export function recordRangeStatuses(input: ResolvedInput, trace: Trace): RecordR
     }
     if (sentenceUnmeasurable(sentenceSteps({ strokes: strokes.slice(from, to + 1) })) !== undefined)
       return { start, end, unmeasurable: 'uncapturable-key' };
-    return { start, end, firstStroke: from, strokeCount: count };
+    const skippedBlanks = trace.skippedPositions.filter((position) => position >= start && position < end);
+    return { start, end, firstStroke: from, strokeCount: count, skippedBlanks };
   });
 }
 
@@ -232,6 +235,7 @@ function spellingRebuildOf(
   context: SpellingContext,
   span: { readonly from: number; readonly to: number },
   baseStrokes: readonly Stroke[],
+  skippedBlanks: ReadonlySet<number>,
 ): SpellingRebuild | undefined {
   // 範囲の打鍵の列が、かなの単位と1対1に対応する時だけ、綴りを作り直せる。
   const groupEnds: number[] = [];
@@ -239,7 +243,7 @@ function spellingRebuildOf(
     if (index === 0 || stroke.inputIndex !== baseStrokes[index - 1]!.inputIndex) groupEnds.push(index);
   });
   const active: number[] = [];
-  for (let unit = span.from; unit < span.to; unit++) if (!BLANK.test(context.units[unit]!.kana)) active.push(unit);
+  for (let unit = span.from; unit < span.to; unit++) if (!skippedBlanks.has(context.starts[unit]!)) active.push(unit);
   if (groupEnds.length !== active.length) return undefined;
   const activeBefore = (unit: number) => active.filter((index) => index < unit).length;
   const sentenceEnds = new Set(sentenceEndsOf(input.text));
@@ -323,7 +327,8 @@ export function recordPlanOf(input: ResolvedInput, trace: Trace, rangeIndex: num
 export function recordPlanFrom(input: ResolvedInput, range: RecordRangeStatus, strokes: readonly Stroke[], inputChars: number): RecordPlanResult {
   const context = spellingContextOf(input, inputChars);
   const span = context === undefined ? undefined : unitSpan(context, range.start, range.end, inputChars);
-  const rebuild = context === undefined || span === undefined ? undefined : spellingRebuildOf(input, context, span, strokes);
+  const rebuild =
+    context === undefined || span === undefined ? undefined : spellingRebuildOf(input, context, span, strokes, new Set(range.skippedBlanks ?? []));
   const source: SentenceSpellingSource | undefined =
     rebuild === undefined
       ? undefined

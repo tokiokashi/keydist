@@ -315,3 +315,27 @@ test('範囲を打つキーの列の照合値は、打った綴りで変わり�
   assert.equal(digest(RULE), digest(RULE));
   assert.notEqual(digest(RULE), digest(LAST));
 });
+
+test('英数字の間の半角空白（QWERTYでは1打になる）を含む範囲でも、綴りを選べて、eの集合がRun Chartの点の位置と等しい', () => {
+  const text = `${TEXT.slice(0, 100)}ab cd${TEXT.slice(100)}`;
+  const input = resolve('qwerty', undefined, text, true);
+  const trace = recordBaseTrace(input);
+  assert.ok(!trace.skippedPositions.includes(102), '半角空白は打鍵の列から飛ばされない');
+  const positions = pointPositionsOf(trace);
+  const statuses = recordRangeStatuses(input, trace);
+  assert.ok(statuses.every((status) => status.unmeasurable === undefined));
+  for (const [rangeIndex, status] of statuses.entries()) {
+    const planned = recordPlanOf(input, trace, rangeIndex);
+    assert.ok(planned.ok && planned.rebuild !== undefined, `範囲${rangeIndex}で綴りを選べる`);
+    for (const choose of [MIXED, LAST]) {
+      const record = typeRange(planned.plan, choose);
+      const finished = finish(input, trace, rangeIndex, planned, record);
+      assert.ok(finished.ok, finished.ok ? '' : finished.reason);
+      const expected = positions.filter((position) => position >= status.start && position < status.end);
+      assert.deepEqual(
+        [...new Set(finished.record.ends)].sort((a, b) => a - b),
+        expected,
+      );
+    }
+  }
+});
