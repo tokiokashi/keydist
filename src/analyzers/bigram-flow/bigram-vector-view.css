@@ -728,3 +728,8 @@
     gap: 0.15rem;
   }
 }
+
+/* Keyboard Flowの表は行が多くなるので、高さを抑えて表の中でスクロールさせる */
+.flow-keyboard-block .figure-table-scroll {
+  max-height: 30rem;
+}
