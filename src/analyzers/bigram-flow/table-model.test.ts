@@ -37,7 +37,7 @@ const stroke = (index: number, p: Press): Stroke => ({
   positions: {} as Stroke['positions'],
 });
 
-/** f→d を3回、d→f を1回、f→f（連打）を2回、右手の j→k を1回含む。 */
+/** 左手の2キーの往復・同じキーの連打・右手の2キーの移動を含む打鍵の列。 */
 function fixtureTrace(): Trace {
   const f = () => press('LI', 'f', 4);
   const d = () => press('LM', 'd', 3);
