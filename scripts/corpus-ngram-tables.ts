@@ -25,7 +25,10 @@ import {
 import {
   detectContextLength,
   MAX_DISTANCE,
-  PERMUTATION_COUNT,
+  PERMUTATIONS_FULL,
+  PERMUTATIONS_SIZED,
+  P_VALUE_LIMIT,
+  DISTANCE_GRID,
   SELECTION_SEED_OFFSET,
   selectRunsUpTo,
   type ContextLength,
@@ -129,14 +132,29 @@ function contextLengthLabel(result: ContextLength): string {
 
 function distanceTable(result: ContextLength): string {
   return table(
-    ['距離d', 'I(d)（ビット）', '並べ替えた20通りの平均', '並べ替えた20通りの最大', '超過量（ビット）', '検出'],
+    [
+      '距離d',
+      '組の数',
+      'I(d)（ビット）',
+      '並べ替えた組の平均',
+      '超過量（ビット）',
+      '超過量 / d=1の超過量',
+      'p値',
+      '検出',
+      'Grassbergerの推定量（元）',
+      'Grassbergerの推定量（並べ替え種1）',
+    ],
     result.rows.map((row) => [
       String(row.distance),
+      String(row.pairs),
       fixed(row.mutualInformation),
       fixed(row.permutedMean),
-      fixed(row.permutedMax),
       fixed(row.excess),
+      fixed(row.excessRatio, 4),
+      fixed(row.pValue, 4),
       row.detected ? 'できた' : 'できない',
+      fixed(row.grassberger),
+      fixed(row.grassbergerPermuted),
     ]),
   );
 }
@@ -158,7 +176,12 @@ interface SizeTrial {
   readonly bunsetsuRatios: readonly (number | undefined)[];
 }
 
-function trial(kana: readonly (readonly string[])[], bunsetsu: readonly (readonly string[])[], indices: readonly number[]): SizeTrial {
+function trial(
+  kana: readonly (readonly string[])[],
+  bunsetsu: readonly (readonly string[])[],
+  indices: readonly number[],
+  full?: { kana: ContextLength; bunsetsu: ContextLength },
+): SizeTrial {
   const kanaRuns = indices.map((index) => kana[index]!);
   const bunsetsuRuns = indices.map((index) => bunsetsu[index]!);
   const kanaRows = ngramSufficiency(countNgramsInRuns(kanaRuns, 3));
@@ -166,14 +189,18 @@ function trial(kana: readonly (readonly string[])[], bunsetsu: readonly (readonl
   return {
     kanaUnits: kanaRuns.reduce((sum, run) => sum + run.length, 0),
     bunsetsuUnits: bunsetsuRuns.reduce((sum, run) => sum + run.length, 0),
-    kanaLength: detectContextLength(kanaRuns, MAX_DISTANCE.kana),
-    bunsetsuLength: detectContextLength(bunsetsuRuns, MAX_DISTANCE.bunsetsu),
+    kanaLength: full?.kana ?? detectContextLength(kanaRuns, MAX_DISTANCE.kana, { permutations: PERMUTATIONS_SIZED }),
+    bunsetsuLength: full?.bunsetsu ?? detectContextLength(bunsetsuRuns, MAX_DISTANCE.bunsetsu, { permutations: PERMUTATIONS_SIZED }),
     kanaRatios: [kanaRows[2]!.singleContinuationRatio, kanaRows[3]!.singleContinuationRatio],
     bunsetsuRatios: [bunsetsuRows[1]!.singleContinuationRatio, bunsetsuRows[2]!.singleContinuationRatio],
   };
 }
 
-function sizeTable(kana: readonly (readonly string[])[], bunsetsu: readonly (readonly string[])[]): string {
+function sizeTable(
+  kana: readonly (readonly string[])[],
+  bunsetsu: readonly (readonly string[])[],
+  full: { kana: ContextLength; bunsetsu: ContextLength },
+): string {
   const lengths = kana.map((run) => run.length);
   const total = lengths.reduce((sum, length) => sum + length, 0);
   const all = kana.map((_, index) => index);
@@ -216,7 +243,7 @@ function sizeTable(kana: readonly (readonly string[])[], bunsetsu: readonly (rea
       SELECTION_SEEDS.map((seed) => trial(kana, bunsetsu, selectRunsUpTo(lengths, total * value, seed))),
     );
   }
-  addRow('1/1', [trial(kana, bunsetsu, all)]);
+  addRow('1/1', [trial(kana, bunsetsu, all, full)]);
   return table(
     [
       '大きさ',
@@ -288,25 +315,27 @@ async function main(): Promise<void> {
   );
   if (args.context) {
     out.push(
-      `- 文脈の長さの推定: 距離を置いた2単位の相互情報量。乱数生成器は${PRNG_NAME}。並べ替えの種は1〜${PERMUTATION_COUNT}。走りを選ぶ種は${SELECTION_SEEDS.join('・')}（生成器の種は${SELECTION_SEED_OFFSET}を足した値）。調べた距離の上限: かな${MAX_DISTANCE.kana}、文節${MAX_DISTANCE.bunsetsu}`,
+      `- 文脈の長さの推定: 距離を置いた2単位の相互情報量（出現回数の比で求める）。乱数生成器は${PRNG_NAME}。基準は距離ごとに組の2つ目だけを全組の間で並べ替えた列。全体の表の並べ替えは種1〜${PERMUTATIONS_FULL}の${PERMUTATIONS_FULL}通り（p値は(1 + 元以上の数) / ${PERMUTATIONS_FULL + 1}）、大きさを変えた表の1/16〜1/2は種1〜${PERMUTATIONS_SIZED}の${PERMUTATIONS_SIZED}通り（p値は(1 + 元以上の数) / ${PERMUTATIONS_SIZED + 1}、1/1の行は全体の表の値）。p値が${P_VALUE_LIMIT}以下を検出とする。走りを選ぶ種は${SELECTION_SEEDS.join('・')}（生成器の種は${SELECTION_SEED_OFFSET}を足した値）。調べた距離の格子: ${DISTANCE_GRID.join('・')}（かなは${MAX_DISTANCE.kana}まで、文節は${MAX_DISTANCE.bunsetsu}まで）`,
     );
   }
   out.push('');
 
   if (args.context) {
     const started = performance.now();
-    for (const [title, runs, limit] of [
-      ['かなの系列', sequences.kana, MAX_DISTANCE.kana],
-      ['文節の読みの系列', sequences.bunsetsu, MAX_DISTANCE.bunsetsu],
+    const full: { kana?: ContextLength; bunsetsu?: ContextLength } = {};
+    for (const [title, key, runs, limit] of [
+      ['かなの系列', 'kana', sequences.kana, MAX_DISTANCE.kana],
+      ['文節の読みの系列', 'bunsetsu', sequences.bunsetsu, MAX_DISTANCE.bunsetsu],
     ] as const) {
-      const detected = detectContextLength(runs, limit);
+      const detected = detectContextLength(runs, limit, { permutations: PERMUTATIONS_FULL, withGrassberger: true });
+      full[key] = detected;
       out.push(`## 全体の${title}の、距離ごとの相互情報量`, '');
       out.push(distanceTable(detected), '');
-      out.push(`検出できた文脈の長さ: ${contextLengthLabel(detected)}`, '');
+      out.push(`検出できた文脈の長さ（格子の点で、p値が${P_VALUE_LIMIT}以下の距離が途切れずに続く最大）: ${contextLengthLabel(detected)}`, '');
     }
     out.push('## コーパスの大きさを変えた時', '');
     out.push('各列の5通りの値は、最小 / 中央値 / 最大。割合は続きが1種類の文脈の出現の割合。', '');
-    out.push(sizeTable(sequences.kana, sequences.bunsetsu), '');
+    out.push(sizeTable(sequences.kana, sequences.bunsetsu, { kana: full.kana!, bunsetsu: full.bunsetsu! }), '');
     out.push(
       `実行時間（相互情報量と大きさの変化の計算。コーパスの読み込みと表の作成を除く）: ${((performance.now() - started) / 1000).toFixed(1)}秒`,
       '',
