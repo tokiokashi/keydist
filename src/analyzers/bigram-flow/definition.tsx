@@ -46,6 +46,18 @@ import { keyDetailTooltip, keyName } from '../key-detail-view.ts';
 import type { AnalyzerSettingsProps, KeySelectionProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
 import { useSharedScale } from '../shared-scale.tsx';
 import { skippedCharsText } from './skipped-text.ts';
+import {
+  flowEdgeLabel,
+  formatMeanDistance,
+  formatMagnitude,
+  formatRollRate,
+  keyboardFlowTableModel,
+  KEYBOARD_FLOW_TABLE_CAPTION,
+  RELATIVE_VECTORS_TABLE_CAPTION,
+  relativeVectorsTableModel,
+  rollRates,
+} from './table-model.ts';
+import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import './bigram-vector-view.css';
 
 /**
@@ -225,7 +237,7 @@ function KeyboardFlow({
         className="flow-keyboard-svg"
         viewBox={`0 0 ${AREA_WIDTH} ${AREA_HEIGHT}`}
         role={keySelection === undefined ? 'img' : 'group'}
-        aria-label="キーボード上の打鍵の流れ"
+        aria-label={KEYBOARD_FLOW_TABLE_CAPTION}
       >
         {/* 自作の物理配列がエリアに収まらない時だけshrinkが1未満。エリアの中心を軸に縮める。 */}
         <g
@@ -342,7 +354,7 @@ function KeyboardFlow({
                     animate={{ opacity: hoverVisible ? (hoveredKeyId === null ? 0.72 : 0.96) : 0.035, pathLength: 1 }}
                     transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 210, damping: 28, mass: 0.7 }}
                   >
-                    <title>{`${vector.fromKeyIds.join('+')} → ${vector.toKeyIds.join('+')} · ${vector.weight}回`}</title>
+                    <title>{`${flowEdgeLabel(vector)} · ${vector.weight}回`}</title>
                   </motion.path>
                 );
               })}
@@ -474,9 +486,15 @@ function MovementProfilePlot({
     polarPoint(originX, originY, polarBaseRadius + sample.density * polarAmplitude * polarGain, sample.angle),
   );
   const polarPath = smoothClosedPath(polarPoints);
-  const rollTotal = summary.inwardWeight + summary.outwardWeight;
-  const inwardRate = rollTotal === 0 ? 0 : summary.inwardWeight / rollTotal;
-  const outwardRate = rollTotal === 0 ? 0 : summary.outwardWeight / rollTotal;
+  const { inward: inwardRate, outward: outwardRate } = rollRates(summary);
+
+  const rateSpan = (kind: 'inward' | 'outward', rate: number) => (
+    <span key={kind} role="img" aria-label={`${kind === 'inward' ? '内向き' : '外向き'} ${formatRollRate(rate)}`}>
+      <i className={`flow-dot flow-dot-${kind}`} /> {formatRollRate(rate)}
+    </span>
+  );
+  const inwardSpan = rateSpan('inward', inwardRate);
+  const outwardSpan = rateSpan('outward', outwardRate);
 
   return (
     <div className="flow-mini-panel flow-profile-panel">
@@ -484,8 +502,8 @@ function MovementProfilePlot({
         <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
         <span className="flow-profile-stats">
           <span>{relative.length}件</span>
-          <span>平均移動 {mean.distance.toFixed(2)}u</span>
-          <span>まとまり {summary.magnitude.toFixed(2)}</span>
+          <span>平均移動 {formatMeanDistance(mean)}u</span>
+          <span>まとまり {formatMagnitude(summary)}</span>
         </span>
       </header>
       <div className="flow-profile-viewport">
@@ -601,27 +619,7 @@ function MovementProfilePlot({
             </>
           )}
         </div>
-        <div>
-          {hand === 'left' ? (
-            <>
-              <span role="img" aria-label={`外向き ${(outwardRate * 100).toFixed(1)}%`}>
-                <i className="flow-dot flow-dot-outward" /> {(outwardRate * 100).toFixed(1)}%
-              </span>
-              <span role="img" aria-label={`内向き ${(inwardRate * 100).toFixed(1)}%`}>
-                <i className="flow-dot flow-dot-inward" /> {(inwardRate * 100).toFixed(1)}%
-              </span>
-            </>
-          ) : (
-            <>
-              <span role="img" aria-label={`内向き ${(inwardRate * 100).toFixed(1)}%`}>
-                <i className="flow-dot flow-dot-inward" /> {(inwardRate * 100).toFixed(1)}%
-              </span>
-              <span role="img" aria-label={`外向き ${(outwardRate * 100).toFixed(1)}%`}>
-                <i className="flow-dot flow-dot-outward" /> {(outwardRate * 100).toFixed(1)}%
-              </span>
-            </>
-          )}
-        </div>
+        <div>{hand === 'left' ? [outwardSpan, inwardSpan] : [inwardSpan, outwardSpan]}</div>
       </div>
     </div>
   );
@@ -679,6 +677,13 @@ export function BigramFlowBody({ layout, geometry, trace, extracted, options, on
   // 図のブロックの外に置くので、指を選んでも閉じず、動かした位置も保たれる
   const keyboardFlowSettings = useFigureSettings('Keyboard Flow');
   const relativeVectorsSettings = useFigureSettings('Relative vectors');
+  // 図と表の切り替えは保存しない（再読み込みで図に戻る）
+  const [flowAsTable, setFlowAsTable] = useState(false);
+  const [relativeAsTable, setRelativeAsTable] = useState(false);
+  const keyNameOf = useMemo(() => {
+    const standard = keyboardStandardForGeometryId(geometry.id);
+    return (keyId: string) => keyName(keyId, layout.legends.get(keyId), standard);
+  }, [geometry.id, layout]);
   // Relative vectorsの半径は、並んだペイン全部の最長ベクトルまで（配るものが無ければ自分の最長）
   const relativeMaxDistance = useSharedScale('bigram-flow:relative-radius', { min: 0, max: extracted.relativeMaxDistance }).max;
 
@@ -712,22 +717,27 @@ export function BigramFlowBody({ layout, geometry, trace, extracted, options, on
             Keyboard Flow <span className="flow-block-subject flow-block-count">2打鍵 {extracted.rawCount.toLocaleString()}組</span>
           </h3>
           <InfoButton name="Keyboard Flow" description={KEYBOARD_FLOW_READING} />
+          <FigureTableSwitch pressed={flowAsTable} onToggle={() => setFlowAsTable((current) => !current)} target={KEYBOARD_FLOW_TABLE_CAPTION} />
           {onOptionsChange !== undefined ? keyboardFlowSettings.toggle : null}
         </div>
-        <KeyboardFlow
-          geometry={geometry}
-          layout={layout}
-          vectors={extracted.keyboardFlow.vectors}
-          repeatCounts={extracted.keyboardFlow.repeatCounts}
-          maxWeight={extracted.keyboardFlow.maxWeight}
-          selectedFingers={selectedFingers}
-          lineScale={lineScale}
-          layerOrder={layerOrder}
-          hoverScale={hoverScale}
-          showRepeatBadge={repeatBadge}
-          keyDetails={extracted.keyDetails}
-          keySelection={keySelection}
-        />
+        {flowAsTable ? (
+          <FigureTable model={keyboardFlowTableModel(extracted.keyboardFlow.vectors, extracted.keyboardFlow.repeatCounts, repeatBadge, keyNameOf)} />
+        ) : (
+          <KeyboardFlow
+            geometry={geometry}
+            layout={layout}
+            vectors={extracted.keyboardFlow.vectors}
+            repeatCounts={extracted.keyboardFlow.repeatCounts}
+            maxWeight={extracted.keyboardFlow.maxWeight}
+            selectedFingers={selectedFingers}
+            lineScale={lineScale}
+            layerOrder={layerOrder}
+            hoverScale={hoverScale}
+            showRepeatBadge={repeatBadge}
+            keyDetails={extracted.keyDetails}
+            keySelection={keySelection}
+          />
+        )}
       </section>
 
       <AnimatePresence initial={false}>
@@ -750,35 +760,46 @@ export function BigramFlowBody({ layout, geometry, trace, extracted, options, on
                 source === 'actual' && extracted.hasCrossHandInAnalysis ? `${RELATIVE_VECTORS_READING}${CROSS_HAND_NOTE}` : RELATIVE_VECTORS_READING
               }
             />
+            <FigureTableSwitch
+              pressed={relativeAsTable}
+              onToggle={() => setRelativeAsTable((current) => !current)}
+              target={RELATIVE_VECTORS_TABLE_CAPTION}
+            />
             {onOptionsChange !== undefined ? relativeVectorsSettings.toggle : null}
           </div>
-          <div className="flow-two-up">
-            <MovementProfilePlot
-              hand="left"
-              profile={extracted.hands.left}
-              maxDistance={relativeMaxDistance}
-              maxVectorWeight={extracted.relativeMaxWeight}
-              polarGain={polarGain}
-            />
-            <MovementProfilePlot
-              hand="right"
-              profile={extracted.hands.right}
-              maxDistance={relativeMaxDistance}
-              maxVectorWeight={extracted.relativeMaxWeight}
-              polarGain={polarGain}
-            />
-          </div>
-          <div className="flow-roll-legend" aria-hidden="true">
-            <span>
-              <i className="flow-dot flow-dot-inward" /> 内向き
-            </span>
-            <span>
-              <i className="flow-dot flow-dot-outward" /> 外向き
-            </span>
-            <span className="flow-profile-scale-summary">
-              最大{movementPlotScale(relativeMaxDistance).scaleMax}u · ±{polarBandwidth}°
-            </span>
-          </div>
+          {relativeAsTable ? (
+            <FigureTable model={relativeVectorsTableModel(extracted.hands)} />
+          ) : (
+            <>
+              <div className="flow-two-up">
+                <MovementProfilePlot
+                  hand="left"
+                  profile={extracted.hands.left}
+                  maxDistance={relativeMaxDistance}
+                  maxVectorWeight={extracted.relativeMaxWeight}
+                  polarGain={polarGain}
+                />
+                <MovementProfilePlot
+                  hand="right"
+                  profile={extracted.hands.right}
+                  maxDistance={relativeMaxDistance}
+                  maxVectorWeight={extracted.relativeMaxWeight}
+                  polarGain={polarGain}
+                />
+              </div>
+              <div className="flow-roll-legend" aria-hidden="true">
+                <span>
+                  <i className="flow-dot flow-dot-inward" /> 内向き
+                </span>
+                <span>
+                  <i className="flow-dot flow-dot-outward" /> 外向き
+                </span>
+                <span className="flow-profile-scale-summary">
+                  最大{movementPlotScale(relativeMaxDistance).scaleMax}u · ±{polarBandwidth}°
+                </span>
+              </div>
+            </>
+          )}
         </motion.section>
       </AnimatePresence>
       {onOptionsChange === undefined ? null : (
