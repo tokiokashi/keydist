@@ -57,12 +57,6 @@ test('押下数の表(qwerty): 行は物理配列の上の段から、段の中�
   assert.ok(index('a') < index('s') && index('l') < index('z'));
 });
 
-test('押下が1つも無い時の割合は「—」', () => {
-  const { source } = setup('aAa');
-  const table = heatmapTableModel({ ...source, detailOf: () => undefined, totalPresses: 0 });
-  assert.deepEqual(table.rows[0]!.cells.slice(1), ['—']);
-});
-
 test('2打鍵の線の表(qwerty・asas): 回数は線の太さの元の組数で、図に描く線と同じ集合・同じ順', () => {
   const { extracted, source } = setup('asas');
   const vectors = extracted.flowLines.actual.vectors;

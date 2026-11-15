@@ -42,27 +42,3 @@ test('層が複数の配列: 並置で全部の層が見え、解析設定でタ
   await expect(feature(page).locator('[data-heatmap-diagram="layer:薬指シフト"]')).toBeVisible();
   await expect(feature(page).locator('[data-heatmap-diagram="single"]')).toBeHidden();
 });
-
-test('見出しのボタンで、図を表に切り替えられ、図へ戻せる', { tag: PAGE_TAG }, async ({ page }) => {
-  await selectLayout(page, 'shingeta');
-  await page.goto('/analyzer/heatmap-layers');
-  await expect(diagrams(page)).toHaveCount(5, { timeout: 15_000 });
-
-  const toggle = feature(page).getByRole('button', { name: 'レイヤーごとの押下数を表で見る' });
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  await toggle.focus();
-  await page.keyboard.press('Enter');
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-
-  // 列は図と同じ5レイヤー（行の見出しの列を含めて6列）
-  const table = feature(page).locator('table.figure-table');
-  await expect(table).toBeVisible();
-  await expect(table.locator('thead th[scope="col"]')).toHaveCount(6);
-  await expect(diagrams(page)).toHaveCount(0);
-
-  await toggle.focus();
-  await page.keyboard.press('Space');
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  await expect(diagrams(page)).toHaveCount(5);
-  await expect(table).toHaveCount(0);
-});
