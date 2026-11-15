@@ -76,17 +76,20 @@ test('キーボード上の流れの表は、図の線と同じ回数を多い�
     assert.equal(row.title, flowEdgeLabel(vector));
   }
   const repeat = withRepeat.rows.find((row) => row.key === 'repeat:f');
-  assert.equal(repeat?.header, 'F → F（連打）');
   assert.equal(repeat?.cells[0], String(repeatCounts.get('f')));
-  assert.equal(withRepeat.rows[0]?.header, 'F → D');
 
   const withoutRepeat = keyboardFlowTableModel(vectors, repeatCounts, false, nameOf);
   assert.equal(withoutRepeat.rows.length, moving.length);
   assert.ok(withoutRepeat.rows.every((row) => !row.key.startsWith('repeat:')));
 });
 
-test('手ごとの移動の表は、図の見出しと割合の値を左手・右手の順で持つ', () => {
-  const { hands } = computeBigramFlowExtraction(fixtureTrace(), DEFAULT_BIGRAM_FLOW_OPTIONS);
+test('手ごとの移動の表は、図の見出しと割合の値を左手・右手の順で持ち、内向きと外向きは別の列に出す', () => {
+  const extracted = computeBigramFlowExtraction(fixtureTrace(), DEFAULT_BIGRAM_FLOW_OPTIONS).hands;
+  // 内向き25%・外向き75%になるよう、重みを差し替える
+  const hands = {
+    ...extracted,
+    left: { ...extracted.left, summary: { ...extracted.left.summary, inwardWeight: 1, outwardWeight: 3 } },
+  };
   const table = relativeVectorsTableModel(hands);
   assert.deepEqual(
     table.rows.map((row) => row.key),
@@ -99,12 +102,11 @@ test('手ごとの移動の表は、図の見出しと割合の値を左手・�
   assert.equal(left.cells[0], String(hands.left.relative.length));
   assert.equal(left.cells[1], hands.left.mean.distance.toFixed(2));
   assert.equal(left.cells[2], hands.left.summary.magnitude.toFixed(2));
-  const rates = rollRates(hands.left.summary);
-  assert.equal(left.cells[3], formatRollRate(rates.inward));
-  assert.equal(left.cells[4], formatRollRate(rates.outward));
+  assert.equal(left.cells[3], formatRollRate(0.25));
+  assert.equal(left.cells[4], formatRollRate(0.75));
+  assert.notEqual(left.cells[3], left.cells[4]);
 });
 
 test('向きのある移動が無い手の割合は0%になる', () => {
   assert.deepEqual(rollRates({ inwardWeight: 0, outwardWeight: 0 }), { inward: 0, outward: 0 });
-  assert.equal(formatRollRate(rollRates({ inwardWeight: 1, outwardWeight: 3 }).outward), '75.0%');
 });

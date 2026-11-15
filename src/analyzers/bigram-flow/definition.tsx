@@ -677,7 +677,6 @@ export function BigramFlowBody({ layout, geometry, trace, extracted, options, on
   // 図のブロックの外に置くので、指を選んでも閉じず、動かした位置も保たれる
   const keyboardFlowSettings = useFigureSettings('Keyboard Flow');
   const relativeVectorsSettings = useFigureSettings('Relative vectors');
-  // Relative vectorsの半径は、並んだペイン全部の最長ベクトルまで（配るものが無ければ自分の最長）
   // 図と表の切り替えは保存しない（再読み込みで図に戻る）
   const [flowAsTable, setFlowAsTable] = useState(false);
   const [relativeAsTable, setRelativeAsTable] = useState(false);
@@ -685,6 +684,7 @@ export function BigramFlowBody({ layout, geometry, trace, extracted, options, on
     const standard = keyboardStandardForGeometryId(geometry.id);
     return (keyId: string) => keyName(keyId, layout.legends.get(keyId), standard);
   }, [geometry.id, layout]);
+  // Relative vectorsの半径は、並んだペイン全部の最長ベクトルまで（配るものが無ければ自分の最長）
   const relativeMaxDistance = useSharedScale('bigram-flow:relative-radius', { min: 0, max: extracted.relativeMaxDistance }).max;
 
   return (

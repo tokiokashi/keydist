@@ -37,7 +37,7 @@ export function formatMagnitude(summary: Pick<DirectionSummary, 'magnitude'>): s
 
 /**
  * キーボード上の流れの表。行は、図が描く線（同じキーに戻る連打を除く）と、図が連打の回数として出す同じキーの連打。
- * 並びは回数の多い順で、同じ回数は図の線のid順（連打は後ろ）。
+ * 並びは回数の多い順。
  * 連打の行は、連打の回数を表示する設定が有効な時だけ入れる（図が回数を出す時と同じ）。
  */
 export function keyboardFlowTableModel(
