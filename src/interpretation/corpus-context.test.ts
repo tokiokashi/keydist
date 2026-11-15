@@ -84,6 +84,21 @@ test('並べ替え: 組の2つ目だけを並べ替え、周辺分布と組の�
   assert.notDeepEqual([...shuffled], [...pairs.second]);
 });
 
+test('検出: 並べ替えた組の平均は、組の2つ目だけを並べ替えた列の値と一致する（走りの長さが違っても）', () => {
+  // 長さの違う走りを混ぜる。全走りの単位を並べ替えて切り直す基準では、この値にならない
+  const runs = [
+    ['a', 'a', 'a', 'a', 'b', 'a', 'a'],
+    ['c', 'd'],
+    ['a', 'b', 'c', 'd', 'a', 'a', 'b', 'b', 'c', 'a'],
+    ['d', 'd', 'a'],
+  ];
+  const pairs = pairsOf(runs, 1)!;
+  const expected = [1, 2, 3].reduce((sum, seed) => sum + mutualInformation({ ...pairs, second: permuteSecond(pairs, seed) }), 0) / 3;
+  const row = detectContextLength(runs, 1, { permutations: 3 }).rows[0]!;
+  assert.equal(row.permutedMean, expected);
+  assert.equal(row.mutualInformation, mutualInformation(pairs));
+});
+
 test('検出: 周期3の系列は、格子の全点で手で出せる値になり、検出できる', () => {
   const periodic = [Array.from({ length: 400 }, (_, i) => 'abc'[i % 3]!)];
   const result = detectContextLength(periodic, 4, { permutations: 19 });

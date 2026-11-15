@@ -176,9 +176,10 @@ function shuffleInPlace(values: Int32Array, seed: number): void {
   }
 }
 
-/** 組の2つ目だけを`createMulberry32(seed)`の乱数でFisher-Yatesに並べ替えた列。1つ目と2つ目の周辺分布と組の数は元と同じで、対応だけが無い。 */
-export function permuteSecond(pairs: DistancePairs, seed: number): Int32Array {
-  const shuffled = Int32Array.from(pairs.second);
+/** 組の2つ目だけを`createMulberry32(seed)`の乱数でFisher-Yatesに並べ替えた列。1つ目と2つ目の周辺分布と組の数は元と同じで、対応だけが無い。`into`を渡すと、その配列に書く。 */
+export function permuteSecond(pairs: DistancePairs, seed: number, into = new Int32Array(pairs.second.length)): Int32Array {
+  const shuffled = into;
+  shuffled.set(pairs.second);
   shuffleInPlace(shuffled, seed);
   return shuffled;
 }
@@ -253,8 +254,7 @@ export function detectContextLength(runs: readonly (readonly string[])[], maxDis
     let atLeast = 0;
     let grassbergerPermuted: number | undefined;
     for (let seed = 1; seed <= options.permutations; seed++) {
-      shuffled.set(pairs.second);
-      shuffleInPlace(shuffled, seed);
+      permuteSecond(pairs, seed, shuffled);
       const value = pluginMutualInformation(pairs.first, shuffled, pairs.alphabet, firstMarginal, secondMarginal);
       sum += value;
       if (value >= observed) atLeast++;
