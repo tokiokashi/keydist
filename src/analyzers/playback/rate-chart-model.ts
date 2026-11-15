@@ -72,6 +72,22 @@ export interface RateChartDisplay {
 const PLOT_HEIGHT = CHART_PLOT_HEIGHT;
 
 /**
+ * 図が出す区間（`start`以上`end`以下）とその中の点。`span`を渡さなければ全体。
+ * 図の座標と表の行が、同じ点を同じ範囲で選ぶための入口。
+ */
+export function rateChartVisiblePoints(allPoints: readonly PlaybackRateChartPoint[], span?: RateChartSpan) {
+  const last = allPoints.at(-1)?.cursor ?? 0;
+  const start = Math.max(0, span?.start ?? 0);
+  const end = Math.min(last, span?.end ?? last);
+  return { start, end, points: allPoints.filter((point) => point.cursor >= start && point.cursor <= end) };
+}
+
+/** 点が、`kind`の帯に入るか。区間の左端の点は、手前の区間のステップなので帯に数えない。 */
+export function rateChartInBand(point: PlaybackRateChartPoint, kind: 'chain' | 'arpeggio', start: number): boolean {
+  return point.cursor > start && point[kind] === true;
+}
+
+/**
  * グラフの幅に対する、横軸（再生位置0から最後まで）の左端と右端の余白の割合（百分率）。
  * シークバーのつまみの動く範囲をこの横軸に合わせるのに使う。
  */
@@ -101,7 +117,7 @@ function bandsOf(points: readonly PlaybackRateChartPoint[], start: number, total
     };
     for (const point of points) {
       if (point.cursor <= start) continue;
-      if (point[kind] === true) startPosition ??= point.cursor - 1;
+      if (rateChartInBand(point, kind, start)) startPosition ??= point.cursor - 1;
       else close(point.cursor - 1);
     }
     close(start + total);
@@ -137,12 +153,9 @@ export function rateChartModel(
   sharedRange?: ScaleRange,
   span?: RateChartSpan,
 ): RateChartModel | undefined {
-  const last = allPoints.at(-1)?.cursor ?? 0;
-  const start = Math.max(0, span?.start ?? 0);
-  const end = Math.min(last, span?.end ?? last);
+  const { start, end, points } = rateChartVisiblePoints(allPoints, span);
   const total = end - start;
   if (total <= 0) return undefined;
-  const points = allPoints.filter((point) => point.cursor >= start && point.cursor <= end);
 
   const yMax = Math.max(1, sharedRange?.max ?? Math.max(0, ...finiteRates(allPoints))) * 1.1;
   const yOf = (value: number) => RATE_CHART_MARGIN.top + (1 - value / yMax) * PLOT_HEIGHT;
