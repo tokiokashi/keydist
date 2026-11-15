@@ -202,11 +202,38 @@ export interface SetBodyProps<Extracted, Options, RowContext> {
   readonly playbackJump?: PlaybackJump;
   /** 文節の区切りを使う設定の時の、区切りの用意の状態。`SetAnalyzerPaneParts.usesSegmentation` を宣言したAnalyzerにだけ渡す。 */
   readonly segmentation?: SegmentationStatus;
+  /** ペインで選べる打鍵の記録。`SetAnalyzerPaneParts.selectedRecordId` を宣言したAnalyzerにだけ渡す。 */
+  readonly keystrokeRecords?: readonly KeystrokeRecordChoice[];
+  /** 選んでいる打鍵の記録の、物理配列・指の割り当て・条件の名前。選んでいない時は渡さない。 */
+  readonly keystrokeRecordTexts?: KeystrokeRecordTexts;
   /**
    * 図を画像にして書き出す手段（ホストが渡す）。結果は、できたら`true`、できなかったら`false`。
    * 書き出し先と、要素を画像にする処理はホストが持つ。
    */
   readonly copyFigureImage?: (source: FigureImageSource) => Promise<boolean>;
+}
+
+/** 選んだ打鍵の記録を取った時の値の名前（ホストが手持ちから引く）。 */
+export interface KeystrokeRecordTexts {
+  /** 項目名と値。 */
+  readonly rows: readonly { readonly label: string; readonly value: string }[];
+  /** 条件の項目の名前（`RecordConditions`の項目名）を、条件の要約と同じ名前にする。 */
+  readonly conditionLabel: (key: string) => string;
+}
+
+/**
+ * ペインで選べる打鍵の記録1件。評価に渡した本文の照合値が今のテキストと同じで、対象がペインの対象のどれかであるもの
+ * （`spec/keystroke-record.md`）。
+ */
+export interface KeystrokeRecordChoice {
+  readonly id: string;
+  /** 記録の対象の表示名（集合に対して計算した名前）。 */
+  readonly targetLabel: string;
+  /** 記録の範囲（評価に渡した本文の文字位置の半開区間）。 */
+  readonly rangeStart: number;
+  readonly rangeEnd: number;
+  /** 記録した日時（ISO 8601、UTC）。 */
+  readonly recordedAt: string;
 }
 
 /**
@@ -306,6 +333,11 @@ export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
    * 求めている間だけ、ホストが分割器を読み込み、区切りを入力へ載せる（求めない設定では分割器に触れない）。
    */
   readonly usesSegmentation?: (options: Options) => boolean;
+  /**
+   * 解析設定が選んでいる打鍵の記録の`id`（選んでいなければ空）。持つAnalyzerだけが宣言する。
+   * 宣言すると、ホストが手元の記録から選んだ記録を引いて入力へ載せ、選べる記録の一覧を本体へ`keystrokeRecords`で渡す。
+   */
+  readonly selectedRecordId?: (options: Options) => string;
   /**
    * ペインの見出しの行に、対象の欄の隣へ足す部品。解析設定のうち、小窓を開かずに変えたい項目だけを置く。
    * 値の持ち主は解析設定のままで、`Settings` と同じ値と通知を受け取る。持たないAnalyzerは何も足さない。

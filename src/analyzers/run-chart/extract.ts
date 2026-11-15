@@ -16,6 +16,14 @@ import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation
 import { rangeBoundsOf, textRangeBounds } from '#input/text/display-ranges.ts';
 import { PRNG_NAME } from '#interpretation/prng.ts';
 import { selectionEndsOf } from '#interpretation/selection-ends.ts';
+import {
+  recordGapPoints,
+  recordPhraseGapTable,
+  recordTargetMatches,
+  type RecordMismatchItem,
+  type RecordPhraseGapTable,
+} from '#interpretation/record/keystroke-gaps.ts';
+import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
 import { buildSegmentationReport, SEGMENT_SEED_COUNT, type SegmentationReport } from '#interpretation/segments.ts';
 import { ALTERNATE_RUN_CHART_OPTIONS, DEFAULT_RUN_CHART_OPTIONS, runChartOptions, type RunChartOptions } from './options.ts';
 
@@ -80,6 +88,49 @@ export interface RunChartSeriesFailed {
 
 export type RunChartSeries = RunChartSeriesOk | RunChartSeriesFailed;
 
+/**
+ * 選んだ記録の出どころ（記録が持つ値）。今の入力の値は入れない（食い違う時に、記録を取った時の値を出すため）。
+ * 物理配列・指の割り当て・ローマ字規則など、idを名前に引く項目は、手持ちを持つホストが記録から作る。
+ */
+export interface RunChartRecordOrigin {
+  readonly targetName: string;
+  readonly recordedAt: string;
+  readonly appVersion: string;
+  readonly modelVersion: number;
+  readonly textName: string;
+  readonly textChars: number;
+  readonly range: { readonly start: number; readonly end: number };
+  readonly typedStrokes: number;
+}
+
+/**
+ * 選んだ記録の結果。`missing`は手元に記録が無い。`mismatch`は今の入力と食い違い、間隔も表も出さない。
+ * `ready`は`e`ごとの間隔（`positions`・`values`。数えない間隔は`null`）と、文節の区切りの直後の表。
+ * 表（`table`）は、文節の区切りを得られない時（日本語でないテキスト・分割器を読み込めない）は無い。
+ */
+export type RunChartRecord =
+  | { readonly kind: 'missing'; readonly id: string }
+  | {
+      readonly kind: 'mismatch';
+      readonly id: string;
+      readonly items: readonly RecordMismatchItem[];
+      /** 条件が食い違う時の、値が違う条件の項目の名前。 */
+      readonly conditionKeys: readonly string[];
+      readonly origin: RunChartRecordOrigin;
+    }
+  | {
+      readonly kind: 'ready';
+      readonly id: string;
+      /** 記録の対象の系列（図の色と点の形を引く）。 */
+      readonly targetKey: string;
+      readonly origin: RunChartRecordOrigin;
+      readonly positions: readonly number[];
+      readonly values: readonly (number | null)[];
+      readonly table?: RecordPhraseGapTable;
+      /** 表に使った文節の区切りの分割器と出どころ。表がある時だけ。 */
+      readonly tableSource?: { readonly splitter: SegmenterInfo; readonly origin: SegmentationOrigin };
+    };
+
 export interface RunChartExtracted {
   /** 指標と窓幅（結果を作った時の値）。 */
   readonly metric: SpanMetricId;
@@ -88,6 +139,8 @@ export interface RunChartExtracted {
   readonly segmentation: RunChartOptions['segmentation'];
   /** 集合の各枠（配列かSetup）ぶんの系列。並び順に表示上の意味は無い。 */
   readonly series: readonly RunChartSeries[];
+  /** 記録を選んでいる時だけ持つ。 */
+  readonly record?: RunChartRecord;
 }
 
 /**
@@ -166,6 +219,60 @@ function failureToSeries(failure: AnalyzerSetMemberFailure): RunChartSeriesFaile
   return { kind: 'failed', targetKey: analysisTargetKey(failure.target), failureKind: failure.kind, message: failure.message };
 }
 
+export function originOf(record: KeystrokeRecord): RunChartRecordOrigin {
+  return {
+    targetName: record.targetName,
+    recordedAt: record.recordedAt,
+    appVersion: record.appVersion,
+    modelVersion: record.modelVersion,
+    textName: record.text.name,
+    textChars: record.text.chars,
+    range: { start: record.range.start, end: record.range.end },
+    typedStrokes: record.taps.length,
+  };
+}
+
+/**
+ * 選んだ記録を、記録の対象のメンバーの今の入力と照らし、間隔と表を求める（`spec/keystroke-record.md` §4.1・§6）。
+ * 解決できたメンバーが無い時は、記録がどうであっても何も出さない。
+ */
+export function computeRecordResult(members: readonly AnalyzerSetMember[], options: RunChartOptions): RunChartRecord | undefined {
+  if (options.record === '') return undefined;
+  const first = members[0];
+  if (first === undefined) return undefined;
+  const record = first.assets?.keystrokeRecord;
+  if (record === undefined) return { kind: 'missing', id: options.record };
+  const member = members.find((candidate) => recordTargetMatches(record, candidate.target));
+  const check = member?.recordCheck?.();
+  if (member === undefined || check === undefined)
+    return { kind: 'mismatch', id: record.id, items: ['target'], conditionKeys: [], origin: originOf(record) };
+  const origin = originOf(record);
+  if (check.facts === undefined) {
+    return { kind: 'mismatch', id: record.id, items: check.mismatches, conditionKeys: check.differingConditions ?? [], origin };
+  }
+  const points = recordGapPoints(check.facts, record.taps);
+  const segmentation = member.assets?.segmentation;
+  return {
+    kind: 'ready',
+    id: record.id,
+    targetKey: analysisTargetKey(member.target),
+    origin,
+    positions: points.positions,
+    values: points.values,
+    ...(segmentation === undefined
+      ? {}
+      : {
+          table: recordPhraseGapTable(check.facts, record.taps, segmentation.boundaries),
+          tableSource: { splitter: segmentation.splitter, origin: segmentation.origin },
+        }),
+  };
+}
+
+function recordPart(members: readonly AnalyzerSetMember[], options: RunChartOptions): { readonly record?: RunChartRecord } {
+  const record = computeRecordResult(members, options);
+  return record === undefined ? {} : { record };
+}
+
 export function computeRunChartExtraction(
   members: readonly AnalyzerSetMember[],
   failures: readonly AnalyzerSetMemberFailure[],
@@ -176,6 +283,7 @@ export function computeRunChartExtraction(
     window: options.window,
     segmentation: options.segmentation,
     series: [...members.map((member) => computeMemberSeries(member, options)), ...failures.map(failureToSeries)],
+    ...recordPart(members, options),
   };
 }
 
@@ -219,7 +327,12 @@ export const runChartDefinition: SetAnalyzerDefinition<RunChartOptions, RunChart
   extract(context: SetAnalyzerExtractContext<RunChartOptions>): RunChartExtracted {
     return computeRunChartExtraction(context.members, context.failures, context.options);
   },
-  assetsKeyOf: (options, assets) => (options.segmentation === 'none' ? null : (assets.segmentation ?? null)),
+  // 記録を選んでいる間は、区切り方によらず文節の区切りも読む（文節の区切りの直後の表）
+  assetsKeyOf: (options, assets) => {
+    const segmentation = options.segmentation === 'none' && options.record === '' ? null : (assets.segmentation ?? null);
+    if (options.record === '') return segmentation;
+    return { segmentation, record: assets.keystrokeRecord?.id ?? null };
+  },
   optionsDiscipline: {
     sample: DEFAULT_RUN_CHART_OPTIONS,
     alternates: ALTERNATE_RUN_CHART_OPTIONS,

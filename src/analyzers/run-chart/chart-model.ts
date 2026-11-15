@@ -12,6 +12,9 @@ import { displayValue, formatMetricValue, type RunChartMetricId } from './metric
  * 描画の寸法と横軸の座標は、打鍵再生の速度グラフと同じ（`chart-frame.ts`）。
  */
 
+/** 区切りの線を全高で引く本数の上限。これより多い時は、軸の上に短い目盛りだけを並べる（線が塗りつぶしにならないように）。 */
+export const BOUNDARY_FULL_LINE_LIMIT = Math.floor(CHART_PLOT_WIDTH / 4);
+
 export interface RunChartTick {
   readonly value: number;
   readonly position: number;

@@ -3,7 +3,10 @@ import type { EngineSetMemberInput } from '#engine/request.ts';
 import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
 import { layoutKind } from '#input/layouts/kind.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
-import type { PlaybackJump, SegmentationStatus, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
+import type { KeystrokeRecordChoice, PlaybackJump, SegmentationStatus, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
+import { recordTargetMatches } from '#interpretation/record/keystroke-gaps.ts';
+import { textDigest } from '#interpretation/record/keystroke-record.ts';
+import { keystrokeRecordTexts } from '../keystroke-record-texts.ts';
 import {
   conditionHeaderInfoFromResolvedInput,
   globalConditionLevels,
@@ -90,6 +93,13 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
   const [selectionOpen, setSelectionOpen] = useState(false);
 
+  // 選んでいる打鍵の記録。手元に無い`id`は選べていないものとして、抽出に伝えない（抽出が「見つからない」を示す）
+  const selectedRecordId = analyzer.selectedRecordId?.(options) ?? '';
+  const selectedRecord = useMemo(
+    () => (selectedRecordId === '' ? undefined : catalog.keystrokeRecords?.find((record) => record.id === selectedRecordId)),
+    [selectedRecordId, catalog.keystrokeRecords],
+  );
+
   // 各メンバーの解決済み入力（または解決失敗）。表示順（`targets`）のまま作る
   // （engineの抽出キーが順序込みで畳み込む対象）。
   const members: readonly EngineSetMemberInput[] = useMemo(
@@ -97,10 +107,10 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       targets.map(
         (target): EngineSetMemberInput => ({
           target,
-          resolution: resolvePaneInput(target, setupsById, catalog, overrides, resolvedText, segmentationInput),
+          resolution: resolvePaneInput(target, setupsById, catalog, overrides, resolvedText, segmentationInput, selectedRecord),
         }),
       ),
-    [targets, setupsById, catalog, overrides, resolvedText, segmentationInput],
+    [targets, setupsById, catalog, overrides, resolvedText, segmentationInput, selectedRecord],
   );
   const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
 
@@ -143,6 +153,10 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   );
 
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
+  const recordTexts = useMemo(
+    () => (selectedRecord === undefined ? undefined : keystrokeRecordTexts(selectedRecord, catalog.setupCatalog)),
+    [selectedRecord, catalog.setupCatalog],
+  );
   const rowContext = useMemo(() => {
     const map = new Map<string, RowContext>();
     for (const member of members) {
@@ -191,6 +205,32 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   );
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
+
+  // 選べる打鍵の記録: 評価に渡した本文の照合値が今のテキストと同じで、対象がペインの対象のどれかであるもの。新しい記録から並べる
+  const keystrokeRecords = useMemo((): readonly KeystrokeRecordChoice[] | undefined => {
+    if (analyzer.selectedRecordId === undefined) return undefined;
+    const choices: KeystrokeRecordChoice[] = [];
+    const seen = new Set<string>();
+    const digests = new Map<string, string>();
+    for (const member of members) {
+      if (!member.resolution.ok) continue;
+      const text = member.resolution.input.text;
+      const digest = digests.get(text) ?? textDigest(text);
+      digests.set(text, digest);
+      for (const record of [...(catalog.keystrokeRecords ?? [])].reverse()) {
+        if (seen.has(record.id) || record.text.digest !== digest || !recordTargetMatches(record, member.target)) continue;
+        seen.add(record.id);
+        choices.push({
+          id: record.id,
+          targetLabel: namedByKey.get(analysisTargetKey(member.target))?.displayName ?? record.targetName,
+          rangeStart: record.range.start,
+          rangeEnd: record.range.end,
+          recordedAt: record.recordedAt,
+        });
+      }
+    }
+    return choices.sort((a, b) => (a.recordedAt < b.recordedAt ? 1 : a.recordedAt > b.recordedAt ? -1 : 0));
+  }, [analyzer, members, catalog.keystrokeRecords, namedByKey]);
 
   // 画面に入るまで計算を始めないペイン（Workspaceで、Analyzerが求めた時）。入った後に出た依頼は止めない
   const waitsForScreen = chrome.computeOnlyWhenOnScreen === true;
@@ -316,6 +356,8 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
             copyFigureImage={copyFigureImage}
             {...(playbackJump === undefined ? {} : { playbackJump })}
             {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
+            {...(keystrokeRecords === undefined ? {} : { keystrokeRecords })}
+            {...(recordTexts === undefined ? {} : { keystrokeRecordTexts: recordTexts })}
           />
         )}
       </PaneFrame>

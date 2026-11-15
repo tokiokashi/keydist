@@ -7,6 +7,7 @@ import type { ComboSet } from '#input/combo-set/combo-set.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { SegmentationInput } from '#input/text/segmentation.ts';
+import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
 import type { PaneText } from './reading-evaluation.ts';
 import type { ConditionValueNames } from './condition-summary.ts';
 
@@ -30,6 +31,11 @@ export interface PaneCatalog {
    * 保存値が変わった時（個人速度の画面で測り直した時・他のタブで変えた時）にペインの計算を作り直す。
    */
   readonly personalSpeed?: PlaybackCalibration;
+  /**
+   * 打鍵の記録の手持ち。記録の間隔を出すペインが、選んだ記録を引くのと、選べる記録の一覧に使う。
+   * 手持ちが変わった時（記録を保存・削除した時）にペインの計算を作り直す。
+   */
+  readonly keystrokeRecords?: readonly KeystrokeRecord[];
 }
 
 /**
@@ -49,6 +55,7 @@ export function resolvePaneInput(
   overrides: SettingsCascadeOverrides,
   resolvedText: PaneText,
   segmentation?: SegmentationInput,
+  keystrokeRecord?: KeystrokeRecord,
 ): ResolvedInputResult {
   return resolveEngineInput({
     target,
@@ -66,5 +73,6 @@ export function resolvePaneInput(
     notationExcess: resolvedText.notationExcess,
     comboBarriers: resolvedText.comboBarriers,
     segmentation,
+    keystrokeRecord,
   });
 }

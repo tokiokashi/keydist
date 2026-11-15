@@ -3,18 +3,10 @@ import { bindOption, NumberOptionField, SelectOptionField } from '#ui/primitives
 import { SeriesMark } from '#ui/charts/series-mark.tsx';
 import { TARGET_DASH_ARRAY, targetMark, type TargetMark } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, PlaybackJump, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
-import {
-  chartX,
-  CHART_HEIGHT,
-  CHART_MARGIN,
-  CHART_PLOT_HEIGHT,
-  CHART_PLOT_WIDTH,
-  CHART_PLOT_RIGHT,
-  CHART_WIDTH,
-  viewXFromClient,
-} from '../chart-frame.ts';
+import { chartX, CHART_HEIGHT, CHART_MARGIN, CHART_PLOT_HEIGHT, CHART_PLOT_RIGHT, CHART_WIDTH, viewXFromClient } from '../chart-frame.ts';
 import {
   adjacentRunChartTarget,
+  BOUNDARY_FULL_LINE_LIMIT,
   nearestRunChartTarget,
   runChartModel,
   runChartReadout,
@@ -43,6 +35,8 @@ import {
 } from './options.ts';
 import { RUN_CHART_PANE_META } from './pane-meta.ts';
 import { runChartTableModel } from './table-model.ts';
+import { rangeNumberOf } from './record-chart-model.ts';
+import { RunChartRecordSection } from './record-view.tsx';
 import './run-chart-view.css';
 
 /**
@@ -95,9 +89,6 @@ interface RunChartFigureProps {
   /** 図に重ねる区切りの位置（評価に渡したテキストの文字位置）。 */
   readonly boundaries: readonly number[];
 }
-
-/** 区切りの線を全高で引く本数の上限。これより多い時は、軸の上に短い目盛りだけを並べる（線が塗りつぶしにならないように）。 */
-const BOUNDARY_FULL_LINE_LIMIT = Math.floor(CHART_PLOT_WIDTH / 4);
 
 function RunChartFigure({ rows, metric, windowChars, model, jump, boundaries }: RunChartFigureProps) {
   const clipId = useId().replace(/:/g, '');
@@ -293,7 +284,17 @@ function seriesFor(series: readonly RunChartSeries[], targetKey: string): RunCha
  * Run Chartの本体。対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。
  * メンバー単位の失敗は図の下に行で出す。
  */
-export function RunChartBody({ extracted, order, rowContext, options, onOptionsChange, playbackJump, segmentation }: RunChartBodyProps) {
+export function RunChartBody({
+  extracted,
+  order,
+  rowContext,
+  options,
+  onOptionsChange,
+  playbackJump,
+  segmentation,
+  keystrokeRecords,
+  keystrokeRecordTexts,
+}: RunChartBodyProps) {
   /** 図の値を表で読む表示にしているか。保存しない */
   const [asTable, setAsTable] = useState(false);
   const metric = extracted.metric;
@@ -339,6 +340,15 @@ export function RunChartBody({ extracted, order, rowContext, options, onOptionsC
   const segmentRows: SegmentTableRow[] = rows.flatMap((row) =>
     row.data.segments === undefined ? [] : [{ targetKey: row.targetKey, label: row.label, fullName: row.fullName, segments: row.data.segments }],
   );
+
+  // 打鍵の記録。選ぶと、表示の範囲を記録の範囲に切り替える
+  const record = extracted.record;
+  const recordRow = record?.kind === 'ready' ? rows.find((row) => row.targetKey === record.targetKey) : undefined;
+  const selectRecord = (id: string) => {
+    const choice = keystrokeRecords?.find((candidate) => candidate.id === id);
+    const range = choice === undefined ? undefined : rangeNumberOf(rangeBounds, { start: choice.rangeStart, end: choice.rangeEnd });
+    onOptionsChange({ ...options, record: id, ...(range === undefined ? {} : { range }) });
+  };
 
   return (
     <section className="run-chart-feature" data-react-feature="run-chart">
@@ -406,6 +416,21 @@ export function RunChartBody({ extracted, order, rowContext, options, onOptionsC
               {rows.length > GUIDES_FOR_ALL_LIMIT ? '配列が多いので、ポインタを合わせた配列の目安線だけを引きます。' : ''}
             </p>
           )}
+          <RunChartRecordSection
+            record={record}
+            choices={keystrokeRecords}
+            selectedId={options.record}
+            onSelect={selectRecord}
+            texts={keystrokeRecordTexts}
+            frame={{ start: model.start, total: model.total }}
+            span={{ start: rangeStart, end: rangeEnd }}
+            boundaries={overlay}
+            color={recordRow?.color ?? '#666'}
+            mark={recordRow?.mark ?? targetMark(0)}
+            label={recordRow?.label ?? ''}
+            asTable={asTable}
+            segmentation={segmentation}
+          />
         </>
       )}
 
@@ -486,5 +511,7 @@ export const runChartAnalyzer = {
   // 押した点の位置から、同じ対象の打鍵再生へ移る
   jumpsToPlayback: true,
   // 区切りを選んだ時だけ、ホストが文節の分割器を読み込む
-  usesSegmentation: (options) => options.segmentation !== 'none',
+  // 区切りを選んだ時と、記録を選んだ時（文節の区切りの直後の表に使う）に、ホストが文節の分割器を読み込む
+  usesSegmentation: (options) => options.segmentation !== 'none' || options.record !== '',
+  selectedRecordId: (options) => options.record,
 } satisfies SetAnalyzerPaneParts<RunChartOptions, RunChartExtracted, RunChartRowContext>;

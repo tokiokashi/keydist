@@ -366,8 +366,52 @@ export interface RecordMeta {
   readonly textName: string;
 }
 
-function stepSignature(strokes: readonly Stroke[]): string {
+export function stepSignature(strokes: readonly Stroke[]): string {
   return JSON.stringify(sentenceSteps({ strokes }).map((step) => [step.keys, step.outputChars]));
+}
+
+/**
+ * 打った綴り`typed`で、範囲のストロークを求める。全部の単位が条件の規則の綴りなら全文の打鍵の列をそのまま使い（`onBase`）、
+ * そうでなければ全文を1度だけ作り直して範囲を取り出す（`spec/keystroke-record.md` §3.1）。
+ * 範囲が綴りを受け付けない（`rebuild`が無い）時は、全文の打鍵の列の範囲をそのまま返す。
+ */
+export function rangeStrokesOf(
+  input: ResolvedInput,
+  trace: Trace,
+  rangeIndex: number,
+  range: RecordRangeStatus,
+  rebuild: SpellingRebuild | undefined,
+  typed: readonly string[],
+): { readonly ok: true; readonly strokes: readonly Stroke[]; readonly inputChars: number; readonly onBase: boolean } | { readonly ok: false } {
+  const baseStrokes = trace.strokes.slice(range.firstStroke!, range.firstStroke! + range.strokeCount!);
+  if (rebuild === undefined) return { ok: true, strokes: baseStrokes, inputChars: trace.inputChars, onBase: true };
+  const { context, span, base } = rebuild;
+  if (typed.length === base.length && typed.every((spelling, index) => spelling === base[index])) {
+    return { ok: true, strokes: baseStrokes, inputChars: trace.inputChars, onBase: true };
+  }
+  if (typed.length !== base.length) return { ok: false };
+  const all = context.units.map((unit) => unit.spellings[0]!);
+  const full = [...all.slice(0, span.from), ...rebuild.expand(typed), ...all.slice(span.to)];
+  const chunks: RomajiChunk[] = context.units.map((unit, index) => ({
+    kana: unit.kana,
+    roman: full[index]!,
+    fromTable: context.table.has(unit.kana),
+  }));
+  let rebuilt: Trace;
+  try {
+    rebuilt = generateEngineTrace(input, chunks).trace;
+  } catch {
+    return { ok: false };
+  }
+  if (!playable(rebuilt, input.text, range.start, range.end)) return { ok: false };
+  const status = recordRangeStatuses(input, rebuilt)[rangeIndex];
+  if (status?.firstStroke === undefined) return { ok: false };
+  return {
+    ok: true,
+    strokes: rebuilt.strokes.slice(status.firstStroke, status.firstStroke + status.strokeCount!),
+    inputChars: rebuilt.inputChars,
+    onBase: false,
+  };
 }
 
 /** 条件のスナップショット。`Metrics`の条件から、評価に渡す本文を作る読みの変換を除いたもの。 */
@@ -394,35 +438,11 @@ export function finishKeystrokeRecord(
   const planned = recordPlanOf(input, trace, rangeIndex);
   if (!planned.ok) return { ok: false, reason: 'no-range' };
   const { range, rebuild } = planned;
-  let strokes = trace.strokes.slice(range.firstStroke!, range.firstStroke! + range.strokeCount!);
-  let inputChars = trace.inputChars;
-  if (rebuild !== undefined) {
-    const { context, span, base } = rebuild;
-    const onBase = typed.length === base.length && typed.every((spelling, index) => spelling === base[index]);
-    if (!onBase) {
-      if (typed.length !== base.length) return { ok: false, reason: 'rebuild-mismatch' };
-      const all = context.units.map((unit) => unit.spellings[0]!);
-      const full = [...all.slice(0, span.from), ...rebuild.expand(typed), ...all.slice(span.to)];
-      const chunks: RomajiChunk[] = context.units.map((unit, index) => ({
-        kana: unit.kana,
-        roman: full[index]!,
-        fromTable: context.table.has(unit.kana),
-      }));
-      let rebuilt: Trace;
-      try {
-        rebuilt = generateEngineTrace(input, chunks).trace;
-      } catch {
-        return { ok: false, reason: 'rebuild-mismatch' };
-      }
-      if (!playable(rebuilt, input.text, range.start, range.end)) return { ok: false, reason: 'rebuild-mismatch' };
-      const rebuiltStatus = recordRangeStatuses(input, rebuilt)[rangeIndex];
-      if (rebuiltStatus?.firstStroke === undefined) return { ok: false, reason: 'rebuild-mismatch' };
-      strokes = rebuilt.strokes.slice(rebuiltStatus.firstStroke, rebuiltStatus.firstStroke + rebuiltStatus.strokeCount!);
-      inputChars = rebuilt.inputChars;
-      // 打つ時に使った窓ごとの作り直しと、全文の経路で作り直した範囲が、同じ打つキーの列でなければならない。
-      if (windowed === undefined || windowed !== stepSignature(strokes)) return { ok: false, reason: 'rebuild-mismatch' };
-    }
-  }
+  const built = rangeStrokesOf(input, trace, rangeIndex, range, rebuild, typed);
+  if (!built.ok) return { ok: false, reason: 'rebuild-mismatch' };
+  const { strokes, inputChars } = built;
+  // 打つ時に使った窓ごとの作り直しと、全文の経路で作り直した範囲が、同じ打つキーの列でなければならない。
+  if (!built.onBase && (windowed === undefined || windowed !== stepSignature(strokes))) return { ok: false, reason: 'rebuild-mismatch' };
   if (strokes.length !== taps.length) return { ok: false, reason: 'count-mismatch' };
   const origin = taps[0]!.atMs;
   const normalized: SentenceTap[] = taps.map((tap) => ({

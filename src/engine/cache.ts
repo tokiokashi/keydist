@@ -19,6 +19,8 @@ import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 import { describeResolvedInputError } from './resolved-input-errors.ts';
 import { createTraceRequesterFor } from './trace-requester.ts';
+import { checkKeystrokeRecord } from './keystroke-record-check.ts';
+import { recordTargetMatches } from '#interpretation/record/keystroke-gaps.ts';
 
 /**
  * 表示中のSetupだけを計算する前提なので大きくしなくてよい。
@@ -210,6 +212,14 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     const interpretationResult = getInterpretation(input);
     const traceResult = getTrace(input);
     const partPrefix = String(partOwnerIdOf(stableStringify({ memberKey, definitionId })));
+    const remember = <T>(key: string, compute: () => T): T => {
+      const partKey = `${partPrefix}\u0000${key}`;
+      const known = partCache.get(partKey);
+      if (known !== undefined) return known as T;
+      const value = compute();
+      partCache.set(partKey, value);
+      return value;
+    };
     return {
       target,
       text: input.text,
@@ -224,14 +234,12 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
       // Traceは、積んであれば`getTrace`と同じキーで引くので、
       // 抽出結果の再現性には影響しない）。
       requestTrace: createTraceRequesterFor({ getTrace: getTraceWithoutStoring }, input),
-      remember<T>(key: string, compute: () => T): T {
-        const partKey = `${partPrefix}\u0000${key}`;
-        const known = partCache.get(partKey);
-        if (known !== undefined) return known as T;
-        const value = compute();
-        partCache.set(partKey, value);
-        return value;
+      recordCheck: () => {
+        const record = input.extractionAssets.keystrokeRecord;
+        if (record === undefined || !recordTargetMatches(record, target)) return undefined;
+        return remember(`record-check:${record.id}`, () => checkKeystrokeRecord(input, traceResult.trace, record));
       },
+      remember,
     };
   }
 
