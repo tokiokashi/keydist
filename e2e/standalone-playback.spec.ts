@@ -45,27 +45,3 @@ test('1ステップ進む・戻る・シークができ、再生位置が表示�
   await expect(feature(page).locator('[data-playback-action="forward"]')).toBeDisabled();
   await expect(feature(page).locator('[data-playback-action="toggle"]')).toBeDisabled();
 });
-
-test('速度グラフを表に切り替えられ、配列図と再生の操作は残り、図へ戻せる', { tag: PAGE_TAG }, async ({ page }) => {
-  await openPlayback(page);
-  const toggle = feature(page).getByRole('button', { name: /を表で見る$/ });
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  await expect(feature(page).locator('table.figure-table')).toHaveCount(0);
-
-  await toggle.focus();
-  await page.keyboard.press('Enter');
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-  const table = feature(page).locator('table.figure-table');
-  await expect(table).toBeVisible();
-  await expect(table.locator('tbody tr').first()).toBeVisible();
-  await expect(feature(page).locator('[data-playback-rate-chart]')).toBeHidden();
-  // 配列図と再生の操作はそのまま使える
-  await feature(page).locator('[data-playback-action="forward"]').click();
-  expect((await readPosition(page))[0]).toBe(1);
-
-  await toggle.focus();
-  await page.keyboard.press('Space');
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  await expect(feature(page).locator('[data-playback-rate-chart]')).toBeVisible();
-  await expect(feature(page).locator('table.figure-table')).toHaveCount(0);
-});

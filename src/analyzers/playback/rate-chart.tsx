@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import type { PlaybackRateChartPoint } from '#interpretation/timing/playback.ts';
 import {
   RATE_CHART_HEIGHT,
@@ -47,6 +47,14 @@ export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, spa
   // 縦軸は、並んだ打鍵再生のペイン全部を含む範囲（配るものが無ければ自分の範囲）
   const sharedRange = useSharedScale(PLAYBACK_RATE_SCALE_KEY, rateChartOwnRange(points));
   const model = rateChartModel(points, { chain: showChain, arpeggio: showArpeggio }, sharedRange, span);
+  // 表の中身は再生位置に依らない。再生中は毎ステップ描画し直すので、区間と表示が変わった時だけ作り直す
+  const spanStart = span?.start;
+  const spanEnd = span?.end;
+  const table = useMemo(() => {
+    if (!asTable) return undefined;
+    const tableSpan = spanStart === undefined || spanEnd === undefined ? undefined : { start: spanStart, end: spanEnd };
+    return rateChartTableModel(points, { chain: showChain, arpeggio: showArpeggio }, language, tableSpan);
+  }, [asTable, points, showChain, showArpeggio, language, spanStart, spanEnd]);
   if (model === undefined) {
     return <p className="playback-empty">打鍵するデータがありません。</p>;
   }
@@ -64,7 +72,7 @@ export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, spa
 
   return (
     <>
-      {asTable ? <FigureTable model={rateChartTableModel(points, { chain: showChain, arpeggio: showArpeggio }, language, span)} /> : null}
+      {table === undefined ? null : <FigureTable model={table} />}
       <div className="playback-rate-chart" data-playback-rate-chart hidden={asTable}>
         <svg
           viewBox={`0 0 ${RATE_CHART_WIDTH} ${RATE_CHART_HEIGHT}`}
