@@ -52,6 +52,7 @@ function assets(overrides: SettingsCascadeOverrides = emptyCascadeOverrides()): 
     userLayouts: [],
     userRomajiRules: [],
     personalSpeed: EMPTY_PERSONAL_SPEED,
+    keystrokeRecords: [],
   };
 }
 

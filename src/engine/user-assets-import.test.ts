@@ -72,6 +72,7 @@ function emptyAssets(): KeydistAssets {
     userLayouts: [],
     userRomajiRules: [],
     personalSpeed: EMPTY_PERSONAL_SPEED,
+    keystrokeRecords: [],
   };
 }
 

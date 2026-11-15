@@ -163,6 +163,7 @@ function assetsWith(overrides: SettingsCascadeOverrides, workspaces: readonly Wo
     userLayouts: [],
     userRomajiRules: [],
     personalSpeed: EMPTY_PERSONAL_SPEED,
+    keystrokeRecords: [],
   };
 }
 

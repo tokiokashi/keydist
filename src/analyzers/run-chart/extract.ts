@@ -15,6 +15,7 @@ import { generateTrace, type Trace } from '#trace/generate.ts';
 import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
 import { rangeBoundsOf, textRangeBounds } from '#input/text/display-ranges.ts';
 import { PRNG_NAME } from '#interpretation/prng.ts';
+import { selectionEndsOf } from '#interpretation/selection-ends.ts';
 import { buildSegmentationReport, SEGMENT_SEED_COUNT, type SegmentationReport } from '#interpretation/segments.ts';
 import { ALTERNATE_RUN_CHART_OPTIONS, DEFAULT_RUN_CHART_OPTIONS, runChartOptions, type RunChartOptions } from './options.ts';
 
@@ -93,14 +94,7 @@ export interface RunChartExtracted {
  * 点の文字位置 `e`。1回の入力の選択ごとに、その組の `kanaEnd` の最大を取り、同じ `e` は1つにまとめて昇順に並べる。
  */
 export function pointPositionsOf(trace: Trace): number[] {
-  const endBySelection = new Map<number, number>();
-  for (const stroke of trace.strokes) {
-    const previous = endBySelection.get(stroke.selectionIndex);
-    if (previous === undefined || stroke.kanaEnd > previous) endBySelection.set(stroke.selectionIndex, stroke.kanaEnd);
-  }
-  const ends = new Set<number>();
-  for (const end of endBySelection.values()) ends.add(Math.min(Math.max(0, end), Math.max(0, trace.inputChars - 1)));
-  return [...ends].sort((a, b) => a - b);
+  return [...new Set(selectionEndsOf(trace.strokes, trace.inputChars).values())].sort((a, b) => a - b);
 }
 
 interface MemberBasis {

@@ -31,6 +31,12 @@ import { createSampleWorkspace } from '#engine/sample-workspace.ts';
 import { initialWorkspaceLibrary } from '#engine/workspace.ts';
 import { userAssetsFileBody } from '#engine/user-assets-file.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
+import { finishKeystrokeRecord, recordBaseTrace, recordPlanOf } from '#engine/keystroke-record.ts';
+import { keystrokeRecordFileText } from '#engine/keystroke-record-file.ts';
+import { resolveEngineInput } from '#engine/resolved-input.ts';
+import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { encodeKeystrokeRecords, KEYSTROKE_RECORDS_CODEC } from '#interpretation/record/keystroke-record.ts';
 
 /** ChromiumのlocalStorageに1つのサイトが入れられる文字数（UTF-16の単位）。2026-10-20に測った値。 */
 const LOCAL_STORAGE_CHARS = 5_240_000;
@@ -178,6 +184,7 @@ const exportAssets = {
   userLayouts,
   userRomajiRules: rules,
   fingerAssignments: fingers,
+  comboSets: [],
   setupLibrary: { setups, overrides: {} },
   textLibrary: { texts: builtinTexts },
   presetLibrary: { presets },
@@ -223,3 +230,56 @@ for (const timing of timings)
 console.log('');
 console.log(`書き出しのファイル（組み込みの資産を写したもの。全文のテキストは含まない）: ${fileBytes.toLocaleString('en-US')}バイト`);
 console.log(`時間の測定条件: Node ${process.version}、${cpus()[0]?.model ?? '不明なCPU'}（${cpus().length}コア）、各7回の中央値。マシンに依存する`);
+
+// 打鍵の記録: 範囲ごとの記録の大きさ。打鍵の列は実際の解決の経路で作り、ストロークの時刻だけを合成する（実際の打鍵の記録は使わない）
+{
+  const sentences = ['ふじさんのしゃしんをとったよ。', 'ぼくはちかくのきっさてんでいっぷくした。', 'しんぶんをよんで、つぎのひにじゅぎょうがあった。'];
+  const unit = sentences.join('');
+  const text = unit.repeat(Math.ceil(1000 / unit.length)).slice(0, 1000);
+  const resolved = resolveEngineInput({
+    target: { kind: 'layout', layoutId: 'qwerty' },
+    setups: new Map(),
+    catalog: {
+      layouts: LAYOUT_BY_ID,
+      shapes: new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const)),
+    },
+    userLayouts: new Map(),
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text,
+    language: 'ja',
+  });
+  if (!resolved.ok) throw new Error('記録の大きさの測定: 入力を解決できなかった');
+  const trace = recordBaseTrace(resolved.input);
+  const planned = recordPlanOf(resolved.input, trace, 0);
+  if (!planned.ok) throw new Error('記録の大きさの測定: 範囲を打てない');
+  const typed = planned.plan.units.map((entry) => entry.spellings[0]!);
+  let at = 0;
+  const taps = trace.strokes.map((_, index) => {
+    at += 80 + ((index * 37) % 90) + 0.37;
+    return { atMs: at, clean: true };
+  });
+  const finished = finishKeystrokeRecord(resolved.input, trace, 0, typed, taps, {
+    id: '00000000-0000-4000-8000-000000000000',
+    recordedAt: '2026-11-15T00:00:00.000Z',
+    appVersion: '1.6.0',
+    target: { kind: 'layout', layoutId: 'qwerty' },
+    targetName: 'QWERTY',
+    textIdentity: 'user:00000000-0000-4000-8000-000000000000',
+    textName: '測定用',
+  });
+  if (!finished.ok) throw new Error(`記録の大きさの測定: ${finished.reason}`);
+  const one = JSON.stringify(encodeKeystrokeRecords([finished.record])).length;
+  const wrapped = (count: number) =>
+    JSON.stringify(
+      KEYSTROKE_RECORDS_CODEC.encode(Array.from({ length: count }, (_, index) => ({ ...finished.record, id: `r${String(index).padStart(6, '0')}` }))),
+    ).length;
+  console.log('');
+  console.log(`打鍵の記録（qwerty・訓令式、${text.length}字の範囲、ストローク${taps.length}打）: 1件${one.toLocaleString('en-US')}字`);
+  for (const count of [10, 100, 1000]) {
+    const chars = wrapped(count);
+    console.log(`  ${count}件: ${chars.toLocaleString('en-US')}字（枠の${((chars / LOCAL_STORAGE_CHARS) * 100).toFixed(1)}%）`);
+  }
+  // 記録だけの書き出しのファイル
+  const exported = new TextEncoder().encode(keystrokeRecordFileText([finished.record])).length;
+  console.log(`  書き出すファイル: 1件${exported.toLocaleString('en-US')}バイト`);
+}

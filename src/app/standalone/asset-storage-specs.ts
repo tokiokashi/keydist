@@ -34,6 +34,8 @@ import { WORKSPACE_LIBRARY_CODEC } from '#engine/workspace-codec.ts';
 import { WORKSPACES_STORAGE_KEY } from '#platform/assets/workspaces-storage.ts';
 import { EMPTY_PERSONAL_SPEED, PERSONAL_SPEED_CODEC } from '#interpretation/timing/calibration-codec.ts';
 import { PERSONAL_SPEED_STORAGE_KEY } from '#platform/assets/personal-speed-storage.ts';
+import { KEYSTROKE_RECORDS_CODEC } from '#interpretation/record/keystroke-record.ts';
+import { KEYSTROKE_RECORDS_STORAGE_KEY } from '#platform/assets/keystroke-records-storage.ts';
 import { repairStandaloneAnalyzerOptions, repairWorkspaceAnalyzerOptions } from './analyzer-options-repair.ts';
 
 /**
@@ -146,6 +148,11 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     storageKey: PERSONAL_SPEED_STORAGE_KEY,
     codec: PERSONAL_SPEED_CODEC,
     initial: () => EMPTY_PERSONAL_SPEED,
+  },
+  keystrokeRecords: {
+    storageKey: KEYSTROKE_RECORDS_STORAGE_KEY,
+    codec: KEYSTROKE_RECORDS_CODEC,
+    initial: () => [],
   },
 };
 

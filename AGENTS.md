@@ -7,6 +7,7 @@
 
 - 何を測るか・どう測るかは `spec/distance-model.md` が正
 - 打鍵再生が1ステップをどれだけの時間で表示するかは `spec/playback-timing.md` が正
+- 評価テキストの範囲を打って取る打鍵の記録の取り方と保存する項目は `spec/keystroke-record.md` が正
 - 使い方・対応配列は `README.md`
 - コミット・ブランチ・PR・マージ・issue・公開の作法は `CONTRIBUTING.md` に従う。スタックPRは学習データに無い機能なので、積む前に「スタックPR」の節を読む
 - 分け方・依存の向き・用語は `docs/architecture.md` が正。新しいファイルはその構造の中に置く

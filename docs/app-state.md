@@ -40,6 +40,7 @@ AppState側にsliceが既にある場合も、残存する旧keyはcleanupする
 - `keydist:setup-library`・`keydist:presets`・`keydist:workspaces`・`keydist:text-library`
 - `keydist:single-target-selection`・`keydist:multi-target-selection`・`keydist:standalone-text-selection`・`keydist:standalone-analyzer-options`
 - `keydist:personal-speed`（個人速度。版付きのcodecで読み書きする）
+- `keydist:keystroke-records`（打鍵の記録。版付きのcodecで読み書きする）
 
 上に挙げていないkeyは、このアプリが読まない。
 

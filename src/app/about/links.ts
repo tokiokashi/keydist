@@ -31,6 +31,7 @@ const specLink = (label: string, path: string, heading?: string): SpecLink => {
 export const SPEC_LINKS: readonly SpecLink[] = [
   specLink('距離モデルの仕様書', 'spec/distance-model.md'),
   specLink('再生時間モデルの仕様書', 'spec/playback-timing.md'),
+  specLink('打鍵の記録の仕様書', 'spec/keystroke-record.md'),
   // 構造解析モデルは独立した仕様書を持たず、距離モデルの仕様書の該当節に含まれる
   specLink('構造解析モデルの仕様', 'spec/distance-model.md', '10. 任意時点の指位置'),
 ];

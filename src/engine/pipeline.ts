@@ -1,7 +1,7 @@
 import { generateTrace, summarizeTrace, type Trace, type TraceSummary } from '#trace/generate.ts';
 import type { RomajiChunk } from '#input/romaji/kunrei.ts';
 import { analyzeStrokeStructure, type AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
-import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
+import { computeMetrics, type MetricConditions, type Metrics } from '#interpretation/metrics.ts';
 import { computeKeyDetails, type KeyDetails } from '#interpretation/key-detail.ts';
 import type {
   AnalyzerSetMember,
@@ -53,6 +53,25 @@ export interface EngineInterpretationResult {
   readonly metrics: Metrics;
 }
 
+/** 解決済み入力の、数値に付随させる条件（`Metrics`の`conditions`の材料）。 */
+export function metricConditionsOf(input: ResolvedInput): MetricConditions {
+  return {
+    windowSize: input.tracePolicy.windowSize,
+    sfbHomeCost: input.tracePolicy.sfbHomeCost,
+    centerShiftThumb: input.tracePolicy.centerShiftThumb ?? 'right',
+    spaceThumb: input.tracePolicy.spaceThumb ?? 'right',
+    chainInterpretation: input.chainInterpretation,
+    arpeggioInterpretation: input.arpeggioInterpretation,
+    triggerRealizationPolicy: input.tracePolicy.triggerRealizationPolicy!,
+    actionRealizationPolicy: input.tracePolicy.actionRealizationPolicy!,
+    romajiRuleId: input.romajiRuleId,
+    keepSymbols: input.keepSymbols,
+    keepAlphanumerics: input.keepAlphanumerics,
+    reading: input.reading,
+    ...(input.comboSet === undefined ? {} : { comboSet: input.comboSet }),
+  };
+}
+
 /** 解釈段（構造 + 共通指標）。Traceは変えず、数値の定義（解釈）だけを適用する。 */
 export function interpretEngineTrace(traceResult: EngineTraceResult, input: ResolvedInput): EngineInterpretationResult {
   const { trace } = traceResult;
@@ -63,26 +82,7 @@ export function interpretEngineTrace(traceResult: EngineTraceResult, input: Reso
     input.tracePolicy.triggerRealizationPolicy,
     input.tracePolicy.actionRealizationPolicy,
   );
-  const metrics = computeMetrics(
-    trace,
-    input.geometry,
-    {
-      windowSize: input.tracePolicy.windowSize,
-      sfbHomeCost: input.tracePolicy.sfbHomeCost,
-      centerShiftThumb: input.tracePolicy.centerShiftThumb ?? 'right',
-      spaceThumb: input.tracePolicy.spaceThumb ?? 'right',
-      chainInterpretation: input.chainInterpretation,
-      arpeggioInterpretation: input.arpeggioInterpretation,
-      triggerRealizationPolicy: input.tracePolicy.triggerRealizationPolicy!,
-      actionRealizationPolicy: input.tracePolicy.actionRealizationPolicy!,
-      romajiRuleId: input.romajiRuleId,
-      keepSymbols: input.keepSymbols,
-      keepAlphanumerics: input.keepAlphanumerics,
-      reading: input.reading,
-      ...(input.comboSet === undefined ? {} : { comboSet: input.comboSet }),
-    },
-    input.notationExcess,
-  );
+  const metrics = computeMetrics(trace, input.geometry, metricConditionsOf(input), input.notationExcess);
   return { modelVersion: MODEL_VERSION, analysis, metrics };
 }
 

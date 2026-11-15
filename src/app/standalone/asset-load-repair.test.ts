@@ -45,6 +45,7 @@ const REPAIRABLE: { readonly [K in keyof KeydistAssets]: { readonly raw: Record<
   userRomajiRules: { raw: { rules: 5 }, root: 'rules' },
   comboSets: { raw: { comboSets: 5 }, root: 'comboSets' },
   personalSpeed: { raw: { calibration: 5 }, root: 'calibration' },
+  keystrokeRecords: { raw: { records: 5 }, root: 'records' },
 };
 
 /** 診断が出る値に、その資産の現行版を付けた保存文字列。 */
