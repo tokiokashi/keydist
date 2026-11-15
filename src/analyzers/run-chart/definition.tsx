@@ -293,6 +293,7 @@ export function RunChartBody({
   playbackJump,
   segmentation,
   keystrokeRecords,
+  keystrokeRecordTexts,
 }: RunChartBodyProps) {
   /** 図の値を表で読む表示にしているか。保存しない */
   const [asTable, setAsTable] = useState(false);
@@ -420,6 +421,7 @@ export function RunChartBody({
             choices={keystrokeRecords}
             selectedId={options.record}
             onSelect={selectRecord}
+            texts={keystrokeRecordTexts}
             frame={{ start: model.start, total: model.total }}
             span={{ start: rangeStart, end: rangeEnd }}
             boundaries={overlay}

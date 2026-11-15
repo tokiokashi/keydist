@@ -4,6 +4,7 @@ import type { SentenceTap } from '../timing/sentence-measurement.ts';
 import {
   recordGapPoints,
   recordPhraseGapTable,
+  differingConditionKeys,
   recordTargetMatches,
   scalarRecordMismatches,
   strokeGaps,
@@ -99,6 +100,7 @@ const RECORD = {
   shapeId: 'row-staggered',
   fingerAssignmentId: 'standard',
   modelVersion: 3,
+  conditions: { n: 3 },
   text: { digest: 'aaaa' },
   range: { start: 0, end: 10, digest: 'bbbb' },
 } as unknown as KeystrokeRecord;
@@ -106,25 +108,29 @@ const RECORD = {
 const CURRENT: RecordCurrentFacts = {
   shapeId: 'row-staggered',
   fingerAssignmentId: 'standard',
-  conditionsKey: '{"n":3}',
+  conditions: { n: 3 },
   modelVersion: 3,
   textDigest: 'aaaa',
   rangeDigestOf: () => 'bbbb',
 };
 
 test('食い違いの判定は、項目ごとに独立に違いを挙げる', () => {
-  assert.deepEqual(scalarRecordMismatches(RECORD, CURRENT, '{"n":3}'), []);
-  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, shapeId: 'ortho' }, '{"n":3}'), ['shape']);
-  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, fingerAssignmentId: 'x' }, '{"n":3}'), ['fingerAssignment']);
-  assert.deepEqual(scalarRecordMismatches(RECORD, CURRENT, '{"n":4}'), ['conditions']);
-  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, modelVersion: 4 }, '{"n":3}'), ['version']);
-  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, shapeId: 'ortho', modelVersion: 4 }, '{"n":4}'), ['shape', 'conditions', 'version']);
+  assert.deepEqual(scalarRecordMismatches(RECORD, CURRENT), []);
+  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, shapeId: 'ortho' }), ['shape']);
+  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, fingerAssignmentId: 'x' }), ['fingerAssignment']);
+  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, conditions: { n: 4 } }), ['conditions']);
+  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, modelVersion: 4 }), ['version']);
+  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, shapeId: 'ortho', modelVersion: 4, conditions: { n: 4 } }), [
+    'shape',
+    'conditions',
+    'version',
+  ]);
 });
 
 test('テキストが違う時は範囲を重ねて挙げない。テキストが同じで範囲の本文が違う時だけ範囲を挙げる', () => {
-  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, textDigest: 'zzzz', rangeDigestOf: () => 'other' }, '{"n":3}'), ['text']);
-  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, rangeDigestOf: () => 'other' }, '{"n":3}'), ['range']);
-  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, rangeDigestOf: () => undefined }, '{"n":3}'), ['range']);
+  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, textDigest: 'zzzz', rangeDigestOf: () => 'other' }), ['text']);
+  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, rangeDigestOf: () => 'other' }), ['range']);
+  assert.deepEqual(scalarRecordMismatches(RECORD, { ...CURRENT, rangeDigestOf: () => undefined }), ['range']);
 });
 
 test('記録の対象は、配列はid、Setupはidで当てる', () => {
@@ -134,4 +140,10 @@ test('記録の対象は、配列はid、Setupはidで当てる', () => {
   const layout = { target: { kind: 'layout', id: 'qwerty' } } as unknown as KeystrokeRecord;
   assert.equal(recordTargetMatches(layout, { kind: 'layout', layoutId: 'qwerty' }), true);
   assert.equal(recordTargetMatches(layout, { kind: 'setup', setupId: 'qwerty' }), false);
+});
+
+test('値が違う条件の項目を挙げる。項目の並びと入れ子の並びは問わない', () => {
+  assert.deepEqual(differingConditionKeys({ a: 1, b: { x: 1, y: 2 }, c: true }, { c: true, b: { y: 2, x: 1 }, a: 2 }), ['a']);
+  assert.deepEqual(differingConditionKeys({ a: 1 }, { a: 1, comboSet: { name: 'x' } }), ['comboSet']);
+  assert.deepEqual(differingConditionKeys({ a: 1 }, { a: 1 }), []);
 });

@@ -204,11 +204,21 @@ export interface SetBodyProps<Extracted, Options, RowContext> {
   readonly segmentation?: SegmentationStatus;
   /** ペインで選べる打鍵の記録。`SetAnalyzerPaneParts.selectedRecordId` を宣言したAnalyzerにだけ渡す。 */
   readonly keystrokeRecords?: readonly KeystrokeRecordChoice[];
+  /** 選んでいる打鍵の記録の、物理配列・指の割り当て・条件の名前。選んでいない時は渡さない。 */
+  readonly keystrokeRecordTexts?: KeystrokeRecordTexts;
   /**
    * 図を画像にして書き出す手段（ホストが渡す）。結果は、できたら`true`、できなかったら`false`。
    * 書き出し先と、要素を画像にする処理はホストが持つ。
    */
   readonly copyFigureImage?: (source: FigureImageSource) => Promise<boolean>;
+}
+
+/** 選んだ打鍵の記録を取った時の値の名前（ホストが手持ちから引く）。 */
+export interface KeystrokeRecordTexts {
+  /** 項目名と値。 */
+  readonly rows: readonly { readonly label: string; readonly value: string }[];
+  /** 条件の項目の名前（`RecordConditions`の項目名）を、条件の要約と同じ名前にする。 */
+  readonly conditionLabel: (key: string) => string;
 }
 
 /**

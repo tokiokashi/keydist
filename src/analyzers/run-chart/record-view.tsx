@@ -1,10 +1,10 @@
 import { useId } from 'react';
 import { SeriesMark } from '#ui/charts/series-mark.tsx';
 import type { TargetMark } from '#ui/theme/target-marks.ts';
-import type { RecordGapGroup } from '#interpretation/record/keystroke-gaps.ts';
+import type { RecordGapGroup, RecordMismatchItem } from '#interpretation/record/keystroke-gaps.ts';
 import { chartX, CHART_DOT_LIMIT, CHART_HEIGHT, CHART_MARGIN, CHART_PLOT_HEIGHT, CHART_PLOT_RIGHT, CHART_WIDTH } from '../chart-frame.ts';
 import { FigureTable } from '../figure-table-view.tsx';
-import type { KeystrokeRecordChoice, SegmentationStatus } from '../pane-parts.tsx';
+import type { KeystrokeRecordChoice, KeystrokeRecordTexts, SegmentationStatus } from '../pane-parts.tsx';
 import { SegmentationSourceButton } from '../segmentation-source-button.tsx';
 import { BOUNDARY_FULL_LINE_LIMIT } from './chart-model.ts';
 import { positionLabel } from './table-model.ts';
@@ -35,6 +35,8 @@ export interface RunChartRecordSectionProps {
   /** 解析設定が選んでいる記録の`id`（空は選んでいない）。 */
   readonly selectedId: string;
   readonly onSelect: (id: string) => void;
+  /** 選んだ記録を取った時の物理配列・指の割り当て・条件の名前。 */
+  readonly texts: KeystrokeRecordTexts | undefined;
   /** 指標の図と同じ横軸。 */
   readonly frame: RecordGapFrame;
   /** 図に出している範囲。 */
@@ -54,10 +56,13 @@ export interface RunChartRecordSectionProps {
 function RecordPicker({
   choices,
   selectedId,
+  unlistedLabel,
   onSelect,
 }: {
   readonly choices: readonly KeystrokeRecordChoice[];
   readonly selectedId: string;
+  /** 選んだ記録が一覧に無い時の、選択肢の文。 */
+  readonly unlistedLabel: string;
   readonly onSelect: (id: string) => void;
 }) {
   const id = useId();
@@ -67,7 +72,7 @@ function RecordPicker({
       <label htmlFor={id}>打鍵の記録</label>
       <select id={id} value={selectedId} onChange={(event) => onSelect(event.target.value)} data-run-chart-record-select="">
         <option value="">選ばない</option>
-        {listed ? null : <option value={selectedId}>選んだ記録（今のテキストと対象に合いません）</option>}
+        {listed ? null : <option value={selectedId}>{unlistedLabel}</option>}
         {choices.map((choice) => (
           <option key={choice.id} value={choice.id}>
             {recordedAtLabel(choice.recordedAt)}　{choice.targetLabel}　{recordRangeLabel(choice.rangeStart, choice.rangeEnd)}
@@ -78,18 +83,14 @@ function RecordPicker({
   );
 }
 
-function RecordOrigin({ origin }: { readonly origin: RunChartRecordOrigin }) {
+function RecordOrigin({ origin, texts }: { readonly origin: RunChartRecordOrigin; readonly texts: KeystrokeRecordTexts | undefined }) {
   const rows: readonly (readonly [string, string])[] = [
     ['対象', origin.targetName],
-    ['物理配列', origin.shapeName ?? origin.shapeId],
-    ['指の割り当て', origin.fingerAssignmentName ?? origin.fingerAssignmentId],
     ['テキスト', `${origin.textName}（${origin.textChars.toLocaleString('ja-JP')}字）`],
     ['範囲', `${recordRangeLabel(origin.range.start, origin.range.end)}（${origin.typedStrokes.toLocaleString('ja-JP')}打）`],
     ['記録した日時', recordedAtLabel(origin.recordedAt)],
     ['アプリの版', `${origin.appVersion}（モデルの版 ${origin.modelVersion}）`],
-    ['前処理', `記号を${origin.keepSymbols ? '残す' : '除く'}、英数字を${origin.keepAlphanumerics ? '残す' : '除く'}`],
-    ['ローマ字の規則', origin.romajiRuleId ?? 'なし'],
-    ['先読み幅N', String(origin.windowSize)],
+    ...(texts?.rows.map((row): readonly [string, string] => [row.label, row.value]) ?? []),
   ];
   return (
     <dl className="run-chart-record-origin" data-run-chart-record-origin="">
@@ -101,6 +102,17 @@ function RecordOrigin({ origin }: { readonly origin: RunChartRecordOrigin }) {
       ))}
     </dl>
   );
+}
+
+/** 食い違う項目の文。条件は、値が違う項目の名前を括って並べる。 */
+function mismatchText(items: readonly RecordMismatchItem[], conditionKeys: readonly string[], texts: KeystrokeRecordTexts | undefined): string {
+  return items
+    .map((item) => {
+      if (item !== 'conditions' || conditionKeys.length === 0) return mismatchLabel(item);
+      const names = conditionKeys.map((key) => texts?.conditionLabel(key) ?? key);
+      return `${mismatchLabel(item)}（${names.join('、')}）`;
+    })
+    .join('、');
 }
 
 function GapFigure({
@@ -141,15 +153,6 @@ function GapFigure({
             </text>
           ) : null,
         )}
-        {shownBoundaries.length === 0 ? null : (
-          <g className="run-chart-boundaries" data-run-chart-record-boundaries={shownBoundaries.length}>
-            {shownBoundaries.map((boundary) => {
-              const x = chartX(boundary - frame.start, frame.total);
-              const full = shownBoundaries.length <= BOUNDARY_FULL_LINE_LIMIT;
-              return <line key={boundary} className="run-chart-boundary" x1={x} x2={x} y1={full ? CHART_MARGIN.top : base - 6} y2={base} />;
-            })}
-          </g>
-        )}
         <path className="run-chart-record-missing" d={model.missingPath} data-run-chart-record-gaps={model.missingXs.length} fill="none" />
         <path
           className="run-chart-record-stem"
@@ -165,6 +168,15 @@ function GapFigure({
               </SeriesMark>
             ))
           : null}
+        {shownBoundaries.length === 0 ? null : (
+          <g className="run-chart-boundaries" data-run-chart-record-boundaries={shownBoundaries.length}>
+            {shownBoundaries.map((boundary) => {
+              const x = chartX(boundary - frame.start, frame.total);
+              const full = shownBoundaries.length <= BOUNDARY_FULL_LINE_LIMIT;
+              return <line key={boundary} className="run-chart-boundary" x1={x} x2={x} y1={full ? CHART_MARGIN.top : base - 6} y2={base} />;
+            })}
+          </g>
+        )}
       </svg>
     </div>
   );
@@ -233,6 +245,7 @@ export function RunChartRecordSection({
   choices,
   selectedId,
   onSelect,
+  texts,
   frame,
   span,
   boundaries,
@@ -245,17 +258,24 @@ export function RunChartRecordSection({
   if (choices === undefined || (choices.length === 0 && selectedId === '')) return null;
   return (
     <section className="run-chart-record" data-run-chart-record="" aria-label="打鍵の記録">
-      <RecordPicker choices={choices} selectedId={selectedId} onSelect={onSelect} />
+      <RecordPicker
+        choices={choices}
+        selectedId={selectedId}
+        unlistedLabel={
+          record?.kind === 'missing' ? '選んだ記録（手元にありません）' : record === undefined ? '選んだ記録' : '選んだ記録（今の条件と食い違います）'
+        }
+        onSelect={onSelect}
+      />
       {record === undefined ? null : record.kind === 'missing' ? (
         <p className="run-chart-notice" role="status" data-run-chart-record-missing-note="">
           選んだ打鍵の記録が手元にありません。
         </p>
       ) : (
         <>
-          <RecordOrigin origin={record.origin} />
+          <RecordOrigin origin={record.origin} texts={texts} />
           {record.kind === 'mismatch' ? (
             <p className="run-chart-notice" role="status" data-run-chart-record-mismatch="">
-              打鍵の記録が今の条件と食い違うので、間隔を出しません。食い違う項目は、{record.items.map(mismatchLabel).join('、')}です。
+              打鍵の記録が今の条件と食い違うので、間隔を出しません。食い違う項目は、{mismatchText(record.items, record.conditionKeys, texts)}です。
             </p>
           ) : recordCoversSpan(record, span) ? (
             <>

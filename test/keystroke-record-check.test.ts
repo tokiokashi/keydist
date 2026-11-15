@@ -35,7 +35,6 @@ test('同じ条件・同じテキストの記録は食い違わず、ストロ�
       result.facts?.map((fact) => fact.end),
       record.ends,
     );
-    assert.equal(result.shapeName.length > 0 && result.fingerAssignmentName.length > 0, true);
   }
 });
 
@@ -72,7 +71,9 @@ test('条件が違えば、条件を挙げる。項目の並びが違うだけ�
   const input = resolveRecordInput('qwerty');
   const record = buildRecord(input, 0, RULE);
   const overrides = overridden(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'windowSize', 5);
-  assert.deepEqual(check('qwerty', record, { overrides }).mismatches, ['conditions']);
+  const changed = check('qwerty', record, { overrides });
+  assert.deepEqual(changed.mismatches, ['conditions']);
+  assert.deepEqual(changed.differingConditions, ['windowSize']);
   const reordered: KeystrokeRecord = {
     ...record,
     conditions: Object.fromEntries(Object.entries(record.conditions).reverse()) as KeystrokeRecord['conditions'],
@@ -164,4 +165,30 @@ test('Run Chartの抽出: 手元に記録が無い時は見つからない、対
   const stale = extractRecord('qwerty', { ...record, modelVersion: record.modelVersion + 1 }, options);
   assert.deepEqual(stale?.kind === 'mismatch' ? stale.items : undefined, ['version']);
   assert.equal(extractRecord('qwerty', record, DEFAULT_RUN_CHART_OPTIONS), undefined);
+});
+
+test('Run Chartの抽出: 食い違う時の出どころは記録が持つ値で、今の入力の値を入れない。値が違う条件の項目を挙げる', () => {
+  const input = resolveRecordInput('qwerty');
+  const record = buildRecord(input, 0, RULE);
+  const options = { ...DEFAULT_RUN_CHART_OPTIONS, record: record.id };
+  const stale = extractRecord(
+    'qwerty',
+    { ...record, shapeId: 'recorded-shape', targetName: '記録した時の名前', conditions: { ...record.conditions, windowSize: 9 } },
+    options,
+  );
+  assert.equal(stale?.kind, 'mismatch');
+  if (stale?.kind !== 'mismatch') return;
+  assert.deepEqual(stale.items, ['shape', 'conditions']);
+  assert.deepEqual(stale.conditionKeys, ['windowSize']);
+  assert.equal(stale.origin.targetName, '記録した時の名前');
+  assert.deepEqual(Object.keys(stale.origin).sort(), [
+    'appVersion',
+    'modelVersion',
+    'range',
+    'recordedAt',
+    'targetName',
+    'textChars',
+    'textName',
+    'typedStrokes',
+  ]);
 });

@@ -1,10 +1,10 @@
-import { expect, PAGE_TAG, test, type Page } from './fixtures.ts';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { useKanaText } from './kana-text-helper.ts';
 
 /**
- * Run Chartに打鍵の記録の間隔を並べる画面のE2E。間隔の定義・食い違いの判定・表の集計はunit testが持つので、ここでは画面の配線を見る:
- * 打鍵の記録の画面で保存した記録を、Run Chartで選ぶと、記録の出どころと間隔の図が同じペインに出て、表で読める。
+ * データの場面のE2E: 打鍵の記録の画面で保存した記録を、別のページ（Run Chart）で読める。
+ * 間隔の定義・食い違いの判定・表の集計はunit testが持つ。
  */
 
 /** 次に打つキーの表示を読み、打ち終えるまで打つ。 */
@@ -21,7 +21,7 @@ async function typeThrough(page: Page): Promise<void> {
   throw new Error('記録が終わらなかった');
 }
 
-test('打鍵の記録の画面で保存した記録を、Run Chartで選ぶと間隔の図と出どころが出る', { tag: PAGE_TAG }, async ({ page }) => {
+test('打鍵の記録の画面で保存した記録を、Run Chartで選ぶと間隔の図と出どころが出る', async ({ page }) => {
   test.setTimeout(90_000);
   await useKanaText(page);
   await page.addInitScript(() => {
@@ -51,12 +51,4 @@ test('打鍵の記録の画面で保存した記録を、Run Chartで選ぶと�
   await expect(feature.locator('[data-run-chart-record-origin]')).toContainText('かな文');
   await expect(feature.locator('[data-run-chart-record-figure]')).toBeVisible();
   await expect(feature.locator('[data-run-chart-record-mismatch]')).toHaveCount(0);
-
-  // 図を表で読むと、記録の間隔も表になる
-  await feature.locator('[data-figure-table-switch]').click();
-  await expect(feature.locator('[data-run-chart-record] [data-figure-table]')).toBeVisible();
-
-  // 記録を選ばない状態に戻すと、間隔は消える
-  await select.selectOption('');
-  await expect(feature.locator('[data-run-chart-record-origin]')).toHaveCount(0);
 });

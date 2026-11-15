@@ -6,6 +6,7 @@ import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setu
 import type { KeystrokeRecordChoice, PlaybackJump, SegmentationStatus, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
 import { recordTargetMatches } from '#interpretation/record/keystroke-gaps.ts';
 import { textDigest } from '#interpretation/record/keystroke-record.ts';
+import { keystrokeRecordTexts } from '../keystroke-record-texts.ts';
 import {
   conditionHeaderInfoFromResolvedInput,
   globalConditionLevels,
@@ -152,6 +153,10 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   );
 
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
+  const recordTexts = useMemo(
+    () => (selectedRecord === undefined ? undefined : keystrokeRecordTexts(selectedRecord, catalog.setupCatalog)),
+    [selectedRecord, catalog.setupCatalog],
+  );
   const rowContext = useMemo(() => {
     const map = new Map<string, RowContext>();
     for (const member of members) {
@@ -352,6 +357,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
             {...(playbackJump === undefined ? {} : { playbackJump })}
             {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
             {...(keystrokeRecords === undefined ? {} : { keystrokeRecords })}
+            {...(recordTexts === undefined ? {} : { keystrokeRecordTexts: recordTexts })}
           />
         )}
       </PaneFrame>

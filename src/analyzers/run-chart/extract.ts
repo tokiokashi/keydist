@@ -88,7 +88,10 @@ export interface RunChartSeriesFailed {
 
 export type RunChartSeries = RunChartSeriesOk | RunChartSeriesFailed;
 
-/** 選んだ記録の出どころと条件（記録が持つ値）。`shapeName`・`fingerAssignmentName`は、今の入力と照らせた時の物理配列と指の割り当ての名前。 */
+/**
+ * 選んだ記録の出どころ（記録が持つ値）。今の入力の値は入れない（食い違う時に、記録を取った時の値を出すため）。
+ * 物理配列・指の割り当て・ローマ字規則など、idを名前に引く項目は、手持ちを持つホストが記録から作る。
+ */
 export interface RunChartRecordOrigin {
   readonly targetName: string;
   readonly recordedAt: string;
@@ -98,14 +101,6 @@ export interface RunChartRecordOrigin {
   readonly textChars: number;
   readonly range: { readonly start: number; readonly end: number };
   readonly typedStrokes: number;
-  readonly shapeId: string;
-  readonly fingerAssignmentId: string;
-  readonly shapeName?: string;
-  readonly fingerAssignmentName?: string;
-  readonly keepSymbols: boolean;
-  readonly keepAlphanumerics: boolean;
-  readonly romajiRuleId: string | null;
-  readonly windowSize: number;
 }
 
 /**
@@ -115,7 +110,14 @@ export interface RunChartRecordOrigin {
  */
 export type RunChartRecord =
   | { readonly kind: 'missing'; readonly id: string }
-  | { readonly kind: 'mismatch'; readonly id: string; readonly items: readonly RecordMismatchItem[]; readonly origin: RunChartRecordOrigin }
+  | {
+      readonly kind: 'mismatch';
+      readonly id: string;
+      readonly items: readonly RecordMismatchItem[];
+      /** 条件が食い違う時の、値が違う条件の項目の名前。 */
+      readonly conditionKeys: readonly string[];
+      readonly origin: RunChartRecordOrigin;
+    }
   | {
       readonly kind: 'ready';
       readonly id: string;
@@ -217,7 +219,7 @@ function failureToSeries(failure: AnalyzerSetMemberFailure): RunChartSeriesFaile
   return { kind: 'failed', targetKey: analysisTargetKey(failure.target), failureKind: failure.kind, message: failure.message };
 }
 
-function originOf(record: KeystrokeRecord, names?: { readonly shapeName: string; readonly fingerAssignmentName: string }): RunChartRecordOrigin {
+export function originOf(record: KeystrokeRecord): RunChartRecordOrigin {
   return {
     targetName: record.targetName,
     recordedAt: record.recordedAt,
@@ -227,13 +229,6 @@ function originOf(record: KeystrokeRecord, names?: { readonly shapeName: string;
     textChars: record.text.chars,
     range: { start: record.range.start, end: record.range.end },
     typedStrokes: record.taps.length,
-    shapeId: record.shapeId,
-    fingerAssignmentId: record.fingerAssignmentId,
-    ...(names === undefined ? {} : names),
-    keepSymbols: record.conditions.keepSymbols,
-    keepAlphanumerics: record.conditions.keepAlphanumerics,
-    romajiRuleId: record.conditions.romajiRuleId,
-    windowSize: record.conditions.windowSize,
   };
 }
 
@@ -249,9 +244,12 @@ export function computeRecordResult(members: readonly AnalyzerSetMember[], optio
   if (record === undefined) return { kind: 'missing', id: options.record };
   const member = members.find((candidate) => recordTargetMatches(record, candidate.target));
   const check = member?.recordCheck?.();
-  if (member === undefined || check === undefined) return { kind: 'mismatch', id: record.id, items: ['target'], origin: originOf(record) };
-  const origin = originOf(record, { shapeName: check.shapeName, fingerAssignmentName: check.fingerAssignmentName });
-  if (check.facts === undefined) return { kind: 'mismatch', id: record.id, items: check.mismatches, origin };
+  if (member === undefined || check === undefined)
+    return { kind: 'mismatch', id: record.id, items: ['target'], conditionKeys: [], origin: originOf(record) };
+  const origin = originOf(record);
+  if (check.facts === undefined) {
+    return { kind: 'mismatch', id: record.id, items: check.mismatches, conditionKeys: check.differingConditions ?? [], origin };
+  }
   const points = recordGapPoints(check.facts, record.taps);
   const segmentation = member.assets?.segmentation;
   return {

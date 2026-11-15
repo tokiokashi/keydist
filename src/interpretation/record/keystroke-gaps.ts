@@ -37,8 +37,8 @@ export function recordTargetMatches(record: Pick<KeystrokeRecord, 'target'>, tar
 export interface RecordCurrentFacts {
   readonly shapeId: string;
   readonly fingerAssignmentId: string;
-  /** 条件の実効値（読みの変換を除く）を、項目の並びによらない文字列にしたもの。 */
-  readonly conditionsKey: string;
+  /** 条件の実効値（読みの変換を除く）。項目の並びは問わない。 */
+  readonly conditions: Readonly<Record<string, unknown>>;
   readonly modelVersion: number;
   /** 評価に渡す本文の照合値。 */
   readonly textDigest: string;
@@ -46,15 +46,33 @@ export interface RecordCurrentFacts {
   readonly rangeDigestOf: (start: number, end: number) => string | undefined;
 }
 
+/** 値の比べ方。オブジェクトは項目の並びを問わない。 */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (typeof value === 'object' && value !== null) {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'undefined';
+}
+
+/** 記録の条件と今の条件で、値が違う項目の名前（条件の項目の名前の昇順）。 */
+export function differingConditionKeys(recorded: Readonly<Record<string, unknown>>, current: Readonly<Record<string, unknown>>): string[] {
+  const keys = new Set([...Object.keys(recorded), ...Object.keys(current)]);
+  return [...keys].filter((key) => canonical(recorded[key]) !== canonical(current[key])).sort();
+}
+
 /**
  * 対象以外の、打鍵の列を作り直さずに判定できる項目の食い違い。範囲は、テキストが同じ時だけ判定する
  * （テキストが違えば範囲の本文も違うので、重ねて示さない）。
  */
-export function scalarRecordMismatches(record: KeystrokeRecord, current: RecordCurrentFacts, recordConditionsKey: string): RecordMismatchItem[] {
+export function scalarRecordMismatches(record: KeystrokeRecord, current: RecordCurrentFacts): RecordMismatchItem[] {
   const items: RecordMismatchItem[] = [];
   if (record.shapeId !== current.shapeId) items.push('shape');
   if (record.fingerAssignmentId !== current.fingerAssignmentId) items.push('fingerAssignment');
-  if (recordConditionsKey !== current.conditionsKey) items.push('conditions');
+  if (differingConditionKeys(record.conditions, current.conditions).length > 0) items.push('conditions');
   if (record.modelVersion !== current.modelVersion) items.push('version');
   if (record.text.digest !== current.textDigest) {
     items.push('text');
@@ -169,7 +187,6 @@ export interface RecordCheck {
   readonly mismatches: readonly RecordMismatchItem[];
   /** 食い違わない時だけ持つ。記録のストロークごとの事実。 */
   readonly facts?: readonly RecordStrokeFact[];
-  /** 今の物理配列と指の割り当ての名前（記録の出どころの表示に使う）。 */
-  readonly shapeName: string;
-  readonly fingerAssignmentName: string;
+  /** 条件が食い違う時の、値が違う条件の項目の名前。 */
+  readonly differingConditions?: readonly string[];
 }
