@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { pointPositionsOf } from '#analyzers/run-chart/extract.ts';
-import { finishKeystrokeRecord, recordBaseTrace, recordPlanOf, recordRangeStatuses, type RecordMeta } from '#engine/keystroke-record.ts';
+import {
+  finishKeystrokeRecord,
+  recordBaseTrace,
+  recordPlanOf,
+  recordRangeStatuses,
+  windowedSignatureOf,
+  type RecordMeta,
+} from '#engine/keystroke-record.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
@@ -34,19 +41,33 @@ const META: RecordMeta = {
   textName: 'テスト',
 };
 
-function resolve(layoutId: string, comboBarriers?: readonly number[]): ResolvedInput {
+function resolve(layoutId: string, comboBarriers?: readonly number[], text: string = TEXT, verbatimText = false): ResolvedInput {
   const result = resolveEngineInput({
     target: { kind: 'layout', layoutId },
     setups: new Map(),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,
-    text: TEXT,
+    text,
     language: 'ja',
     ...(comboBarriers === undefined ? {} : { comboBarriers }),
+    ...(verbatimText ? { verbatimText } : {}),
   });
   assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
   return result.input;
+}
+
+/** 打ち終えた記録を保存する。打っている間に使った窓の作り直しの照合値も渡す。 */
+function finish(
+  input: ResolvedInput,
+  trace: ReturnType<typeof recordBaseTrace>,
+  rangeIndex: number,
+  planned: Extract<ReturnType<typeof recordPlanOf>, { ok: true }>,
+  record: ReturnType<typeof typeRange>,
+  taps = record.taps,
+) {
+  const windowed = planned.rebuild === undefined ? undefined : windowedSignatureOf(planned.rebuild, record.typed);
+  return finishKeystrokeRecord(input, trace, rangeIndex, record.typed, taps, META, windowed);
 }
 
 /** 範囲の計画を、単位ごとに`choose`が選ぶ綴りで最後まで打つ。 */
@@ -78,8 +99,8 @@ const RULE = (_unit: number, spellings: readonly string[]) => spellings[0]!;
 const MIXED = (unit: number, spellings: readonly string[]) => spellings[unit % spellings.length]!;
 const LAST = (_unit: number, spellings: readonly string[]) => spellings[spellings.length - 1]!;
 
-function checkPositions(layoutId: string, choose: typeof RULE, comboBarriers?: readonly number[]) {
-  const input = resolve(layoutId, comboBarriers);
+function checkPositions(layoutId: string, choose: typeof RULE, comboBarriers?: readonly number[], text: string = TEXT) {
+  const input = resolve(layoutId, comboBarriers, text);
   const trace = recordBaseTrace(input);
   const positions = pointPositionsOf(trace);
   const bounds = textRangeBounds(input.text);
@@ -90,7 +111,7 @@ function checkPositions(layoutId: string, choose: typeof RULE, comboBarriers?: r
     const planned = recordPlanOf(input, trace, rangeIndex);
     assert.ok(planned.ok);
     const record = typeRange(planned.plan, choose);
-    const finished = finishKeystrokeRecord(input, trace, rangeIndex, record.typed, record.taps, META);
+    const finished = finish(input, trace, rangeIndex, planned, record);
     assert.ok(finished.ok, finished.ok ? '' : finished.reason);
     const expected = positions.filter((position) => position >= status.start && position < status.end);
     const actual = [...new Set(finished.record.ends)].sort((a, b) => a - b);
@@ -126,9 +147,10 @@ test('混ぜて打った記録は、ストロークの数が条件の規則の�
   const trace = recordBaseTrace(input);
   const planned = recordPlanOf(input, trace, 0);
   assert.ok(planned.ok);
-  const rule = finishKeystrokeRecord(input, trace, 0, typeRange(planned.plan, RULE).typed, typeRange(planned.plan, RULE).taps, META);
+  const ruleRecord = typeRange(planned.plan, RULE);
+  const rule = finish(input, trace, 0, planned, ruleRecord);
   const mixedRecord = typeRange(planned.plan, LAST);
-  const mixed = finishKeystrokeRecord(input, trace, 0, mixedRecord.typed, mixedRecord.taps, META);
+  const mixed = finish(input, trace, 0, planned, mixedRecord);
   assert.ok(rule.ok && mixed.ok);
   assert.notEqual(mixed.record.ends.length, rule.record.ends.length);
   assert.deepEqual([...new Set(mixed.record.ends)], [...new Set(rule.record.ends)]);
@@ -198,7 +220,7 @@ test('範囲だけを作り直した打鍵の列は、全文の経路で作り�
       const planned = recordPlanOf(input, trace, rangeIndex);
       assert.ok(planned.ok);
       const record = typeRange(planned.plan, MIXED);
-      const finished = finishKeystrokeRecord(input, trace, rangeIndex, record.typed, record.taps, META);
+      const finished = finish(input, trace, rangeIndex, planned, record);
       assert.ok(finished.ok, `${layoutId}の範囲${rangeIndex}`);
     }
   }
@@ -210,7 +232,7 @@ test('作り直した打鍵の列のストロークの数が、記録した打�
   const planned = recordPlanOf(input, trace, 0);
   assert.ok(planned.ok);
   const record = typeRange(planned.plan, MIXED);
-  const finished = finishKeystrokeRecord(input, trace, 0, record.typed, record.taps.slice(1), META);
+  const finished = finish(input, trace, 0, planned, record, record.taps.slice(1));
   assert.deepEqual(finished, { ok: false, reason: 'count-mismatch' });
 });
 
@@ -232,4 +254,64 @@ test('綴りの組が違えば、同じ文の窓でも作り直した打鍵の�
   assert.notEqual(keys(first), keys(second));
   // 同じ組をもう一度作ると、同じ列になる
   assert.equal(keys(rebuild.strokes(withChange(choosable[0]!))!), keys(first));
+});
+
+test('範囲の外に打てない文字があっても、範囲の中が打てれば、綴りを混ぜた記録を保存できる', () => {
+  // 範囲0（先頭の約1000字）は打てる。範囲の外（末尾の近く）に、配列で打てない全角の英字を置く
+  const text = `${TEXT.slice(0, 2200)}ａｂ${TEXT.slice(2200)}`;
+  const input = resolve('qwerty', undefined, text, true);
+  const trace = recordBaseTrace(input);
+  assert.ok(trace.skippedPositions.length > 0);
+  const statuses = recordRangeStatuses(input, trace);
+  assert.equal(statuses[0]!.unmeasurable, undefined);
+  assert.equal(statuses[statuses.length - 1]!.unmeasurable, 'skipped');
+  const planned = recordPlanOf(input, trace, 0);
+  assert.ok(planned.ok && planned.rebuild !== undefined);
+  for (const choose of [MIXED, LAST]) {
+    const record = typeRange(planned.plan, choose);
+    const finished = finish(input, trace, 0, planned, record);
+    assert.ok(finished.ok, finished.ok ? '' : finished.reason);
+  }
+});
+
+const TEXT_WITH_BLANKS = SENTENCES.map((sentence, index) => `${sentence}${index % 2 === 0 ? '\n' : '　'}`)
+  .join('')
+  .repeat(Math.ceil(2300 / SENTENCES.join('').length));
+
+test('改行と空白は打たない文字で、含む範囲も打てる。eの集合はRun Chartの点の位置と等しい（綴りを混ぜても）', () => {
+  const input = resolve('qwerty', undefined, TEXT_WITH_BLANKS);
+  assert.ok(input.text.includes('\n') && input.text.includes('　'), '本文に改行と空白が残っている');
+  const trace = recordBaseTrace(input);
+  assert.ok(trace.skippedPositions.length > 0, '改行と空白は打鍵の列から飛ばされる');
+  assert.ok(recordRangeStatuses(input, trace).every((status) => status.unmeasurable === undefined));
+  for (const choose of [RULE, MIXED, LAST]) checkPositions('qwerty', choose, undefined, TEXT_WITH_BLANKS);
+  const planned = recordPlanOf(input, trace, 0);
+  assert.ok(planned.ok && planned.rebuild !== undefined, '改行と空白を含む範囲でも、綴りを選べる');
+});
+
+test('打っている間に使った窓の結果と、保存する時に全文で作り直した範囲が食い違えば、保存しない', () => {
+  const input = resolve('qwerty');
+  const trace = recordBaseTrace(input);
+  const planned = recordPlanOf(input, trace, 0);
+  assert.ok(planned.ok && planned.rebuild !== undefined);
+  const record = typeRange(planned.plan, LAST);
+  const right = windowedSignatureOf(planned.rebuild, record.typed);
+  assert.ok(right !== undefined);
+  assert.ok(finishKeystrokeRecord(input, trace, 0, record.typed, record.taps, META, right).ok);
+  assert.deepEqual(finishKeystrokeRecord(input, trace, 0, record.typed, record.taps, META, `${right}x`), { ok: false, reason: 'rebuild-mismatch' });
+  assert.deepEqual(finishKeystrokeRecord(input, trace, 0, record.typed, record.taps, META, undefined), { ok: false, reason: 'rebuild-mismatch' });
+});
+
+test('範囲を打つキーの列の照合値は、打った綴りで変わり、同じ打ち方なら同じになる', () => {
+  const input = resolve('qwerty');
+  const trace = recordBaseTrace(input);
+  const planned = recordPlanOf(input, trace, 0);
+  assert.ok(planned.ok);
+  const digest = (choose: typeof RULE) => {
+    const finished = finish(input, trace, 0, planned, typeRange(planned.plan, choose));
+    assert.ok(finished.ok);
+    return finished.record.range.keysDigest;
+  };
+  assert.equal(digest(RULE), digest(RULE));
+  assert.notEqual(digest(RULE), digest(LAST));
 });

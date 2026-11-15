@@ -29,11 +29,13 @@ export interface RecordText {
   readonly digest: string;
 }
 
-/** 打った範囲。評価に渡した本文の文字位置の半開区間 `[start, end)` と、その範囲の本文の照合値。 */
+/** 打った範囲。評価に渡した本文の文字位置の半開区間`[start, end)`と、その範囲の本文の照合値。 */
 export interface RecordRange {
   readonly start: number;
   readonly end: number;
   readonly digest: string;
+  /** 範囲を打つキーの列（ステップごとの、押すキーと出力の文字）の照合値。コンボを止める境などで、今の打鍵の列と食い違うかを判定する。 */
+  readonly keysDigest: string;
 }
 
 export interface KeystrokeRecord {
@@ -54,7 +56,7 @@ export interface KeystrokeRecord {
    * 範囲のかなごとに打った綴り（ローマ字の配列で、綴りを選べる範囲だけ）。無ければ、条件の規則の打ち方の打鍵の列を打った。
    */
   readonly typed?: readonly string[];
-  /** ストロークごとの、属する入力の選択の文字位置 `e`（`interpretation/selection-ends.ts`）。`taps`と同じ並び。 */
+  /** ストロークごとの、属する入力の選択の文字位置`e`（`interpretation/selection-ends.ts`）。`taps`と同じ並び。 */
   readonly ends: readonly number[];
   /** ストロークごとの記録。`atMs`は最初のストロークの時刻を0とした相対の時刻[ms]。 */
   readonly taps: readonly SentenceTap[];
@@ -204,7 +206,8 @@ function decodeRecord(raw: unknown): KeystrokeRecord | undefined {
     !isCount(range.end) ||
     range.start >= range.end ||
     range.end > text.chars ||
-    !nonEmptyString(range.digest)
+    !nonEmptyString(range.digest) ||
+    !nonEmptyString(range.keysDigest)
   ) {
     return undefined;
   }
@@ -253,7 +256,7 @@ function decodeRecord(raw: unknown): KeystrokeRecord | undefined {
     fingerAssignmentId,
     conditions,
     text: { identity: text.identity, name: text.name, chars: text.chars, digest: text.digest },
-    range: { start: range.start, end: range.end, digest: range.digest },
+    range: { start: range.start, end: range.end, digest: range.digest, keysDigest: range.keysDigest },
     ...(typedSpellings === undefined ? {} : { typed: typedSpellings }),
     ends,
     taps,

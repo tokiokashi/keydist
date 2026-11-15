@@ -1208,7 +1208,7 @@ function keystrokeRecord(id: string): KeystrokeRecord {
       keepAlphanumerics: false,
     },
     text: { identity: 'builtin:x', name: 'x', chars: 10, digest: textDigest('x') },
-    range: { start: 0, end: 10, digest: textDigest('x') },
+    range: { start: 0, end: 10, digest: textDigest('x'), keysDigest: textDigest('k') },
     ends: [0],
     taps: [{ atMs: 0, clean: true }],
   };

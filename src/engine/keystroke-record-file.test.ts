@@ -26,7 +26,7 @@ const RECORD: KeystrokeRecord = {
     keepAlphanumerics: false,
   },
   text: { identity: 'builtin:x', name: 'x', chars: 10, digest: textDigest('x') },
-  range: { start: 0, end: 10, digest: textDigest('x') },
+  range: { start: 0, end: 10, digest: textDigest('x'), keysDigest: textDigest('k') },
   typed: ['a'],
   ends: [0, 3],
   taps: [

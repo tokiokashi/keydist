@@ -22,7 +22,7 @@ function record(overrides: Partial<KeystrokeRecord> = {}): KeystrokeRecord {
     fingerAssignmentId: 'default',
     conditions: CONDITIONS,
     text: { identity: 'user:t1', name: '本文', chars: 2300, digest: textDigest('x') },
-    range: { start: 1100, end: 1200, digest: textDigest('y') },
+    range: { start: 1100, end: 1200, digest: textDigest('y'), keysDigest: textDigest('k') },
     typed: ['si', 'ka', 'nn'],
     ends: [1100, 1101, 1101, 1102, 1105],
     taps: [

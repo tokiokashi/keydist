@@ -1,4 +1,4 @@
-import type { RecordFailure, RecordUnmeasurable } from '#engine/keystroke-record.ts';
+import type { RecordUnmeasurable } from '#engine/keystroke-record.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
 
 /** 画面に出す文言。内部の語（id・キー名・型名）は出さない。 */
@@ -25,10 +25,9 @@ export function unmeasurableText(reason: RecordUnmeasurable | 'no-range'): strin
   }
 }
 
-export function failureText(reason: RecordFailure): string {
-  return reason === 'count-mismatch'
-    ? '打った綴りから作り直した打鍵の数が、記録した打鍵の数と合わないため、保存できません。もう一度記録してください。'
-    : '打った綴りから打鍵の列を作り直せなかったため、保存できません。もう一度記録してください。';
+/** 打ち終えた記録を保存できない時の文。同じ範囲を同じ打ち方で打っても同じ結果になるので、打ち直しは頼まない。 */
+export function failureText(): string {
+  return 'この範囲の記録を保存できませんでした。別の範囲か、別の配列で記録してください。';
 }
 
 export const COMPUTING_TEXT = '打鍵の列を作っています…';

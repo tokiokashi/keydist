@@ -19,6 +19,8 @@ export type RecordWorkerRequest =
       readonly typed: readonly string[];
       readonly taps: readonly SentenceTap[];
       readonly meta: RecordMeta;
+      /** 打っている間に使った窓の作り直しの、打つキーの列の照合値。 */
+      readonly windowed: string | undefined;
     };
 
 /** `ranges`の結果。範囲ごとの状態と、全文の入力かな数。 */

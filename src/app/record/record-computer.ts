@@ -8,7 +8,14 @@ import type { RecordFinishValue, RecordRangesValue, RecordRangeValue, RecordWork
 export interface RecordComputer {
   ranges(input: ResolvedInput): Promise<RecordRangesValue>;
   range(input: ResolvedInput, rangeIndex: number): Promise<RecordRangeValue>;
-  finish(input: ResolvedInput, rangeIndex: number, typed: readonly string[], taps: readonly SentenceTap[], meta: RecordMeta): Promise<RecordFinishValue>;
+  finish(
+    input: ResolvedInput,
+    rangeIndex: number,
+    typed: readonly string[],
+    taps: readonly SentenceTap[],
+    meta: RecordMeta,
+    windowed?: string,
+  ): Promise<RecordFinishValue>;
 }
 
 interface WorkerLike {
@@ -40,7 +47,7 @@ function createWorkerComputer(worker: WorkerLike): RecordComputer {
   return {
     ranges: (input) => call((id) => ({ id, kind: 'ranges', input })),
     range: (input, rangeIndex) => call((id) => ({ id, kind: 'range', input, rangeIndex })),
-    finish: (input, rangeIndex, typed, taps, meta) => call((id) => ({ id, kind: 'finish', input, rangeIndex, typed, taps, meta })),
+    finish: (input, rangeIndex, typed, taps, meta, windowed) => call((id) => ({ id, kind: 'finish', input, rangeIndex, typed, taps, meta, windowed })),
   };
 }
 
@@ -55,7 +62,7 @@ function createInlineComputer(): RecordComputer {
   return {
     ranges: (input) => call((id) => ({ id, kind: 'ranges', input })),
     range: (input, rangeIndex) => call((id) => ({ id, kind: 'range', input, rangeIndex })),
-    finish: (input, rangeIndex, typed, taps, meta) => call((id) => ({ id, kind: 'finish', input, rangeIndex, typed, taps, meta })),
+    finish: (input, rangeIndex, typed, taps, meta, windowed) => call((id) => ({ id, kind: 'finish', input, rangeIndex, typed, taps, meta, windowed })),
   };
 }
 
@@ -65,7 +72,7 @@ let instance: RecordComputer | undefined;
 export const sharedRecordComputer: RecordComputer = {
   ranges: (input) => computer().ranges(input),
   range: (input, rangeIndex) => computer().range(input, rangeIndex),
-  finish: (input, rangeIndex, typed, taps, meta) => computer().finish(input, rangeIndex, typed, taps, meta),
+  finish: (input, rangeIndex, typed, taps, meta, windowed) => computer().finish(input, rangeIndex, typed, taps, meta, windowed),
 };
 
 function computer(): RecordComputer {

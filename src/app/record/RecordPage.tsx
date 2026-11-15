@@ -11,7 +11,7 @@ import {
 } from '#engine/commands.ts';
 import type { ResolvedInput } from '#engine/resolved-input.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
-import { recordPlanFrom, type RecordRangeStatus, type RecordMeta } from '#engine/keystroke-record.ts';
+import { recordPlanFrom, windowedSignatureOf, type SpellingRebuild, type RecordRangeStatus, type RecordMeta } from '#engine/keystroke-record.ts';
 import { KEYSTROKE_RECORD_FILE_MAX_BYTES, keystrokeRecordFileText, readKeystrokeRecordFile } from '#engine/keystroke-record-file.ts';
 import { analysisTargetKey, layoutIdsOfTargets, nameTargets } from '#input/setup/index.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
@@ -102,6 +102,8 @@ interface Started {
   readonly input: ResolvedInput;
   readonly rangeIndex: number;
   readonly plan: SentencePlan;
+  /** 綴りを受け付ける範囲の、打った綴りから打鍵の列を作り直す関数。 */
+  readonly rebuild: SpellingRebuild | undefined;
   readonly meta: RecordMeta;
 }
 
@@ -249,11 +251,12 @@ export function RecordPage({
       if (current === undefined || first === undefined || input === undefined) return;
       setPhase({ kind: 'finishing' });
       const wrong = first.taps.filter((tap) => !tap.clean).length;
-      computer.finish(input, current.rangeIndex, first.typed, first.taps, current.meta).then(
+      const windowed = current.rebuild === undefined ? undefined : windowedSignatureOf(current.rebuild, first.typed);
+      computer.finish(current.input, current.rangeIndex, first.typed, first.taps, current.meta, windowed).then(
         (result) => {
           startedRef.current = undefined;
           setStarted(undefined);
-          setPhase(result.ok ? { kind: 'pending', record: result.record, wrong } : { kind: 'failed', text: failureText(result.reason) });
+          setPhase(result.ok ? { kind: 'pending', record: result.record, wrong } : { kind: 'failed', text: failureText() });
         },
         () => {
           startedRef.current = undefined;
@@ -305,6 +308,7 @@ export function RecordPage({
         input,
         rangeIndex: selectedIndex,
         plan: planned.plan,
+        rebuild: planned.rebuild,
         meta: {
           id: generateRecordId(),
           recordedAt: new Date().toISOString(),

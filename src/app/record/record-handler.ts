@@ -45,6 +45,7 @@ export function createRecordHandler(): (request: RecordWorkerRequest) => RecordW
             request.typed,
             request.taps,
             request.meta,
+            request.windowed,
           );
           return { id: request.id, ok: true, value };
         }

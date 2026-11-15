@@ -32,7 +32,7 @@ export type RecordUnmeasurable =
 
 /** 評価に渡す全文を約1000字ごとに分けた範囲の1つ。 */
 export interface RecordRangeStatus {
-  /** 範囲の文字位置の半開区間 `[start, end)`。 */
+  /** 範囲の文字位置の半開区間`[start, end)`。 */
   readonly start: number;
   readonly end: number;
   /** 範囲に入る最初のストロークの位置と、ストロークの数。打てない範囲では無い。 */
@@ -42,13 +42,26 @@ export interface RecordRangeStatus {
   readonly unmeasurable?: RecordUnmeasurable;
 }
 
-/** 打てる打鍵の列か。配列定義の不備・打てない文字・空の列は打てない。 */
-function playable(trace: {
-  readonly errors: readonly string[];
-  readonly skippedPositions: readonly number[];
-  readonly strokes: readonly unknown[];
-}): boolean {
-  return trace.errors.length === 0 && trace.skippedPositions.length === 0 && trace.strokes.length > 0;
+/** 打たない文字。改行・空白は、打鍵の列から飛ばされても、打てない文字には数えない。 */
+const BLANK = /^\s$/u;
+
+/** `text`の`[start, end)`にある、打てない文字（打鍵の列から飛ばされた、空白類でない文字）の位置。 */
+function unplayablePositions(skippedPositions: readonly number[], chars: readonly string[], start: number, end: number): number[] {
+  return skippedPositions.filter((position) => position >= start && position < end && !BLANK.test(chars[position] ?? ''));
+}
+
+/** 打てる打鍵の列か。配列定義の不備・範囲`[start, end)`の打てない文字・空の列は打てない。 */
+function playable(
+  trace: {
+    readonly errors: readonly string[];
+    readonly skippedPositions: readonly number[];
+    readonly strokes: readonly unknown[];
+  },
+  text: string,
+  start: number,
+  end: number,
+): boolean {
+  return trace.errors.length === 0 && unplayablePositions(trace.skippedPositions, [...text], start, end).length === 0 && trace.strokes.length > 0;
 }
 
 /** 全文の打鍵の列を作る。長いテキストでは重い（約30万字で数秒）。 */
@@ -57,11 +70,12 @@ export function recordBaseTrace(input: ResolvedInput): Trace {
 }
 
 /**
- * 範囲ごとの状態。ストロークの属する範囲は、属する入力の選択の文字位置 `e`（`selectionEndsOf`）で決める。
+ * 範囲ごとの状態。ストロークの属する範囲は、属する入力の選択の文字位置`e`（`selectionEndsOf`）で決める。
  * 範囲のストロークは全文の打鍵の列の連続した部分でなければならず、範囲の端で入力単位を分けてもいけない。
  */
 export function recordRangeStatuses(input: ResolvedInput, trace: Trace): RecordRangeStatus[] {
   const bounds = textRangeBounds(input.text);
+  const textChars = [...input.text];
   const ends = strokeEndsOf(trace.strokes, trace.inputChars);
   const first = new Array<number>(bounds.length - 1).fill(-1);
   const last = new Array<number>(bounds.length - 1).fill(-1);
@@ -78,7 +92,7 @@ export function recordRangeStatuses(input: ResolvedInput, trace: Trace): RecordR
   return bounds.slice(0, -1).map((start, rangeIndex): RecordRangeStatus => {
     const end = bounds[rangeIndex + 1]!;
     if (trace.errors.length > 0) return { start, end, unmeasurable: 'layout-errors' };
-    if (trace.skippedPositions.some((position) => position >= start && position < end)) return { start, end, unmeasurable: 'skipped' };
+    if (unplayablePositions(trace.skippedPositions, textChars, start, end).length > 0) return { start, end, unmeasurable: 'skipped' };
     const count = counts[rangeIndex]!;
     if (count === 0) return { start, end, unmeasurable: 'empty' };
     const from = first[rangeIndex]!;
@@ -170,7 +184,7 @@ function windowStrokes(
   }));
   try {
     const { trace } = generateEngineTrace({ ...input, text, comboBarriers }, chunks);
-    return playable(trace) ? trace.strokes : undefined;
+    return playable(trace, text, 0, [...text].length) ? trace.strokes : undefined;
   } catch {
     return undefined;
   }
@@ -185,7 +199,7 @@ function shiftedStrokes(strokes: readonly Stroke[], windowIndex: number): readon
   return strokes.map((stroke) => ({ ...stroke, inputIndex: stroke.inputIndex + shift, selectionIndex: stroke.selectionIndex + shift }));
 }
 
-/** 範囲 `[start, end)` のかなの単位。範囲の端が単位の境目に合わなければ無い。 */
+/** 範囲`[start, end)`のかなの単位。範囲の端が単位の境目に合わなければ無い。 */
 function unitSpan(context: SpellingContext, start: number, end: number, inputChars: number): { readonly from: number; readonly to: number } | undefined {
   const from = context.starts.indexOf(start);
   if (from === -1) return undefined;
@@ -194,13 +208,23 @@ function unitSpan(context: SpellingContext, start: number, end: number, inputCha
 }
 
 /** 綴りを受け付ける範囲が持つ、打った綴りから範囲の打鍵の列を作り直す関数。 */
-interface SpellingRebuild {
+export interface SpellingRebuild {
   readonly context: SpellingContext;
   readonly span: { readonly from: number; readonly to: number };
-  /** 範囲のかなの単位ごとの、条件の規則の綴り。 */
+  /** 範囲の中で打つ単位（改行・空白の単位を除く）の、全文の通し番号。 */
+  readonly active: readonly number[];
+  /** 打つ単位ごとの、条件の規則の綴り。 */
   readonly base: readonly string[];
-  /** 範囲のかなの単位ごとの綴り`spellings`で打つ打鍵の列。作れなければ無い。 */
+  /** 打つ単位ごとの綴りから、範囲の全単位（改行・空白を含む）の綴りを作る。 */
+  expand(spellings: readonly string[]): string[];
+  /** 打つ単位ごとの綴り`spellings`で打つ打鍵の列。作れなければ無い。 */
   strokes(spellings: readonly string[]): readonly Stroke[] | undefined;
+}
+
+/** 打った綴りで作った打鍵の列の、打つキーの列の照合値。 */
+export function windowedSignatureOf(rebuild: SpellingRebuild, typed: readonly string[]): string | undefined {
+  const built = rebuild.strokes(typed);
+  return built === undefined ? undefined : stepSignature(built);
 }
 
 function spellingRebuildOf(
@@ -214,27 +238,43 @@ function spellingRebuildOf(
   baseStrokes.forEach((stroke, index) => {
     if (index === 0 || stroke.inputIndex !== baseStrokes[index - 1]!.inputIndex) groupEnds.push(index);
   });
-  if (groupEnds.length !== span.to - span.from) return undefined;
+  const active: number[] = [];
+  for (let unit = span.from; unit < span.to; unit++) if (!BLANK.test(context.units[unit]!.kana)) active.push(unit);
+  if (groupEnds.length !== active.length) return undefined;
+  const activeBefore = (unit: number) => active.filter((index) => index < unit).length;
   const sentenceEnds = new Set(sentenceEndsOf(input.text));
   const windows = rebuildWindows(context, span, sentenceEnds);
   // 窓ごとの、条件の規則の綴りで打つ打鍵の列（全文の打鍵の列の部分）。
   const baseParts = windows.map((piece) => {
-    const first = groupEnds[piece.from - span.from]!;
-    const last = piece.to - span.from < groupEnds.length ? groupEnds[piece.to - span.from]! : baseStrokes.length;
+    const from = activeBefore(piece.from);
+    const to = activeBefore(piece.to);
+    const first = from < groupEnds.length ? groupEnds[from]! : baseStrokes.length;
+    const last = to < groupEnds.length ? groupEnds[to]! : baseStrokes.length;
     return baseStrokes.slice(first, last);
   });
-  const base = context.units.slice(span.from, span.to).map((unit) => unit.spellings[0]!);
+  const fullBase = context.units.slice(span.from, span.to).map((unit) => unit.spellings[0]!);
+  const base = active.map((unit) => fullBase[unit - span.from]!);
+  const expand = (spellings: readonly string[]) => {
+    const full = [...fullBase];
+    active.forEach((unit, index) => {
+      full[unit - span.from] = spellings[index]!;
+    });
+    return full;
+  };
   const cache = windows.map(() => new Map<string, readonly Stroke[] | undefined>());
   return {
     context,
     span,
+    active,
     base,
-    strokes(spellings) {
-      if (spellings.length !== base.length) return undefined;
+    expand,
+    strokes(typedSpellings) {
+      if (typedSpellings.length !== base.length) return undefined;
+      const spellings = expand(typedSpellings);
       const parts: (readonly Stroke[])[] = [];
       for (const [index, piece] of windows.entries()) {
         const mine = spellings.slice(piece.from - span.from, piece.to - span.from);
-        if (mine.every((spelling, offset) => spelling === base[piece.from - span.from + offset])) {
+        if (mine.every((spelling, offset) => spelling === fullBase[piece.from - span.from + offset])) {
           parts.push(baseParts[index]!);
           continue;
         }
@@ -288,7 +328,7 @@ export function recordPlanFrom(input: ResolvedInput, range: RecordRangeStatus, s
     rebuild === undefined
       ? undefined
       : {
-          units: rebuild.context.units.slice(rebuild.span.from, rebuild.span.to),
+          units: rebuild.active.map((unit) => rebuild.context.units[unit]!),
           strokes: (spellings) => rebuild.strokes(spellings),
           analyze: () => undefined,
         };
@@ -344,6 +384,7 @@ export function finishKeystrokeRecord(
   typed: readonly string[],
   taps: readonly SentenceTap[],
   meta: RecordMeta,
+  windowed?: string,
 ): { readonly ok: true; readonly record: KeystrokeRecord } | { readonly ok: false; readonly reason: RecordFailure } {
   const planned = recordPlanOf(input, trace, rangeIndex);
   if (!planned.ok) return { ok: false, reason: 'no-range' };
@@ -354,9 +395,9 @@ export function finishKeystrokeRecord(
     const { context, span, base } = rebuild;
     const onBase = typed.length === base.length && typed.every((spelling, index) => spelling === base[index]);
     if (!onBase) {
-      const all = context.units.map((unit) => unit.spellings[0]!);
-      const full = [...all.slice(0, span.from), ...typed, ...all.slice(span.to)];
       if (typed.length !== base.length) return { ok: false, reason: 'rebuild-mismatch' };
+      const all = context.units.map((unit) => unit.spellings[0]!);
+      const full = [...all.slice(0, span.from), ...rebuild.expand(typed), ...all.slice(span.to)];
       const chunks: RomajiChunk[] = context.units.map((unit, index) => ({
         kana: unit.kana,
         roman: full[index]!,
@@ -368,14 +409,13 @@ export function finishKeystrokeRecord(
       } catch {
         return { ok: false, reason: 'rebuild-mismatch' };
       }
-      if (!playable(rebuilt)) return { ok: false, reason: 'rebuild-mismatch' };
+      if (!playable(rebuilt, input.text, range.start, range.end)) return { ok: false, reason: 'rebuild-mismatch' };
       const rebuiltStatus = recordRangeStatuses(input, rebuilt)[rangeIndex];
       if (rebuiltStatus?.firstStroke === undefined) return { ok: false, reason: 'rebuild-mismatch' };
       strokes = rebuilt.strokes.slice(rebuiltStatus.firstStroke, rebuiltStatus.firstStroke + rebuiltStatus.strokeCount!);
       inputChars = rebuilt.inputChars;
       // 打つ時に使った窓ごとの作り直しと、全文の経路で作り直した範囲が、同じ打つキーの列でなければならない。
-      const windowed = rebuild.strokes(typed);
-      if (windowed === undefined || stepSignature(windowed) !== stepSignature(strokes)) return { ok: false, reason: 'rebuild-mismatch' };
+      if (windowed === undefined || windowed !== stepSignature(strokes)) return { ok: false, reason: 'rebuild-mismatch' };
     }
   }
   if (strokes.length !== taps.length) return { ok: false, reason: 'count-mismatch' };
@@ -397,7 +437,12 @@ export function finishKeystrokeRecord(
     fingerAssignmentId: input.cascade.fingerAssignmentId.value,
     conditions: recordConditionsOf(input),
     text: { identity: meta.textIdentity, name: meta.textName, chars: chars.length, digest: textDigest(input.text) },
-    range: { start: range.start, end: range.end, digest: textDigest(chars.slice(range.start, range.end).join('')) },
+    range: {
+      start: range.start,
+      end: range.end,
+      digest: textDigest(chars.slice(range.start, range.end).join('')),
+      keysDigest: textDigest(stepSignature(strokes)),
+    },
     ...(rebuild === undefined ? {} : { typed: [...typed] }),
     ends: strokeEndsOf(strokes, inputChars),
     taps: normalized,
