@@ -62,3 +62,30 @@ test('集合が空でも、並べる配列を選ぶ操作だけが出る。選�
   const summary = (await setPicker(page).getAttribute('aria-label'))!.replace('並べる配列: ', '');
   for (const name of gridNames) expect(summary).toContain(name.trim());
 });
+
+test('見出しのボタンで、図を表に切り替えられる。格子の図は対象ごとの表になり、図へ戻せる', { tag: PAGE_TAG }, async ({ page }) => {
+  await seedSelections(page, 'qwerty', ['dvorak']);
+  await page.goto('/analyzer/heatmap?flowLines=true');
+  await expect(cells(page).locator('[data-heatmap-diagram]')).toHaveCount(1, { timeout: 15_000 });
+
+  const toggle = feature(page).getByRole('button', { name: '打鍵頻度を表で見る' });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(feature(page).locator('table.figure-table')).toHaveCount(0);
+
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  // 一番上の図は押下数の表と2打鍵の線の表、格子の図は対象ごとに同じ組の表になる
+  await expect(feature(page).locator('[data-heatmap-diagram]')).toHaveCount(0);
+  await expect(feature(page).locator('table.figure-table')).toHaveCount(4);
+  const captions = feature(page).locator('table.figure-table caption');
+  await expect(captions.first()).toHaveText('打鍵頻度');
+  await expect(captions.nth(1)).toContainText('2打鍵の線');
+  await expect(cells(page).first().locator('table.figure-table')).toHaveCount(2);
+
+  await toggle.focus();
+  await page.keyboard.press('Space');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(feature(page).locator('table.figure-table')).toHaveCount(0);
+  await expect(cells(page).locator('[data-heatmap-diagram]')).toHaveCount(1);
+});

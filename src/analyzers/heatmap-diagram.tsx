@@ -6,7 +6,7 @@ import type { KeyDetail } from '#interpretation/key-detail.ts';
 import { keyDetailTooltip, keyName } from './key-detail-view.ts';
 import type { KeySelectionProps } from './pane-parts.tsx';
 import './heatmap-diagram.css';
-import { heatIntensity, type HeatmapColorScale, type HeatmapDrawStyle, type HeatmapPalette } from './heatmap-figure.ts';
+import { heatIntensity, heatmapCaptionOf, type HeatmapColorScale, type HeatmapDrawStyle, type HeatmapPalette } from './heatmap-figure.ts';
 import { FLOW_CASING_COLOR, FLOW_CASING_WIDTH, heatmapFlowSegments, heatmapFlowStrokeWidth } from './heatmap-flow.ts';
 import type { BigramVector } from './bigram-vectors.ts';
 import { edgeKind, FLOW_COLORS, FLOW_GRADIENT_END_OPACITY, FLOW_GRADIENT_START_OPACITY, type FlowPoint } from './keyboard-flow-lines.ts';
@@ -222,7 +222,7 @@ export function HeatmapDiagram({
   const blobRuns = blob ? heatBlobRuns(blobSources, { minX: viewX, minY: viewY, maxX: viewX + width, maxY: viewY + height }, BLOB_CELL, KEY_SIZE) : [];
   const labelBlobParts = (item: (typeof keys)[number]) =>
     blob ? heatBlobBlurParts(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, KEY_SIZE) : [];
-  const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
+  const caption = heatmapCaptionOf(title);
 
   return (
     <figure

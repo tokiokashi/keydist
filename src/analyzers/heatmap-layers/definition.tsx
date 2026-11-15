@@ -1,15 +1,18 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { displayTriggerKeys, handOfKey, layerShiftStyles } from '#input/layouts/layers.ts';
 import { resolveKeyId } from '#input/shapes/geometry.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import { bindOption, SegmentedOptionField } from '#ui/primitives/option-fields.tsx';
 import { heatmapLayersDefinition, type HeatmapLayersExtracted } from './extract.ts';
+import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import { HeatmapDiagram, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
-import { layerLegends, presentationLayersOf } from '../heatmap-figure.ts';
+import { baseLayerLegends, layerLegends, presentationLayersOf } from '../heatmap-figure.ts';
+import { heatmapDrawnKeys } from '../heatmap-keys.ts';
 import { LayerDetailHeading } from '../layer-detail-heading.tsx';
 import { activeEntryIndex, buildLayerEntries, entryKeyDetail, resolveArrangement, sharedMaxCount } from './layer-view.ts';
 import { DEFAULT_HEATMAP_LAYERS_OPTIONS, heatmapLayersOptions, type HeatmapLayersOptions } from './options.ts';
 import { HEATMAP_LAYERS_PANE_META } from './pane-meta.ts';
+import { heatmapLayersTableModel, HEATMAP_LAYERS_TABLE_CAPTION } from './table-model.ts';
 import type { Face } from '#input/layouts/types.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
 import './heatmap-layers-view.css';
@@ -48,6 +51,8 @@ export function HeatmapLayersBody({
   keySelection,
 }: SingleBodyProps<HeatmapLayersExtracted, HeatmapLayersOptions>) {
   const standard = keyboardStandardForGeometryId(geometry.id);
+  /** 図の値を表で読む表示にしているか。保存しない */
+  const [asTable, setAsTable] = useState(false);
   const view = useMemo(() => {
     const entries = buildLayerEntries(layout, extracted, options.layerDetail);
     const presentation = presentationLayersOf(layout);
@@ -81,8 +86,9 @@ export function HeatmapLayersBody({
         binding={bindOption(options, DEFAULT_HEATMAP_LAYERS_OPTIONS, onOptionsChange, 'layerDetail')}
       >
         <h3 id="heatmap-layers-heading">ヒートマップ（レイヤー）・{entries.length}図</h3>
+        <FigureTableSwitch pressed={asTable} onToggle={() => setAsTable((current) => !current)} target={HEATMAP_LAYERS_TABLE_CAPTION} />
       </LayerDetailHeading>
-      {shiftLegend.length > 0 ? (
+      {!asTable && shiftLegend.length > 0 ? (
         <fieldset className="plain-group heatmap-shift-legend" aria-label="シフトキーの枠色">
           {shiftLegend.map((item) => (
             <span key={item.id} className="heatmap-shift-swatch" style={{ ['--shift-color' as string]: `var(--series-${item.style.colorSlot})` }}>
@@ -92,7 +98,7 @@ export function HeatmapLayersBody({
         </fieldset>
       ) : null}
 
-      {tabbed ? (
+      {tabbed && !asTable ? (
         <div className="heatmap-tabs" role="tablist" aria-label="レイヤー">
           {entries.map((entry, index) => (
             <button
@@ -109,27 +115,42 @@ export function HeatmapLayersBody({
         </div>
       ) : null}
 
-      <div className="heatmap-diagrams" data-heatmap-arrangement={tabbed ? 'tabs' : 'side-by-side'}>
-        {entries.map((entry, index) => (
-          <HeatmapDiagram
-            key={entry.id}
-            layout={layout}
-            geometry={geometry}
-            title={entry.title}
-            diagramId={entry.id}
-            legends={layerLegends(entry.layer, layout)}
-            detailOf={(keyId) => entryKeyDetail(extracted.keyDetails, entry.faceIds, keyId)}
-            colorCounts={entry.colorCounts}
-            maxCount={view.max}
-            scale={options.colorScale}
-            shiftStyles={shiftStylesByKey(entry.layer.faces.length === 0 ? view.allFaces : entry.layer.faces, styles)}
-            standard={standard}
-            hidden={tabbed && activeIndex !== index}
-            ariaSuffix={`（レイヤー別・${scaleText}・共通の最大値）`}
-            {...(keySelection === undefined ? {} : { keySelection })}
-          />
-        ))}
-      </div>
+      {asTable ? (
+        <FigureTable
+          model={heatmapLayersTableModel({
+            drawnKeys: heatmapDrawnKeys(layout, geometry),
+            legends: baseLayerLegends(layout),
+            standard,
+            columns: entries.map((entry) => ({
+              id: entry.id,
+              title: entry.title,
+              detailOf: (keyId) => entryKeyDetail(extracted.keyDetails, entry.faceIds, keyId),
+            })),
+          })}
+        />
+      ) : (
+        <div className="heatmap-diagrams" data-heatmap-arrangement={tabbed ? 'tabs' : 'side-by-side'}>
+          {entries.map((entry, index) => (
+            <HeatmapDiagram
+              key={entry.id}
+              layout={layout}
+              geometry={geometry}
+              title={entry.title}
+              diagramId={entry.id}
+              legends={layerLegends(entry.layer, layout)}
+              detailOf={(keyId) => entryKeyDetail(extracted.keyDetails, entry.faceIds, keyId)}
+              colorCounts={entry.colorCounts}
+              maxCount={view.max}
+              scale={options.colorScale}
+              shiftStyles={shiftStylesByKey(entry.layer.faces.length === 0 ? view.allFaces : entry.layer.faces, styles)}
+              standard={standard}
+              hidden={tabbed && activeIndex !== index}
+              ariaSuffix={`（レイヤー別・${scaleText}・共通の最大値）`}
+              {...(keySelection === undefined ? {} : { keySelection })}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
