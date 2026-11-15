@@ -1,10 +1,11 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
 import { OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { isStrokeOnlyMark, TARGET_DASH_ARRAY, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
+import { FigureTable, FigureTableSwitch } from '../figure-table-view.tsx';
 import { HeatmapDiagram, type HeatmapDiagramFlow, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
 import { baseLayerLegends, type HeatmapDrawStyle, type HeatmapPalette } from '../heatmap-figure.ts';
 import { heatmapBounds, heatmapDrawnKeys, sharedHeatmapBounds } from '../heatmap-keys.ts';
@@ -12,7 +13,8 @@ import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } 
 import { heatmapDefinition, heatmapScales, type HeatmapExtracted } from './extract.ts';
 import { HeatmapFlowLegend } from './flow-legend.tsx';
 import { HeatmapPaletteLegend } from './palette-legend.tsx';
-import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
+import { DEFAULT_HEATMAP_OPTIONS, HEATMAP_FLOW_SOURCE_LABELS, heatmapOptions, type HeatmapOptions } from './options.ts';
+import { heatmapFlowTableModel, heatmapTableModel } from './table-model.ts';
 import { useHeatmapFields } from './option-fields.tsx';
 import { HEATMAP_FIGURE_GROUPS } from './settings-sections.ts';
 import { HEATMAP_PANE_META, HEATMAP_STANDALONE_SET_TARGETS_WIDTH_REM } from './pane-meta.ts';
@@ -90,6 +92,49 @@ function flowProp(flow: HeatmapDiagramFlow | undefined): { readonly flow?: Heatm
   return flow === undefined ? {} : { flow };
 }
 
+/**
+ * 図1枚の値の表。押下数の表と、2打鍵の線を出している時はその線の表を、図の代わりに出す。
+ * 値は図に渡しているもの（キーの詳細・線の組）から作る。
+ */
+function HeatmapTables({
+  layout,
+  geometry,
+  extracted,
+  title,
+  flowSource,
+  showFlow,
+}: {
+  readonly layout: Layout;
+  readonly geometry: Geometry;
+  readonly extracted: HeatmapExtracted;
+  readonly title?: string;
+  readonly flowSource: HeatmapOptions['flowLineSource'];
+  readonly showFlow: boolean;
+}) {
+  const source = {
+    title,
+    drawnKeys: heatmapDrawnKeys(layout, geometry),
+    legends: baseLayerLegends(layout),
+    standard: keyboardStandardForGeometryId(geometry.id),
+  };
+  return (
+    <div className="heatmap-tables">
+      <FigureTable
+        model={heatmapTableModel({ ...source, detailOf: (keyId) => extracted.keyDetails.merged.get(keyId), totalPresses: extracted.presses })}
+      />
+      {showFlow ? (
+        <FigureTable
+          model={heatmapFlowTableModel({
+            ...source,
+            vectors: extracted.flowLines[flowSource].vectors,
+            sourceLabel: HEATMAP_FLOW_SOURCE_LABELS[flowSource],
+          })}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function HeatmapBody({
   layout,
   geometry,
@@ -101,6 +146,9 @@ export function HeatmapBody({
   onOptionsChange,
 }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
   const figureSettings = useFigureSettings('打鍵頻度');
+  /** 図の値を表で読む表示にしているか。保存しない */
+  const [asTable, setAsTable] = useState(false);
+  const tableSwitch = <FigureTableSwitch pressed={asTable} onToggle={() => setAsTable((current) => !current)} target="打鍵頻度" />;
   const flowSource = options.flowLineSource;
   // 線の太さの尺度は、色の尺度と同じ組で決める。一番上の図は自身の値、格子の図は計算できた格子の図の全部
   const scales = heatmapScales(
@@ -125,20 +173,36 @@ export function HeatmapBody({
   return (
     <div className="heatmap-feature" data-react-feature="heatmap">
       {figureSettings.renderWindow(<HeatmapFigureSettings options={options} onOptionsChange={onOptionsChange} />)}
-      <div className="heatmap-diagrams">
-        <HeatmapDiagram
-          {...figureProps(layout, geometry, options.drawStyle, options.palette)}
-          diagramId="integrated"
-          captionAction={figureSettings.toggle}
-          {...(legends === undefined ? {} : { captionNote: legends })}
-          {...flowProp(flowOf(extracted, scales.top.flowMaxWeight))}
-          detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
-          colorCounts={extracted.keyCounts}
-          maxCount={scales.top.maxCount}
-          ariaSuffix="（全レイヤー合算・線形）"
-          {...(keySelection === undefined ? {} : { keySelection })}
-        />
-      </div>
+      {asTable ? (
+        <>
+          <div className="figure-table-heading">
+            <h3 className="heatmap-table-heading">打鍵頻度</h3>
+            {tableSwitch}
+            {figureSettings.toggle}
+          </div>
+          <HeatmapTables layout={layout} geometry={geometry} extracted={extracted} flowSource={flowSource} showFlow={options.flowLines} />
+        </>
+      ) : (
+        <div className="heatmap-diagrams">
+          <HeatmapDiagram
+            {...figureProps(layout, geometry, options.drawStyle, options.palette)}
+            diagramId="integrated"
+            captionAction={
+              <>
+                {tableSwitch}
+                {figureSettings.toggle}
+              </>
+            }
+            {...(legends === undefined ? {} : { captionNote: legends })}
+            {...flowProp(flowOf(extracted, scales.top.flowMaxWeight))}
+            detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
+            colorCounts={extracted.keyCounts}
+            maxCount={scales.top.maxCount}
+            ariaSuffix="（全レイヤー合算・線形）"
+            {...(keySelection === undefined ? {} : { keySelection })}
+          />
+        </div>
+      )}
       {setTargetPicker ?? null}
       {setTargets === undefined ? null : (
         <ul className="heatmap-set-grid" aria-label="他の対象の打鍵頻度">
@@ -149,7 +213,16 @@ export function HeatmapBody({
                 <span>{figure.label}</span>
               </p>
               {figure.differences.length === 0 ? null : <p className="heatmap-set-diff">{figure.differences.join(' ・ ')}</p>}
-              {figure.state.status === 'ready' ? (
+              {figure.state.status === 'ready' && asTable ? (
+                <HeatmapTables
+                  layout={figure.state.layout}
+                  geometry={figure.state.geometry}
+                  extracted={figure.state.extracted}
+                  title={figure.label}
+                  flowSource={flowSource}
+                  showFlow={options.flowLines}
+                />
+              ) : figure.state.status === 'ready' ? (
                 <HeatmapDiagram
                   {...figureProps(figure.state.layout, figure.state.geometry, options.drawStyle, options.palette)}
                   title={figure.label}

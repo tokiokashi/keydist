@@ -45,6 +45,11 @@ export function heatmapDrawnKeys(layout: Pick<Layout, 'canonicalInputs'>, geomet
   });
 }
 
+/** 描くキーを、物理配列の上の段から、段の中は左から並べる。表で読む時の行の順。 */
+export function heatmapKeysInReadingOrder(keys: readonly HeatmapDrawnKey[]): readonly HeatmapDrawnKey[] {
+  return [...keys].sort((a, b) => a.key.y - b.key.y || a.left - b.left);
+}
+
 /** 描くキーの範囲（描画の座標系）。原点を必ず含む。 */
 export interface HeatmapBounds {
   readonly minX: number;

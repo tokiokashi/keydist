@@ -44,6 +44,11 @@ export function baseLayerLegends(layout: Layout): Map<string, string> {
   return layerLegends(base, layout);
 }
 
+/** ヒートマップの図の見出し。表で読む表示の表題にも使い、図と表で同じ名前にする。 */
+export function heatmapCaptionOf(title: string | undefined): string {
+  return title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
+}
+
 /** 色の強度 `t`（0〜1）。仕様 §11.10の線形・対数。 */
 export function heatIntensity(count: number, maxCount: number, scale: HeatmapColorScale): number {
   const max = Math.max(1, maxCount);
