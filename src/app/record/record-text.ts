@@ -27,7 +27,7 @@ export function unmeasurableText(reason: RecordUnmeasurable | 'no-range'): strin
 
 /** 打ち終えた記録を保存できない時の文。規則と違う綴りで打った時に起きるので、規則の綴りで打つことを案内する。 */
 export function failureText(): string {
-  return 'この範囲の記録を保存できませんでした。ローマ字規則のとおりの綴りで打つと保存できます。';
+  return 'この範囲の記録を保存できませんでした。ローマ字規則のとおりの綴りで打ち直してください。';
 }
 
 export const COMPUTING_TEXT = '打鍵の列を作っています…';
