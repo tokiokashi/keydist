@@ -421,6 +421,11 @@
   border-top: 1px solid var(--border);
 }
 
+/* 表は約1000行になるので、高さを抑えて領域の中でスクロールさせる（領域はキーボードでフォーカスできる） */
+.playback-rate-panel .figure-table-scroll {
+  max-height: 24rem;
+}
+
 .playback-figure-heading {
   display: flex;
   align-items: center;

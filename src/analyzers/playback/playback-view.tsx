@@ -35,6 +35,8 @@ import { PLAYBACK_FIGURE_GROUPS } from './settings-sections.ts';
 import { playbackRangeCount, playbackShownRange } from './step-ranges.ts';
 import { formatRate, rateChartAxisInsets } from './rate-chart-model.ts';
 import { PlaybackRateChart } from './rate-chart.tsx';
+import { rateChartTableCaption } from './table-model.ts';
+import { FigureTableSwitch } from '../figure-table-view.tsx';
 import './playback-view.css';
 
 /**
@@ -166,6 +168,8 @@ export function PlaybackBody({
   // 図に出す範囲。選んだ範囲を再生位置が出るまで保ち、出たら再生位置を含む範囲に替える。
   // 再生が範囲の終わりを越えた時、別の画面から位置を指定された時、シークバーや速度の図で範囲の外へ動かした時が、これにあたる
   const [chosenRange, setChosenRange] = useState(0);
+  /** 速度グラフを表で読む表示にしているか。保存しない */
+  const [rateAsTable, setRateAsTable] = useState(false);
   const shownRange = playbackShownRange(ranges, chosenRange, state.cursor);
   if (shownRange !== chosenRange) setChosenRange(shownRange);
   const rangeStart = ranges.bounds[shownRange] ?? 0;
@@ -527,13 +531,17 @@ export function PlaybackBody({
       </div>
 
       <div className="playback-rate-panel">
-        <h3 className="playback-rate-heading">{kanaUnitOf(language)}/秒・アクション/秒の平均推移</h3>
+        <div className="figure-table-heading">
+          <h3 className="playback-rate-heading">{kanaUnitOf(language)}/秒・アクション/秒の平均推移</h3>
+          <FigureTableSwitch pressed={rateAsTable} onToggle={() => setRateAsTable((current) => !current)} target={rateChartTableCaption(language)} />
+        </div>
         <PlaybackRateChart
           points={rateChart}
           cursor={state.cursor}
           showChain={options.showChain}
           showArpeggio={options.showArpeggio}
           span={{ start: rangeStart, end: rangeEnd }}
+          asTable={rateAsTable}
           onSeek={(position) => update((previous) => seekPlayback(previous, position, total))}
         />
       </div>

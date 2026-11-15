@@ -71,3 +71,12 @@ export function heatmapFlowSegments(vectors: readonly BigramVector[], centers: R
   }
   return segments.sort((a, b) => b.vector.weight - a.vector.weight || a.vector.id.localeCompare(b.vector.id));
 }
+
+/**
+ * 図に線として描く組。`heatmapFlowSegments` が描く組と同じ集合・同じ順（組数の多い順）で、
+ * 端のキーの中心の座標を持たずに、描いたキーのidだけで決める。表で読む表示が使う。
+ */
+export function drawnFlowVectors(vectors: readonly BigramVector[], drawnKeyIds: ReadonlySet<string>): readonly BigramVector[] {
+  const centers = new Map<string, FlowPoint>([...drawnKeyIds].map((id) => [id, { x: 0, y: 0 }]));
+  return heatmapFlowSegments(vectors, centers).map((segment) => segment.vector);
+}
