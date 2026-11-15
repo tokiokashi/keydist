@@ -51,7 +51,7 @@ export function sentenceUsesThumbKeys(plans: readonly SentencePlan[]): boolean {
 }
 
 /** 打つキーの列を作るのに読むストロークの部分。 */
-type SentenceStroke = Pick<Stroke, 'selectionIndex' | 'char' | 'aggregationGroupId' | 'presses' | 'inputIndex' | 'inputChar'>;
+export type SentenceStroke = Pick<Stroke, 'selectionIndex' | 'char' | 'aggregationGroupId' | 'presses' | 'inputIndex' | 'inputChar'>;
 
 /** 打鍵の列を、打つキーの列にする。 */
 export function sentenceSteps(analysis: { readonly strokes: readonly SentenceStroke[] }): SentenceStep[] {
@@ -140,12 +140,24 @@ export function stepsSentencePlan(steps: readonly SentenceStep[], analyze: () =>
  * 対応しない時（出力が複数のかなにまたがるコンボを持つ配列など）と、かな配列は、先頭の綴りの打鍵の列だけで進める。
  */
 export function sentencePlan(analysis: SentenceAnalysis, spelling?: SentenceSpellingSource): SentencePlan {
-  const groups = groupSteps(sentenceSteps(analysis));
+  return strokesSentencePlan(analysis.strokes, spelling, () => analysis);
+}
+
+/**
+ * `sentencePlan`の本体。打鍵の列（`strokes`）だけから計画を作る。打鍵の列の一部（長いテキストの範囲）を打たせる時に、
+ * 構造解析を持たない打鍵の列から作るために分けてある。`analyze`は、綴りの候補を使わない時の`SentencePlan.analyze`になる。
+ */
+export function strokesSentencePlan(
+  strokes: readonly SentenceStroke[],
+  spelling: SentenceSpellingSource | undefined,
+  analyze: () => SentenceAnalysis | undefined,
+): SentencePlan {
+  const groups = groupSteps(sentenceSteps({ strokes }));
   const aligned =
     spelling !== undefined &&
     spelling.units.length === groups.length &&
     spelling.units.every((unit, index) => groups[index][groups[index].length - 1].inputChar === unit.kana);
-  if (!aligned) return stepsSentencePlan(sentenceSteps(analysis), () => analysis);
+  if (!aligned) return stepsSentencePlan(sentenceSteps({ strokes }), analyze);
   const baseSpellings = spelling.units.map((unit) => unit.spellings[0]);
   return {
     units: spelling.units.map((unit) => ({ text: unit.kana, spellings: unit.spellings })),

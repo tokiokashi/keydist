@@ -83,6 +83,7 @@ function assetsWith(workspaces: WorkspaceLibrary): KeydistAssets {
     userLayouts: [],
     userRomajiRules: [],
     personalSpeed: EMPTY_PERSONAL_SPEED,
+    keystrokeRecords: [],
   };
 }
 

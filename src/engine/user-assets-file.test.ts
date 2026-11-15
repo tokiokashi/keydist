@@ -45,6 +45,7 @@ const FILE_EXTRAS = {
   presetLibrary: emptyPresetLibrary<SettingsValueMap>(),
   workspaces: [],
   personalSpeed: EMPTY_PERSONAL_SPEED,
+  keystrokeRecords: [],
   standaloneAnalyzerOptions: {},
 };
 
@@ -334,6 +335,7 @@ function emptyAssets(): KeydistAssets {
     userLayouts: [],
     userRomajiRules: [],
     personalSpeed: EMPTY_PERSONAL_SPEED,
+    keystrokeRecords: [],
   };
 }
 
@@ -352,6 +354,7 @@ test('コマンド: 1回で3つの資産を足し、元に戻すと全部が戻�
     userLayouts: [],
     userRomajiRules: [],
     personalSpeed: EMPTY_PERSONAL_SPEED,
+    keystrokeRecords: [],
   };
   const history = emptyCommandHistory<KeydistAssets>();
   const step = applyCommand(assets, history, importUserAssetsCommand(read(HOLDINGS), STAMP).command);

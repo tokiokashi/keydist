@@ -31,6 +31,7 @@ import {
 } from '#input/romaji/rule-edit.ts';
 import type { RomajiBaseRuleId, UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
 import type { PersonalSpeed } from '#interpretation/timing/calibration-codec.ts';
 import {
   createSetup,
@@ -177,6 +178,12 @@ export interface KeydistAssets {
    * 対にならない独立の値なので別のキーとして持つ。
    */
   readonly personalSpeed: PersonalSpeed;
+  /**
+   * 打鍵の記録の手持ち（`spec/keystroke-record.md`）。評価テキストの範囲を打った時のストロークごとの時刻で、
+   * 他の資産と対にならない独立の値なので別のキーとして持つ。大きくなる値なので、データ・設定の管理の書き出しファイルには入れず、
+   * 記録の画面が記録だけを書き出す・読み込む。
+   */
+  readonly keystrokeRecords: readonly KeystrokeRecord[];
 }
 
 type SetupLibraryComputation = { readonly ok: true; readonly library: SetupLibrary<SettingsValueMap> } | { readonly ok: false; readonly reason: unknown };
@@ -989,5 +996,34 @@ export function setPersonalSpeedCommand(calibration: PlaybackCalibration | undef
       label: calibration === undefined ? '個人速度を破棄する' : '個人速度を保存する',
       changes: { personalSpeed: { calibration } },
     };
+  };
+}
+
+/**
+ * 打鍵の記録を足す。同じidの記録が既にあれば拒否する。
+ */
+export function addKeystrokeRecordCommand(record: KeystrokeRecord): Command<KeydistAssets> {
+  return (current) => {
+    if (current.keystrokeRecords.some((candidate) => candidate.id === record.id)) return { kind: 'rejected', reason: '同じidの記録があります' };
+    return { kind: 'applied', label: '打鍵の記録を保存する', changes: { keystrokeRecords: [...current.keystrokeRecords, record] } };
+  };
+}
+
+/** 打鍵の記録を取り込む。idが手持ちと重なる記録は取り込まない。 */
+export function importKeystrokeRecordsCommand(records: readonly KeystrokeRecord[]): Command<KeydistAssets> {
+  return (current) => {
+    const known = new Set(current.keystrokeRecords.map((record) => record.id));
+    const added = records.filter((record) => !known.has(record.id));
+    if (added.length === 0) return { kind: 'no-op' };
+    return { kind: 'applied', label: '打鍵の記録を読み込む', changes: { keystrokeRecords: [...current.keystrokeRecords, ...added] } };
+  };
+}
+
+/** 打鍵の記録を1件削除する。存在しないidの削除は何もしない。 */
+export function deleteKeystrokeRecordCommand(id: string): Command<KeydistAssets> {
+  return (current) => {
+    const next = current.keystrokeRecords.filter((record) => record.id !== id);
+    if (next.length === current.keystrokeRecords.length) return { kind: 'no-op' };
+    return { kind: 'applied', label: '打鍵の記録を削除する', changes: { keystrokeRecords: next } };
   };
 }

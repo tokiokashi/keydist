@@ -37,6 +37,7 @@ function newSession(): Session {
       userLayouts: [],
       userRomajiRules: [],
       personalSpeed: EMPTY_PERSONAL_SPEED,
+      keystrokeRecords: [],
     },
     history: emptyCommandHistory<KeydistAssets>(),
   };

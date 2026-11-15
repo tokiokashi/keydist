@@ -65,8 +65,11 @@ export interface PaneFrameProps {
   readonly targetBinding?: PaneTargetBindingControl | undefined;
   /** 解析設定が共有に従っているか、このペインだけかの表示と切り替え。小窓の先頭に出す。Workspaceのペインだけが渡す。 */
   readonly optionsBinding?: PaneOptionsBindingControl | undefined;
-  /** 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。 */
-  readonly settings: ReactNode;
+  /**
+   * 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。渡さない枠（解析設定を持たない画面）は、
+   * 見出しの「解析設定」ボタンと小窓を出さない。
+   */
+  readonly settings?: ReactNode;
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
   readonly showPaneNameInSettings?: boolean | undefined;
   /**
@@ -324,17 +327,19 @@ export function PaneFrame({
           {nameInLead ? conditionSummary : null}
           {nameInLead && statusLabel ? <StatusBadge status={engineState.status} label={statusLabel} asText={badgeAsText} /> : null}
         </div>
-        <button
-          ref={settingsButtonRef}
-          type="button"
-          className="pane-settings-button"
-          aria-label="解析設定"
-          aria-expanded={settingsOpen}
-          onClick={() => (settingsOpen ? closeSettings() : setSettingsOpen(true))}
-        >
-          <SettingsIcon />
-          <span className="pane-settings-button-text">解析設定</span>
-        </button>
+        {settings === undefined ? null : (
+          <button
+            ref={settingsButtonRef}
+            type="button"
+            className="pane-settings-button"
+            aria-label="解析設定"
+            aria-expanded={settingsOpen}
+            onClick={() => (settingsOpen ? closeSettings() : setSettingsOpen(true))}
+          >
+            <SettingsIcon />
+            <span className="pane-settings-button-text">解析設定</span>
+          </button>
+        )}
         {menuItems.length === 0 && headerAction === undefined ? null : (
           <div className="pane-frame-menu">
             {menuItems.length === 0 ? null : <PaneMenu paneName={paneName} items={menuItems} />}
@@ -343,18 +348,20 @@ export function PaneFrame({
         )}
       </header>
 
-      <FloatingWindow
-        open={settingsOpen}
-        onClose={closeSettings}
-        titleHeading
-        anchor={settingsButtonRef.current}
-        {...(onResetOptions === undefined ? {} : { onReset: onResetOptions })}
-        {...(optionsBinding?.shared ? { resetTitle: OPTIONS_SHARED_RESET_TITLE } : {})}
-        {...(showPaneNameInSettings ? { paneName } : {})}
-      >
-        {optionsBinding === undefined ? null : <OptionsBindingSwitch control={optionsBinding} />}
-        {settings}
-      </FloatingWindow>
+      {settings === undefined ? null : (
+        <FloatingWindow
+          open={settingsOpen}
+          onClose={closeSettings}
+          titleHeading
+          anchor={settingsButtonRef.current}
+          {...(onResetOptions === undefined ? {} : { onReset: onResetOptions })}
+          {...(optionsBinding?.shared ? { resetTitle: OPTIONS_SHARED_RESET_TITLE } : {})}
+          {...(showPaneNameInSettings ? { paneName } : {})}
+        >
+          {optionsBinding === undefined ? null : <OptionsBindingSwitch control={optionsBinding} />}
+          {settings}
+        </FloatingWindow>
+      )}
 
       {floating?.(showPaneNameInSettings ? paneName : undefined)}
 

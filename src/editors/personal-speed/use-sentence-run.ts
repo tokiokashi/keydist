@@ -26,7 +26,8 @@ export interface SentenceRunController {
   readonly session: SentenceSession | undefined;
   /** 直前の打鍵が違うキーだった時の、次に打つキーの名前。次の正しい打鍵で消える。 */
   readonly wrongKey: string | undefined;
-  start(plans: readonly SentencePlan[]): void;
+  /** `rounds`は1本の文を打つ回数。省略すると個人速度の測定の回数（`SENTENCE_ROUNDS`）。 */
+  start(plans: readonly SentencePlan[], rounds?: number): void;
   cancel(): void;
 }
 
@@ -90,9 +91,9 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
     );
   }, [active]);
 
-  const start = useCallback((plans: readonly SentencePlan[]) => {
+  const start = useCallback((plans: readonly SentencePlan[], rounds?: number) => {
     if (plans.length === 0 || plans.some((plan) => plan.units.length === 0)) return;
-    const next = startSentenceSession(plans);
+    const next = startSentenceSession(plans, rounds);
     bindingsRef.current = optionsRef.current.codeBindings();
     thumbKeysRef.current = sentenceUsesThumbKeys(plans);
     sessionRef.current = next;

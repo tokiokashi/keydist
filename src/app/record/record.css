@@ -1,0 +1,126 @@
+.record-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.record-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.record-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.record-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.record-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.record-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.record-field select {
+  max-width: 100%;
+}
+
+.record-note,
+.record-meta {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.record-warning {
+  margin: 0;
+  color: var(--danger);
+  min-height: 1.2em;
+}
+
+.record-run,
+.record-pending {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-muted);
+}
+
+.record-run:focus {
+  outline: none;
+}
+
+.record-progress {
+  width: 100%;
+}
+
+.record-sentence {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.record-sentence [data-sentence-unit='done'] {
+  color: var(--text-muted);
+}
+
+.record-sentence [data-sentence-unit='current'] {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+
+.record-instruction {
+  margin: 0;
+}
+
+.record-table-wrap {
+  overflow-x: auto;
+}
+
+.record-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.record-table th,
+.record-table td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.record-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+@media (max-width: 760px) {
+  .record-table th,
+  .record-table td {
+    white-space: normal;
+    padding: 0.35rem 0.4rem;
+  }
+}

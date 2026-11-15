@@ -10,7 +10,11 @@ import { emptyTextLibrary } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { DEFAULT_TEXT_REF, type TextRef } from '#input/text/selection.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
+import { textDigest, type KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
 import {
+  addKeystrokeRecordCommand,
+  deleteKeystrokeRecordCommand,
+  importKeystrokeRecordsCommand,
   createFingerAssignmentCommand,
   createSetupCommand,
   createTextCommand,
@@ -72,6 +76,7 @@ function emptyAssets(): KeydistAssets {
     userLayouts: [],
     userRomajiRules: [],
     personalSpeed: EMPTY_PERSONAL_SPEED,
+    keystrokeRecords: [],
   };
 }
 
@@ -1177,4 +1182,66 @@ test('組み込みのテキストの語ごとの直しは、解決後のテキ�
   const edited = applyCommand(fixed.assets, fixed.history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '吾輩は猫', generateTextId));
   assert.deepEqual(edited.assets.textLibrary.texts[0]!.wordReadingCorrections, [WORD_FIX]);
   assert.deepEqual(edited.assets.textLibrary.builtinWordReadingCorrections, { [DEFAULT_TEXT_REF.id]: [WORD_FIX] });
+});
+
+function keystrokeRecord(id: string): KeystrokeRecord {
+  return {
+    id,
+    recordedAt: '2026-11-15T00:00:00.000Z',
+    appVersion: 'test',
+    modelVersion: 1,
+    target: { kind: 'layout', id: 'qwerty' },
+    targetName: 'QWERTY',
+    shapeId: 'row-staggered',
+    fingerAssignmentId: 'default',
+    conditions: {
+      windowSize: 3,
+      sfbHomeCost: true,
+      centerShiftThumb: 'right',
+      spaceThumb: 'right',
+      chainInterpretation: {} as never,
+      arpeggioInterpretation: {} as never,
+      triggerRealizationPolicy: {} as never,
+      actionRealizationPolicy: {} as never,
+      romajiRuleId: 'kunrei',
+      keepSymbols: false,
+      keepAlphanumerics: false,
+    },
+    text: { identity: 'builtin:x', name: 'x', chars: 10, digest: textDigest('x') },
+    range: { start: 0, end: 10, digest: textDigest('x'), keysDigest: textDigest('k') },
+    ends: [0],
+    taps: [{ atMs: 0, clean: true }],
+  };
+}
+
+test('打鍵の記録: 保存・削除ができ、削除はその記録だけを消してundoで戻る。他の資産は触らない', () => {
+  const assets = emptyAssets();
+  const first = applyCommand(assets, emptyCommandHistory<KeydistAssets>(), addKeystrokeRecordCommand(keystrokeRecord('a')));
+  const second = applyCommand(first.assets, first.history, addKeystrokeRecordCommand(keystrokeRecord('b')));
+  assert.deepEqual(
+    second.assets.keystrokeRecords.map((record) => record.id),
+    ['a', 'b'],
+  );
+  assert.equal(second.assets.setupLibrary, assets.setupLibrary);
+  const deleted = applyCommand(second.assets, second.history, deleteKeystrokeRecordCommand('a'));
+  assert.deepEqual(
+    deleted.assets.keystrokeRecords.map((record) => record.id),
+    ['b'],
+  );
+  assert.deepEqual(
+    undo(deleted.assets, deleted.history).assets.keystrokeRecords.map((record) => record.id),
+    ['a', 'b'],
+  );
+  assert.equal(applyCommand(deleted.assets, deleted.history, deleteKeystrokeRecordCommand('zzz')).outcome.kind, 'no-op');
+});
+
+test('打鍵の記録: 同じidの保存は拒否し、読み込みはidが重なる記録を取り込まない', () => {
+  const stored = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), addKeystrokeRecordCommand(keystrokeRecord('a')));
+  assert.equal(applyCommand(stored.assets, stored.history, addKeystrokeRecordCommand(keystrokeRecord('a'))).outcome.kind, 'rejected');
+  const imported = applyCommand(stored.assets, stored.history, importKeystrokeRecordsCommand([keystrokeRecord('a'), keystrokeRecord('c')]));
+  assert.deepEqual(
+    imported.assets.keystrokeRecords.map((record) => record.id),
+    ['a', 'c'],
+  );
+  assert.equal(applyCommand(imported.assets, imported.history, importKeystrokeRecordsCommand([keystrokeRecord('a')])).outcome.kind, 'no-op');
 });
