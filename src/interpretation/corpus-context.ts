@@ -137,7 +137,7 @@ export function mutualInformation(pairs: DistancePairs): number {
 
 const EULER_GAMMA = 0.5772156649015329;
 
-/** 正の整数`n`のディガンマ関数 ψ(n) = −γ + Σ(k=1..n−1) 1/k の表。 */
+/** 正の整数`n`のディガンマ関数 ψ(n) = −γ + Σ(k=1..n−1) 1/kの表。 */
 function digammaTable(max: number): Float64Array {
   const table = new Float64Array(max + 1);
   table[1] = -EULER_GAMMA;

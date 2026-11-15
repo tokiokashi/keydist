@@ -48,7 +48,7 @@ test('組: 走りをまたぐ組を作らず、組が無ければundefined', () 
 });
 
 test('Grassbergerの推定量: 手で計算した値と一致する', () => {
-  // 組は(a,b)と(b,a)が各1回。各Ŝ = ln 2 − (1/2)(ψ(1) + ψ(1)) = ln 2 + γ。I = Ŝ + Ŝ − Ŝ = (ln 2 + γ) / ln 2 ビット
+  // 組は(a,b)と(b,a)が各1回。各Ŝ = ln 2 − (1/2)(ψ(1) + ψ(1)) = ln 2 + γ。I = Ŝ + Ŝ − Ŝ = (ln 2 + γ) / ln 2（ビット単位）
   const euler = 0.5772156649015329;
   const value = grassbergerMutualInformation(
     pairsOf(
