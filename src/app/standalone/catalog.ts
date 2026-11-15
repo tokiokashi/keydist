@@ -14,7 +14,8 @@ const BUILTIN_SHAPES: ReadonlyMap<string, PhysicalShape> = new Map(Object.values
  * 手持ちが変わった時だけ作り直せるよう、呼び出し側は読む資産を依存にして`useMemo`で包む。
  */
 export function paneCatalog(
-  assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules'> & Partial<Pick<KeydistAssets, 'personalSpeed' | 'fingerAssignments' | 'comboSets'>>,
+  assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules'> &
+    Partial<Pick<KeydistAssets, 'personalSpeed' | 'fingerAssignments' | 'comboSets' | 'keystrokeRecords'>>,
 ): PaneCatalog {
   const user = buildUserCatalog(assets.userLayouts, assets.userRomajiRules);
   return {
@@ -33,5 +34,6 @@ export function paneCatalog(
       : { customFingerAssignments: new Map(assets.fingerAssignments.map((assignment) => [assignment.id, assignment] as const)) }),
     ...(assets.comboSets === undefined ? {} : { comboSets: new Map(assets.comboSets.map((set) => [set.id, set] as const)) }),
     ...(assets.personalSpeed?.calibration === undefined ? {} : { personalSpeed: assets.personalSpeed.calibration }),
+    ...(assets.keystrokeRecords === undefined || assets.keystrokeRecords.length === 0 ? {} : { keystrokeRecords: assets.keystrokeRecords }),
   };
 }

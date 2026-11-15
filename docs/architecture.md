@@ -302,6 +302,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
   - 読みのテキストの区切りは `resolveEngineInput` の `segmentation` で渡す。記号と英数字の取り除き（`keepSymbols`・`keepAlphanumerics`）は対象ごとに違うので、評価に渡すテキストの位置への写し直しは解決の中で対象ごとに行い、`ExtractionAssets.segmentation` として計算部へ渡す。計算部は評価に渡すテキストの文字位置の列だけを受け取る
   - **抽出のキー**: Setの抽出も `assetsKeyOf` を持てる。Run Chartは区切りを使う設定の時だけ、メンバーごとの区切りの列と分割器の名前・版・出どころをキーに入れる。区切りなしの設定では、資産が変わっても抽出を作り直さない
   - 読み込み中は依頼を出さない。分割器を読み込めなかった時と、日本語以外のテキストの時は、区切りなしで計算して、ペインの中でその旨を知らせる
+- **打鍵の記録の間隔**（定義は `spec/keystroke-record.md` §6、判断は `docs/adr/0015-keystroke-gaps-in-run-chart.md`）。指標の図の下に、同じ横軸・範囲・区切りの線で間隔の図と、文節の区切りの直後の表を置く（`record-view.tsx`・`record-chart-model.ts`）。選んだ記録の `id` は解析設定 `record` に置き、URLには載せない。ホストが手元の記録（`PaneCatalog.keystrokeRecords`）から選んだ記録を引いて `ExtractionAssets.keystrokeRecord` に載せ（`SetAnalyzerPaneParts.selectedRecordId`）、選べる記録（本文の照合値が同じで、対象がペインの対象のどれか）を本体へ `keystrokeRecords` で渡す。記録を今の入力と照らす計算（打鍵の列の作り直しを含む）は `engine/keystroke-record-check.ts` が持ち、結果を `AnalyzerSetMember.recordCheck` で抽出へ渡す。間隔と表の集計は純粋な `interpretation/record/keystroke-gaps.ts`。記録を選んでいる間は、区切り方によらず分割器を読み込む
 - **かな3文字までの並びとの比べ方**（定義は `docs/kana-chain-comparison.md`）。n-gramの表の数え方（`interpretation/ngram-table.ts`）、2次マルコフ連鎖の生成文（`interpretation/markov-text.ts`）、元のテキスト・生成文・対照テキストの比べ方と順位・判定（`interpretation/chain-comparison.ts`）は、画面に依存しない純粋な関数。評価（Traceの生成）は呼び出し側が渡す関数で行う。連鎖・生成文・判定は画面に出さず、`scripts/kana-chain-comparison.ts` がコーパスの範囲で実行して表を出す。対照テキストの値は、画面の「対照テキストとの比較」に出す
 - **境目のまわりの並びを揃えたランダムな区切りとの比べ方**（定義は `docs/boundary-context-comparison.md`）。並びの型ごとの区切りの数を文節と揃えたランダムな区切りの作成、選ぶ余地が無い区切りの割合、順位と判定、境目の打鍵が占める割合（`interpretation/boundary-context.ts`）は、画面に依存しない純粋な関数。今は画面に出さず、`scripts/kana-chain-comparison.ts` の `--stage boundary` が全文で実行して表を出す
 - **コーパスの文節の読みとかなのn-gramの表と、統計が足りているかの量**（定義は `docs/corpus-ngram.md`）。系列の作り方、次数ごとの表、統計が足りているかの量（続きが1種類の文脈の出現の割合ほか。`interpretation/corpus-ngram.ts`）は、配列の定義を参照しない純粋な関数。今は画面に出さず、`scripts/corpus-ngram-tables.ts` が全文で実行して次数ごとの量を出す。同じ文書の「文脈の長さの推定」（距離を置いた2単位の相互情報量を、並べ替えた組と比べて、依存を検出できる長さを出す。`interpretation/corpus-context.ts`）も、配列の定義を参照しない純粋な関数で、同じスクリプトの `--context` が出す
@@ -501,7 +502,7 @@ src/
     combo-set/       利用者が定義したコンボの組と、配列への重ね方
     presets/         プリセット（条件の1レベル分に付けた名前）
   trace/             Trace生成
-  interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標、区間の集計と区切り（`span-metrics.ts`・`segments.ts`）、文節の中と境目の統計（`bunsetsu-stats.ts`）、名前のある乱数生成器（`prng.ts`）、対照テキスト（順序破壊・一様ランダム）を作る関数（`control-texts.ts`。塊の規則と乱数の使い方はファイル先頭のコメント）、対照テキストとの比較の種の組と平均・標準偏差（`control-comparison.ts`）、各ストロークが属する入力の選択の文字位置（`selection-ends.ts`。Run Chartの点の位置と打鍵の記録が共有する）、打鍵の記録の型とcodec（`record/`。`spec/keystroke-record.md`）
+  interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標、区間の集計と区切り（`span-metrics.ts`・`segments.ts`）、文節の中と境目の統計（`bunsetsu-stats.ts`）、名前のある乱数生成器（`prng.ts`）、対照テキスト（順序破壊・一様ランダム）を作る関数（`control-texts.ts`。塊の規則と乱数の使い方はファイル先頭のコメント）、対照テキストとの比較の種の組と平均・標準偏差（`control-comparison.ts`）、各ストロークが属する入力の選択の文字位置（`selection-ends.ts`。Run Chartの点の位置と打鍵の記録が共有する）、打鍵の記録の型とcodec、間隔と食い違いの集計（`record/`。`spec/keystroke-record.md`）
   analyzers/
     contract.ts      Analyzerの契約のうち純粋な部分（抽出・解析設定・Traceを依頼する窓口の型）
     pane-parts.tsx   ペインに渡すものの型（名前・短い説明・本体・解析設定・差し込む項目・既定値）。Reactの型を使うので.tsx

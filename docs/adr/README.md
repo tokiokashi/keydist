@@ -54,3 +54,4 @@
 | [0012](0012-corpus-ngram-tables-without-layout.md) | コーパスのn-gramの表を、配列に依らない前処理と、走りごとの数え方で作る | 採用 |
 | [0013](0013-context-length-by-permutation-test.md) | コーパスの文脈の長さを、距離を置いた2単位の相互情報量と、組の並べ替えとの比較で調べる | 採用 |
 | [0014](0014-record-keystrokes-in-app.md) | 打鍵の記録はアプリの中で取り、外のツールの記録は読み込まない | 採用 |
+| [0015](0015-keystroke-gaps-in-run-chart.md) | 打鍵の間隔をRun Chartの下に並べ、記録の選択は解析設定に置いて共有リンクに載せない | 採用 |

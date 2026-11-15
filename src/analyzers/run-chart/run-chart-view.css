@@ -200,3 +200,57 @@
 .run-chart-segment-seeds {
   font-size: 0.8rem;
 }
+
+/* 打鍵の記録。指標の図の下に、同じ幅で間隔の図を並べる */
+.run-chart-record {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.run-chart-record-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.run-chart-record-picker select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.run-chart-record-origin {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.3rem 1rem;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.run-chart-record-origin div {
+  min-width: 0;
+}
+
+.run-chart-record-origin dt {
+  color: var(--text-muted);
+}
+
+.run-chart-record-origin dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.run-chart-record-stem {
+  stroke-width: 1.5;
+  opacity: 0.75;
+}
+
+/* 数えない間隔（欠け）。軸の上の短い印にする */
+.run-chart-record-missing {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  opacity: 0.6;
+}

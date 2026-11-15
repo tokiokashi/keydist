@@ -11,6 +11,11 @@ export interface RunChartTableSeries {
   readonly data: RunChartSeriesOk;
 }
 
+/** 利用者に見せる「何文字目」（先頭が1）。 */
+export function positionLabel(position: number): string {
+  return `${position + 1}文字目`;
+}
+
 /**
  * Run Chartの値の表。図に出している範囲（`span`）の点だけを、文字位置の昇順に1行ずつ並べ、系列ごとの値を列にする。
  * 値は図の点（`data.values`）をそのまま、点の読み上げ（`runChartReadout`）と同じ書式で文字にする。
@@ -34,7 +39,7 @@ export function runChartTableModel(
     columns: series.map((item) => item.label),
     rows: positions.map((position) => ({
       key: String(position),
-      header: `${position + 1}文字目`,
+      header: positionLabel(position),
       cells: valueAt.map((values) => {
         const value = values.get(position);
         return value === null || value === undefined || !Number.isFinite(value) ? '—' : formatMetricValue(metric, value, language);

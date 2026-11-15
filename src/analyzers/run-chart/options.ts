@@ -38,6 +38,14 @@ export const RUN_CHART_RANGE_MIN = 1;
 export const RUN_CHART_RANGE_MAX = 1000;
 export const DEFAULT_RUN_CHART_RANGE = 1;
 
+/**
+ * `record` は図の下に間隔を並べる打鍵の記録の`id`（`spec/keystroke-record.md`）。空は記録を選んでいない（既定）。
+ * 選んだ記録の値が抽出に入るので `affects: 'extract'`。記録は利用者の手元の資産で、共有リンクを開いた先には無いので、URLには載せない
+ * （Workspaceの資産と書き出しのファイルには、他の解析設定と同じく載る）。
+ */
+export const RUN_CHART_RECORD_ID_MAX = 200;
+export const DEFAULT_RUN_CHART_RECORD = '';
+
 export const RUN_CHART_SEED_MIN = 0;
 export const RUN_CHART_SEED_MAX = 1_000_000_000;
 export const DEFAULT_RUN_CHART_SEED_START = DEFAULT_SEED_START;
@@ -72,6 +80,12 @@ export const runChartOptions = defineOptions({
     url: integerUrlCodec('seed', RUN_CHART_SEED_MIN, RUN_CHART_SEED_MAX),
     label: RUN_CHART_SEED_LABEL,
   }),
+  record: defineOption<string>({
+    schema: v.pipe(v.string(), v.maxLength(RUN_CHART_RECORD_ID_MAX)),
+    default: DEFAULT_RUN_CHART_RECORD,
+    affects: 'extract',
+    label: '打鍵の記録',
+  }),
   range: defineOption<number>({
     schema: v.pipe(v.number(), v.integer(), v.minValue(RUN_CHART_RANGE_MIN), v.maxValue(RUN_CHART_RANGE_MAX)),
     default: DEFAULT_RUN_CHART_RANGE,
@@ -91,5 +105,6 @@ export const ALTERNATE_RUN_CHART_OPTIONS: RunChartOptions = {
   window: 20,
   segmentation: 'bunsetsu',
   seedStart: 7,
+  record: 'record-fixture',
   range: 2,
 };

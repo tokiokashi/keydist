@@ -9,6 +9,8 @@ import type { Metrics } from '#interpretation/metrics.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { SegmentationAssets } from '#input/text/segmentation.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
+import type { RecordCheck } from '#interpretation/record/keystroke-gaps.ts';
 import type { OptionsDefinition, OptionsDisciplineCheck, OptionsDisciplineFixture, OptionsRegistry, OptionsValueMap } from './options.ts';
 
 // `OptionsRegistry`はこのファイルの型なので再exportして、横断テスト
@@ -81,12 +83,15 @@ export interface ExtractionAssets {
   readonly textLanguage: TextLanguage;
   /** 文節の区切り（評価に渡すテキストの文字位置）。区切りを使うペインだけが器から受け取る。無ければ`undefined` */
   readonly segmentation: SegmentationAssets | undefined;
+  /** ペインが選んだ打鍵の記録（`spec/keystroke-record.md`）。選んでいない、または手元に無ければ`undefined` */
+  readonly keystrokeRecord: KeystrokeRecord | undefined;
 }
 
 export const DEFAULT_EXTRACTION_ASSETS: ExtractionAssets = {
   personalSpeed: undefined,
   textLanguage: 'ja',
   segmentation: undefined,
+  keystrokeRecord: undefined,
 };
 
 /** 単一Setup対象の抽出に渡す値。 */
@@ -135,6 +140,12 @@ export interface AnalyzerSetMember {
   readonly requestTrace: TraceRequester;
   /** このメンバーの入力が持つ、抽出が読む資産の値。engineが組み立てる時は必ず持ち、テストの材料は省略できる（省略は`DEFAULT_EXTRACTION_ASSETS`と同じ）。 */
   readonly assets?: ExtractionAssets;
+  /**
+   * `assets.keystrokeRecord`を、このメンバーの今の入力と照らした結果（`spec/keystroke-record.md` §4.1）。
+   * 記録が無い、または記録の対象がこのメンバーでない時は`undefined`。呼んだ時に初めて計算する。
+   * 打鍵の列を作り直す計算なので、engineが持つ。テストの材料は省略できる。
+   */
+  readonly recordCheck?: () => RecordCheck | undefined;
   /**
    * このメンバーに対する部分結果を、`key`で覚えて使い回す。覚えていれば`compute`を呼ばずにその値を返し、
    * 無ければ`compute`の値を覚えて返す。`key`はメンバーの中身（テキスト・配列・物理配列・Trace方針・解釈）と
