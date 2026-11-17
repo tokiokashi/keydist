@@ -15,8 +15,8 @@ import { TWO_LAYER_COMPACT_LABELS } from './naginata.ts';
 
 /**
  * 薙刀式私家版（tokiokashiの試用版）。
- * 定義の出典は、tokiokashi/vial-qmkのコミット623e3ccbの薙刀式エンジン`users/tokioka/naginata.c`である。
- * https://github.com/tokiokashi/vial-qmk/blob/623e3ccb99e98129b6e8df1f3f246fa74fd7fb57/users/tokioka/naginata.c
+ * 定義の出典は、tokiokashi/vial-qmkのコミット61c467b1の薙刀式エンジン`users/tokioka/naginata.c`である。
+ * https://github.com/tokiokashi/vial-qmk/blob/61c467b12456a191166584a8dbc59d126bded2a7/users/tokioka/naginata.c
  * 出典の表を写したものは`test/fixtures/sources/naginata-private.json`にある。
  *
  * 薙刀式v17のセンターシフトを中指シフト（d・k）に置き換えた同時押しの配列で、
@@ -60,7 +60,6 @@ const BASE: Record<string, string> = {
   e: 'て',
   r: 'し',
   t: 'り',
-  y: 'さ',
   u: 'た',
   i: 'す',
   o: 'る',
@@ -80,6 +79,7 @@ const BASE: Record<string, string> = {
   c: 'は',
   v: 'こ',
   b: 'そ',
+  n: 'さ',
   m: 'な',
   ',': 'と',
   '.': 'ら',
@@ -118,7 +118,6 @@ const DAKU: Record<string, string> = {
   w: 'ぎ',
   e: 'で',
   r: 'じ',
-  y: 'ざ',
   u: 'だ',
   i: 'ず',
   p: 'べ',
@@ -134,6 +133,7 @@ const DAKU: Record<string, string> = {
   c: 'ば',
   v: 'ご',
   b: 'ぞ',
+  n: 'ざ',
   ',': 'ど',
 };
 
