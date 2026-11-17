@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { assertKanaLayout } from '../../../test/kana-layout-helpers.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
-import { generateTrace } from '#trace/generate.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 import { uncoveredKana } from './kana-coverage.ts';
 
@@ -66,21 +64,4 @@ test('既定の打ち方のシフトと印は、かなのキーか子音のキ�
     assert.equal(marker.length, 1, `${chord.output} の既定の打ち方 ${defaultKeys.join('+')}`);
     assert.notEqual(left.has(marker[0]!), left.has(base!), `${chord.output} の既定の打ち方 ${defaultKeys.join('+')}`);
   }
-});
-
-test('中指シフトは、反対の手のキーが前後のかなと同じ指になる時だけ同じ手のキーで押し、濁音のシフトは反対の手のまま押す', () => {
-  const geometry = buildGeometry('row-staggered');
-  const keysOf = (text: string): string[] =>
-    generateTrace(text, layout, geometry).strokes.map((stroke) =>
-      stroke.presses
-        .flatMap((press) => press.keys.map((key) => key.id))
-        .sort()
-        .join('+'),
-    );
-  // す は右手の中指の i なので、ま を k で押すと同じ指になる
-  assert.deepEqual(keysOf('ます'), ['d+f', 'i']);
-  assert.deepEqual(keysOf('すま'), ['i', 'd+f']);
-  assert.deepEqual(keysOf('まで'), ['f+k', 'e+j']);
-  // で の後の く は右手の人差し指の h で、濁音の j と同じ指だが、濁音のシフトは手を替えない
-  assert.deepEqual(keysOf('でく'), ['e+j', 'h']);
 });

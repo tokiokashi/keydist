@@ -431,7 +431,7 @@ Shift keyのgeometryは既存PhysicalShapeの保存schemaへ混ぜず、bottom r
 
 左右どちらの手のキーでも同じシフトを成立させるかな配列のうち、前後の打鍵を見て押す手を替えるシフトのキーを、
 配列は `sameFingerAvoidingShiftKeys` に持つ（薙刀式私家版の中指シフト `d` `k`）。持たない配列では、この選び方は掛からない。
-このキーをtriggerに持つ打ち方は、上までのPolicyで選んだalternativeを既定とし、次の打鍵の数（同指の数）を既定と比べる。
+このキーをtriggerに持つ打ち方は、上までのPolicyで選んだalternativeを既定とし、下の打鍵の数（同指の数）を既定と比べる。
 
 - triggerのキーの指が、同じaction内のtrigger以外のキーの指と同じ
 - 入力の最初のactionにあるtriggerのキーの指が、直前の入力で選んだalternativeの最後のactionのtrigger以外のキーの指と同じ
