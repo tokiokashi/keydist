@@ -7,7 +7,7 @@ import { uncoveredKana } from './kana-coverage.ts';
 
 const layout = LAYOUT_BY_ID.get('naginata-private')!;
 
-/** 出典のエンジンの表から起こした、出力と押すキーの組。`oneOf` はどれか1つを足すシフトのキー。 */
+/** 出典のエンジンの表から起こした、出力と押すキーの組。`oneOf`は、どれか1つを足すシフトのキー。 */
 const source = JSON.parse(readFileSync(new URL('../../../test/fixtures/sources/naginata-private.json', import.meta.url), 'utf8')) as {
   chords: Array<{ output: string; keys: string[]; oneOf?: string[] }>;
 };

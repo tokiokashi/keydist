@@ -14,7 +14,7 @@ import type { Trace } from '#trace/generate.ts';
 import { convertToReading, type NotationExcess, type ReadingToken } from '#input/text/reading.ts';
 import { SCATTER_PRESET_AXES, SCATTER_PRESET_IDS, isHandShareColumn, scatterAxisProblem, scatterContour } from './axes.ts';
 import { axisUnit } from './axis-names.ts';
-import { scatterPlotModel } from './plot-model.ts';
+import { axisRange, scatterPlotModel } from './plot-model.ts';
 
 /**
  * 等位線の値が、`Metrics`と`analyzeHandRhythm`の値（比較表の列）と一致することを、組み込みの全配列で検査する。
@@ -615,6 +615,20 @@ test('50%の線を引く列: 右手距離率と右手キー率だけ', () => {
   assert.deepEqual(COMPARISON_COLUMN_IDS.filter(isHandShareColumn), ['rightHandDistanceShare', 'rightHandPressShare']);
 });
 
+/** 線の量が、点から決まる軸の範囲の中で0以下の値を取るか。格子の上で値を走査して確かめる。 */
+function reachesZero(contour: NonNullable<ReturnType<typeof scatterContour>>, points: readonly { x: number; y: number }[]): boolean {
+  const xRange = axisRange(points.map((p) => p.x));
+  const yRange = axisRange(points.map((p) => p.y));
+  const grid = 24;
+  for (let i = 0; i <= grid; i++) {
+    for (let j = 0; j <= grid; j++) {
+      const value = contour.valueAt(xRange.lo + ((xRange.hi - xRange.lo) * i) / grid, yRange.lo + ((yRange.hi - yRange.lo) * j) / grid);
+      if (value !== undefined && value <= 0) return true;
+    }
+  }
+  return false;
+}
+
 test('組み込みの全配列を評価した値の点: 細い線を引く全ての軸の組で、描かれた細い線が4本以上（割合の線は9本、ほかは6本）以下になり、値の桁がそろう', () => {
   const inputChars = ALL_ROWS[0]!.inputChars;
   const outOfRange: string[] = [];
@@ -634,7 +648,7 @@ test('組み込みの全配列を評価した値の点: 細い線を引く全て
       const percent = axisUnit(contour.column) === '%';
       const most = percent ? 9 : 6;
       // 割合の線の4本の下限は、0%の線を除く前の本数で数える。範囲が0%に届く図は、10%刻みで0%を除くと3本になる
-      const counted = model.contours.length + (percent && model.contours[0]?.level === 10 ? 1 : 0);
+      const counted = model.contours.length + (percent && model.contours[0]?.level === 10 && reachesZero(contour, points) ? 1 : 0);
       if (counted < 4 || model.contours.length > most) outOfRange.push(`${x} × ${y}: ${model.contours.length}本`);
       assert.ok(new Set(model.contours.map((line) => (line.text.split('.')[1] ?? '').length)).size <= 1, `${x} × ${y}`);
     }

@@ -15,9 +15,9 @@ import { TWO_LAYER_COMPACT_LABELS } from './naginata.ts';
 
 /**
  * 薙刀式私家版（tokiokashiの試用版）。
- * 定義の出典は、tokiokashi/vial-qmk のコミット 623e3ccb の薙刀式エンジン `users/tokioka/naginata.c`。
+ * 定義の出典は、tokiokashi/vial-qmkのコミット623e3ccbの薙刀式エンジン`users/tokioka/naginata.c`である。
  * https://github.com/tokiokashi/vial-qmk/blob/623e3ccb99e98129b6e8df1f3f246fa74fd7fb57/users/tokioka/naginata.c
- * 出典の表を写したものは `test/fixtures/sources/naginata-private.json` にある。
+ * 出典の表を写したものは`test/fixtures/sources/naginata-private.json`にある。
  *
  * 薙刀式v17のセンターシフトを中指シフト（d・k）に置き換えた同時押しの配列で、
  * 濁音はf・j、半濁音はv・m、小書きはqを押しながら打つ。どのシフトも左右のどちらのキーでも同じ出力になるので、
@@ -27,7 +27,7 @@ import { TWO_LAYER_COMPACT_LABELS } from './naginata.ts';
  *
  * 出典が文字を出さない入力は面に入れない。qの単打のEsc、j+hとf+gのIMEの切り替え、
  * 中指シフトとqの後の1キーを小書きにする入力（qを押しながら打つ小書きと同じかなを出す）である。
- * j+hとf+gがIMEの切り替えになるので、ぐ はfとh、ぢ はjとgの組だけで打つ。
+ * j+hとf+gがIMEの切り替えになるので、「ぐ」はfとh、「ぢ」はjとgの組だけで打つ。
  */
 
 const LEFT_KEYS = new Set([...'qwertasdfgzxcvb']);
@@ -200,7 +200,7 @@ const GAIRAI: Array<{ marker: 'handaku' | 'daku'; consonant: string; vowel: stri
   { marker: 'handaku', consonant: 'l', vowel: 'u', output: 'うぇ' },
   { marker: 'handaku', consonant: 'l', vowel: 'a', output: 'うぉ' },
   { marker: 'handaku', consonant: 'k', vowel: 'u', output: 'いぇ' },
-  // 出典は k を子音、l を母音にした うぃ も持つ。上の l と k の うぃ と同じ3キーなので、ここには置かない
+  // 出典は、kを子音、lを母音にした「うぃ」も持つ。上のlとkの「うぃ」と同じ3キーなので、ここには置かない
   { marker: 'handaku', consonant: 'h', vowel: 'j', output: 'くぁ' },
   { marker: 'handaku', consonant: 'h', vowel: 'k', output: 'くぃ' },
   { marker: 'handaku', consonant: 'h', vowel: 'u', output: 'くぇ' },
@@ -232,7 +232,7 @@ const GAIRAI: Array<{ marker: 'handaku' | 'daku'; consonant: string; vowel: stri
 
 /**
  * 外来音の面。面のトリガーは印と母音のキー、セルは子音のキーにする。
- * ゔ だけは、母音の ; ではなく う の l をトリガーにし、; をセルにする。
+ * 「ゔ」だけは、「う」のlをトリガー、;をセルにする。出典はlを子音、;を母音とする。
  * 3キーの組は同じで、修飾の表の押し方が「濁音 + う」と読めるようにするためである。
  */
 function gairaiFaces(): Face[] {
@@ -247,7 +247,7 @@ function gairaiFaces(): Face[] {
       entries: {},
       groups: { [markerKey]: marker === 'handaku' ? '半濁音' : '濁音', [triggerKey]: triggerKey === 'p' ? '拗音' : '外来音' },
     };
-    // 同じ3キーの組（くゎ・ぐゎ の l と . のどちらかを母音にする組）は別の面になるので、ここで重なるのは同じセルの書き直しだけ
+    // 「くゎ」「ぐゎ」でlと.のどちらかを母音にする組は別の面になるので、ここで重なるのは同じセルの書き直しだけ
     if (group.entries[cellKey] !== undefined) throw new Error(`外来音の面 ${id} のセル ${cellKey} が重なる`);
     group.entries[cellKey] = output;
     byTrigger.set(id, group);
@@ -278,7 +278,7 @@ export const NAGINATA_PRIVATE_FACES: Face[] = [
   modifierFace(['k'], pick(SHIFT, true), { k: CHUU }, CHUU),
   modifierFace(['d'], pick(SHIFT, false), { d: CHUU }, CHUU),
   modifierFace(['j'], pick(DAKU, true), { j: '濁音' }, DAKU_LAYER),
-  // f+h は ぐ。j+h はIMEの切り替えになるので、ぐ はこの面だけにある
+  // f+hは「ぐ」。j+hはIMEの切り替えになるので、「ぐ」はこの面だけにある
   modifierFace(['f'], pick(DAKU, false), { f: '濁音' }, DAKU_LAYER),
   modifierFace(['m'], pick(HANDAKU, true), { m: '半濁音' }, HANDAKU_LAYER),
   modifierFace(['v'], pick(HANDAKU, false), { v: '半濁音' }, HANDAKU_LAYER),
@@ -299,10 +299,10 @@ export const NAGINATA_PRIVATE_FACES: Face[] = [
   // ！ と ？
   comboFace(['.'], { ',': '！', '/': '？' }),
 
-  // 同じ手のシフト。d+k の も と f+j の が は反対の手の面にあるので、シフトのキー自身のセルは置かない
+  // 同じ手のシフト。d+kの「も」とf+jの「が」は反対の手の面にあるので、シフトのキー自身のセルは置かない
   modifierFace(['d'], pick(SHIFT, true, ['d']), { d: CHUU }, CHUU_SAME),
   modifierFace(['k'], pick(SHIFT, false), { k: CHUU }, CHUU_SAME),
-  // f+g はIMEの切り替えになるので、ぢ はjの面だけにある
+  // f+gはIMEの切り替えになるので、「ぢ」はjの面だけにある
   modifierFace(['f'], pick(DAKU, true, ['f', 'g']), { f: '濁音' }, DAKU_SAME),
   modifierFace(['j'], pick(DAKU, false, ['h']), { j: '濁音' }, DAKU_SAME),
   modifierFace(['v'], pick(HANDAKU, true), { v: '半濁音' }, HANDAKU_SAME),
@@ -315,8 +315,8 @@ export const NAGINATA_PRIVATE_FACES: Face[] = [
 
 /**
  * 修飾のトリガーのキーが、修飾の組の中で持つ意味。
- * 拗音は中指シフトの面の や・ゆ・よ の位置、外来音は母音の位置（j・k・l は単打の あ・い・う、
- * u は中指シフトの え、a は単打の お、. は中指シフトの わ）を押す。
+ * 拗音は中指シフトの面の「や」「ゆ」「よ」の位置を押す。外来音は母音の位置を押す。
+ * j・k・lは単打の「あ」「い」「う」、uは中指シフトの「え」、aは単打の「お」、.は中指シフトの「わ」の位置である。
  */
 const NAGINATA_PRIVATE_TRIGGER_MEANINGS: TriggerMeanings = {
   拗音: { h: char('や'), p: char('ゆ'), i: char('よ') },
