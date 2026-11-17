@@ -40,3 +40,13 @@ Shiftを要する入力や2キーの入力のように位置を持たない行�
   - `customRules`・`aliases`: ローマ字の綴りの拡張
 
 突き合わせの unit test は `src/input/layouts/seoto-source.test.ts`。写しと配列の差（既知の不一致）は、test の中で理由と一緒に持つ。
+
+## ファームウェアの同時押しの表の写し（`format`: `naginata-engine-chords`）
+
+薙刀式私家版の出典は、ファームウェアの薙刀式エンジン（C）である。面の配列・拗音の行・外来音の表を、出力と押すキーの組の一覧に写す。
+面と格子を持たないので、`scripts/generate-kana-fixtures.ts` の対象にしない。fixture は生成しない。
+
+- `source`: `url`・`repository`・`commit`・`path`・`sha256`（そのコミットのファイルの sha256）・`transform`（何を写し、何を写さないか）
+- `chords`: `output`（出力）・`keys`（必ず押すキー）・`oneOf`（どれか1つを足すシフトのキー。無ければ足さない）・`note`（押す順など、キーの組で表せない条件）
+
+突き合わせの unit test は `src/input/layouts/naginata-private.test.ts`。

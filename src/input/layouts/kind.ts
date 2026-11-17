@@ -26,6 +26,7 @@ export type LayoutKind = 'alpha' | 'kana';
  */
 const BUILT_IN_KANA_LAYOUT_IDS: ReadonlySet<string> = new Set([
   'naginata-v18',
+  'naginata-private',
   'nicola',
   'shin-koume',
   'asuka',

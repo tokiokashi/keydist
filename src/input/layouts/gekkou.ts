@@ -99,7 +99,8 @@ const pick = (entries: Record<string, string>, left: boolean): Record<string, st
   Object.fromEntries(Object.entries(entries).filter(([key]) => LEFT_KEYS.has(key) === left));
 
 const CROSS_LAYER = '中指シフト';
-const SAME_HAND_LAYER = '中指シフト（同じ手）';
+/** 同じ手のシフトの面の層の名前。中指シフトを持つほかの配列も同じ名前にする。 */
+export const SAME_HAND_LAYER = '中指シフト（同じ手）';
 
 export const GEKKOU_FACES: Face[] = [
   face([], BASE),

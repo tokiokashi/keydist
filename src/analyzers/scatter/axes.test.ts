@@ -631,8 +631,11 @@ test('組み込みの全配列を評価した値の点: 細い線を引く全て
       }));
       const model = scatterPlotModel({ points, contour, legendRows: [], contourName: '', contourSuffix: '' });
       checked += 1;
-      const most = axisUnit(contour.column) === '%' ? 9 : 6;
-      if (model.contours.length < 4 || model.contours.length > most) outOfRange.push(`${x} × ${y}: ${model.contours.length}本`);
+      const percent = axisUnit(contour.column) === '%';
+      const most = percent ? 9 : 6;
+      // 割合の線の4本の下限は、0%の線を除く前の本数で数える。範囲が0%に届く図は、10%刻みで0%を除くと3本になる
+      const counted = model.contours.length + (percent && model.contours[0]?.level === 10 ? 1 : 0);
+      if (counted < 4 || model.contours.length > most) outOfRange.push(`${x} × ${y}: ${model.contours.length}本`);
       assert.ok(new Set(model.contours.map((line) => (line.text.split('.')[1] ?? '').length)).size <= 1, `${x} × ${y}`);
     }
   }

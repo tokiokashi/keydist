@@ -9634,6 +9634,383 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
+            "rate": 0.094316807738815,
+            "strokes": 156
+          },
+          "meanSpanLength": 2.0128205128205128,
+          "spans": 78
+        },
+        "directionalTransitions": {
+          "empty": 0,
+          "inward": 484,
+          "mixed": 1,
+          "outward": 432,
+          "same": 183,
+          "total": 1100
+        },
+        "redirect": {
+          "events": 357,
+          "pivots": {
+            "rate": 0.21100362756952842,
+            "strokes": 349
+          }
+        },
+        "roll": {
+          "anyRoll": {
+            "rate": 0.094316807738815,
+            "strokes": 156
+          },
+          "longRoll": {
+            "rate": 0.0018137847642079807,
+            "strokes": 3
+          },
+          "twoRoll": {
+            "rate": 0.09310761789600967,
+            "strokes": 154
+          }
+        },
+        "sfb": {
+          "events": 183,
+          "involvedStrokes": {
+            "rate": 0.20435308343409916,
+            "strokes": 338
+          }
+        },
+        "strokeCount": 1654
+      },
+      "conditions": {
+        "actionRealizationPolicy": {
+          "triggerActivation": "disabled",
+          "triggerActivationClassOverrides": {},
+          "triggerActivationOverrides": []
+        },
+        "arpeggioInterpretation": {
+          "bridgeSameFinger": false,
+          "includeSingleRedirectTail": false,
+          "includeThumb": false
+        },
+        "centerShiftThumb": "right",
+        "chainInterpretation": {
+          "breakOnOppositeHandSimultaneous": false,
+          "breakOnSameFinger": true,
+          "breakOnThumbOnly": true,
+          "breakOnTriggerOnly": false
+        },
+        "fingerAssignmentId": "default",
+        "geometryShapeId": "row-staggered",
+        "romajiRuleId": null,
+        "sfbHomeCost": true,
+        "spaceThumb": "right",
+        "triggerRealizationPolicy": {
+          "useHold": false
+        },
+        "windowSize": 3
+      },
+      "id": "ja:naginata-private:kana",
+      "language": "ja",
+      "layoutId": "naginata-private",
+      "metrics": {
+        "actions": 1654,
+        "adjacent": [
+          {
+            "maxExcess": 0.8027756377319948,
+            "meanExcess": 0.04771065556839798,
+            "pair": [
+              "LP",
+              "LR"
+            ],
+            "stdDev": 0.17294420431742263
+          },
+          {
+            "maxExcess": 0.8027756377319948,
+            "meanExcess": 0.06819090818904318,
+            "pair": [
+              "LR",
+              "LM"
+            ],
+            "stdDev": 0.1812865078562313
+          },
+          {
+            "maxExcess": 1.6925824035672523,
+            "meanExcess": 0.15958943636852677,
+            "pair": [
+              "LM",
+              "LI"
+            ],
+            "stdDev": 0.32864114057764476
+          },
+          {
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.14606060075753707,
+            "pair": [
+              "RI",
+              "RM"
+            ],
+            "stdDev": 0.3001869574574323
+          },
+          {
+            "maxExcess": 1.0155644370746373,
+            "meanExcess": 0.07875593354633338,
+            "pair": [
+              "RM",
+              "RR"
+            ],
+            "stdDev": 0.2002740590202632
+          },
+          {
+            "maxExcess": 0.8027756377319948,
+            "meanExcess": 0.03456759217345934,
+            "pair": [
+              "RR",
+              "RP"
+            ],
+            "stdDev": 0.1385197919959153
+          }
+        ],
+        "comboPresses": 0,
+        "combos": {
+          "definitions": 4,
+          "hits": 0,
+          "matched": 0
+        },
+        "fingerAssignmentId": "default",
+        "fingerAssignmentName": "既定（列固定）",
+        "geometryId": "row-staggered",
+        "geometryName": "ロウスタッガード（ANSI）",
+        "inputChars": 1676,
+        "layers": [
+          {
+            "id": "single",
+            "label": "単打",
+            "presses": 923
+          },
+          {
+            "id": "layer:中指シフト",
+            "label": "中指シフト",
+            "presses": 1080
+          },
+          {
+            "id": "layer:濁音",
+            "label": "濁音",
+            "presses": 332
+          },
+          {
+            "id": "layer:半濁音",
+            "label": "半濁音",
+            "presses": 6
+          },
+          {
+            "id": "face:7",
+            "label": "小書き",
+            "presses": 0
+          },
+          {
+            "id": "face:8",
+            "label": "拗音（ゃ）",
+            "presses": 4
+          },
+          {
+            "id": "face:9",
+            "label": "拗音（ゅ）",
+            "presses": 6
+          },
+          {
+            "id": "face:10",
+            "label": "拗音（ょ）",
+            "presses": 24
+          },
+          {
+            "id": "face:11",
+            "label": "濁音の拗音（ゃ）",
+            "presses": 0
+          },
+          {
+            "id": "face:12",
+            "label": "濁音の拗音（ゅ）",
+            "presses": 6
+          },
+          {
+            "id": "face:13",
+            "label": "濁音の拗音（ょ）",
+            "presses": 9
+          },
+          {
+            "id": "face:14",
+            "label": "半濁音の拗音（ゃ）",
+            "presses": 0
+          },
+          {
+            "id": "face:15",
+            "label": "半濁音の拗音（ゅ）",
+            "presses": 0
+          },
+          {
+            "id": "face:16",
+            "label": "半濁音の拗音（ょ）",
+            "presses": 0
+          },
+          {
+            "id": "face:17",
+            "label": "てゅ",
+            "presses": 0
+          },
+          {
+            "id": "face:18",
+            "label": "てぃ",
+            "presses": 0
+          },
+          {
+            "id": "face:19",
+            "label": "う + 半濁音（V）",
+            "presses": 0
+          },
+          {
+            "id": "face:20",
+            "label": "しぇ・ちぇ",
+            "presses": 0
+          },
+          {
+            "id": "face:21",
+            "label": "外来音（ぁ）",
+            "presses": 0
+          },
+          {
+            "id": "face:22",
+            "label": "外来音（ぃ）",
+            "presses": 0
+          },
+          {
+            "id": "face:23",
+            "label": "外来音（ぇ）",
+            "presses": 0
+          },
+          {
+            "id": "face:24",
+            "label": "外来音（ぉ）",
+            "presses": 0
+          },
+          {
+            "id": "face:25",
+            "label": "ふゅ",
+            "presses": 0
+          },
+          {
+            "id": "face:26",
+            "label": "合拗音（ゎ）",
+            "presses": 0
+          },
+          {
+            "id": "face:27",
+            "label": "じぇ・ぢぇ",
+            "presses": 0
+          },
+          {
+            "id": "face:28",
+            "label": "でゅ",
+            "presses": 0
+          },
+          {
+            "id": "face:29",
+            "label": "でぃ",
+            "presses": 0
+          },
+          {
+            "id": "face:30",
+            "label": "濁音（F） + う",
+            "presses": 0
+          },
+          {
+            "id": "face:31",
+            "label": "濁音の外来音（ぁ）",
+            "presses": 0
+          },
+          {
+            "id": "face:32",
+            "label": "濁音の外来音（ぃ）",
+            "presses": 0
+          },
+          {
+            "id": "face:33",
+            "label": "ぐぇ・ゔぇ",
+            "presses": 0
+          },
+          {
+            "id": "face:34",
+            "label": "濁音の外来音（ぉ）",
+            "presses": 0
+          },
+          {
+            "id": "face:35",
+            "label": "ゔゅ",
+            "presses": 0
+          },
+          {
+            "id": "face:36",
+            "label": "濁音の合拗音（ゎ）",
+            "presses": 0
+          },
+          {
+            "id": "layer:中指シフト（同じ手）",
+            "label": "中指シフト（同じ手）",
+            "presses": 0
+          },
+          {
+            "id": "layer:濁音（同じ手）",
+            "label": "濁音（同じ手）",
+            "presses": 0
+          },
+          {
+            "id": "layer:半濁音（同じ手）",
+            "label": "半濁音（同じ手）",
+            "presses": 0
+          }
+        ],
+        "meanPerStroke": 0.8075335033953068,
+        "perCharPresses": 1.4260143198090691,
+        "perCharSteps": 0.986873508353222,
+        "perCharUnits": 0.7969334216084949,
+        "perFinger": {
+          "LI": 334.5283918021095,
+          "LM": 187.13130583315828,
+          "LP": 8.94427190999916,
+          "LR": 132.409508127816,
+          "LT": 0,
+          "RI": 293.5315117827125,
+          "RM": 245.20743458345694,
+          "RP": 45.21227588058595,
+          "RR": 88.6957146960037,
+          "RT": 0
+        },
+        "perFingerPresses": {
+          "LI": 454,
+          "LM": 432,
+          "LP": 48,
+          "LR": 186,
+          "LT": 0,
+          "RI": 417,
+          "RM": 596,
+          "RP": 74,
+          "RR": 183,
+          "RT": 0
+        },
+        "presses": 2390,
+        "sameFinger": 362,
+        "singleKeyRate": 55.804111245465535,
+        "singleTapLayerRate": 55.07159904534606,
+        "singleTapRate": 55.804111245465535,
+        "skipped": 0,
+        "strokes": 1654,
+        "totalMm": 25444.330898431705,
+        "totalUnits": 1335.6604146158375
+      },
+      "sampleId": "kana",
+      "textLength": 1676,
+      "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
+    },
+    {
+      "analysis": {
+        "arpeggio": {
+          "coverage": {
             "rate": 0.10580411124546554,
             "strokes": 175
           },
@@ -17292,6 +17669,6 @@
     }
   ],
   "modelVersion": 19,
-  "sourceCommit": "1ca7e03be1c3c9fc808fc929d32913c6b9e7cbed",
+  "sourceCommit": "3a57cefd676721b53a0afdcb75def882a5a28fe5",
   "version": 1
 }
