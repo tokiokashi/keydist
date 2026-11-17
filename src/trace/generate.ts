@@ -366,11 +366,8 @@ export function generateTrace(
   let commitCount = 0;
   const maxLen = Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
 
-  for (let cursor = 0; cursor < chars.length; ) {
-    let alternatives: InputAlternativeSet | undefined;
-    let char = chars[cursor];
-    let consumed = 1;
-
+  // cursorから最長一致で切り出す見出しと、その打ち方の候補。打てなければundefined
+  const matchAt = (cursor: number): { alternatives: InputAlternativeSet; char: string; consumed: number } | undefined => {
     for (let len = Math.min(maxLen, chars.length - cursor); len >= 1; len--) {
       const candidate = chars.slice(cursor, cursor + len).join('');
       const found = canonicalInputs.get(candidate);
@@ -380,13 +377,17 @@ export function generateTrace(
           !(crossesBarrier && isComboFrameAlternative(alternative)) &&
           alternativeContextSatisfied(alternative.contextRequirements, cursor, cursor + len, chars, chunkRanges, chunks !== undefined),
       );
-      if (eligible && eligible.length > 0) {
-        alternatives = eligible;
-        char = candidate;
-        consumed = len;
-        break;
-      }
+      if (eligible && eligible.length > 0) return { alternatives: eligible, char: candidate, consumed: len };
     }
+    return undefined;
+  };
+  const avoidingShiftKeys = new Set((layout.sameFingerAvoidingShiftKeys ?? []).map(resolveKeyId));
+
+  for (let cursor = 0; cursor < chars.length; ) {
+    const match = matchAt(cursor);
+    const alternatives = match?.alternatives;
+    const char = match?.char ?? chars[cursor];
+    const consumed = match?.consumed ?? 1;
 
     if (!alternatives) {
       skipped++;
@@ -419,7 +420,13 @@ export function generateTrace(
     }
     cursor += consumed;
 
-    const selectedAlternative = selectInputAlternative(alternatives, layout, geometry, options);
+    let selectedAlternative = selectInputAlternative(alternatives, layout, geometry, options);
+    if (avoidingShiftKeys.size >= 2) {
+      selectedAlternative = avoidSameFingerShift(selectedAlternative, alternatives, avoidingShiftKeys, geometry, previousAlternative, () => {
+        const next = matchAt(cursor);
+        return next && selectInputAlternative(next.alternatives, layout, geometry, options);
+      });
+    }
     if (isComboFrameAlternative(selectedAlternative)) comboHits.push(char);
     const commit = previousAlternative !== undefined && needsCommitStroke(commitRules, previousAlternative, selectedAlternative);
     previousAlternative = selectedAlternative;
@@ -779,6 +786,82 @@ function oppositeHandShiftScore(alternative: InputAlternative, shiftKeys: Readon
     }
   }
   return value;
+}
+
+/**
+ * 既定の打ち方のトリガーが`avoidingKeys`のキーで、そのキーの指が直前の入力の最後の打鍵か次の入力の最初の打鍵の
+ * 別のキーと同じ時、トリガーだけが`avoidingKeys`の別のキーに替わった打ち方のうち、同じ指になる打鍵が少ないものを選ぶ。
+ * 次の入力は、この選び方を掛ける前の打ち方で見る。同じ数の時は既定の打ち方のままにする。
+ */
+function avoidSameFingerShift(
+  selected: InputAlternative,
+  alternatives: InputAlternativeSet,
+  avoidingKeys: ReadonlySet<string>,
+  geometry: Geometry,
+  previous: InputAlternative | undefined,
+  next: () => InputAlternative | undefined,
+): InputAlternative {
+  const shape = avoidingShiftShape(selected, avoidingKeys);
+  if (shape === undefined) return selected;
+  const fingerOf = (key: string) => geometry.keys.get(key)?.finger;
+  const previousKeys = (previous?.baseRealizations.at(-1)?.actions.at(-1) ?? []).map(resolveKeyId);
+  let nextKeys: string[] | undefined;
+  const conflicts = (alternative: InputAlternative): number => {
+    const realizations = alternative.baseRealizations;
+    const first = (realizations[0]?.actions[0] ?? []).map(resolveKeyId);
+    const last = (realizations.at(-1)?.actions.at(-1) ?? []).map(resolveKeyId);
+    let count = 0;
+    for (const realization of realizations) {
+      const triggers = (realization.defaultTriggerKeys ?? []).map(resolveKeyId).filter((key) => avoidingKeys.has(key));
+      for (const trigger of triggers) {
+        const finger = fingerOf(trigger);
+        if (finger === undefined) continue;
+        const sameFinger = (keys: readonly string[]) => keys.some((key) => key !== trigger && fingerOf(key) === finger);
+        if (realization.actions.some((action) => sameFinger(action.map(resolveKeyId)))) count++;
+        if (first.includes(trigger) && sameFinger(previousKeys)) count++;
+        if (last.includes(trigger)) {
+          nextKeys ??= (next()?.baseRealizations[0]?.actions[0] ?? []).map(resolveKeyId);
+          if (sameFinger(nextKeys)) count++;
+        }
+      }
+    }
+    return count;
+  };
+
+  let best = selected;
+  let bestCount = conflicts(selected);
+  if (bestCount === 0) return selected;
+  for (const alternative of alternatives) {
+    if (alternative === selected || avoidingShiftShape(alternative, avoidingKeys) !== shape) continue;
+    const count = conflicts(alternative);
+    if (count < bestCount) {
+      best = alternative;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+/**
+ * トリガーの`avoidingKeys`のキーを1つの印にまとめた、打ち方の形。トリガーに`avoidingKeys`のキーを持たない打ち方はundefined。
+ * 形が同じ打ち方は、押す手を替えたシフトのキーのほかは同じキーを同じ順で押す。
+ */
+function avoidingShiftShape(alternative: InputAlternative, avoidingKeys: ReadonlySet<string>): string | undefined {
+  let found = false;
+  const mark = (key: string) => {
+    const id = resolveKeyId(key);
+    return avoidingKeys.has(id) ? '<shift>' : id;
+  };
+  const parts = alternative.baseRealizations.map((realization) => {
+    const triggers = (realization.defaultTriggerKeys ?? []).map(resolveKeyId);
+    if (triggers.some((key) => avoidingKeys.has(key))) found = true;
+    return JSON.stringify({
+      actions: realization.actions.map((action) => action.map(mark).sort()),
+      triggers: triggers.map(mark).sort(),
+      outputs: realization.defaultOutputKeys.map(resolveKeyId).sort(),
+    });
+  });
+  return found ? parts.join('|') : undefined;
 }
 
 const leftThumbSpaceVariants = new WeakMap<InputAlternative, InputAlternative>();
