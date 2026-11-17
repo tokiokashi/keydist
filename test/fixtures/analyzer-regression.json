@@ -9740,13 +9740,13 @@
             "stdDev": 0.32864114057764476
           },
           {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.14906946834399573,
+            "maxExcess": 1.0155644370746373,
+            "meanExcess": 0.1441719057017213,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.3017717696110063
+            "stdDev": 0.2842474051333099
           },
           {
             "maxExcess": 1.0155644370746373,
@@ -9965,17 +9965,17 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.7748962406226994,
+        "meanPerStroke": 0.7661068274338905,
         "perCharPresses": 1.4260143198090691,
         "perCharSteps": 0.986873508353222,
-        "perCharUnits": 0.7647245715930457,
+        "perCharUnits": 0.7560505325630399,
         "perFinger": {
           "LI": 334.5283918021095,
           "LM": 174.5002162092689,
           "LP": 8.94427190999916,
           "LR": 132.409508127816,
           "LT": 0,
-          "RI": 293.5315117827125,
+          "RI": 278.99382236842257,
           "RM": 203.8564915814523,
           "RP": 45.21227588058595,
           "RR": 88.6957146960037,
@@ -10000,8 +10000,8 @@
         "singleTapRate": 55.804111245465535,
         "skipped": 0,
         "strokes": 1654,
-        "totalMm": 24415.973176908446,
-        "totalUnits": 1281.6783819899447
+        "totalMm": 24139.030193566225,
+        "totalUnits": 1267.1406925756548
       },
       "sampleId": "kana",
       "textLength": 1676,
@@ -17668,7 +17668,7 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "modelVersion": 20,
-  "sourceCommit": "338dabc7f94ee98922ac5d17bf58f64e93a9de33",
+  "modelVersion": 21,
+  "sourceCommit": "8e2c7a2b10062e93bf2f4008036fc65b5f4ad34f",
   "version": 1
 }
