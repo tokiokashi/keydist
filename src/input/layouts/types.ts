@@ -256,6 +256,11 @@ export interface Layout {
   thumbShiftKeys?: readonly string[];
   /** 通常Shift semanticを成立させられる左右physical key集合。 */
   shiftKeys?: readonly string[];
+  /**
+   * 左右どちらの手でも同じシフトを成立させるキーのうち、前後の打鍵と同じ指になる時に押す手を替えるキー。
+   * 既定の打ち方のトリガーがこの集合のキーで、そのキーの指が前後の打鍵と同じ指になる時だけ、集合の別のキーの打ち方を選ぶ。
+   */
+  sameFingerAvoidingShiftKeys?: readonly string[];
   /** この配列が前提とする非親指のホームキー。省略時は物理配列側の既定値を使う。 */
   homeKeys?: Partial<Record<NonThumb, string>>;
   /**

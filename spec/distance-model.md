@@ -429,6 +429,22 @@ canonical上に残る。Input Converterでは実際に押された `ShiftLeft` /
 Shift keyのgeometryは既存PhysicalShapeの保存schemaへ混ぜず、bottom rowの実座標から標準Shiftの
 中心位置を派生させる。
 
+左右どちらの手のキーでも同じシフトを成立させるかな配列のうち、前後の打鍵を見て押す手を替えるシフトのキーを、
+配列は `sameFingerAvoidingShiftKeys` に持つ（薙刀式私家版の中指シフト `d` `k`）。持たない配列では、この選び方は掛からない。
+このキーをtriggerに持つ打ち方は、上までのPolicyで選んだalternativeを既定とし、下の打鍵の数（同指の数）を既定と比べる。
+
+- triggerのキーの指が、同じaction内のtrigger以外のキーの指と同じ
+- 入力の最初のactionにあるtriggerのキーの指が、直前の入力で選んだalternativeの最後のactionのtrigger以外のキーの指と同じ
+- 入力の最後のactionにあるtriggerのキーの指が、次の入力の最初のactionのtrigger以外のキーの指と同じ
+
+比べる相手は、triggerの `sameFingerAvoidingShiftKeys` のキーだけが集合の別のキーに替わり、他のキー・押す順・出力キーが同じalternativeである。
+同指の数が既定より少ないものがあれば、最も少ないもの（同じ数なら先に並ぶもの）を選び、無ければ既定のままにする。
+同じキーが続くのは同指に数えない。次の入力は §4.3と同じ最長一致で切り出し、その入力に上までのPolicyを掛けたalternativeを見る。
+次の入力のalternativeには、この選び方を掛けない。打てない文字の前後は、直前・次の入力が無いものとして扱う。
+キーの指は、通常Shiftの手の判定と同じく基本の指で決める（§4.2）。
+`sameFingerAvoidingShiftKeys` に入らないシフト（薙刀式私家版の濁音・半濁音）は、前後の打鍵によらず既定の手のまま押す。
+保持可能なシフトを押し続けるかは `TriggerRealizationPolicy` で決まり、この選び方は、押し続けた打鍵の区切り方を見ない。
+
 全角形の記号は、対応する半角の記号と同じ物理入力として評価する。日本語の入力ではIMEが全角と半角のどちらで出すかを
 設定で選べるので、幅の違いを別の記号として数えると、配列の差ではなく設定の差が数値に出る。
 
@@ -492,7 +508,7 @@ Shift keyのgeometryは既存PhysicalShapeの保存schemaへ混ぜず、bottom r
 測った時は、そのことも分かるようにする。
 
 入力の候補の選択（上の Input Alternative Selection Policy。通常Shiftの手の判定と
-`centerShiftThumb`・`spaceThumb` を含む）は、打鍵の列ができる前に行う。この時のキーの手は、基本の指の手で判定する。
+`centerShiftThumb`・`spaceThumb`・`sameFingerAvoidingShiftKeys` を含む）は、打鍵の列ができる前に行う。この時のキーの手と指は、基本の指で判定する。
 担当する指の追加の有無で、大文字や親指シフトの選び方が変わらないようにするためである。
 そのため、大文字の `Y` では、基本の指（右人差し指）の反対の左Shiftが選ばれ、その後の指の選び方（§9.1）で
 `y` が左人差し指に決まると、同じ手のShiftとキーになることがある。

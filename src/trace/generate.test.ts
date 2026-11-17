@@ -366,6 +366,37 @@ test('薙刀式のシフトは設定時に出力キーと反対側の親指へ�
   assert.deepEqual(opposite.strokes[1].triggerKeys, ['thumb-r']);
 });
 
+const strokeKeys = (text: string, layout: Layout): string[] =>
+  generateTrace(text, layout, geometry, opts()).strokes.map((stroke) =>
+    stroke.presses
+      .flatMap((press) => press.keys.map((key) => key.id))
+      .sort()
+      .join('+'),
+  );
+
+test('手を替えるシフトのキーは、反対の手のキーが直前か次の入力と同じ指になる時だけ同じ手のキーに替える', () => {
+  const naginata = LAYOUT_BY_ID.get('naginata-private')!;
+  // す は右手の中指の i なので、ま を k で押すと同じ指になる
+  assert.deepEqual(strokeKeys('ます', naginata), ['d+f', 'i']);
+  assert.deepEqual(strokeKeys('すま', naginata), ['i', 'd+f']);
+  assert.deepEqual(strokeKeys('まで', naginata), ['f+k', 'e+j']);
+  // で の後の く は右手の人差し指の h で、濁音の j と同じ指だが、濁音のシフトは集合に入らないので手を替えない
+  assert.deepEqual(strokeKeys('でく', naginata), ['e+j', 'h']);
+});
+
+test('手を替えるシフトのキーは、打てない文字を挟んだ先の入力を見ない', () => {
+  const naginata = LAYOUT_BY_ID.get('naginata-private')!;
+  // 空白は薙刀式私家版で打てない文字なので、ま の次の入力は無いものとして扱う
+  assert.deepEqual(strokeKeys('ま す', naginata), ['f+k', 'i']);
+  assert.deepEqual(strokeKeys('す ま', naginata), ['i', 'f+k']);
+});
+
+test('手を替えるシフトのキーは、替えたキーが同じ打鍵の別のキーと同じ指になるなら、同じ指の数が減らない限り替えない', () => {
+  const naginata = LAYOUT_BY_ID.get('naginata-private')!;
+  // に の d+e は d と e が左手の中指で同じ指になり、k+e の後の す（i）と同じ数なので k のまま
+  assert.deepEqual(strokeKeys('にす', naginata), ['e+k', 'i']);
+});
+
 test('薙刀式のシフトは左親指を選ぶと出力キーの手に関わらず左親指で押す', () => {
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
   const trace = generateTrace('おせ', naginata, geometry, opts({ centerShiftThumb: 'left' }));

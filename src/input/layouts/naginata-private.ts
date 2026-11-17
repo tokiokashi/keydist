@@ -337,6 +337,9 @@ export const NAGINATA_PRIVATE: Layout = withAliases(
   {
     ...fromFaces('naginata-private', '薙刀式私家版', NAGINATA_PRIVATE_FACES),
     triggerMeanings: NAGINATA_PRIVATE_TRIGGER_MEANINGS,
+    // 中指シフトは、反対の手のキーが前後のかなと同じ指になる時に同じ手のキーで押す。
+    // 濁音・半濁音のシフトは前後によらず反対の手で押す
+    sameFingerAvoidingShiftKeys: ['d', 'k'],
     layerViewPresentation: {
       compact: {
         keepLayerIds: [SINGLE_LAYER_ID, 'layer:中指シフト'],

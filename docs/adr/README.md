@@ -55,3 +55,4 @@
 | [0013](0013-context-length-by-permutation-test.md) | コーパスの文脈の長さを、距離を置いた2単位の相互情報量と、組の並べ替えとの比較で調べる | 採用 |
 | [0014](0014-record-keystrokes-in-app.md) | 打鍵の記録はアプリの中で取り、外のツールの記録は読み込まない | 採用 |
 | [0015](0015-keystroke-gaps-in-run-chart.md) | 打鍵の間隔をRun Chartの下に並べ、記録の選択は解析設定に置いて共有リンクに載せない | 採用 |
+| [0016](0016-middle-shift-hand-by-neighbors.md) | 薙刀式私家版の中指シフトは、前後の打鍵と同じ指になる時に同じ手のキーで押す | 採用 |
