@@ -34,6 +34,7 @@ const EXPECTED: Record<string, LayoutKind> = {
   halmak: 'alpha',
   mtgap: 'alpha',
   'naginata-v18': 'kana',
+  'naginata-private': 'kana',
   nicola: 'kana',
   'shin-koume': 'kana',
   asuka: 'kana',

@@ -371,6 +371,13 @@ const NAGINATA_TRIGGER_MEANINGS: TriggerMeanings = {
   半濁音: { v: modifierKey('半濁音'), m: modifierKey('半濁音') },
 };
 
+/** 単打と1つのシフトの2レイヤーに畳む表示の文言。薙刀式の系統の配列で同じにする。 */
+export const TWO_LAYER_COMPACT_LABELS = {
+  mergedTitleSuffix: '（レイヤー3以降を合算）',
+  compactLabel: '2レイヤーにまとめる',
+  detailLabel: '全レイヤー詳細',
+} as const;
+
 export const NAGINATA_V18: Layout = withAliases(
   withThumbShiftAlternatives(
     {
@@ -380,10 +387,8 @@ export const NAGINATA_V18: Layout = withAliases(
         compact: {
           keepLayerIds: [SINGLE_LAYER_ID, 'layer:SandS'],
           mergeIntoLayerId: SINGLE_LAYER_ID,
-          mergedTitleSuffix: '（レイヤー3以降を合算）',
+          ...TWO_LAYER_COMPACT_LABELS,
           controlLabel: '薙刀式の表示',
-          compactLabel: '2レイヤーにまとめる',
-          detailLabel: '全レイヤー詳細',
         },
       },
     },

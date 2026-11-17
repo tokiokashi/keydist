@@ -3,6 +3,7 @@ import { oonishiRomaji } from '#input/romaji/oonishi.ts';
 import { seotoRomaji } from '#input/romaji/seoto.ts';
 import { tomisukeRomaji } from '#input/romaji/tomisuke.ts';
 import { NAGINATA_V18 } from './naginata.ts';
+import { NAGINATA_PRIVATE } from './naginata-private.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import {
   fromRows,
@@ -260,6 +261,7 @@ export const LAYOUTS_JA: Layout[] = [
   // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている
   withRomaji(ALPHA_BY_ID.get('tk-onchoku')!, ROMAJI),
   NAGINATA_V18,
+  NAGINATA_PRIVATE,
   NICOLA,
   SHIN_KOUME,
   ASUKA,

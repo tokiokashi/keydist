@@ -1,0 +1,1577 @@
+{
+  "format": "naginata-engine-chords",
+  "layoutId": "naginata-private",
+  "source": {
+    "url": "https://github.com/tokiokashi/vial-qmk/blob/623e3ccb99e98129b6e8df1f3f246fa74fd7fb57/users/tokioka/naginata.c",
+    "repository": "https://github.com/tokiokashi/vial-qmk",
+    "commit": "623e3ccb99e98129b6e8df1f3f246fa74fd7fb57",
+    "path": "users/tokioka/naginata.c",
+    "sha256": "41780477031a109f23d689d87dc199eea43a42804ac3a6ab162757b2eca0f14a",
+    "transform": "面の配列（base_face・shift_face・daku_face・handaku_face・small_face）、拗音のgens、外来音のgairaiを、出力と押すキーの組にした。keysは必ず押すキー、oneOfはどれか1つを足すシフトのキー。ローマ字はかなに直した。出典が文字を出さない入力（qのEsc・j+hとf+gのIME・中指シフトとqの後の1キーの小書き）は入れていない。出典は濁点キーを押し続けている間だけj+hとf+gでも ぐ・ぢ を出すが、IMEの切り替えと同じ打鍵になるので、ぐ はfとh、ぢ はjとgの組だけを写した。！ ？ と、vとmの 、 。 は resolve と pair_romaji の分岐から写した"
+  },
+  "chords": [
+    {
+      "output": "き",
+      "keys": [
+        "w"
+      ]
+    },
+    {
+      "output": "て",
+      "keys": [
+        "e"
+      ]
+    },
+    {
+      "output": "し",
+      "keys": [
+        "r"
+      ]
+    },
+    {
+      "output": "り",
+      "keys": [
+        "t"
+      ]
+    },
+    {
+      "output": "さ",
+      "keys": [
+        "y"
+      ]
+    },
+    {
+      "output": "た",
+      "keys": [
+        "u"
+      ]
+    },
+    {
+      "output": "す",
+      "keys": [
+        "i"
+      ]
+    },
+    {
+      "output": "る",
+      "keys": [
+        "o"
+      ]
+    },
+    {
+      "output": "へ",
+      "keys": [
+        "p"
+      ]
+    },
+    {
+      "output": "お",
+      "keys": [
+        "a"
+      ]
+    },
+    {
+      "output": "け",
+      "keys": [
+        "s"
+      ]
+    },
+    {
+      "output": "ん",
+      "keys": [
+        "d"
+      ]
+    },
+    {
+      "output": "か",
+      "keys": [
+        "f"
+      ]
+    },
+    {
+      "output": "ー",
+      "keys": [
+        "g"
+      ]
+    },
+    {
+      "output": "く",
+      "keys": [
+        "h"
+      ]
+    },
+    {
+      "output": "あ",
+      "keys": [
+        "j"
+      ]
+    },
+    {
+      "output": "い",
+      "keys": [
+        "k"
+      ]
+    },
+    {
+      "output": "う",
+      "keys": [
+        "l"
+      ]
+    },
+    {
+      "output": "っ",
+      "keys": [
+        ";"
+      ]
+    },
+    {
+      "output": "ほ",
+      "keys": [
+        "z"
+      ]
+    },
+    {
+      "output": "ひ",
+      "keys": [
+        "x"
+      ]
+    },
+    {
+      "output": "は",
+      "keys": [
+        "c"
+      ]
+    },
+    {
+      "output": "こ",
+      "keys": [
+        "v"
+      ]
+    },
+    {
+      "output": "そ",
+      "keys": [
+        "b"
+      ]
+    },
+    {
+      "output": "な",
+      "keys": [
+        "m"
+      ]
+    },
+    {
+      "output": "と",
+      "keys": [
+        ","
+      ]
+    },
+    {
+      "output": "ら",
+      "keys": [
+        "."
+      ]
+    },
+    {
+      "output": "れ",
+      "keys": [
+        "/"
+      ]
+    },
+    {
+      "output": "め",
+      "keys": [
+        "w"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "に",
+      "keys": [
+        "e"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "ね",
+      "keys": [
+        "r"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "え",
+      "keys": [
+        "u"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "よ",
+      "keys": [
+        "i"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "ろ",
+      "keys": [
+        "o"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "ゆ",
+      "keys": [
+        "p"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "せ",
+      "keys": [
+        "a"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "み",
+      "keys": [
+        "s"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "も",
+      "keys": [
+        "d"
+      ],
+      "oneOf": [
+        "k"
+      ]
+    },
+    {
+      "output": "ま",
+      "keys": [
+        "f"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "ち",
+      "keys": [
+        "g"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "や",
+      "keys": [
+        "h"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "の",
+      "keys": [
+        "j"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "も",
+      "keys": [
+        "k"
+      ],
+      "oneOf": [
+        "d"
+      ]
+    },
+    {
+      "output": "つ",
+      "keys": [
+        "l"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "ふ",
+      "keys": [
+        ";"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "を",
+      "keys": [
+        "x"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "ぬ",
+      "keys": [
+        "c"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "、",
+      "keys": [
+        "v"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "。",
+      "keys": [
+        "m"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "む",
+      "keys": [
+        ","
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "わ",
+      "keys": [
+        "."
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "・",
+      "keys": [
+        "/"
+      ],
+      "oneOf": [
+        "d",
+        "k"
+      ]
+    },
+    {
+      "output": "ぎ",
+      "keys": [
+        "w"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "で",
+      "keys": [
+        "e"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "じ",
+      "keys": [
+        "r"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ざ",
+      "keys": [
+        "y"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "だ",
+      "keys": [
+        "u"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ず",
+      "keys": [
+        "i"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "べ",
+      "keys": [
+        "p"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぜ",
+      "keys": [
+        "a"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "げ",
+      "keys": [
+        "s"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "が",
+      "keys": [
+        "f"
+      ],
+      "oneOf": [
+        "j"
+      ]
+    },
+    {
+      "output": "ぢ",
+      "keys": [
+        "g"
+      ],
+      "oneOf": [
+        "j"
+      ]
+    },
+    {
+      "output": "ぐ",
+      "keys": [
+        "h"
+      ],
+      "oneOf": [
+        "f"
+      ]
+    },
+    {
+      "output": "づ",
+      "keys": [
+        "l"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぶ",
+      "keys": [
+        ";"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぼ",
+      "keys": [
+        "z"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "び",
+      "keys": [
+        "x"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ば",
+      "keys": [
+        "c"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ご",
+      "keys": [
+        "v"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぞ",
+      "keys": [
+        "b"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ど",
+      "keys": [
+        ","
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぺ",
+      "keys": [
+        "p"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ぷ",
+      "keys": [
+        ";"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ぽ",
+      "keys": [
+        "z"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ぴ",
+      "keys": [
+        "x"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ぱ",
+      "keys": [
+        "c"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ぇ",
+      "keys": [
+        "u"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ょ",
+      "keys": [
+        "i"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ゅ",
+      "keys": [
+        "p"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ぉ",
+      "keys": [
+        "a"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ヶ",
+      "keys": [
+        "s"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ヵ",
+      "keys": [
+        "f"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ゃ",
+      "keys": [
+        "h"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ぁ",
+      "keys": [
+        "j"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ぃ",
+      "keys": [
+        "k"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ぅ",
+      "keys": [
+        "l"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "っ",
+      "keys": [
+        ";"
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "ゎ",
+      "keys": [
+        "."
+      ],
+      "oneOf": [
+        "q"
+      ]
+    },
+    {
+      "output": "きゃ",
+      "keys": [
+        "w",
+        "h"
+      ]
+    },
+    {
+      "output": "ぎゃ",
+      "keys": [
+        "w",
+        "h"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "きょ",
+      "keys": [
+        "w",
+        "i"
+      ]
+    },
+    {
+      "output": "ぎょ",
+      "keys": [
+        "w",
+        "i"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "きゅ",
+      "keys": [
+        "w",
+        "p"
+      ]
+    },
+    {
+      "output": "ぎゅ",
+      "keys": [
+        "w",
+        "p"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "しゃ",
+      "keys": [
+        "r",
+        "h"
+      ]
+    },
+    {
+      "output": "じゃ",
+      "keys": [
+        "r",
+        "h"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "しょ",
+      "keys": [
+        "r",
+        "i"
+      ]
+    },
+    {
+      "output": "じょ",
+      "keys": [
+        "r",
+        "i"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "しゅ",
+      "keys": [
+        "r",
+        "p"
+      ]
+    },
+    {
+      "output": "じゅ",
+      "keys": [
+        "r",
+        "p"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ちゃ",
+      "keys": [
+        "g",
+        "h"
+      ]
+    },
+    {
+      "output": "ぢゃ",
+      "keys": [
+        "g",
+        "h"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ちょ",
+      "keys": [
+        "g",
+        "i"
+      ]
+    },
+    {
+      "output": "ぢょ",
+      "keys": [
+        "g",
+        "i"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ちゅ",
+      "keys": [
+        "g",
+        "p"
+      ]
+    },
+    {
+      "output": "ぢゅ",
+      "keys": [
+        "g",
+        "p"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ひゃ",
+      "keys": [
+        "x",
+        "h"
+      ]
+    },
+    {
+      "output": "びゃ",
+      "keys": [
+        "x",
+        "h"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぴゃ",
+      "keys": [
+        "x",
+        "h"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ひょ",
+      "keys": [
+        "x",
+        "i"
+      ]
+    },
+    {
+      "output": "びょ",
+      "keys": [
+        "x",
+        "i"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぴょ",
+      "keys": [
+        "x",
+        "i"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ひゅ",
+      "keys": [
+        "x",
+        "p"
+      ]
+    },
+    {
+      "output": "びゅ",
+      "keys": [
+        "x",
+        "p"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぴゅ",
+      "keys": [
+        "x",
+        "p"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "みゃ",
+      "keys": [
+        "s",
+        "h"
+      ]
+    },
+    {
+      "output": "みょ",
+      "keys": [
+        "s",
+        "i"
+      ]
+    },
+    {
+      "output": "みゅ",
+      "keys": [
+        "s",
+        "p"
+      ]
+    },
+    {
+      "output": "りゃ",
+      "keys": [
+        "t",
+        "h"
+      ]
+    },
+    {
+      "output": "りょ",
+      "keys": [
+        "t",
+        "i"
+      ]
+    },
+    {
+      "output": "りゅ",
+      "keys": [
+        "t",
+        "p"
+      ]
+    },
+    {
+      "output": "にゃ",
+      "keys": [
+        "e",
+        "h"
+      ]
+    },
+    {
+      "output": "にょ",
+      "keys": [
+        "e",
+        "i"
+      ]
+    },
+    {
+      "output": "にゅ",
+      "keys": [
+        "e",
+        "p"
+      ]
+    },
+    {
+      "output": "てゅ",
+      "keys": [
+        "e",
+        "p"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "てぃ",
+      "keys": [
+        "e",
+        "k"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "とぅ",
+      "keys": [
+        ",",
+        "l"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "しぇ",
+      "keys": [
+        "r",
+        "u"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ちぇ",
+      "keys": [
+        "g",
+        "u"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ふぁ",
+      "keys": [
+        ";",
+        "j"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ふぃ",
+      "keys": [
+        ";",
+        "k"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ふぇ",
+      "keys": [
+        ";",
+        "u"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ふぉ",
+      "keys": [
+        ";",
+        "a"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "ふゅ",
+      "keys": [
+        ";",
+        "p"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "うぃ",
+      "keys": [
+        "l",
+        "k"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "うぇ",
+      "keys": [
+        "l",
+        "u"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "うぉ",
+      "keys": [
+        "l",
+        "a"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "いぇ",
+      "keys": [
+        "k",
+        "u"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "うぃ",
+      "keys": [
+        "k",
+        "l"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "くぁ",
+      "keys": [
+        "h",
+        "j"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "くぃ",
+      "keys": [
+        "h",
+        "k"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "くぇ",
+      "keys": [
+        "h",
+        "u"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "くぉ",
+      "keys": [
+        "h",
+        "a"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "くゎ",
+      "keys": [
+        "h",
+        "l"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "くゎ",
+      "keys": [
+        "h",
+        "."
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "つぁ",
+      "keys": [
+        ".",
+        "j"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "つぃ",
+      "keys": [
+        ".",
+        "k"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "つぇ",
+      "keys": [
+        ".",
+        "u"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "つぉ",
+      "keys": [
+        ".",
+        "a"
+      ],
+      "oneOf": [
+        "v",
+        "m"
+      ]
+    },
+    {
+      "output": "じぇ",
+      "keys": [
+        "r",
+        "u"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぢぇ",
+      "keys": [
+        "g",
+        "u"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "でゅ",
+      "keys": [
+        "e",
+        "p"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "でぃ",
+      "keys": [
+        "e",
+        "k"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "どぅ",
+      "keys": [
+        ",",
+        "l"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ゔぁ",
+      "keys": [
+        "l",
+        "j"
+      ],
+      "oneOf": [
+        "f"
+      ]
+    },
+    {
+      "output": "ゔぃ",
+      "keys": [
+        "l",
+        "k"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ゔぇ",
+      "keys": [
+        "l",
+        "u"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ゔぉ",
+      "keys": [
+        "l",
+        "a"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ゔゅ",
+      "keys": [
+        "l",
+        "p"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ゔ",
+      "keys": [
+        "l",
+        ";"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぐぁ",
+      "keys": [
+        "h",
+        "j"
+      ],
+      "oneOf": [
+        "f"
+      ]
+    },
+    {
+      "output": "ぐぃ",
+      "keys": [
+        "h",
+        "k"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぐぇ",
+      "keys": [
+        "h",
+        "u"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぐぉ",
+      "keys": [
+        "h",
+        "a"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぐゎ",
+      "keys": [
+        "h",
+        "l"
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "ぐゎ",
+      "keys": [
+        "h",
+        "."
+      ],
+      "oneOf": [
+        "f",
+        "j"
+      ]
+    },
+    {
+      "output": "！",
+      "keys": [
+        ",",
+        "."
+      ]
+    },
+    {
+      "output": "？",
+      "keys": [
+        ".",
+        "/"
+      ]
+    },
+    {
+      "output": "、",
+      "keys": [
+        "m",
+        "v"
+      ],
+      "note": "mを先に押す"
+    },
+    {
+      "output": "。",
+      "keys": [
+        "v",
+        "m"
+      ],
+      "note": "vを先に押す"
+    }
+  ]
+}

@@ -153,8 +153,8 @@ test('絞り込みはひらがな・カタカナを区別せず、読み・別�
   const keys = (query: string) => filterTargetChoiceGroups(groups, query).flatMap((group) => group.choices.map((choice) => choice.key));
   assert.deepEqual(keys('かわせみ'), ['layout:kawasemi-plus']);
   assert.deepEqual(keys('カワセミ'), keys('かわせみ'));
-  assert.deepEqual(keys('なぎなた'), ['layout:naginata-v18']);
-  assert.deepEqual(keys('ナギナタ'), ['layout:naginata-v18']);
+  assert.deepEqual(keys('なぎなた'), ['layout:naginata-v18', 'layout:naginata-private']);
+  assert.deepEqual(keys('ナギナタ'), keys('なぎなた'));
   assert.ok(keys('にこら').includes('layout:nicola'));
   assert.ok(keys('つき').includes('layout:tsuki-2-263'));
   assert.ok(keys('くわーてぃ').includes('layout:qwerty'));
