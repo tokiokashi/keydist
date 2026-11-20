@@ -133,3 +133,11 @@ test('打鍵再生が読む入力の列に、表記で打つ語は表記で出�
     ],
   );
 });
+
+test('表記が読みより短い語の後ろにあるコンボを止める境も置く', () => {
+  // 読み「かんじ」（位置0〜2）を表記「漢字」の2入力で打つ。語の後ろの「あい」の間の境（位置4）で、コンボを止める
+  const combo = withCombos('kanji-combo', 'あいのコンボ', kanjiLayout, [['あい', ['あ', 'い']]]);
+  const words: NotationWord[] = [{ start: 0, end: 3, surface: '漢字' }];
+  assert.deepEqual(trace('かんじあい', words, [], combo).comboHits, ['あい']);
+  assert.deepEqual(trace('かんじあい', words, [4], combo).comboHits, []);
+});

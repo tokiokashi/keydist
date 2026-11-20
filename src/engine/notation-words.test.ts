@@ -222,3 +222,44 @@ test('語の前の記号が取り除かれても、語の読みの範囲は評�
     ],
   );
 });
+
+test('表記が読みより短い語の後ろの片仮名は、見出しに無ければひらがなに書き換えて打つ', () => {
+  // 見出しに て・す・と があり片仮名が無い配列。「漢字」は2字で読みは3字なので、後ろの片仮名の位置が列と評価に渡すテキストでずれる
+  const user = buildUserCatalog(
+    [
+      {
+        kind: 'kana',
+        id: 'kanji-small-2',
+        name: '漢直の小さな配列2',
+        faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'て', s: 'す', d: '漢', f: '字', j: 'と' } }],
+        composition: { dakuten: false, handakuten: false },
+      },
+    ],
+    [],
+  );
+  const { text, tokens } = analyzed([
+    ['漢字', 'カンジ'],
+    ['テスト', null],
+  ]);
+  const conversion = convertToReading(text, tokens);
+  const result = resolveEngineInput({
+    target: { kind: 'layout', layoutId: 'kanji-small-2' },
+    setups: new Map(),
+    catalog: { layouts: new Map([...LAYOUT_BY_ID, ...user.layouts]), shapes: CATALOG.shapes },
+    userLayouts: user.userLayouts,
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text: conversion.text,
+    language: 'ja',
+    reading: READING_CONDITIONS,
+    notationExcess: conversion.notationExcess,
+    notationWords: notationWordsInReading(text, tokens),
+  });
+  assert.ok(result.ok);
+  assert.equal(result.input.text, 'かんじてすと');
+  const { trace } = { trace: generateEngineTrace(result.input).trace };
+  assert.equal(trace.skipped, 0);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.char),
+    ['漢', '字', 'て', 'す', 'と'],
+  );
+});
