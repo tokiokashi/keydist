@@ -101,8 +101,8 @@ function comboGroupForCanonicalPath(layout: Layout, output: string, keys: readon
 /**
  * canonical input pathを「物理キー集合 -> 出力」の表示用マトリクスへ展開する。
  *
- * pickerは1 SemanticInputで完結するpathだけを扱う。複数stepのsequence/composed
- * pathは従来同様このUIの対象外。押下順序はFaceModeを再解釈せずRequirement.orderを使う。
+ * pickerは1 SemanticInputで完結するpathだけを扱う。複数stepのcomposed pathは対象外で、
+ * 1キーずつ打つsequenceは `matchKeySequences` が扱う。押下順序はFaceModeを再解釈せずRequirement.orderを使う。
  */
 export function buildKeyPatternMatrix(layout: Layout): readonly KeyPatternMatch[] {
   const matrix: KeyPatternMatch[] = [];
@@ -164,6 +164,68 @@ export function buildKeyPatternMatrix(layout: Layout): readonly KeyPatternMatch[
 export function keyPatternsContaining(layout: Layout, keyId: string): readonly KeyPatternMatch[] {
   const id = resolveKeyId(keyId);
   return buildKeyPatternMatrix(layout).filter((match) => match.keys.includes(id));
+}
+
+/** 1キーずつ順に打つ入力（順次打鍵）の経路。`keys` は打つ順で、同じキーを続けて打つ経路もある。 */
+export interface KeySequencePath {
+  readonly output: string;
+  readonly keys: readonly string[];
+}
+
+const sequencePathsByInputs = new WeakMap<object, readonly KeySequencePath[]>();
+
+/**
+ * 1キーずつ順に打つ入力の経路。配列が持つ順次打鍵のうち、各ステップが1キーだけのものを取る。
+ * 経路の表は配列ごとに作った後は書き換えないので、表ごとに1度だけ作る。
+ */
+export function keySequencePaths(layout: Pick<Layout, 'canonicalInputs'>): readonly KeySequencePath[] {
+  const known = sequencePathsByInputs.get(layout.canonicalInputs);
+  if (known !== undefined) return known;
+  const paths: KeySequencePath[] = [];
+  for (const [output, alternatives] of layout.canonicalInputs) {
+    for (const alternative of alternatives) {
+      if (alternative.origin !== 'sequence' || alternative.semanticInputs.length < 2) continue;
+      const steps = alternative.semanticInputs.map((input) => uniqueKeys(input.physicalKeys));
+      if (steps.some((step) => step.length !== 1)) continue;
+      paths.push({ output, keys: steps.map((step) => step[0]) });
+    }
+  }
+  sequencePathsByInputs.set(layout.canonicalInputs, paths);
+  return paths;
+}
+
+export interface KeySequenceResult {
+  /** 選んだ順のキーで、出力が確定した経路の出力 */
+  readonly exact: readonly string[];
+  /** あと1キーで出力が決まるキー → そのキーを押すと出る文字 */
+  readonly candidates: ReadonlyMap<string, readonly string[]>;
+  /** 出力はまだ決まらないが、続けて押せるキー（候補のキーも含む） */
+  readonly continuations: ReadonlySet<string>;
+}
+
+/**
+ * 選んだキーの並びを、順次打鍵の経路の先頭から照合する。同じキーを続けて選んだ並びも、別のキーと同じに扱う。
+ */
+export function matchKeySequences(layout: Pick<Layout, 'canonicalInputs'>, selected: readonly string[]): KeySequenceResult {
+  const exact: string[] = [];
+  const candidates = new Map<string, string[]>();
+  const continuations = new Set<string>();
+  const chosen = selected.map(resolveKeyId);
+  if (chosen.length === 0) return { exact, candidates, continuations };
+  for (const path of keySequencePaths(layout)) {
+    if (path.keys.length < chosen.length || !chosen.every((key, index) => key === path.keys[index])) continue;
+    if (path.keys.length === chosen.length) {
+      exact.push(path.output);
+      continue;
+    }
+    const next = path.keys[chosen.length];
+    continuations.add(next);
+    if (path.keys.length !== chosen.length + 1) continue;
+    const outputs = candidates.get(next);
+    if (outputs) outputs.push(path.output);
+    else candidates.set(next, [path.output]);
+  }
+  return { exact, candidates, continuations };
 }
 
 function exactAllowedByOrder(match: KeyPatternMatch, selected: ReadonlySet<string>): boolean {

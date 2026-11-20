@@ -1,4 +1,4 @@
-import { matchKeyPatterns, summarizeCandidateMatches } from '#input/layouts/key-pattern-picker.ts';
+import { keySequencePaths, matchKeyPatterns, matchKeySequences, summarizeCandidateMatches } from '#input/layouts/key-pattern-picker.ts';
 import type { Layout } from '#input/layouts/types.ts';
 
 /**
@@ -8,8 +8,20 @@ import type { Layout } from '#input/layouts/types.ts';
  * ここでは画面に出す形（キーごとの見た目・結果の文）へ並べるだけにする。
  */
 
-/** 選んだキーの並び。同じキーをもう一度選ぶと外れる。外れたキー以外の順は変えない。 */
-export function toggleSelectedKey(selected: readonly string[], keyId: string): readonly string[] {
+/**
+ * 選んだキーの並び。同じキーをもう一度選ぶと外れる。外れたキー以外の順は変えない。
+ *
+ * 1キーずつ順に打つ入力（順次打鍵）を持つ配列は、選んだ並びに続けて押せるキーを選ぶと並びの後ろに足す（同じキーを続けて打つ入力もある）。
+ * 続けて押せないキーを選ぶと、選んだキーより後ろを外す。まだ選んでいないキーなら、そのキーだけを選んだ状態から始める。
+ */
+export function toggleSelectedKey(layout: Layout, selected: readonly string[], keyId: string): readonly string[] {
+  if (keySequencePaths(layout).length > 0) {
+    const next = [...selected, keyId];
+    const extended = matchKeySequences(layout, next);
+    if (selected.length === 0 || extended.exact.length > 0 || extended.continuations.size > 0) return next;
+    const index = selected.indexOf(keyId);
+    return index >= 0 ? selected.slice(0, index) : [keyId];
+  }
   return selected.includes(keyId) ? selected.filter((id) => id !== keyId) : [...selected, keyId];
 }
 
@@ -32,9 +44,14 @@ export function keyPatternSelectionView(layout: Layout, selected: readonly strin
     return { exactOutputs: [], candidateLegends: new Map(), continuationKeys: new Set(), message: KEY_PATTERN_PROMPT };
   }
   const result = matchKeyPatterns(layout, new Set(selected));
-  const exactOutputs = [...new Set(result.exact.map((match) => match.output))];
+  const sequence = matchKeySequences(layout, selected);
+  const exactOutputs = [...new Set([...result.exact.map((match) => match.output), ...sequence.exact])];
   const candidateLegends = new Map([...result.candidates].map(([key, matches]) => [key, summarizeCandidateMatches(matches)] as const));
-  const continuationKeys = new Set(result.continuations.keys());
+  for (const [key, outputs] of sequence.candidates) {
+    const known = candidateLegends.get(key);
+    candidateLegends.set(key, [...(known === undefined ? [] : [known]), ...new Set(outputs)].join(' / '));
+  }
+  const continuationKeys = new Set([...result.continuations.keys(), ...sequence.continuations]);
   const hasNext = continuationKeys.size > 0;
   const message =
     exactOutputs.length > 0
