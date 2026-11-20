@@ -64,8 +64,8 @@ export function createStrokeCounter(
     const key = analysisTargetKey(target);
     if (seen.has(key)) continue;
     seen.add(key);
-    const resolved = resolvePaneInput(target, setups, catalog, overrides, { ...text, text: 'あ', reading: null });
+    const resolved = resolvePaneInput(target, setups, catalog, overrides, { ...text, text: 'あ', reading: null, notationWords: [] });
     if (resolved.ok) inputs.push(resolved.input);
   }
-  return (reading) => inputs.map((input) => generateEngineTrace({ ...input, text: reading, comboBarriers: [] }).trace.strokes.length);
+  return (reading) => inputs.map((input) => generateEngineTrace({ ...input, text: reading, comboBarriers: [], notationWords: [] }).trace.strokes.length);
 }

@@ -7,6 +7,7 @@ import type { AggregatedAnalysisResult } from '#interpretation/structure/aggrega
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import type { TextLanguage } from '#input/text/language.ts';
+import type { NotationWord } from '#input/text/notation-words.ts';
 import type { SegmentationAssets } from '#input/text/segmentation.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
@@ -53,6 +54,8 @@ export interface TraceRequestInput {
   readonly tracePolicy?: Partial<TracePolicy>;
   /** コンボを止める境（`ResolvedInput.comboBarriers`）。`text`を差し替えて境を渡さない時は、境は無い。 */
   readonly comboBarriers?: readonly number[];
+  /** 表記のまま打つ語の候補（`ResolvedInput.notationWords`）。`text`を差し替えて渡さない時は、語は無い。 */
+  readonly notationWords?: readonly NotationWord[];
 }
 
 /**

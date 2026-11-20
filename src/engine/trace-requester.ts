@@ -38,6 +38,7 @@ export function createTraceRequesterFor(lookup: TraceLookup, baseInput: Resolved
         tracePolicy: { ...baseInput.tracePolicy, ...requestTracePolicy },
         // 境は土台のテキストの位置なので、テキストを差し替えて境を渡さない依頼には引き継がない
         comboBarriers: request.comboBarriers ?? (request.text === undefined ? baseInput.comboBarriers : []),
+        notationWords: request.notationWords ?? (request.text === undefined ? baseInput.notationWords : []),
       };
       return lookup.getTrace(merged).trace;
     },

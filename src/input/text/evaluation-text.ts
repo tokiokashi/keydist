@@ -1,4 +1,5 @@
 import type { TextLanguage } from './language.ts';
+import type { NotationWord } from './notation-words.ts';
 
 /**
  * 評価に渡すテキストを作る前処理（仕様 §4.6）。日本語のテキストにだけ当て、英語のテキストは何も変えない。
@@ -125,6 +126,16 @@ export function prepareEvaluationText(text: string, options: EvaluationTextOptio
   return hasConvertibleKatakana(out) ? katakanaToHiraganaByHeadings(out, options.uncoveredPositions) : out;
 }
 
+/** 読みのテキストの各位置の前に、前処理の後も残る文字が何字あるか（長さは文字数 + 1）。 */
+function keptBefore(chars: readonly string[], options: Pick<EvaluationTextOptions, 'language' | 'keepSymbols' | 'keepAlphanumerics'>): number[] {
+  const kept: number[] = [0];
+  for (const char of chars) {
+    const keeps = options.language !== 'ja' || remainsAfterPreparation(char, options);
+    kept.push(kept[kept.length - 1]! + (keeps ? 1 : 0));
+  }
+  return kept;
+}
+
 /**
  * 読みのテキストの区切り（コードポイントの位置）を、評価に渡すテキストのコードポイントの位置へ写す。
  * 前処理（`prepareEvaluationText`）で文字が減るのは、記号と英字と数字を取り除く段だけ（半角の`,` `.`の書き換えと片仮名の書き換えは1文字を1文字に直す）。
@@ -138,11 +149,7 @@ export function evaluationBoundaries(
   options: Pick<EvaluationTextOptions, 'language' | 'keepSymbols' | 'keepAlphanumerics'>,
 ): number[] {
   const chars = [...readingText];
-  const kept: number[] = [0];
-  for (const char of chars) {
-    const keeps = options.language !== 'ja' || remainsAfterPreparation(char, options);
-    kept.push(kept[kept.length - 1]! + (keeps ? 1 : 0));
-  }
+  const kept = keptBefore(chars, options);
   const total = kept[kept.length - 1]!;
   const mapped = new Set<number>();
   for (const boundary of boundaries) {
@@ -152,3 +159,34 @@ export function evaluationBoundaries(
   }
   return [...mapped].sort((a, b) => a - b);
 }
+
+/**
+ * 読みに置き換えた語（`NotationWord`。読みのテキストの位置と原文の表記）を、評価に渡すテキストの位置と、前処理（2.から4.）の後の表記にする。
+ * 漢直の配列で表記のまま打つ語の候補に使う（仕様 §4.3）。範囲は `evaluationBoundaries` と同じ規則で写す。読みはかなと `ー` だけなので、範囲の長さは変わらない。
+ * 表記には、片仮名の書き換え（5.）を当てない。範囲が読みのテキストに収まらない語と、前の語と重なる語、前処理の後に表記が空になる語は除く。
+ * 日本語以外のテキストには読みに置き換えた語が無いので、空を返す。
+ */
+export function evaluationNotationWords(
+  readingText: string,
+  words: readonly NotationWord[],
+  options: Pick<EvaluationTextOptions, 'language' | 'keepSymbols' | 'keepAlphanumerics' | 'layoutHasChar'>,
+): NotationWord[] {
+  if (options.language !== 'ja' || words.length === 0) return [];
+  const chars = [...readingText];
+  const kept = keptBefore(chars, options);
+  const prepared: NotationWord[] = [];
+  let previousEnd = 0;
+  for (const word of words) {
+    if (word.start < previousEnd || word.end <= word.start || word.end > chars.length) continue;
+    const start = kept[word.start]!;
+    const end = kept[word.end]!;
+    const surface = prepareEvaluationText(word.surface, { ...options, uncoveredPositions: NO_UNCOVERED_POSITIONS });
+    if (end <= start || surface === '') continue;
+    prepared.push({ start, end, surface });
+    previousEnd = word.end;
+  }
+  return prepared;
+}
+
+/** 片仮名の書き換えを当てない時の、見出しに入らない文字の位置（空）。 */
+const NO_UNCOVERED_POSITIONS = (): readonly number[] => [];

@@ -1,5 +1,6 @@
 import { comboBarriersInReading } from '#input/text/combo-barriers.ts';
 import type { ComboSetConditions } from '#interpretation/metrics.ts';
+import { notationWordsInReading, type NotationWord } from '#input/text/notation-words.ts';
 import type { SegmentationOrigin } from '#input/text/segmentation.ts';
 import {
   convertToReading,
@@ -83,6 +84,11 @@ export interface PaneText extends ResolvedText {
    * 漢字を読みに直した時だけ持つ。語の列が無いテキスト（かなだけ・辞書を読み込めなかった）は持たず、コンボは境に止められない。
    */
   readonly comboBarriers?: readonly number[];
+  /**
+   * 読みに置き換えた語の、読みのテキストの範囲と原文の表記（仕様 §4.3の表記で打つ語の候補）。漢字を読みに直した時だけ持つ。
+   * どの語を表記で打つかは配列ごとに決まるので、ここでは配列を見ず、読みに置き換えた語をすべて持つ。
+   */
+  readonly notationWords?: readonly NotationWord[];
 }
 
 /** 計算に入れたコンボの組を、条件の要約に出す項目にする（仕様 §12.3）。 */
@@ -188,6 +194,7 @@ export function evaluationText(resolved: ResolvedText, source: ReadingSource, ou
       },
       notationExcess: conversion.notationExcess,
       comboBarriers: comboBarriersInReading(outcome.sourceText, outcome.tokens, resolved.readingCorrections, wordCorrections.readings),
+      notationWords: notationWordsInReading(outcome.sourceText, outcome.tokens, resolved.readingCorrections, wordCorrections.readings),
       segmentationBasis: {
         sourceText: outcome.sourceText,
         tokens: outcome.tokens,

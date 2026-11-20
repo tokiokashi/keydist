@@ -33,7 +33,7 @@ export interface EngineTraceResult {
  * `romajiChunks`は、ローマ字の配列で打つ綴りを呼び出し側が決める時だけ渡す（キャッシュを通さない経路）。
  */
 export function generateEngineTrace(input: ResolvedInput, romajiChunks?: readonly RomajiChunk[]): EngineTraceResult {
-  const trace = generateTrace(input.text, input.layout, input.geometry, input.tracePolicy, romajiChunks, input.comboBarriers);
+  const trace = generateTrace(input.text, input.layout, input.geometry, input.tracePolicy, romajiChunks, input.comboBarriers, input.notationWords);
   return { modelVersion: MODEL_VERSION, trace };
 }
 
