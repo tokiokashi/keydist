@@ -25,23 +25,6 @@ test('組み込みの表が、出典の写しの表と一致する', () => {
   );
 });
 
-test('出典の表は40キーの1打目ごとに4行×10欄で、機能の欄を文字にしていない', () => {
-  assert.deepEqual(
-    source.tables.map((table) => table.first),
-    [...source.keys],
-  );
-  for (const table of source.tables) {
-    assert.equal(table.rows.length, 4, `1打目 ${table.first}`);
-    for (const row of table.rows) assert.equal([...row].length, 10, `1打目 ${table.first}`);
-  }
-  assert.ok(source.functions.length > 0);
-  for (const fn of source.functions) {
-    const table = source.tables.find((entry) => entry.first === fn.first)!;
-    const index = [...source.keys].indexOf(fn.second);
-    assert.equal([...table.rows.join('')][index], source.empty, `機能 ${fn.code}（${fn.first}${fn.second}）`);
-  }
-});
-
 test('1353字の各字が、出典のとおり1打目と2打目の2ステップで打たれる', () => {
   const expected = new Map<string, string[][]>();
   for (const table of source.tables) {

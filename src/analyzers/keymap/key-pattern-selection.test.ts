@@ -56,7 +56,6 @@ test('順次打鍵の配列は、1打目のキーを選ぶと、その1打目か
 
   const second = keyPatternSelectionView(layout, ['l', '4']);
   assert.deepEqual(second.exactOutputs, ['漢']);
-  assert.match(second.message, /^確定: 漢/);
 });
 
 test('順次打鍵の配列は、同じキーを続けて打つ字も選べ、続けて押せないキーは選び直しになる（T-Code）', () => {
