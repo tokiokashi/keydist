@@ -57,3 +57,4 @@
 | [0015](0015-keystroke-gaps-in-run-chart.md) | 打鍵の間隔をRun Chartの下に並べ、記録の選択は解析設定に置いて共有リンクに載せない | 採用 |
 | [0016](0016-middle-shift-hand-by-neighbors.md) | 薙刀式私家版の中指シフトは、前後の打鍵と同じ指になる時に同じ手のキーで押す | 採用 |
 | [0017](0017-kanji-direct-layouts-type-notation.md) | 漢直の配列は、表に漢字がある語を表記のまま打ち、評価に渡すテキストは読みのままにする | 採用 |
+| [0018](0018-tcode-as-two-step-sequence.md) | T-Codeは各字を2打の順次打鍵で持ち、1打目を層のトリガーに数えない | 採用 |

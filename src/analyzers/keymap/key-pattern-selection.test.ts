@@ -38,9 +38,35 @@ function resolvedLayout(layoutId: string, language: 'ja' | 'en') {
 }
 
 test('選択の切り替え: 同じキーで外れ、残りの順は保たれる', () => {
-  assert.deepEqual(toggleSelectedKey([], 'j'), ['j']);
-  assert.deepEqual(toggleSelectedKey(['j', 'l'], 'm'), ['j', 'l', 'm']);
-  assert.deepEqual(toggleSelectedKey(['j', 'l', 'm'], 'l'), ['j', 'm']);
+  const layout = resolvedLayout('tk-onchoku', 'ja');
+  assert.deepEqual(toggleSelectedKey(layout, [], 'j'), ['j']);
+  assert.deepEqual(toggleSelectedKey(layout, ['j', 'l'], 'm'), ['j', 'l', 'm']);
+  assert.deepEqual(toggleSelectedKey(layout, ['j', 'l', 'm'], 'l'), ['j', 'm']);
+});
+
+test('順次打鍵の配列は、1打目のキーを選ぶと、その1打目から始まる字が2打目のキーの位置に出る（T-Code）', () => {
+  const layout = resolvedLayout('tcode', 'ja');
+  // 出典の表: 1打目がlの表の、2打目が4の欄が「漢」
+  const first = keyPatternSelectionView(layout, ['l']);
+  assert.equal(first.candidateLegends.get('4'), '漢');
+  assert.equal(first.exactOutputs.length, 0);
+  // 1打目がlの表は、割り当てのある欄だけが候補になる（2打目が6の欄は空）
+  assert.equal(first.candidateLegends.has('6'), false);
+  assert.ok(first.candidateLegends.size > 30);
+
+  const second = keyPatternSelectionView(layout, ['l', '4']);
+  assert.deepEqual(second.exactOutputs, ['漢']);
+});
+
+test('順次打鍵の配列は、同じキーを続けて打つ字も選べ、続けて押せないキーは選び直しになる（T-Code）', () => {
+  const layout = resolvedLayout('tcode', 'ja');
+  // 1打目がq、2打目がqの欄が「果」
+  assert.deepEqual(toggleSelectedKey(layout, ['q'], 'q'), ['q', 'q']);
+  assert.deepEqual(keyPatternSelectionView(layout, ['q', 'q']).exactOutputs, ['果']);
+  // 確定した並びの後に別のキーを選ぶと、そのキーを1打目にして選び直す
+  assert.deepEqual(toggleSelectedKey(layout, ['l', '4'], 'q'), ['q']);
+  // 1打目のキーをもう一度選ぶと外れる（1打目が1の表の、2打目が1の欄は空）
+  assert.deepEqual(toggleSelectedKey(layout, ['1'], '1'), []);
 });
 
 test('キーを選んでいない時は、キーを選ぶよう促す文だけを出す', () => {

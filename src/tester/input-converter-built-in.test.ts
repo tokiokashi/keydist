@@ -6,6 +6,11 @@ import { KAWASEMI_PLUS } from '#input/layouts/kawasemi-plus.ts';
 import { NAGINATA_V18 } from '#input/layouts/naginata.ts';
 import { SHIN_JIS_SIMULTANEOUS } from '#input/layouts/shin-jis.ts';
 import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
+import { longestReverseLookupRoute, physicalAvailableKeys, reverseLookup, reverseLookupGuideActions } from './reverse-lookup.ts';
+import { applyRecognizedTypingInputs } from './typing-session-command.ts';
+import { typingTargetPresentation } from './typing-target.ts';
 
 const physical = (type: 'keydown' | 'keyup', code: string) => {
   const event = browserKeyboardEventToPhysicalKeyEvent({ type, code });
@@ -216,4 +221,22 @@ test('未定義physical keyの境界でも物理保持中のhold triggerは維�
     engine.handle({ type: 'down', key: 'j' }).recognized.map((entry) => entry.output),
     ['お'],
   );
+});
+
+test('T-Codeで漢字を2打で出し、練習テキストと照合できる', () => {
+  const layout = LAYOUT_BY_ID.get('tcode')!;
+  const practice = '名前はまだ無い。漢字である。';
+  const route = longestReverseLookupRoute(reverseLookup(layout, practice, 5, physicalAvailableKeys(buildGeometry('row-staggered'))));
+  assert.ok(route !== undefined);
+
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+  let typed = '';
+  for (const action of reverseLookupGuideActions(route)) {
+    for (const key of action.keys) typed = applyRecognizedTypingInputs(typed, engine.handle({ type: 'down', key }).recognized);
+    for (const key of action.keys) typed = applyRecognizedTypingInputs(typed, engine.handle({ type: 'up', key }).recognized);
+  }
+  assert.equal(typed, practice);
+  const presentation = typingTargetPresentation(layout, practice, typed);
+  assert.equal(presentation.complete, true);
+  assert.ok(presentation.typed.every((item) => item.correct));
 });

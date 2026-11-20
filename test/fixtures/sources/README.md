@@ -50,3 +50,15 @@ Shiftを要する入力や2キーの入力のように位置を持たない行�
 - `chords`: `output`（出力）・`keys`（必ず押すキー）・`oneOf`（どれか1つを足すシフトのキー。無ければ足さない）・`note`（押す順など、キーの組で表せない条件）
 
 突き合わせの unit test は `src/input/layouts/naginata-private.test.ts`。
+
+## 順次打鍵の表の写し（`format`: `t-code-table`）
+
+T-Codeの出典は、漢直Winの表のファイル（`t.tbl`）である。1打目のキーごとに、2打目の40キーの位置に並ぶ文字の表を持つ。
+面と格子を持たないので、`scripts/generate-kana-fixtures.ts` の対象にしない。fixtureは生成しない。
+
+- `source`: `url`（配布物）・`page`（配布ページ）・`package`（版と日付）・`path`・`zipSha256`・`sha256`（`t.tbl` のsha256）・`retrievedAt`・`license`（配布物の使用条件の文）・`transform`（何を写し、何を写さないか）
+- `keys`: 1打目と2打目に使う40キー。表の欄はこの並びで、数字の段・上段・ホーム段・下段の各10キーが4つの行になる
+- `tables`: `first`（1打目のキー）と `rows`（2打目の欄を4行に並べた文字列。`empty` は割り当てが無い欄）
+- `functions`: 文字ではなく機能（交ぜ書き変換の呼び出しなど）を割り当てた欄。`first`・`second`・`code`（出典の `@` で始まる表記）。組み込みの配列には入れない
+
+突き合わせのunit testは `src/input/layouts/tcode.test.ts`。

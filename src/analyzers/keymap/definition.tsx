@@ -249,7 +249,7 @@ function KeyPatternSection({
           unit={36}
           horizontalAlign="left"
           operable
-          onKeyClick={(key) => setSelected((current) => toggleSelectedKey(current, key.id))}
+          onKeyClick={(key) => setSelected((current) => toggleSelectedKey(layout, current, key.id))}
           onEscape={clear}
         />
       </div>
