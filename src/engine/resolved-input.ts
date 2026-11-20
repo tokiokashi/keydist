@@ -6,6 +6,7 @@ import { withoutRomajiOnlyInputs, withRomaji } from '#input/layouts/types.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
+import type { NotationWord } from '#input/text/notation-words.ts';
 import { notationExcessFor, type NotationExcess, type ReadingConditions } from '#input/text/reading.ts';
 import type { SegmentationInput } from '#input/text/segmentation.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
@@ -18,9 +19,10 @@ import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-assignment.ts';
 import { resolveSettings, type ResolvedSettingsCascade, type SettingsCascadeOverrides } from './settings-items.ts';
-import { evaluationBoundaries, prepareEvaluationText } from '#input/text/evaluation-text.ts';
+import { evaluationBoundaries, evaluationNotationWords, prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { resolveTargetForText } from './target-resolution.ts';
 import { appliedCombos, overlaySetupComboSet } from './setup-combo-set.ts';
+import { isKanjiDirectLayout } from '#input/layouts/kanji-direct.ts';
 import { layoutKind } from '#input/layouts/kind.ts';
 import type { ComboSet } from '#input/combo-set/combo-set.ts';
 
@@ -58,6 +60,12 @@ export interface ResolvedInput {
    * 同じ`text`でも境が違えばTraceが変わるので、Traceのキーに入れる。境が無ければ空。
    */
   readonly comboBarriers: readonly number[];
+  /**
+   * 表記のまま打つ語の候補（仕様 §4.3）。漢直の配列（ローマ字を経ない打ち方）の評価だけが持ち、他は空。
+   * 範囲は評価に渡すテキストのかなの位置で、表記は前処理（記号と英数字の範囲）の後の字列。表記を見出しに切り分けられるかは、Trace生成が判定する。
+   * 同じ`text`でも語が違えばTraceが変わるので、Traceのキーに入れる。
+   */
+  readonly notationWords: readonly NotationWord[];
   /**
    * 抽出が読む資産の値。Traceと解釈のキーには入れず、抽出のキーにだけ、各Analyzerが決めた分を入れる
    * （`keys.ts`の`singleExtractionKeyOf`）。
@@ -142,6 +150,12 @@ export interface ResolveEngineInputOptions {
    */
   readonly comboBarriers?: readonly number[] | undefined;
   /**
+   * `text`を作った時に読みに置き換えた語の、読みのテキストの範囲と原文の表記（`notationWordsInReading`）。
+   * 漢直の配列で表記のまま打つ語の候補になり、評価に渡すテキストの位置と前処理の後の表記へは、この対象の条件で写し直して`ResolvedInput.notationWords`に載せる。
+   * 漢直でない配列と、ローマ字を経る打ち方では使わない。
+   */
+  readonly notationWords?: readonly NotationWord[] | undefined;
+  /**
    * 文節の区切り（読みのテキストの位置）。区切りを使うペインだけが渡す。評価に渡すテキストの位置へは、
    * この対象の記号と英数字の範囲（`keepSymbols`・`keepAlphanumerics`）で写し直して`extractionAssets.segmentation`に載せる。
    */
@@ -181,6 +195,8 @@ function withoutRomaji(layout: Layout): Layout {
  * 約58万字では、ページがメモリ不足で落ちる。この間に余裕を残した値にしてある。
  */
 export const MAX_EVALUATION_TEXT_LENGTH = 400_000;
+
+const NO_NOTATION_WORDS: readonly NotationWord[] = Object.freeze([]);
 
 export function resolveEngineInput(options: ResolveEngineInputOptions): ResolvedInputResult {
   const textResolution = resolveTargetForText(options.target, options.setups, options.catalog, options.userLayouts, options.overrides, options.language);
@@ -293,6 +309,16 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
     if (!geometryKeys.has(key)) return { ok: false, error: { kind: 'keys-missing', layout } };
   }
 
+  // 表記のまま打つ語の候補。漢直の配列をローマ字を経ずに評価する時だけ、評価に渡すテキストの位置と前処理の後の表記へ写す
+  const notationWords =
+    options.verbatimText !== true && options.notationWords !== undefined && layout.romajiTable === undefined && isKanjiDirectLayout(layout)
+      ? evaluationNotationWords(options.text, options.notationWords, {
+          language: options.language,
+          keepSymbols: cascade.keepSymbols.value,
+          keepAlphanumerics: cascade.keepAlphanumerics.value,
+          layoutHasChar: (char) => layout.canonicalInputs.has(char),
+        })
+      : NO_NOTATION_WORDS;
   const evaluationText =
     options.verbatimText === true
       ? options.text
@@ -301,7 +327,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
           keepSymbols: cascade.keepSymbols.value,
           keepAlphanumerics: cascade.keepAlphanumerics.value,
           layoutHasChar: (char) => layout.canonicalInputs.has(char),
-          uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
+          uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout, notationWords),
         });
   if (evaluationText.length > MAX_EVALUATION_TEXT_LENGTH) {
     return { ok: false, error: { kind: 'text-too-long', length: evaluationText.length, limit: MAX_EVALUATION_TEXT_LENGTH } };
@@ -343,6 +369,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
               keepSymbols: cascade.keepSymbols.value,
               keepAlphanumerics: cascade.keepAlphanumerics.value,
             }),
+      notationWords,
       extractionAssets: {
         personalSpeed: options.personalSpeed,
         keystrokeRecord: options.keystrokeRecord,

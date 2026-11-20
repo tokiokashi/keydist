@@ -72,6 +72,7 @@ export function resolvePaneInput(
     reading: resolvedText.reading,
     notationExcess: resolvedText.notationExcess,
     comboBarriers: resolvedText.comboBarriers,
+    notationWords: resolvedText.notationWords,
     segmentation,
     keystrokeRecord,
   });

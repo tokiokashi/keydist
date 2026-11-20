@@ -7,6 +7,7 @@ import { canTypeSpaceWithLeftThumb, isLoneRightThumbPress } from '#input/layouts
 import { bracketAliasesFor } from '#input/text/bracket-alias.ts';
 import { evaluationCanonicalInputs, normalizeEvaluationChar } from '#input/text/char-alias.ts';
 import { isSymbolChar } from '#input/text/evaluation-text.ts';
+import type { NotationWord } from '#input/text/notation-words.ts';
 import { isKanjiChar } from '#input/text/reading.ts';
 import { kanaToRomajiChunks, type RomajiChunk } from '#input/romaji/kunrei.ts';
 import {
@@ -20,6 +21,7 @@ import {
   needsCommitStroke,
   realizeTriggerActions,
   type ActionRealizationPolicy,
+  type CanonicalInputMap,
   type InputAlternative,
   type InputAlternativeSet,
   type RealizedSemanticAction,
@@ -237,15 +239,101 @@ function comboFrameHeadingCount(layout: Layout): number {
 }
 
 /**
+ * 表記で打つ語（仕様 §4.3）を打つ時の、見出しを引く列（`chars`）と、評価に渡すテキストの位置の対応。
+ * 表記で打つ語の読みの範囲は、列では表記の字に置き換わる。置き換えた語がある時だけ持つ。
+ */
+interface NotationSubstitution {
+  /** 列の各位置の字が覆うテキストの範囲の先頭。表記の字は、語の読みの範囲の先頭 */
+  readonly startOf: readonly number[];
+  /** 列の各位置の字が覆うテキストの範囲の最後（その文字を含む）。表記の字は、語の読みの範囲の最後 */
+  readonly endOf: readonly number[];
+  /** テキストの各位置（末尾を含む）が列で占める位置。表記で打つ語の読みの内側の位置は-1 */
+  readonly charIndexOf: readonly number[];
+  /** 見出しの切り出しが越えない列の位置（表記で打つ語の先頭と、語の直後）。昇順 */
+  readonly edges: readonly number[];
+}
+
+/**
+ * 表記で打つ語を、列の字に置き換える。`accepts` が偽の語（表記を見出しに切り分けられない語）と、
+ * 範囲が不正な語・前の語と重なる語は置き換えず、読みのまま打つ。置き換えた語が無ければundefined。
+ */
+function substituteNotationWords(
+  textChars: readonly string[],
+  words: readonly NotationWord[],
+  accepts: (surface: readonly string[]) => boolean,
+): { readonly rawChars: string[]; readonly substitution: NotationSubstitution } | undefined {
+  const rawChars: string[] = [];
+  const startOf: number[] = [];
+  const endOf: number[] = [];
+  const charIndexOf: number[] = new Array<number>(textChars.length + 1);
+  const edges: number[] = [];
+  let position = 0;
+  let previousEnd = 0;
+  const copyUntil = (until: number) => {
+    for (; position < until; position++) {
+      charIndexOf[position] = rawChars.length;
+      rawChars.push(textChars[position]!);
+      startOf.push(position);
+      endOf.push(position);
+    }
+  };
+  for (const word of words) {
+    if (word.start < previousEnd || word.end <= word.start || word.end > textChars.length) continue;
+    const surface = [...word.surface];
+    if (!accepts(surface)) continue;
+    copyUntil(word.start);
+    edges.push(rawChars.length);
+    charIndexOf[word.start] = rawChars.length;
+    for (let inner = word.start + 1; inner < word.end; inner++) charIndexOf[inner] = -1;
+    for (const char of surface) {
+      rawChars.push(char);
+      startOf.push(word.start);
+      endOf.push(word.end - 1);
+    }
+    edges.push(rawChars.length);
+    position = word.end;
+    previousEnd = word.end;
+  }
+  if (edges.length === 0) return undefined;
+  copyUntil(textChars.length);
+  charIndexOf[textChars.length] = rawChars.length;
+  return { rawChars, substitution: { startOf, endOf, charIndexOf, edges } };
+}
+
+/** 位置 `cursor` から始まる見出しが、列のどこまで伸びてよいか（`cursor` より後の最初の端。無ければ列の末尾）。 */
+function matchLimitOf(substitution: NotationSubstitution | undefined, cursor: number, total: number): number {
+  if (substitution === undefined) return total;
+  const { edges } = substitution;
+  let low = 0;
+  let high = edges.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (edges[mid]! > cursor) high = mid;
+    else low = mid + 1;
+  }
+  return low < edges.length ? edges[low]! : total;
+}
+
+/**
  * テキストを、見出しを引く単位の列に展開する。ローマ字の配列はかなをテーブルの見出しで切って綴りに展開し、
  * かな配列はテキストの文字をそのまま使う。`generateTrace` と、前処理が見出しに入らない片仮名を探す処理（`uncoveredTextPositions`）が、
  * この関数を共有する。
+ *
+ * ローマ字を経ない配列では、表記で打つ語（仕様 §4.3）の読みの範囲を、表記の字に置き換えた列にする。
+ * 置き換えるのは、表記の字がすべて配列の見出しに切り分けられる語だけ。
  */
-function evaluationUnitsOf(text: string, layout: Layout, romajiChunks: readonly RomajiChunk[] | undefined) {
+function evaluationUnitsOf(text: string, layout: Layout, romajiChunks: readonly RomajiChunk[] | undefined, notationWords: readonly NotationWord[] = []) {
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
-  const rawChars = [...text];
   const bracketAliases = bracketAliasesFor(layout);
+  // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
+  const canonicalInputs = evaluationCanonicalInputs(layout);
+  const normalizeChar = (char: string) => normalizeEvaluationChar(bracketAliases[char] ?? char);
+  const substituted =
+    layout.romajiTable === undefined && notationWords.length > 0
+      ? substituteNotationWords([...text], notationWords, (surface) => segmentsEntirely(surface.map(normalizeChar), canonicalInputs))
+      : undefined;
+  const rawChars = substituted?.rawChars ?? [...text];
   const sourceChunks = layout.romajiTable ? (romajiChunks ?? kanaToRomajiChunks(text, layout.romajiTable)) : undefined;
   const chunks = sourceChunks && layout.romajiTable ? aliasBracketChunks(sourceChunks, layout.romajiTable, bracketAliases) : undefined;
   const chars = (chunks ? chunks.flatMap((chunk) => [...chunk.roman]) : rawChars.map((char) => bracketAliases[char] ?? char)).map(
@@ -269,9 +357,33 @@ function evaluationUnitsOf(text: string, layout: Layout, romajiChunks: readonly 
       kanaStart += [...chunk.kana].length;
     }
   }
-  // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
-  const canonicalInputs = evaluationCanonicalInputs(layout);
-  return { rawChars, chunks, chars, chunkRanges, canonicalInputs };
+  return { rawChars, chunks, chars, chunkRanges, canonicalInputs, substitution: substituted?.substitution };
+}
+
+/**
+ * 字の列が、見出しの最長一致で、読み飛ばす字を残さずに切り分けられるか（仕様 §4.3の「漢直の配列と表記で打つ語」）。
+ * 切り出しは `generateTrace` の見出しの引き方（最長一致と、打ち方の候補の文脈条件）と同じで、列の外の字とは組み合わせない。
+ * 文脈条件を付ける見出し（ローマ字のコンボ）は、ローマ字を経ない配列には残らない。
+ */
+function segmentsEntirely(chars: readonly string[], canonicalInputs: CanonicalInputMap): boolean {
+  const maxLen = maxHeadingLength(canonicalInputs);
+  const mutable = [...chars];
+  for (let cursor = 0; cursor < mutable.length; ) {
+    let matched = 0;
+    for (let length = Math.min(maxLen, mutable.length - cursor); length >= 1 && matched === 0; length--) {
+      const found = canonicalInputs.get(mutable.slice(cursor, cursor + length).join(''));
+      if (found?.some((alternative) => alternativeContextSatisfied(alternative.contextRequirements, cursor, cursor + length, mutable, [], false))) {
+        matched = length;
+      }
+    }
+    if (matched === 0) return false;
+    cursor += matched;
+  }
+  return true;
+}
+
+function maxHeadingLength(canonicalInputs: CanonicalInputMap): number {
+  return Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
 }
 
 /**
@@ -281,19 +393,20 @@ function evaluationUnitsOf(text: string, layout: Layout, romajiChunks: readonly 
  * 見出しごとの文脈条件（`contextRequirements`）は見ない。条件を作るのは `withCombos` のコンボの条件
  * （`youonOnly`・`romajiOnly`）だけで、条件が付くのは英字の出力の見出しだけである。
  */
-export function uncoveredTextPositions(text: string, sourceLayout: Layout): number[] {
+export function uncoveredTextPositions(text: string, sourceLayout: Layout, notationWords: readonly NotationWord[] = []): number[] {
   const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyInputs(sourceLayout);
-  const { chunks, chars, chunkRanges, canonicalInputs } = evaluationUnitsOf(text, layout, undefined);
-  const maxLen = Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
+  const { chunks, chars, chunkRanges, canonicalInputs, substitution } = evaluationUnitsOf(text, layout, undefined, notationWords);
+  const maxLen = maxHeadingLength(canonicalInputs);
   const uncovered: number[] = [];
   for (let cursor = 0; cursor < chars.length; ) {
-    let length = Math.min(maxLen, chars.length - cursor);
+    let length = Math.min(maxLen, matchLimitOf(substitution, cursor, chars.length) - cursor);
     while (length >= 1 && !canonicalInputs.has(chars.slice(cursor, cursor + length).join(''))) length--;
     if (length >= 1) {
       cursor += length;
       continue;
     }
     if (chunks) uncovered.push(...skippedKanaPositions(chunkRanges, cursor));
+    else if (substitution) uncovered.push(...substitutedKanaPositions(substitution, cursor));
     else uncovered.push(cursor);
     cursor++;
   }
@@ -325,6 +438,12 @@ export function generateTrace(
    * 渡さなければ、コンボは境に止められない。
    */
   comboBarriers: readonly number[] = [],
+  /**
+   * 漢直の配列で表記のまま打つ語の候補（仕様 §4.3）。`text`のかなの位置（コードポイント）で持つ読みの範囲と、前処理の後の表記。
+   * 表記を配列の見出しに切り分けられる語だけを表記で打ち、他の語は読みで打つ。ローマ字を経る配列には使わない。
+   * 渡さなければ、語はすべて読みで打つ。
+   */
+  notationWords: readonly NotationWord[] = [],
 ): Trace {
   // 仕様 §4.3。ローマ字を経ない打ち方ではromajiOnlyのコンボを配列に無いものとして扱う。
   // 見出し探索だけでなく定義数B（§11.8）とコンボ枠の有無も揃えるため、alternativeの
@@ -357,18 +476,19 @@ export function generateTrace(
   let triggerHoldState: TriggerHoldState | undefined;
   const inputs: PlannedGeneratedInput[] = [];
 
-  const { rawChars, chunks, chars, chunkRanges, canonicalInputs } = evaluationUnitsOf(text, layout, romajiChunks);
-  const barrierPositions = comboBarrierPositions(comboBarriers, chunkRanges, chunks !== undefined);
+  const { rawChars, chunks, chars, chunkRanges, canonicalInputs, substitution } = evaluationUnitsOf(text, layout, romajiChunks, notationWords);
+  const barrierPositions = comboBarrierPositions(comboBarriers, chunkRanges, chunks !== undefined, substitution);
   const commitRules = commitStrokeRulesOf(canonicalInputs);
   const commitKey = commitKeyOf(geometry);
   // 直前の入力が選んだpath。打てない文字を挟んだら継ぎ目として扱わないので、そこで外す
   let previousAlternative: InputAlternative | undefined;
   let commitCount = 0;
-  const maxLen = Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
+  const maxLen = maxHeadingLength(canonicalInputs);
 
-  // cursorから最長一致で切り出す見出しと、その打ち方の候補。打てなければundefined
+  // cursorから最長一致で切り出す見出しと、その打ち方の候補。打てなければundefined。
+  // 表記で打つ語の端（`substitution.edges`）は越えない。語の表記は語の内側だけで切り出し、語の外の字とは組み合わせない
   const matchAt = (cursor: number): { alternatives: InputAlternativeSet; char: string; consumed: number } | undefined => {
-    for (let len = Math.min(maxLen, chars.length - cursor); len >= 1; len--) {
+    for (let len = Math.min(maxLen, matchLimitOf(substitution, cursor, chars.length) - cursor); len >= 1; len--) {
       const candidate = chars.slice(cursor, cursor + len).join('');
       const found = canonicalInputs.get(candidate);
       const crossesBarrier = spansBarrier(barrierPositions, cursor, cursor + len);
@@ -393,6 +513,8 @@ export function generateTrace(
       skipped++;
       if (chunks) {
         for (const position of skippedKanaPositions(chunkRanges, cursor)) skippedPositions.add(position);
+      } else if (substitution) {
+        for (const position of substitutedKanaPositions(substitution, cursor)) skippedPositions.add(position);
       } else {
         skippedPositions.add(cursor);
       }
@@ -417,6 +539,10 @@ export function generateTrace(
         kanaStart = first.kanaStart;
         kanaEnd = lastCovered.kanaStart + lastCovered.kanaLength - 1;
       }
+    } else if (substitution) {
+      // 表記で打つ語の見出しは、どれも語の読みの範囲全体を覆う（仕様 §7 R3）
+      kanaStart = substitution.startOf[inputStart]!;
+      kanaEnd = substitution.endOf[inputEnd - 1]!;
     }
     cursor += consumed;
 
@@ -973,8 +1099,22 @@ interface RomajiChunkRange {
  * ローマ字の配列は、境の位置から始まる綴りの単位の先頭の英字の位置。複数のかなを1つにまとめた綴りの単位（`kya`など）の内側に来た境は、
  * 単位を割れないので置かない。かな配列は、かなの位置がそのまま列の位置になる。
  */
-function comboBarrierPositions(barriers: readonly number[], chunkRanges: readonly RomajiChunkRange[], romaji: boolean): ReadonlySet<number> {
+function comboBarrierPositions(
+  barriers: readonly number[],
+  chunkRanges: readonly RomajiChunkRange[],
+  romaji: boolean,
+  substitution: NotationSubstitution | undefined,
+): ReadonlySet<number> {
   if (barriers.length === 0) return NO_BARRIERS;
+  if (substitution !== undefined) {
+    // 表記で打つ語の読みの内側に来た境は置かない（仕様 §4.3）
+    const positions = new Set<number>();
+    for (const barrier of barriers) {
+      const position = substitution.charIndexOf[barrier];
+      if (position !== undefined && position >= 0) positions.add(position);
+    }
+    return positions;
+  }
   if (!romaji) return new Set(barriers);
   const startByKana = new Map(chunkRanges.map((range) => [range.kanaStart, range.start]));
   const positions = new Set<number>();
@@ -1073,6 +1213,13 @@ export function skippedKanaPositions(chunks: readonly RomajiChunkRange[], cursor
   const range = from < to ? chunks[from] : undefined;
   if (range === undefined) return [];
   return Array.from({ length: range.kanaLength }, (_, offset) => range.kanaStart + offset);
+}
+
+/** 列の位置 `cursor` の字が覆うテキストの位置。表記で打つ語の字は、語の読みの範囲全体になる。 */
+function substitutedKanaPositions(substitution: NotationSubstitution, cursor: number): number[] {
+  const start = substitution.startOf[cursor]!;
+  const end = substitution.endOf[cursor]!;
+  return Array.from({ length: end - start + 1 }, (_, offset) => start + offset);
 }
 
 function coveredByKana(start: number, end: number, chunks: RomajiChunkRange[]): boolean {

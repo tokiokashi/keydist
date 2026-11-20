@@ -9,7 +9,7 @@ import { describeResolvedInputError } from './resolved-input-errors.ts';
 /**
  * Traceを決める中身だけを持つキー。
  *
- * 含めるもの: テキスト・コンボを止める境・Layout（romaji表を含む最終形）・Geometry（指割り当てを含む）・
+ * 含めるもの: テキスト・コンボを止める境・表記のまま打つ語の候補・Layout（romaji表を含む最終形）・Geometry（指割り当てを含む）・
  * TracePolicy。Setupのid・ラベル・色、カスケードの出どころ・診断は含めない
  * （`ResolvedInput.cascade`はキーの計算に使わない）。
  * modelVersionも含める。Trace生成のロジックが変われば別キーになり、旧キャッシュへは
@@ -37,6 +37,7 @@ export function traceKeyOf(input: TraceRequestInput): string {
     geometry: input.geometry,
     tracePolicy: input.tracePolicy,
     comboBarriers: input.comboBarriers,
+    notationWords: input.notationWords,
   });
   traceKeyByInput.set(input, key);
   return key;
