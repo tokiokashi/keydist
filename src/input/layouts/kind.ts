@@ -44,6 +44,7 @@ const BUILT_IN_KANA_LAYOUT_IDS: ReadonlySet<string> = new Set([
   'kawasemi-plus',
   'jis-kana',
   'tcode',
+  'tut-code',
 ]);
 
 /** 組み込み配列のidから種類を引く。未知のidは`alpha`にする（英字系がほとんどのため）。 */

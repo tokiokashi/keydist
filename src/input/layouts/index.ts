@@ -32,6 +32,7 @@ import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
 import { JIS_KANA } from './jis-kana.ts';
 import { SEOTO } from './seoto.ts';
 import { TCODE } from './tcode.ts';
+import { TUT_CODE } from './tut-code.ts';
 
 export type {
   ComboCondition,
@@ -280,6 +281,7 @@ export const LAYOUTS_JA: Layout[] = [
   KAWASEMI_PLUS,
   JIS_KANA,
   TCODE,
+  TUT_CODE,
 ];
 
 export const LAYOUT_BY_ID = new Map([...LAYOUTS, ...LAYOUTS_JA].map((l) => [l.id, l]));
