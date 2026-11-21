@@ -12,7 +12,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { cpus } from 'node:os';
-import { LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LAYOUTS } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from '../test/kanji-direct-tables.ts';
 import { USER_LAYOUTS_CODEC } from '#input/layouts/user-layouts.ts';
 import { faceCells } from '#input/layouts/face-geometry.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
@@ -35,7 +36,6 @@ import { finishKeystrokeRecord, recordBaseTrace, recordPlanOf } from '#engine/ke
 import { keystrokeRecordFileText } from '#engine/keystroke-record-file.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { encodeKeystrokeRecords, KEYSTROKE_RECORDS_CODEC } from '#interpretation/record/keystroke-record.ts';
 
 /** ChromiumのlocalStorageに1つのサイトが入れられる文字数（UTF-16の単位）。2026-10-20に測った値。 */
@@ -70,8 +70,8 @@ const add = (label: string, chars: number, note = ''): void => {
 };
 
 // 配列: 面から作った組み込みの配列を面の形に写す。面を持たない配列は4段の文字列
-const jaIds = new Set(LAYOUTS_JA.map((layout) => layout.id));
-const builtinLayouts = [...new Map([...LAYOUTS, ...LAYOUTS_JA].map((layout) => [layout.id, layout] as const)).values()];
+const jaIds = new Set(LOADED_LAYOUTS_JA.map((layout) => layout.id));
+const builtinLayouts = [...new Map([...LAYOUTS, ...LOADED_LAYOUTS_JA].map((layout) => [layout.id, layout] as const)).values()];
 const userLayouts = builtinLayouts.flatMap((layout): ({ id: string; name: string } & Record<string, unknown>)[] => {
   const id = `user-${layout.id}`;
   if (layout.faces === undefined) {
@@ -240,7 +240,7 @@ console.log(`時間の測定条件: Node ${process.version}、${cpus()[0]?.model
     target: { kind: 'layout', layoutId: 'qwerty' },
     setups: new Map(),
     catalog: {
-      layouts: LAYOUT_BY_ID,
+      layouts: LOADED_LAYOUT_BY_ID,
       shapes: new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const)),
     },
     userLayouts: new Map(),

@@ -8,7 +8,6 @@ import {
   deleteUserRomajiRuleCommand,
 } from '#engine/commands.ts';
 import { importUserAssetsCommand } from '#engine/user-assets-import.ts';
-import { paneCatalog } from '../standalone/catalog.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { usePaneCatalog } from '../standalone/use-pane-catalog.ts';
 import { setupListItems } from '../setup/setup-view.ts';
@@ -21,8 +20,8 @@ import { UserAssetsPage } from './UserAssetsPage.tsx';
 /** データ・設定の管理の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。 */
 export function UserAssetsApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const setupItems = useMemo(() => setupListItems(assets.setupLibrary.setups, paneCatalog(assets), assets.setupLibrary.overrides), [assets]);
   const catalog = usePaneCatalog(assets);
+  const setupItems = useMemo(() => setupListItems(assets.setupLibrary.setups, catalog, assets.setupLibrary.overrides), [assets.setupLibrary, catalog]);
   const names = useMemo(
     () => conditionValueNames(catalog, assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments),
     [catalog, assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments],

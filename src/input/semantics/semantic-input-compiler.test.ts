@@ -9,7 +9,8 @@ import {
   validateCanonicalInputMap,
   type SemanticInput,
 } from './index.ts';
-import { LAYOUTS, LAYOUTS_JA, fromFaces, fromKana, fromRows, withCombos, withComposedOutputs, withThumbShiftAlternatives } from '../layouts/index.ts';
+import { LAYOUTS, fromFaces, fromKana, fromRows, withCombos, withComposedOutputs, withThumbShiftAlternatives } from '../layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { faceFromEntries, type Face, type FaceMode } from '../layouts/types.ts';
 
 const face = (
@@ -526,14 +527,14 @@ test('canonical sortはlocale非依存のcode-unit順を使う', () => {
 });
 
 test('Faceを持つbuilt-in layoutはSemanticInput compilerで検証できる', () => {
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     if (!layout.faces) continue;
     assert.doesNotThrow(() => compileFaceSemanticInputs(layout.faces!), `${layout.id} should compile to SemanticInput`);
   }
 });
 
 test('built-inの相互Face membershipはauthoring側へ明示される', () => {
-  const shingeta = LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
+  const shingeta = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
   const shingetaInputs = compileFaceSemanticInputs(shingeta.faces!);
   const re = shingetaInputs.find(
     (input) => input.output === 'れ' && input.physicalKeys.length === 2 && input.physicalKeys.includes('d') && input.physicalKeys.includes('k'),
@@ -562,7 +563,7 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
     { faceIndex: 4, cellKey: 'k' },
   ]);
 
-  const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
+  const naginata = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
   const naginataInputs = compileFaceSemanticInputs(naginata.faces!);
   const ga = naginataInputs.find(
     (input) => input.output === 'が' && input.physicalKeys.length === 2 && input.physicalKeys.includes('f') && input.physicalKeys.includes('j'),
@@ -637,16 +638,16 @@ test('presentation-only membershipは同じセルの異なるsemantic outputと�
 });
 
 test('legacy fromFaces mapは相互Faceを明示しても既存の打鍵列を保持する', () => {
-  const shingeta = LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
+  const shingeta = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
   assert.deepEqual(shingeta.map.get('れ'), [['k', 'd']]);
   assert.deepEqual(shingeta.map.get('さ'), [['l', 's']]);
 
-  const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
+  const naginata = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
   assert.deepEqual(naginata.map.get('が'), [['j', 'f']]);
 });
 
 test('built-in Layoutは全map outputにcanonical SemanticInput sequenceを持つ', () => {
-  for (const layout of [...LAYOUTS, ...LAYOUTS_JA]) {
+  for (const layout of [...LAYOUTS, ...LOADED_LAYOUTS_JA]) {
     assert.ok(layout.canonicalInputs, `${layout.id}: canonicalInputs`);
     for (const output of layout.map.keys()) {
       const inputs = layout.canonicalInputs.get(output)?.[0]?.semanticInputs;
@@ -656,7 +657,7 @@ test('built-in Layoutは全map outputにcanonical SemanticInput sequenceを持�
 });
 
 test('Face prefixはlegacy 2 Stepでもcanonicalでは1 SemanticInputのorder制約になる', () => {
-  const tsuki = LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
+  const tsuki = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
   assert.equal(tsuki.map.get('ぬ')?.length, 2);
 
   const inputs = tsuki.canonicalInputs.get('ぬ')?.[0]?.semanticInputs;
@@ -667,7 +668,7 @@ test('Face prefixはlegacy 2 Stepでもcanonicalでは1 SemanticInputのorder制
 
 test('composed outputはsource / markのcanonical SemanticInput列を再利用して連結する', () => {
   for (const id of ['shin-jis-prefix', 'shin-jis-simultaneous', 'tsuki-2-263']) {
-    const layout = LAYOUTS_JA.find((candidate) => candidate.id === id)!;
+    const layout = LOADED_LAYOUTS_JA.find((candidate) => candidate.id === id)!;
     const source = layout.canonicalInputs.get('ほ')?.[0]?.semanticInputs;
     const mark = layout.canonicalInputs.get('゛')?.[0]?.semanticInputs;
     const output = layout.canonicalInputs.get('ぼ')?.[0]?.semanticInputs;
@@ -682,12 +683,12 @@ test('composed outputはsource / markのcanonical SemanticInput列を再利用�
 });
 
 test('consumer cutover後はbase layerをcanonical singleへ統一する', () => {
-  const tsuki = LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
+  const tsuki = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
   assert.equal(tsuki.canonicalInputs.get('そ')?.[0]?.semanticInputs[0].aggregationGroupId, 'single');
 });
 
 test('withCombos由来outputは1つのcombo SemanticInput + overlapになる', () => {
-  const combo = LAYOUTS_JA.find((layout) => layout.id === 'tk-onchoku');
+  const combo = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'tk-onchoku');
   assert.ok(combo);
 
   const inputs = combo.canonicalInputs.get('desita')?.[0]?.semanticInputs;

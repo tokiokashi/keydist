@@ -3,7 +3,8 @@ import test from 'node:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { faceFromEntries, fromFaces, LAYOUTS, LAYOUTS_JA, type Face, type Layout } from '#input/layouts/index.ts';
+import { faceFromEntries, fromFaces, LAYOUTS, type Face, type Layout } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from './kanji-direct-tables.ts';
 import { compactLayerGuideDefinitions, defaultLayerNames, layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
@@ -20,7 +21,7 @@ import { modifierRows } from '#analyzers/keymap/layout-breakdown.ts';
  */
 
 const geometry = buildGeometry('row-staggered');
-const ALL_LAYOUTS: readonly Layout[] = [...LAYOUTS, ...LAYOUTS_JA];
+const ALL_LAYOUTS: readonly Layout[] = [...LAYOUTS, ...LOADED_LAYOUTS_JA];
 
 function heatmapTitles(layout: Layout) {
   const trace = generateTrace('あ', layout, geometry, DEFAULT_TRACE_POLICY);

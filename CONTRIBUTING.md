@@ -362,7 +362,7 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 `perf.yml` が、PRごとにベース（PRのbase）とheadを同じjobの中でビルドし、計算の時間とバンドルサイズの差分をjob summaryに出す。
 
 - 計算の時間（`scripts/bench-engine.ts`）: 既定の日本語テキストと英文サンプルを、代表的なSetupでTrace生成・解釈・主要な抽出に通した時間。漢字を読みに直す段は時間に入れない。ベースとheadを交互に2回ずつ測り、最小値を比べる。報告だけで、失敗にしない。共有のランナーは時間がばらつくので、ばらつきを見てから閾値を決める
-- バンドルサイズ（`scripts/measure-bundle.ts`）: 事前描画したページが最初に読み込むJavaScriptとCSS、計算用Worker、公開物全体のgzipサイズ。headが `scripts/bundle-budget.json` の上限を超えたらjobが失敗する
+- バンドルサイズ（`scripts/measure-bundle.ts`）: 事前描画したページが最初に読み込むJavaScriptとCSS、計算用Worker、公開物全体、漢直の表（配列が使われる時に取得する独立したファイル）のうち最も大きい1ファイルのgzipサイズ。headが `scripts/bundle-budget.json` の上限を超えたらjobが失敗する
 - 上限は、導入時のgzipサイズの1.1倍を1000 byte単位に切り上げた値。意図した増加で超える時は、同じPRで上限を引き上げ、理由をPR本文に書く
 - 手元で測る時は、`npm run build` の後に `node --experimental-strip-types scripts/measure-bundle.ts --out <json>`、`node --expose-gc --experimental-strip-types scripts/bench-engine.ts --out <json> --texts-file <json>` を回す。差分の表は `scripts/perf-report.ts` が作る
 - 計算をWeb Workerへ移す基準は `docs/architecture.md` の「依存の規則」にある

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createEngineCache } from '#engine/cache.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
-import { LAYOUT_BY_ID, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { computeComparisonRowValues } from '../comparison-column-values.ts';
 import { fixedTestText } from '../../../test/kana-test-text.ts';
@@ -11,7 +11,7 @@ import { SCATTER_PRESET_AXES, scatterContour, type ScatterAxes } from './axes.ts
 import { estimateTextWidth, logAxis, logScaleBlockers, scatterPlotModel } from './plot-model.ts';
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
@@ -21,7 +21,7 @@ const TEXT = fixedTestText('ja');
 function builtinRows() {
   const cache = createEngineCache();
   const rows = [];
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     const resolution = resolveEngineInput({
       target: { kind: 'layout', layoutId: layout.id },
       setups: new Map(),

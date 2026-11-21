@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { keyId } from '../shapes/geometry.ts';
-import { LAYOUTS, LAYOUTS_JA } from './index.ts';
+import { LAYOUTS } from './index.ts';
+import { LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 
 /**
  * 出典が示す配置。index.tsの定義とは別に、出典（または第三者の転記）から書き写した行を持つ。
@@ -52,7 +53,7 @@ for (const [id, expected] of Object.entries(SOURCE_ROWS)) {
 
   test(`${id}: 日本語のテキスト用の一覧にも同じ配置で入っている`, () => {
     assert.ok(layout);
-    const ja = LAYOUTS_JA.find((entry) => entry.id === id);
+    const ja = LOADED_LAYOUTS_JA.find((entry) => entry.id === id);
     assert.ok(ja, `${id}がLAYOUTS_JAに無い`);
     assert.deepEqual([...ja.legends], [...layout.legends]);
   });

@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { fromKana, withAliases, type Layout } from './types.ts';
+import { fromKana, withAliases, type KanjiDirectDeclaration, type Layout } from './types.ts';
 
 /**
  * T-Code。数字の段から下の段までの左10列、計40キーから2つを順に打つ打鍵列に文字を割り当てる、漢字直接入力の配列。
@@ -10,77 +10,62 @@ import { fromKana, withAliases, type Layout } from './types.ts';
  * 出典は1打目ごとの表を持ち、表の中の欄は2打目の位置の順（数字の段・上段・ホーム段・下段の各10キー）に並ぶ。
  *
  * 各字を1打目と2打目の2ステップの順次打鍵で持つ。1打目は切り替えのキーではないので、層にもトリガーにも数えない（単打の層1つ）。
+ * 表は `tables/tcode.json` に置き、JavaScriptには含めない。配列が選ばれた時に取得して `TCODE_DECLARATION.layoutFromTable` で配列にする。
  */
 
 /** 1打目と2打目に使う40キー。出典の表の並びで、QWERTY刻印の各段の左10列。 */
 export const TCODE_KEYS = '1234567890qwertyuiopasdfghjkl;zxcvbnm,./';
 
+const TCODE_ID = 'tcode';
+const TCODE_NAME = 'T-Code';
+const TCODE_ALIASES = ['てぃーこーど', 'tcode', 'かんじちょくせつにゅうりょく', '漢直'];
+
 /** 割り当てが無い欄 */
 export const TCODE_EMPTY = '　';
 
-/** 1打目のキー → 2打目の40キーの欄を4段（各10キー）に並べた表。割り当てが無い欄は `TCODE_EMPTY`。 */
-export const TCODE_TABLES: readonly (readonly [first: string, rows: readonly string[]])[] = [
-  ['1', ['　　　　　　　　　　', 'ヲゥヴヂヅ簡承快包唱', 'ぱぴぷぺぽ朱陣眼執岳', 'ぁぃぅぇぉ欲迫留替還']],
-  ['2', ['　　　　　　　　　　', '哀逢宛囲庵徴章否納暮', '慰為陰隠胃遅鶴繁紹刑', '　　　　　巣災列沼更']],
-  ['3', ['　　　　　　　　　　', '暇牙壊較寒触候歯頼憲', '我掛敢甘患甲鹿誌夢弱', '瓦　　　　茂恋刻？占']],
-  ['4', ['　　　　　　　　　　', '啓掲携劇賢宗途筆逃勉', '兼嫌顕牽厳致貨招卸雲', '　　　　　述脳豆辞箱']],
-  ['5', ['　　　　　　　　　　', '把伐避卑藩植複里寝罪', '菱紐描憤弊汎絡季阿窓', '　　　　　朗老看献矢']],
-  ['6', ['　　　　　　　　　　', '酸貿攻盤汽　　　　　', '桜典採君犯　　　　　', '呼紀房去秒　　　　　']],
-  ['7', ['　　　　　　　　　　', '昼捜焼帯換索冊皿賛　', '瀬博謡純余衰趨垂粋寸', '幅破績疑範　　　　　']],
-  ['8', ['　　　　　　　　　　', '炭異闘易延射需輯瞬盾', '鳥筋希副堀滋湿甚　瞳', '歓郡識ぢ核　　　　　']],
-  ['9', ['　　　　　　　　　　', '稲隣奈速雪濁詑蓄貯虫', '催忠仏盟肩沈添徹爪陶', '功抗属綿影　　　　　']],
-  ['0', ['　　　　　　　　　　', '湯旧夕拡互慢迷戻羊　', '障乳察標療己已巳巴　', '盗幡衣離麻　　　　　']],
-  ['q', ['ヮ丑鬼孤奉湖端刷震弘', '果概武風細害撃浴積故', '収若指ぎ思病常寺停河', '徳械帝読族帰監竹ゅ志']],
-  ['w', ['ヰ臼虚誇某礼飾寿扱痛', '告買残階古賃折秀程鉱', '際雄氏格術終張質領置', '渡刊始鈴丁庁寄注修抜']],
-  ['e', ['ヱ宴狭黄貌著郵順片票', '策詳両能利整追糸断提', '太査丸次広起薬づ容供', '守訪了恐未昨裁介究航']],
-  ['r', ['ヵ縁脅后卜移塩危札訴', '首由在論ペ軽隊春低児', '園ふ続習門路防港玉試', '登融極督才跡達具答層']],
-  ['t', ['ヶ曳驚耕　郷群砂乞遺', '農死！増ゃ評角幸減敷', '船賞ェ火聞越得条右席', '退雨熱況返ゲ芝失養深']],
-  ['y', ['請尚舎布姿　　庶　欄', '歩キやコナ佐接記モ無', '中わうあ本むケ話べ期', '店全バ後問洗響司復担']],
-  ['u', ['境賀喜苦絶　星粧乃龍', '回せ出山金法備朝資石', 'スラ４こさ南式座民ゾ', '持じ部間ム羽忘迎並陸']],
-  ['i', ['系岸幹圧密　析丈如略', '務区タ者マ数最知士屋', 'も東）６ら原戦線ソ歳', '町自六場七個討華浦巻']],
-  ['o', ['探責丘恵秘　遷称尼慮', '島百手発和郎急ワ費解', 'お生十学高駅関ダ点強', '所議経ニ住医史許ユ競']],
-  ['p', ['象漁糖固押　宣蒸帳累', '開木保立女談験送ィ募', '定ろリ月シ物男橋遇係', 'ほ明動産北静環補冷護']],
-  ['a', ['ゎ於奇巧　償紅舗輪則', '報音案横崎服変限逆令', '種宅料受英勢輸基足婦', '件宮局向割億色左ぬ根']],
-  ['s', ['ゐ汚既克　欧傷充倒存', '紙王曲興白声審研企違', '岡熟土予ボ必形好草段', '友伊頭府ぶ録貸態展様']],
-  ['d', ['ゑ乙菊懇　努豪喫操倍', '館放情刺ぐ任改労精装', '結待活切加講助味築衛', '卒求配富番赤販花警独']],
-  ['f', ['　穏却困　底維腕柄牛', '夜々引側官検昇統ざ然', '進取ね育室愛　宝観額', '初技黒直望想編栄型止']],
-  ['g', ['　　享昏　亜脱暴魚釈', '位応職覚球豊芸役印確', '真科参池少管流争言渋', '慣写院倉元消仕ザ誰堂']],
-  ['h', ['盛益康邦衆　鼠　　　', '給分７き上美宿セ神優', '３ーい。で要連デ車主', '行通だ新事支先調組銀']],
-  ['j', ['革援徒舞節　曹　　　', '員よかっく題制運び公', 'とし、　は設鉄現成映', 'ドカり」田協多混選以']],
-  ['k', ['突周景雑杉　奏　　　', 'どル（日８井集ツ打品', '〇たの０に水教エ天書', '円社―９会用商ポ党ヌ']],
-  ['l', ['温域処漢肉　尊　　　', '代千ト国え洋安特勤語', 'て一５・な藤力他世可', '小野め子前表ハ決択営']],
-  [';', ['捕荒ぜ緊除　　　　　', 'レアれ二年実画谷ャ演', 'るが１２を有ベ度文へ', 'ジ同大五そ正交ミ体治']],
-  ['z', ['　　　　　禁絹批就綱', '欠財従適母爆陽ァ殺券', 'ヒ及投込転素毛等板伝', 'ヨ判済説休図之州例字']],
-  ['x', ['　　　　　硝被慶駐潟', '夏針骨類奥仲構導負悪', '江久義沢空兵永浅客庭', '誤規吉週省挙末払満材']],
-  ['c', ['　　　　　樹源渉揮創', '彼裏厚御因茶旅認何秋', '別蔵算軍性専申頃師課', '証感ゆ号央険ぼ乗津過']],
-  ['v', ['　　　　　句願竜丹背', '妻居顔宇酒率施健履非', '考早半青使親袋落税着', '含値器葉福ゼ街庫準諸']],
-  ['b', ['　　　　　礎臨併鮮皮', '善差量推伸比曜尾般便', '権造県清級寮良命飛坂', '％ギ照派毎波免状遊単']],
-  ['n', ['依織譲激測　　　　　', '相付内九サ昔遠序耳示', 'ッロんけ業ホ私村ノ近', '海当不委気ヤ再団戸身']],
-  ['m', ['繊父ヘ干血　　　　　', '家プ工名建短ォ振授即', '人クまイ時共ゴガ完外', '道理合化売心ネ計ひピ']],
-  [',', ['借枚模彦散　　　　　', '的ば八川パ岩将練版難', '三万ンす「ブ来製重米', 'ずメ面ビ下界～夫ょ勝']],
-  ['.', ['須乱降均笑　　　　　', '対ュテ機第巨ぞ念効普', '京方つ電長平信校約ョ', '西ウ政目都意口食価反']],
-  ['/', ['訳香走又弁　　　　　', '歴作見チ入敗塚働視辺', 'ちフ四地み楽午ご各光', 'げグオ市株今台総与ズ']],
-];
+/** 1打目のキーと、そのキーを打った後の2打目の欄。`rows` は40キーの欄を4段（各10キー）に並べたもので、割り当てが無い欄は `TCODE_EMPTY`。 */
+export interface TcodeTable {
+  readonly first: string;
+  readonly rows: readonly string[];
+}
 
-function tcodeEntries(): [string, string[][]][] {
+function tcodeEntries(tables: readonly TcodeTable[]): [string, string[][]][] {
   const entries: [string, string[][]][] = [];
-  for (const [first, rows] of TCODE_TABLES) {
+  for (const { first, rows } of tables) {
     [...rows.join('')].forEach((output, index) => {
       if (output === TCODE_EMPTY) return;
-      entries.push([output, [[first], [TCODE_KEYS[index]]]]);
+      entries.push([output, [[first], [TCODE_KEYS[index]!]]]);
     });
   }
   return entries;
 }
 
-function tcodeLayout(): Layout {
-  const layout = fromKana('tcode', 'T-Code', tcodeEntries());
+function isTcodeTables(value: unknown): value is readonly TcodeTable[] {
+  return (
+    Array.isArray(value) &&
+    value.every((table) => typeof table === 'object' && table !== null && typeof table.first === 'string' && Array.isArray(table.rows))
+  );
+}
+
+/** 取得した表（`tables/tcode.json`）から配列を作る。 */
+function tcodeLayout(table: unknown): Layout {
+  if (!isTcodeTables(table)) throw new Error('T-Codeの表の形が違う');
+  const layout = fromKana(TCODE_ID, TCODE_NAME, tcodeEntries(table));
   // 各キーの刻印は、そのキーのQWERTY刻印を出す（どのキーも1打目になる）
   const legends = new Map(layout.legends);
   for (const key of TCODE_KEYS) legends.set(key, key);
   legends.set(THUMB_KEY.RT, '空白');
   legends.set(THUMB_KEY.LT, '親指');
-  return withAliases({ ...layout, legends }, ['てぃーこーど', 'tcode', 'かんじちょくせつにゅうりょく', '漢直']);
+  return withAliases({ ...layout, legends }, TCODE_ALIASES);
 }
 
-export const TCODE: Layout = tcodeLayout();
+/** 表を取得する前に出せる項目（名前・別名・使う物理キー）と、表から配列を作る関数。 */
+export const TCODE_DECLARATION: KanjiDirectDeclaration = {
+  id: TCODE_ID,
+  name: TCODE_NAME,
+  aliases: TCODE_ALIASES,
+  tableFile: 'tcode.json',
+  // どの欄も1打目と2打目に40キーのどれかを使う。空白キーと親指キーは使わない
+  physicalKeys: [...TCODE_KEYS],
+  layoutFromTable: tcodeLayout,
+};

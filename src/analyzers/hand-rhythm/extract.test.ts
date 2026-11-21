@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES, type Finger, type Key } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
@@ -20,12 +20,12 @@ import { alternationRowsOf, pairRowsOf } from './value-rows.ts';
  */
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
 function resolve(layoutId: string, text: string, language: 'en' | 'ja' = 'en'): ResolvedInput {
-  const shapeId = LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
+  const shapeId = LOADED_LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
   const setup: Setup = { id: 'setup-hand-rhythm', number: 1, layoutId, shapeId };
   const result = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
@@ -106,7 +106,7 @@ test('両手の打鍵を含む組の多い配列: 組の合計は打鍵数から
 
 test('全組み込みのかな配列で、切り替え + 続きは、どちらも押下を持つ隣り合う組の数と一致する', () => {
   const text = 'あさ、まどをあけると、やわらかなひかりがへやにひろがります。';
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     const { extracted, trace } = extractAndTrace(resolve(layout.id, text, 'ja'));
     const { strokes } = trace;
     const pressedPairs = strokes.slice(1).filter((stroke, index) => stroke.presses.length > 0 && strokes[index].presses.length > 0).length;

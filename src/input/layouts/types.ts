@@ -302,6 +302,27 @@ export interface Layout {
   faceLayerIds?: ReadonlyMap<Face, string>;
   /** layer表示だけに使うLayout-level presentation metadata。semantic評価には使わない。 */
   layerViewPresentation?: LayerViewPresentation;
+  /**
+   * 表を取得する前の漢直の配列だけが持つ（`kanji-direct-tables.ts`）。名前・別名・使う物理キーは宣言どおりで、
+   * 表から導く項目（`map`・`canonicalInputs`・`legends` など）は空なので、打鍵の計算・図の表示には使えない。
+   * 使う物理キーは `physicalKeysUsedByLayout`、漢直かどうかは `isKanjiDirectLayout` が、表の代わりにこの宣言を読む。
+   */
+  pendingTable?: { readonly physicalKeys: readonly string[] };
+}
+
+/**
+ * 表を別のファイルとして配り、選ばれた時に取得する漢直の配列の宣言。表を取得する前に画面に出す項目と、
+ * 取得した表から配列を作る関数を持つ。`physicalKeys` は表から導いた使う物理キーと一致する（テストが確かめる）。
+ */
+export interface KanjiDirectDeclaration {
+  readonly id: string;
+  readonly name: string;
+  readonly aliases: readonly string[];
+  /** `tables/` の下の表のファイル名 */
+  readonly tableFile: string;
+  readonly physicalKeys: readonly string[];
+  /** 取得して読み込んだ表（JSON）から配列を作る。形が違えば例外を投げる。 */
+  readonly layoutFromTable: (table: unknown) => Layout;
 }
 
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);

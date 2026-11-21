@@ -8,11 +8,11 @@ import { paneCatalog } from '../standalone/catalog.ts';
 
 const FALLBACK_LAYOUT_ID = 'qwerty';
 
-/** 測るキーを選ぶ候補。組み込みに、自作の配列と指の割り当てを足す。 */
+/** 測るキーを選ぶ候補。組み込みに、自作の配列と指の割り当てを足す。表を取得する前の漢直の配列は刻印が空なので含めない。 */
 export function personalSpeedCatalog(assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'>): PersonalSpeedCatalog {
   const { setupCatalog } = paneCatalog(assets);
   return {
-    layouts: [...setupCatalog.layouts.values()],
+    layouts: [...setupCatalog.layouts.values()].filter((layout) => layout.pendingTable === undefined),
     shapes: [...setupCatalog.shapes.values()],
     fingerAssignments: [...Object.values(FINGER_ASSIGNMENT_REGISTRY), ...assets.fingerAssignments],
   };

@@ -5,7 +5,8 @@ import { kanaToRomaji } from './kunrei.ts';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
+import { withRomaji } from '../layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 
 const geometry = buildGeometry('row-staggered');
@@ -53,7 +54,7 @@ test('とみすけ式は訓令式と、しゃ・しゅ・しょ・しぇ（と�
 });
 
 test('とみすけ配列は、全体の綴りを変えていない時も変えた時も、とみすけ式で打つ', () => {
-  const layout = LAYOUTS_JA.find((candidate) => candidate.id === 'tomisuke')!;
+  const layout = LOADED_LAYOUTS_JA.find((candidate) => candidate.id === 'tomisuke')!;
   const text = 'しゃしんしょうひん';
   const expected = generateTrace(text, withRomaji(layout, tableForRule('tomisuke')), geometry, options);
   // 組み込みの配列は、推奨の綴りを焼き込んだ形で並ぶ（全体の既定が訓令式でも変わらない）
@@ -125,7 +126,7 @@ test('既定のローマ字割り当ては組み込み配列の入力列と一�
   assert.equal([...text].length, 1676);
 
   for (const id of ['qwerty', 'oonishi', 'tomisuke']) {
-    const layout = LAYOUTS_JA.find((candidate) => candidate.id === id)!;
+    const layout = LOADED_LAYOUTS_JA.find((candidate) => candidate.id === id)!;
     const assigned = withRomaji(layout, tableForRule(defaultRomajiRuleId(id)));
     const builtInTrace = generateTrace(text, layout, geometry, options);
     const assignedTrace = generateTrace(text, assigned, geometry, options);
@@ -142,7 +143,7 @@ test('既定のローマ字割り当ては組み込み配列の入力列と一�
 
 test('QWERTYにAZIKを割り当てると短縮綴りが打鍵数へ反映される', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const qwerty = LAYOUTS_JA.find((layout) => layout.id === 'qwerty')!;
+  const qwerty = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'qwerty')!;
   const normal = computeMetrics(generateTrace(text, qwerty, geometry, options), geometry);
   const azik = computeMetrics(generateTrace(text, withRomaji(qwerty, tableForRule('azik')), geometry, options), geometry);
   assert.ok(azik.strokes < normal.strokes, `AZIK: ${azik.strokes} 通常: ${normal.strokes}`);

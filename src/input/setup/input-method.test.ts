@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LAYOUTS } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { builtInLayoutKind } from '#input/layouts/kind.ts';
 import { deriveInputMethod, resolveSetupForText } from './input-method.ts';
 import type { Setup } from './types.ts';
@@ -33,8 +34,8 @@ test('英語一覧（LAYOUTS）は全てalpha扱いで、英語テキストに�
   }
 });
 
-test('日本語一覧（LAYOUTS_JA）は種類に応じてromaji/kana-directのどちらかが必ず出る', () => {
-  for (const layout of LAYOUTS_JA) {
+test('日本語一覧（LOADED_LAYOUTS_JA）は種類に応じてromaji/kana-directのどちらかが必ず出る', () => {
+  for (const layout of LOADED_LAYOUTS_JA) {
     const kind = builtInLayoutKind(layout.id);
     const derivation = deriveInputMethod('ja', kind);
     assert.equal(derivation.ok, true, `layoutId=${layout.id}`);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCommand, emptyCommandHistory } from '#input/commands/index.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../test/kanji-direct-tables.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import { withSpelling } from '#input/romaji/rule-edit.ts';
@@ -47,7 +47,7 @@ function measure(rule: UserRomajiRule) {
   const result = resolveEngineInput({
     target: { kind: 'layout', layoutId: 'qwerty' },
     setups: new Map(),
-    catalog: { layouts: new Map([...LAYOUT_BY_ID, ...user.layouts]), shapes: SHAPES },
+    catalog: { layouts: new Map([...LOADED_LAYOUT_BY_ID, ...user.layouts]), shapes: SHAPES },
     userLayouts: user.userLayouts,
     customRomajiRules: user.romajiRules,
     overrides: global.overrides,

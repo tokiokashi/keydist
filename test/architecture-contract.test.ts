@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LAYOUTS } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from './kanji-direct-tables.ts';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -505,7 +506,7 @@ test('SandS trigger presentationはlayout IDへ依存しない', async () => {
 });
 
 test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async () => {
-  const builtInLayoutLiterals = new Set([...LAYOUTS, ...LAYOUTS_JA].flatMap((layout) => [layout.id, layout.name]));
+  const builtInLayoutLiterals = new Set([...LAYOUTS, ...LOADED_LAYOUTS_JA].flatMap((layout) => [layout.id, layout.name]));
 
   for (const { path, source } of await sourcesIn('interpretation', 'structure')) {
     for (const specifier of moduleSpecifiers(source)) {

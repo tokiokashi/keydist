@@ -3,7 +3,8 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS, withRomaji, type Layout } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from './kanji-direct-tables.ts';
 import {
   assignmentWithHomeKeys,
   buildGeometry,
@@ -84,7 +85,7 @@ const FINGER_ASSIGNMENTS: Record<string, FingerAssignment> = {
 };
 
 function allLayouts(language: TextLanguage): readonly Layout[] {
-  return language === 'en' ? LAYOUTS : LAYOUTS_JA;
+  return language === 'en' ? LAYOUTS : LOADED_LAYOUTS_JA;
 }
 
 /** Trace生成の回帰基準と同じ「直接」経路（test/analyzer-regression.test.tsのrecompute()と同じ組み立て）。 */
@@ -112,7 +113,7 @@ function directTrace(fixtureCase: FixtureCase) {
 }
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 

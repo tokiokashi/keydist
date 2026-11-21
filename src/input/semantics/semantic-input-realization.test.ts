@@ -9,7 +9,8 @@ import {
   type SemanticInput,
 } from './index.ts';
 import { resolveKeyId } from '../shapes/geometry.ts';
-import { fromFaces, LAYOUT_BY_ID, type Face } from '../layouts/index.ts';
+import { fromFaces, type Face } from '../layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 
 const semanticInput = (physicalKeys: readonly string[], requirements: SemanticInput['requirements'] = []): SemanticInput => ({
   output: 'x',
@@ -244,7 +245,7 @@ test('flatten時はaliasをcanonical PhysicalKeyIdへ正規化する', () => {
 });
 
 test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと一致する', () => {
-  for (const layout of LAYOUT_BY_ID.values()) {
+  for (const layout of LOADED_LAYOUT_BY_ID.values()) {
     assert.ok(layout.canonicalInputs, `${layout.id}: canonicalInputs`);
 
     for (const [output, legacySequence] of layout.map) {
@@ -271,7 +272,7 @@ test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと�
 
 test('composed outputはcomponentのBaseActionRealization objectを再利用する', () => {
   for (const id of ['shin-jis-prefix', 'shin-jis-simultaneous', 'tsuki-2-263']) {
-    const layout = LAYOUT_BY_ID.get(id)!;
+    const layout = LOADED_LAYOUT_BY_ID.get(id)!;
     const source = layout.canonicalInputs.get('ほ')?.[0]?.baseRealizations;
     const mark = layout.canonicalInputs.get('゛')?.[0]?.baseRealizations;
     const output = layout.canonicalInputs.get('ぼ')?.[0]?.baseRealizations;
@@ -286,7 +287,7 @@ test('composed outputはcomponentのBaseActionRealization objectを再利用す�
 });
 
 test('薙刀式がはreciprocal Faceのalternate participation viewを保持する', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('naginata-v18')!;
   const base = layout.canonicalInputs.get('が')?.[0]?.baseRealizations;
   assert.ok(base);
   assert.equal(base.length, 1);

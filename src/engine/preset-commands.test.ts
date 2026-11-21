@@ -4,7 +4,7 @@ import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.t
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { applyCommand, emptyCommandHistory, undo, type CommandHistory } from '#input/commands/index.ts';
-import { LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import { readOverride, type CascadeContext, type CascadeLevel } from '#input/settings/index.ts';
 import type { KeydistAssets } from './commands.ts';
@@ -122,7 +122,7 @@ test('applyPresetCommand: 存在しないid・変化が無い流し込みは何�
 });
 
 test('流し込んだ条件は、同じ値を手で設定した時と実効値が一致する', () => {
-  const layout = LAYOUTS_JA.find((entry) => entry.id === 'qwerty');
+  const layout = LOADED_LAYOUTS_JA.find((entry) => entry.id === 'qwerty');
   assert.ok(layout);
   const context: CascadeContext = {
     shapeId: 'row-staggered',

@@ -6,7 +6,7 @@ import { KAWASEMI_PLUS } from '#input/layouts/kawasemi-plus.ts';
 import { NAGINATA_V18 } from '#input/layouts/naginata.ts';
 import { SHIN_JIS_SIMULTANEOUS } from '#input/layouts/shin-jis.ts';
 import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../test/kanji-direct-tables.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { longestReverseLookupRoute, physicalAvailableKeys, reverseLookup, reverseLookupGuideActions } from './reverse-lookup.ts';
 import { applyRecognizedTypingInputs } from './typing-session-command.ts';
@@ -224,7 +224,7 @@ test('未定義physical keyの境界でも物理保持中のhold triggerは維�
 });
 
 test('T-Codeで漢字を2打で出し、練習テキストと照合できる', () => {
-  const layout = LAYOUT_BY_ID.get('tcode')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('tcode')!;
   const practice = '名前はまだ無い。漢字である。';
   const route = longestReverseLookupRoute(reverseLookup(layout, practice, 5, physicalAvailableKeys(buildGeometry('row-staggered'))));
   assert.ok(route !== undefined);

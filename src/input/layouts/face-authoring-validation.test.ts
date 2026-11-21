@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { faceFromEntries, LAYOUT_BY_ID, type Face } from './index.ts';
+import { faceFromEntries, type Face } from './index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 import { validateFaceAuthoring } from './face-authoring-validation.ts';
 import { fromFaces } from './types.ts';
 
@@ -129,7 +130,7 @@ test('コンボとして数える面のextraCellsも検査する', () => {
 });
 
 test('組み込みの全配列の面が、extraCellsの検査を通る', () => {
-  for (const layout of LAYOUT_BY_ID.values()) {
+  for (const layout of LOADED_LAYOUT_BY_ID.values()) {
     assert.doesNotThrow(() => validateFaceAuthoring(layout.faces ?? []), layout.id);
   }
 });
