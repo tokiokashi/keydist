@@ -74,3 +74,10 @@ TUT-Codeの出典は、T-Codeと同じ配布物の表のファイル（`tut.tbl`
 - `functions`: 文字ではなく機能（交ぜ書き変換の呼び出しなど）を割り当てた欄。`path`（表の入れ子をたどる欄の番号の並び。0始まり）と `code`（出典の `@` で始まる表記）。組み込みの配列には入れない
 
 突き合わせのunit testは `src/input/layouts/tut-code.test.ts`。
+
+## KMonadの設定とXComposeの表の写し（`secca/`）
+
+雪華の出典は、h3at2o/seccaのコミット `227517ae7c6b1c6268d68f5031b819d264a37031`（2025-12-04）のファイルを、変えずに写したものである。写したのは `config.kbd`（KMonadの設定）、`.XCompose`・`.XCompose.symbols`・`.XCompose.kanji`・`.XCompose.variant_of_kanji`・`.XCompose.set_of_kanji`・`.XCompose.proper_noun`（XComposeの表）、`LICENSE`（MIT License）、`README.md` である。
+面と格子を持たないので、`scripts/generate-kana-fixtures.ts` の対象にしない。
+
+`scripts/gen-secca-table.ts` が、この写しから `src/input/layouts/tables/secca.json` を作る。突き合わせのunit testは `test/secca-source.test.ts`（写しから作り直した表と組み込みの表の一致）と `src/input/layouts/secca.test.ts` である。

@@ -686,6 +686,29 @@ export function fromKana(id: string, name: string, def: KanaDefinition): Layout 
 }
 
 /**
+ * 面から作った配列に、打鍵ステップ列を直接書いた字を足す。足した字は単打の層に属し、トリガーを持たない。
+ * 同じ出力がすでにある時は、足した列が後の経路になる（既定の経路は先にあった方）。
+ */
+export function withSequenceInputs(layout: Layout, entries: readonly (readonly [string, Sequence])[]): Layout {
+  const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
+  const map = new Map(layout.map);
+  for (const [output, sequence] of entries) {
+    appendCanonicalAlternative(canonicalInputs, output, compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID));
+    if (!map.has(output)) map.set(output, sequence);
+  }
+  validateCanonicalInputMap(canonicalInputs);
+  const layerDefinitions = layout.layerDefinitions ?? [];
+  return {
+    ...layout,
+    map,
+    canonicalInputs,
+    layerDefinitions: layerDefinitions.some((definition) => definition.id === SINGLE_LAYER_ID)
+      ? layerDefinitions
+      : [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }, ...layerDefinitions],
+  };
+}
+
+/**
  * 既存のauthoring default thumb shift pathから、同じsemanticを成立させる合法な
  * physical thumb alternativeをcanonical pathとして派生する。
  */

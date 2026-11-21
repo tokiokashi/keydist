@@ -13,12 +13,15 @@ import type { Layout } from '#input/layouts/types.ts';
  *
  * 1キーずつ順に打つ入力（順次打鍵）を持つ配列は、選んだ並びに続けて押せるキーを選ぶと並びの後ろに足す（同じキーを続けて打つ入力もある）。
  * 続けて押せないキーを選ぶと、選んだキーより後ろを外す。まだ選んでいないキーなら、そのキーだけを選んだ状態から始める。
+ * 同時押しも持つ配列（かなは同時押し、漢字は順次打鍵）は、同時押しの組として続けて押せるキーも、続けて押せるキーに数える。
  */
 export function toggleSelectedKey(layout: Layout, selected: readonly string[], keyId: string): readonly string[] {
   if (keySequencePaths(layout).length > 0) {
     const next = [...selected, keyId];
     const extended = matchKeySequences(layout, next);
     if (selected.length === 0 || extended.exact.length > 0 || extended.continuations.size > 0) return next;
+    const patterns = matchKeyPatterns(layout, new Set(next));
+    if (patterns.exact.length > 0 || patterns.continuations.size > 0) return next;
     const index = selected.indexOf(keyId);
     return index >= 0 ? selected.slice(0, index) : [keyId];
   }

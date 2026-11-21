@@ -682,15 +682,38 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
 
   const paths = [...inputs].flatMap(([output, alternatives]) => alternatives.map((alternative) => ({ output, alternative })));
 
-  for (let leftIndex = 0; leftIndex < paths.length; leftIndex++) {
-    const left = paths[leftIndex];
-    for (let rightIndex = leftIndex + 1; rightIndex < paths.length; rightIndex++) {
-      const right = paths[rightIndex];
-      if (left.output === right.output) continue;
-      if (!activationPathsCanConflict(left.alternative, right.alternative)) continue;
-
-      throw new ActivationConflictError(conflictSide(left.output, left.alternative), conflictSide(right.output, right.alternative));
+  // 同時成立し得るのは、ステップの数が同じで、各ステップの物理キーの集合も同じpathだけ（`activationPathsCanConflict`）。
+  // 組ごとに全部を比べると、見出しが数万ある配列（漢直）で時間が二乗に増えるので、その形が同じpathの間だけを比べる。
+  const buckets = new Map<string, number[]>();
+  paths.forEach(({ alternative }, index) => {
+    const shape = alternative.semanticInputs.map((input) => sortedUniqueKeys(input.physicalKeys).join('\u0001')).join('\u0002');
+    const bucket = buckets.get(shape);
+    if (bucket === undefined) buckets.set(shape, [index]);
+    else bucket.push(index);
+  });
+  // 見つかる最初の衝突は、全部の組を並びの順に比べた時と同じ組にする
+  let first: readonly [number, number] | undefined;
+  for (const bucket of buckets.values()) {
+    for (let i = 0; i < bucket.length; i++) {
+      const leftIndex = bucket[i]!;
+      if (first !== undefined && leftIndex > first[0]) break;
+      const left = paths[leftIndex]!;
+      for (let j = i + 1; j < bucket.length; j++) {
+        const rightIndex = bucket[j]!;
+        if (first !== undefined && leftIndex === first[0] && rightIndex >= first[1]) break;
+        const right = paths[rightIndex]!;
+        if (left.output === right.output) continue;
+        if (!activationPathsCanConflict(left.alternative, right.alternative)) continue;
+        first = [leftIndex, rightIndex];
+        break;
+      }
+      if (first !== undefined && first[0] === leftIndex) break;
     }
+  }
+  if (first !== undefined) {
+    const left = paths[first[0]]!;
+    const right = paths[first[1]]!;
+    throw new ActivationConflictError(conflictSide(left.output, left.alternative), conflictSide(right.output, right.alternative));
   }
 }
 

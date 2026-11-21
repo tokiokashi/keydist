@@ -86,6 +86,24 @@ test('順次打鍵の配列は、3打の字を1打目から順に選び、2打�
   assert.deepEqual(keyPatternSelectionView(layout, ['e', 'thumb-r']).exactOutputs, ['ー']);
 });
 
+test('かなの同時押しと漢字の順次打鍵を持つ配列は、同時押しの組も、空白キーのステップを含む熟語も選べる（雪華）', () => {
+  const layout = resolvedLayout('secca', 'ja');
+  const choose = (keys: readonly string[]): readonly string[] =>
+    keys.reduce<readonly string[]>((selected, key) => toggleSelectedKey(layout, selected, key), []);
+  // かな: jとwの同時押しがぎ、空白キーとeの同時押しがり
+  assert.deepEqual(choose(['j', 'w']), ['j', 'w']);
+  assert.deepEqual(keyPatternSelectionView(layout, ['j', 'w']).exactOutputs, ['ぎ']);
+  assert.deepEqual(choose(['thumb-r', 'e']), ['thumb-r', 'e']);
+  assert.deepEqual(keyPatternSelectionView(layout, ['thumb-r', 'e']).exactOutputs, ['り']);
+  // 漢字: fとdとjの順で朝、dとfとjの順で元
+  assert.deepEqual(choose(['f', 'd', 'j']), ['f', 'd', 'j']);
+  assert.deepEqual(keyPatternSelectionView(layout, ['f', 'd', 'j']).exactOutputs, ['朝']);
+  assert.deepEqual(keyPatternSelectionView(layout, ['d', 'f', 'j']).exactOutputs, ['元']);
+  // 熟語: dとfの後に空白キーを打ち、kで人間
+  assert.deepEqual(choose(['d', 'f', 'thumb-r', 'k']), ['d', 'f', 'thumb-r', 'k']);
+  assert.deepEqual(keyPatternSelectionView(layout, ['d', 'f', 'thumb-r', 'k']).exactOutputs, ['人間']);
+});
+
 test('キーを選んでいない時は、キーを選ぶよう促す文だけを出す', () => {
   const view = keyPatternSelectionView(resolvedLayout('tk-onchoku', 'ja'), []);
   assert.equal(view.message, KEY_PATTERN_PROMPT);
