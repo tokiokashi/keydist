@@ -69,6 +69,23 @@ test('順次打鍵の配列は、同じキーを続けて打つ字も選べ、�
   assert.deepEqual(toggleSelectedKey(layout, ['1'], '1'), []);
 });
 
+test('順次打鍵の配列は、3打の字を1打目から順に選び、2打目の空白キーも選べる（TUT-Code）', () => {
+  const layout = resolvedLayout('tut-code', 'ja');
+  // 出典の表: 嫌は、q → v → iの3打
+  const first = keyPatternSelectionView(layout, ['q']);
+  assert.equal(first.exactOutputs.length, 0);
+  assert.ok(first.continuationKeys.has('v'));
+  const second = keyPatternSelectionView(layout, ['q', 'v']);
+  assert.equal(second.exactOutputs.length, 0);
+  assert.ok(second.candidateLegends.get('i')?.includes('嫌'));
+  assert.deepEqual(toggleSelectedKey(layout, ['q', 'v'], 'i'), ['q', 'v', 'i']);
+  assert.deepEqual(keyPatternSelectionView(layout, ['q', 'v', 'i']).exactOutputs, ['嫌']);
+  // 2打目に空白キー（右親指）を選ぶと、1打目がeの「ー」が決まる
+  assert.ok(keyPatternSelectionView(layout, ['e']).continuationKeys.has('thumb-r'));
+  assert.deepEqual(toggleSelectedKey(layout, ['e'], 'thumb-r'), ['e', 'thumb-r']);
+  assert.deepEqual(keyPatternSelectionView(layout, ['e', 'thumb-r']).exactOutputs, ['ー']);
+});
+
 test('キーを選んでいない時は、キーを選ぶよう促す文だけを出す', () => {
   const view = keyPatternSelectionView(resolvedLayout('tk-onchoku', 'ja'), []);
   assert.equal(view.message, KEY_PATTERN_PROMPT);

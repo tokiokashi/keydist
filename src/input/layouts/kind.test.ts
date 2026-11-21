@@ -51,6 +51,7 @@ const EXPECTED: Record<string, LayoutKind> = {
   yumi: 'kana',
   'kawasemi-plus': 'kana',
   tcode: 'kana',
+  'tut-code': 'kana',
 };
 
 test('組み込み配列の種類は現状のAnalyzerのfixtureと一致する', () => {

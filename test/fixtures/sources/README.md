@@ -62,3 +62,15 @@ T-Codeの出典は、漢直Winの表のファイル（`t.tbl`）である。1打
 - `functions`: 文字ではなく機能（交ぜ書き変換の呼び出しなど）を割り当てた欄。`first`・`second`・`code`（出典の `@` で始まる表記）。組み込みの配列には入れない
 
 突き合わせのunit testは `src/input/layouts/tcode.test.ts`。
+
+## 入れ子の順次打鍵の表の写し（`format`: `tut-code-table`）
+
+TUT-Codeの出典は、T-Codeと同じ配布物の表のファイル（`tut.tbl`）である。1打の字と、次の打鍵の表を同じ欄の位置に持つ。
+面と格子を持たないので、`scripts/generate-kana-fixtures.ts` の対象にしない。fixtureは生成しない。
+
+- `source`: `url`・`page`・`package`・`path`・`zipSha256`・`sha256`（`tut.tbl` のsha256）・`retrievedAt`・`license`・`origin`（`bushu.txt` が書く `tut.tbl` の由来）・`transform`
+- `keys`: 打鍵の表の40キー。表の欄はこの並びで、数字の段・上段・ホーム段・下段の各10キーが4つの行になる
+- `root`: 1打目の表。表は `rows`（40キーの欄を4行に並べた文字列。`empty` は割り当てが無い欄と、次の打鍵の表がある欄）・`space`（41番目の欄。空白キーを打って出る字。無ければ持たない）・`next`（キー → そのキーを打った後の次の表。無ければ持たない）を持つ
+- `functions`: 文字ではなく機能（交ぜ書き変換の呼び出しなど）を割り当てた欄。`path`（表の入れ子をたどる欄の番号の並び。0始まり）と `code`（出典の `@` で始まる表記）。組み込みの配列には入れない
+
+突き合わせのunit testは `src/input/layouts/tut-code.test.ts`。
