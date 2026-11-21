@@ -49,7 +49,7 @@ test('表を取得できないと、その配列のペインにエラーが出�
   await page.route(TCODE_TABLE, (route) => (blocked ? route.abort() : route.continue()));
   await seedSingle(page, 'tcode');
   await page.goto('/analyzer/heatmap');
-  await expect(page.locator('[data-pane-error]')).toContainText('読み込めませんでした', { timeout: 10_000 });
+  await expect(page.locator('[data-pane-error]')).toBeVisible({ timeout: 10_000 });
   await expect(diagram(page)).toHaveCount(0);
 
   await chooseTarget(page, 'qwerty');

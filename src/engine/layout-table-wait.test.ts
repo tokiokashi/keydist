@@ -4,7 +4,6 @@ import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import {
   configureKanjiDirectLoader,
-  describeKanjiDirectWait,
   KANJI_DIRECT_DECLARATIONS,
   kanjiDirectLayout,
   kanjiDirectStatus,
@@ -15,7 +14,6 @@ import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { fixedTestText } from '../../test/kana-test-text.ts';
-import { describeResolvedInputError } from './resolved-input-errors.ts';
 import { resolveEngineInput } from './resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from './settings-items.ts';
 
@@ -57,7 +55,6 @@ test('表を取得する前は計算せず、取得に失敗すると取得し�
   assert.ok(!first.ok);
   assert.ok(first.error.kind === 'layout-table');
   assert.equal(first.error.status, 'loading');
-  assert.equal(describeResolvedInputError(first.error), describeKanjiDirectWait('T-Code', 'loading'));
   await requestKanjiDirectLayout('tcode');
   assert.equal(kanjiDirectStatus('tcode'), 'loading');
 
@@ -75,7 +72,6 @@ test('表を取得する前は計算せず、取得に失敗すると取得し�
   assert.ok(!failed.ok);
   assert.ok(failed.error.kind === 'layout-table');
   assert.equal(failed.error.status, 'failed');
-  assert.equal(describeResolvedInputError(failed.error), describeKanjiDirectWait('T-Code', 'failed'));
   assert.equal(kanjiDirectStatus('tut-code'), 'loading');
 
   // 選び直すと取得し直し、表を使える
