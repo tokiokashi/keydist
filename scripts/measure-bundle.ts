@@ -82,10 +82,9 @@ export async function measureBundle(publicDir: string): Promise<Record<string, S
   // 表は取得する時に1ファイルずつ読むので、合計でなく最も大きい1ファイルを測る。ファイル名は `<元の名前>-<ハッシュ>.json` になる
   const tableNames = (await readdir(fileURLToPath(new URL('../src/input/layouts/tables/', import.meta.url)))).filter((name) => name.endsWith('.json'));
   const tableAssets = assets.filter((name) => tableNames.some((table) => new RegExp(`^${table.slice(0, -'.json'.length)}-[^/]*\\.json$`).test(name)));
-  if (tableAssets.length !== tableNames.length)
-    throw new Error(`漢直の表のファイルが公開物に ${tableAssets.length} 件ある（${tableNames.length} 件のはず）`);
   const tableSizes = await Promise.all(tableAssets.map((name) => sizeOfAsset(`assets/${name}`)));
-  result['漢直の表（最大の1ファイル）'] = tableSizes.reduce((largest, size) => (size.gzip > largest.gzip ? size : largest));
+  // 表を別のファイルとして配る前のビルド（perfのベース）には表が無いので、その時はこの項目を出さない。表の欠けは `check-kanji-direct-assets.ts` が見る
+  if (tableSizes.length > 0) result['漢直の表（最大の1ファイル）'] = tableSizes.reduce((largest, size) => (size.gzip > largest.gzip ? size : largest));
   result.CSS全体 = sum(await Promise.all(assets.filter((name) => name.endsWith('.css')).map((name) => sizeOfAsset(`assets/${name}`))));
   return result;
 }
