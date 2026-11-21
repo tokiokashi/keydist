@@ -1,4 +1,5 @@
-import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS, type Layout } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../test/kanji-direct-tables.ts';
 import { containsKanji } from '#input/text/reading.ts';
 import { sampleText, SAMPLE_TEXTS, type TextLanguage } from '#input/text/samples.ts';
 import { PRACTICE_TEXT_JA } from '../src/tester/practice-text-ja.ts';
@@ -32,7 +33,7 @@ export function defaultConditionCases(): DefaultConditionCase[] {
     for (const sampleId of Object.keys(SAMPLE_TEXTS.en)) cases.push({ language: 'en', layout, sampleId });
   }
   const kanaSampleIds = [KANA_REGRESSION_SAMPLE_ID, ...Object.keys(SAMPLE_TEXTS.ja).filter((sampleId) => !containsKanji(sampleText('ja', sampleId)))];
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     for (const sampleId of kanaSampleIds) cases.push({ language: 'ja', layout, sampleId });
   }
   return cases;

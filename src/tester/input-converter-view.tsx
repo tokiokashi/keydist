@@ -26,6 +26,8 @@ import {
 } from '#input/layouts/layers.ts';
 import { allLayerTriggerKeys, matchKeyPatterns, summarizeCandidateMatches } from '#input/layouts/key-pattern-picker.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
+import { describeKanjiDirectWait, retryFailedKanjiDirectLayouts } from '#input/layouts/kanji-direct-tables.ts';
+import { useKanjiDirectLayout } from './use-kanji-direct-layout.ts';
 import { physicalKeysUsedByLayout, visibleGeometryKeys } from '#input/layouts/physical-keys.ts';
 import { createWorkspacePanelRegistry } from './panels/panel-registry.ts';
 import { WorkspacePanel } from './panels/workspace-panel.tsx';
@@ -275,7 +277,9 @@ export function InputConverterView({
   onRequestedLayoutConsumed,
   renderShare,
 }: InputConverterViewProps = {}) {
-  const [layout, setLayout] = useState<Layout>(DEFAULT_INPUT_LAYOUT);
+  const [selectedLayout, setLayout] = useState<Layout>(DEFAULT_INPUT_LAYOUT);
+  // 表を別のファイルとして配る漢直の配列は、選んだ時に表を取得する。取得するまでは、表由来の項目が空の配列で表示する
+  const { layout, status: layoutTableStatus } = useKanjiDirectLayout(selectedLayout);
   const userLayouts = useMemo(() => {
     const builtInIds = new Set(INPUT_LAYOUTS.map((candidate) => candidate.id));
     return userLayoutsProp.filter((candidate) => !builtInIds.has(candidate.id));
@@ -491,6 +495,8 @@ export function InputConverterView({
   }, [layout.id, geometryId, layerKeyNaming, layoutPreferences, preferences]);
 
   const switchLayout = (nextLayout: Layout) => {
+    // 配列を選び直した時に、表の取得に失敗していた漢直の配列を取得し直せるようにする
+    retryFailedKanjiDirectLayouts();
     const nextGeometryId = geometryIdForLayout(nextLayout.id, geometryId);
 
     const current = persistedPreferencesRef.current;
@@ -793,7 +799,7 @@ export function InputConverterView({
     <WorkspaceProvider runtime={workspace}>
       <section
         className="feature-shell input-feature"
-        data-input-ready={session.readyLayoutId === layout.id ? layout.id : undefined}
+        data-input-ready={layoutTableStatus === 'loaded' && session.readyLayoutId === layout.id ? layout.id : undefined}
         data-active-layer={activeGroupIds.length > 0 ? activeGroupIds.join('|') : 'single'}
       >
         <header className="input-page-heading">
@@ -1033,364 +1039,380 @@ export function InputConverterView({
             tabIndex={0}
           />
 
-          <section className="input-main">
-            <WorkspacePanel
-              ariaLabel="Text Input"
-              className="input-capture-panel"
-              dockedHeaderAriaLabel="Text Inputをクリックまたはドラッグして小窓表示"
-              floatingHeaderAriaLabel="Text Inputを移動"
-              headerClassName="input-capture-heading"
-              id={INPUT_TYPING_PANEL_ID}
-              resizeAriaLabel="Text Inputのサイズを変更"
-              renderHeader={() => (
-                <>
-                  <strong>Text Input</strong>
-                  {randomPracticeMode !== null ? (
-                    <span className="input-random-practice-status" data-complete={randomPracticeComplete || undefined} role="status">
-                      {randomPracticeComplete
-                        ? `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 完成！ Enterで次へ`
-                        : `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 打ち切ったら Enterで次へ`}
-                    </span>
-                  ) : null}
-                  <button type="button" onClick={session.clear}>
-                    クリア
-                  </button>
-                </>
-              )}
-            >
-              <div className="input-output-shell" data-has-target={lookupQuery.length > 0 || undefined}>
-                {lookupQuery.length > 0 ? (
-                  <div aria-hidden="true" className="input-output-visual" data-testid="typing-target">
-                    {typingTargetPresentation.typed.map((item, index) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: 打った文字の位置が識別で、並びは末尾に伸びるだけ
-                      <span className={item.correct ? 'input-output-char-correct' : 'input-output-char-error'} key={`typed-${index}`}>
-                        {item.char}
-                      </span>
-                    ))}
-                    {typingTargetPresentation.remaining.map((char, index) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: 目標の文字の位置が識別で、並びは先頭から減るだけ
-                      <span className="input-output-char-pending" key={`pending-${index}`}>
-                        {char}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                <textarea
-                  className="input-output"
-                  value={session.text}
-                  readOnly
-                  rows={3}
-                  aria-label="自由入力テキスト"
-                  aria-describedby="input-capture-help"
-                  data-active={session.active || undefined}
-                  ref={session.captureRefCallback}
-                  onKeyDownCapture={(event) => {
-                    if (randomPracticeMode === null || event.key !== 'Enter') return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (!randomPracticeComplete) return;
-                    advanceRandomPractice(randomPracticeMode);
-                  }}
-                  placeholder={lookupQuery.length === 0 ? '打った文字が出ます' : undefined}
-                />
-              </div>
-              <p className="input-capture-hint" id="input-capture-help">
-                {session.active ? '入力を受け付けています。' : '入力を受け付けていません。'}
-                Backspaceで1文字削除します。
-                {randomPracticeMode === null ? 'Enterで改行します。' : 'ランダム練習中は完成後Enterで次のお題へ進みます。'}
-                {escapeIsLayoutInput ? 'Escは配列入力として扱います。' : 'Escで全削除します。'}
-                {session.composing ? 'IMEで変換中のため、キーを認識していません。' : ''}
-              </p>
-            </WorkspacePanel>
-
-            <WorkspacePanel
-              ariaLabel="Keyboard View"
-              className="input-keyboard-panel"
-              dockClassName="input-panel-dock"
-              dockedHeaderAriaLabel="Keyboard Viewをクリックまたはドラッグして小窓表示"
-              floatingHeaderAriaLabel="Keyboard Viewを移動"
-              headerClassName="input-keyboard-panel-heading"
-              id={INPUT_KEYBOARD_PANEL_ID}
-              resizeAriaLabel="Keyboard Viewのサイズを変更"
-              renderHeader={() => (
-                <>
-                  <strong>Keyboard View</strong>
-                  <span className="input-keyboard-help">実キーの割り当てを変更できます。</span>
-                </>
-              )}
-            >
-              <div className="input-keyboard-toolbar">
-                <fieldset className="plain-group input-display-options" aria-label="表示設定">
-                  <label>
-                    <input type="checkbox" checked={showDynamicGuide} onChange={(event) => setShowDynamicGuide(event.target.checked)} />
-                    動的ガイド
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={showLayerGuide}
-                      onChange={(event) => {
-                        if (!event.target.checked) {
-                          workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
-                          for (const definition of guideDefinitions) {
-                            workspace.dispatch({
-                              type: 'dock',
-                              id: layerGuideCardPanelId(definition.id),
-                            });
-                          }
-                        }
-                        setShowLayerGuide(event.target.checked);
-                      }}
-                    />
-                    レイヤーカンペ
-                  </label>
-                  <label>
-                    <input type="checkbox" checked={showLayerKeys} onChange={(event) => setShowLayerKeys(event.target.checked)} />
-                    レイヤーキー
-                  </label>
-                  {hasShiftKeys ? (
-                    <label>
-                      <input type="checkbox" checked={showShiftKeys} onChange={(event) => setShowShiftKeys(event.target.checked)} />
-                      Shiftキー
-                    </label>
-                  ) : null}
-                </fieldset>
-                <p className="input-active-layer" data-active={activeDefinitions.length > 0 || undefined}>
-                  <span>現在</span>
-                  <strong>{activeDefinitions.length > 0 ? activeDefinitions.map((definition) => definition.label).join(' / ') : '通常'}</strong>
+          {layoutTableStatus !== 'loaded' ? (
+            <section className="input-main">
+              {layoutTableStatus === 'loading' ? (
+                <p className="pane-busy" aria-busy="true" data-input-layout-table="loading">
+                  {describeKanjiDirectWait(layout.name, 'loading')}
                 </p>
-                <fieldset className="plain-group input-key-status" aria-label="キーの状態">
-                  <section>
-                    <h2>Pressed</h2>
-                    <p>
-                      {session.pressedKeys.length > 0
-                        ? pressedKeyNames(layout, session.pressedKeys, session.presentation.activeTriggers, layerKeyNaming, keyboardStandard).join(' + ')
-                        : '—'}
-                    </p>
-                  </section>
-                  <section>
-                    <h2>Recognized</h2>
-                    <RecognizedDetail layout={layout} naming={layerKeyNaming} recognized={session.lastRecognized} standard={keyboardStandard} />
-                  </section>
-                </fieldset>
-              </div>
-              {bindingTargetKey !== undefined ? (
-                <div className="input-keyboard-heading">
-                  <fieldset className="plain-group input-key-binding-inline" aria-label="物理キー割当">
-                    <strong>{keyLabel(bindingTargetKey)}</strong>
-                    <span aria-hidden="true">←</span>
-                    <div className="input-key-binding-codes">
-                      {selectedBindingCodes.length === 0 ? (
-                        <span className="input-muted">未割当</span>
-                      ) : (
-                        selectedBindingCodes.map((code) => (
-                          <button
-                            aria-label={`${keyLabel(bindingTargetKey)}の割り当てから実キー${codeLabel(code)}を外す`}
-                            className="input-binding-chip"
-                            key={code}
-                            onClick={() => updateBindingOverrides(unassignBrowserKeyCode(bindingOverrides, code))}
-                            type="button"
-                          >
-                            <code>{codeLabel(code)}</code>
-                            <span aria-hidden="true">×</span>
-                          </button>
-                        ))
-                      )}
+              ) : (
+                <p className="pane-error" role="alert" data-input-layout-table="failed">
+                  {describeKanjiDirectWait(layout.name, 'failed')}
+                </p>
+              )}
+            </section>
+          ) : (
+            <section className="input-main">
+              <WorkspacePanel
+                ariaLabel="Text Input"
+                className="input-capture-panel"
+                dockedHeaderAriaLabel="Text Inputをクリックまたはドラッグして小窓表示"
+                floatingHeaderAriaLabel="Text Inputを移動"
+                headerClassName="input-capture-heading"
+                id={INPUT_TYPING_PANEL_ID}
+                resizeAriaLabel="Text Inputのサイズを変更"
+                renderHeader={() => (
+                  <>
+                    <strong>Text Input</strong>
+                    {randomPracticeMode !== null ? (
+                      <span className="input-random-practice-status" data-complete={randomPracticeComplete || undefined} role="status">
+                        {randomPracticeComplete
+                          ? `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 完成！ Enterで次へ`
+                          : `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 打ち切ったらEnterで次へ`}
+                      </span>
+                    ) : null}
+                    <button type="button" onClick={session.clear}>
+                      クリア
+                    </button>
+                  </>
+                )}
+              >
+                <div className="input-output-shell" data-has-target={lookupQuery.length > 0 || undefined}>
+                  {lookupQuery.length > 0 ? (
+                    <div aria-hidden="true" className="input-output-visual" data-testid="typing-target">
+                      {typingTargetPresentation.typed.map((item, index) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: 打った文字の位置が識別で、並びは末尾に伸びるだけ
+                        <span className={item.correct ? 'input-output-char-correct' : 'input-output-char-error'} key={`typed-${index}`}>
+                          {item.char}
+                        </span>
+                      ))}
+                      {typingTargetPresentation.remaining.map((char, index) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: 目標の文字の位置が識別で、並びは先頭から減るだけ
+                        <span className="input-output-char-pending" key={`pending-${index}`}>
+                          {char}
+                        </span>
+                      ))}
                     </div>
-                    <button
-                      className="input-binding-add"
-                      data-capturing={bindingCapturing || undefined}
-                      onClick={() => setBindingCapturing((current) => !current)}
-                      type="button"
-                    >
-                      {bindingCapturing ? '実キーを押してください…' : 'キーを追加'}
-                    </button>
-                    <button
-                      className="input-binding-reset"
-                      onClick={() => {
-                        updateBindingOverrides({});
-                        setBindingCapturing(false);
-                      }}
-                      type="button"
-                    >
-                      すべて既定に戻す
-                    </button>
-                    <button
-                      className="input-binding-close"
-                      onClick={() => {
-                        setBindingTargetKey(undefined);
-                        setBindingCapturing(false);
-                      }}
-                      type="button"
-                    >
-                      閉じる
-                    </button>
+                  ) : null}
+                  <textarea
+                    className="input-output"
+                    value={session.text}
+                    readOnly
+                    rows={3}
+                    aria-label="自由入力テキスト"
+                    aria-describedby="input-capture-help"
+                    data-active={session.active || undefined}
+                    ref={session.captureRefCallback}
+                    onKeyDownCapture={(event) => {
+                      if (randomPracticeMode === null || event.key !== 'Enter') return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (!randomPracticeComplete) return;
+                      advanceRandomPractice(randomPracticeMode);
+                    }}
+                    placeholder={lookupQuery.length === 0 ? '打った文字が出ます' : undefined}
+                  />
+                </div>
+                <p className="input-capture-hint" id="input-capture-help">
+                  {session.active ? '入力を受け付けています。' : '入力を受け付けていません。'}
+                  Backspaceで1文字削除します。
+                  {randomPracticeMode === null ? 'Enterで改行します。' : 'ランダム練習中は完成後Enterで次のお題へ進みます。'}
+                  {escapeIsLayoutInput ? 'Escは配列入力として扱います。' : 'Escで全削除します。'}
+                  {session.composing ? 'IMEで変換中のため、キーを認識していません。' : ''}
+                </p>
+              </WorkspacePanel>
+
+              <WorkspacePanel
+                ariaLabel="Keyboard View"
+                className="input-keyboard-panel"
+                dockClassName="input-panel-dock"
+                dockedHeaderAriaLabel="Keyboard Viewをクリックまたはドラッグして小窓表示"
+                floatingHeaderAriaLabel="Keyboard Viewを移動"
+                headerClassName="input-keyboard-panel-heading"
+                id={INPUT_KEYBOARD_PANEL_ID}
+                resizeAriaLabel="Keyboard Viewのサイズを変更"
+                renderHeader={() => (
+                  <>
+                    <strong>Keyboard View</strong>
+                    <span className="input-keyboard-help">実キーの割り当てを変更できます。</span>
+                  </>
+                )}
+              >
+                <div className="input-keyboard-toolbar">
+                  <fieldset className="plain-group input-display-options" aria-label="表示設定">
+                    <label>
+                      <input type="checkbox" checked={showDynamicGuide} onChange={(event) => setShowDynamicGuide(event.target.checked)} />
+                      動的ガイド
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={showLayerGuide}
+                        onChange={(event) => {
+                          if (!event.target.checked) {
+                            workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
+                            for (const definition of guideDefinitions) {
+                              workspace.dispatch({
+                                type: 'dock',
+                                id: layerGuideCardPanelId(definition.id),
+                              });
+                            }
+                          }
+                          setShowLayerGuide(event.target.checked);
+                        }}
+                      />
+                      レイヤーカンペ
+                    </label>
+                    <label>
+                      <input type="checkbox" checked={showLayerKeys} onChange={(event) => setShowLayerKeys(event.target.checked)} />
+                      レイヤーキー
+                    </label>
+                    {hasShiftKeys ? (
+                      <label>
+                        <input type="checkbox" checked={showShiftKeys} onChange={(event) => setShowShiftKeys(event.target.checked)} />
+                        Shiftキー
+                      </label>
+                    ) : null}
+                  </fieldset>
+                  <p className="input-active-layer" data-active={activeDefinitions.length > 0 || undefined}>
+                    <span>現在</span>
+                    <strong>{activeDefinitions.length > 0 ? activeDefinitions.map((definition) => definition.label).join(' / ') : '通常'}</strong>
+                  </p>
+                  <fieldset className="plain-group input-key-status" aria-label="キーの状態">
+                    <section>
+                      <h2>Pressed</h2>
+                      <p>
+                        {session.pressedKeys.length > 0
+                          ? pressedKeyNames(layout, session.pressedKeys, session.presentation.activeTriggers, layerKeyNaming, keyboardStandard).join(
+                              ' + ',
+                            )
+                          : '—'}
+                      </p>
+                    </section>
+                    <section>
+                      <h2>Recognized</h2>
+                      <RecognizedDetail layout={layout} naming={layerKeyNaming} recognized={session.lastRecognized} standard={keyboardStandard} />
+                    </section>
                   </fieldset>
                 </div>
-              ) : null}
-              <div className="input-keyboard-content">
-                <div className="input-keyboard-stage">
-                  <div className="input-keyboard-main">
-                    <PhysicalKeyboard
-                      ariaLabel="現在の物理キー状態"
-                      geometryId={geometry.id}
-                      horizontalAlign="left"
-                      keys={visibleKeys}
-                      keyViews={keyboardViews}
-                      selectedKeyId={bindingTargetKey}
-                      onKeyClick={(key) => {
-                        setBindingTargetKey(key.id);
-                        setBindingCapturing(true);
-                      }}
-                    />
-                  </div>
-                  <WorkspacePanel
-                    ariaLabel="Practice Text"
-                    className="input-assist-slot"
-                    dockClassName="input-panel-dock"
-                    dockedHeaderAriaLabel="Practice Textをクリックまたはドラッグして小窓表示"
-                    floatingHeaderAriaLabel="Practice Textを移動"
-                    headerClassName="input-lookup-field-heading"
-                    id={INPUT_LOOKUP_PANEL_ID}
-                    resizeAriaLabel="Practice Textのサイズを変更"
-                    renderHeader={() => (
-                      <>
-                        <span>Practice Text</span>
-                        <span className="input-random-samples">
-                          <button
-                            aria-label={showPracticeAssist ? '入力アシストを非表示' : '入力アシストを表示'}
-                            aria-pressed={showPracticeAssist}
-                            data-active={showPracticeAssist || undefined}
-                            onClick={() => setShowPracticeAssist((current) => !current)}
-                            type="button"
-                          >
-                            アシスト
-                          </button>
-                          <span>ランダム</span>
-                          <button
-                            aria-label="ランダムな単語"
-                            aria-pressed={randomPracticeMode === 'word'}
-                            data-active={randomPracticeMode === 'word' || undefined}
-                            disabled={playableRandomSamples.words.length === 0}
-                            onClick={() => startOrAdvanceRandomPractice('word')}
-                            type="button"
-                          >
-                            単語
-                          </button>
-                          <button
-                            aria-label="ランダムな文章"
-                            aria-pressed={randomPracticeMode === 'phrase'}
-                            data-active={randomPracticeMode === 'phrase' || undefined}
-                            disabled={playableRandomSamples.phrases.length === 0}
-                            onClick={() => startOrAdvanceRandomPractice('phrase')}
-                            type="button"
-                          >
-                            文章
-                          </button>
-                          {randomPracticeMode !== null ? (
-                            <button aria-label="ランダム練習を停止" className="input-random-stop" onClick={stopRandomPractice} type="button">
-                              停止
-                            </button>
-                          ) : null}
-                        </span>
-                      </>
-                    )}
-                  >
-                    <div className="input-lookup-content">
-                      <div className="input-lookup-field input-lookup-field-body" data-random-practice-mode={randomPracticeMode ?? undefined}>
-                        <input
-                          aria-label="打ちたい文字"
-                          type="text"
-                          value={lookupQuery}
-                          onChange={(event) => {
-                            setRandomPracticeMode(null);
-                            setLookupQuery(event.target.value);
-                            setLookupStepIndex(0);
-                          }}
-                          placeholder="例: ぎゃ"
-                          autoComplete="off"
-                        />
-                      </div>
-                      <div className="input-lookup-results" aria-live="polite">
-                        {lookupQuery.length === 0 ? (
-                          <span className="input-muted">打ちたい文字を、この配列でどう打つか調べられます。</span>
-                        ) : activeLookupRoute === undefined || activeLookupStep === undefined || activeLookupAction === undefined ? (
-                          <span className="input-muted">
-                            {lookupTypableElsewhere ? 'この物理配列には必要なキーが無く、打てません。' : 'この配列では打ち方が見つかりません。'}
-                          </span>
+                {bindingTargetKey !== undefined ? (
+                  <div className="input-keyboard-heading">
+                    <fieldset className="plain-group input-key-binding-inline" aria-label="物理キー割当">
+                      <strong>{keyLabel(bindingTargetKey)}</strong>
+                      <span aria-hidden="true">←</span>
+                      <div className="input-key-binding-codes">
+                        {selectedBindingCodes.length === 0 ? (
+                          <span className="input-muted">未割当</span>
                         ) : (
-                          <>
-                            <fieldset className="plain-group input-lookup-guide" aria-label="入力順ガイド">
-                              <span className="input-lookup-nav">
-                                <button
-                                  aria-label="前の入力単位"
-                                  disabled={lookupStepIndex <= 0}
-                                  onClick={() => setLookupStepIndex((current) => Math.max(0, current - 1))}
-                                  type="button"
-                                >
-                                  ←
-                                </button>
-                                <button
-                                  aria-label="次の入力単位"
-                                  disabled={activeLookupGuideIndex >= activeLookupGuideActions.length - 1}
-                                  onClick={() => setLookupStepIndex((current) => Math.min(activeLookupGuideActions.length - 1, current + 1))}
-                                  type="button"
-                                >
-                                  →
-                                </button>
-                              </span>
-                              <span className="input-lookup-progress">
-                                {Math.min(activeLookupGuideIndex + 1, activeLookupGuideActions.length)}
-                                {' / '}
-                                {activeLookupGuideActions.length}
-                              </span>
-                              <strong>{activeLookupAction.output}</strong>
-                              <code>{reverseLookupGuideActionLabel(layout, activeLookupAction, keyboardStandard, layerKeyNaming)}</code>
-                            </fieldset>
-                            <ol>
-                              <li data-active>
-                                <code>{reverseLookupRouteLabel(layout, activeLookupRoute, keyboardStandard, layerKeyNaming)}</code>
-                                {activeLookupRoute.steps.some((step) => step.origin === 'combo') ? <small>コンボ</small> : null}
-                                {otherLookupRoutes.length > 0 ? (
-                                  <span className="input-lookup-alt">
-                                    <button
-                                      aria-describedby="input-lookup-alt-popover"
-                                      aria-label={`他の打ち方 ${otherLookupRoutes.length}件`}
-                                      className="input-lookup-alt-toggle"
-                                      type="button"
-                                    >
-                                      {`+${otherLookupRoutes.length}`}
-                                    </button>
-                                    {/*
+                          selectedBindingCodes.map((code) => (
+                            <button
+                              aria-label={`${keyLabel(bindingTargetKey)}の割り当てから実キー${codeLabel(code)}を外す`}
+                              className="input-binding-chip"
+                              key={code}
+                              onClick={() => updateBindingOverrides(unassignBrowserKeyCode(bindingOverrides, code))}
+                              type="button"
+                            >
+                              <code>{codeLabel(code)}</code>
+                              <span aria-hidden="true">×</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      <button
+                        className="input-binding-add"
+                        data-capturing={bindingCapturing || undefined}
+                        onClick={() => setBindingCapturing((current) => !current)}
+                        type="button"
+                      >
+                        {bindingCapturing ? '実キーを押してください…' : 'キーを追加'}
+                      </button>
+                      <button
+                        className="input-binding-reset"
+                        onClick={() => {
+                          updateBindingOverrides({});
+                          setBindingCapturing(false);
+                        }}
+                        type="button"
+                      >
+                        すべて既定に戻す
+                      </button>
+                      <button
+                        className="input-binding-close"
+                        onClick={() => {
+                          setBindingTargetKey(undefined);
+                          setBindingCapturing(false);
+                        }}
+                        type="button"
+                      >
+                        閉じる
+                      </button>
+                    </fieldset>
+                  </div>
+                ) : null}
+                <div className="input-keyboard-content">
+                  <div className="input-keyboard-stage">
+                    <div className="input-keyboard-main">
+                      <PhysicalKeyboard
+                        ariaLabel="現在の物理キー状態"
+                        geometryId={geometry.id}
+                        horizontalAlign="left"
+                        keys={visibleKeys}
+                        keyViews={keyboardViews}
+                        selectedKeyId={bindingTargetKey}
+                        onKeyClick={(key) => {
+                          setBindingTargetKey(key.id);
+                          setBindingCapturing(true);
+                        }}
+                      />
+                    </div>
+                    <WorkspacePanel
+                      ariaLabel="Practice Text"
+                      className="input-assist-slot"
+                      dockClassName="input-panel-dock"
+                      dockedHeaderAriaLabel="Practice Textをクリックまたはドラッグして小窓表示"
+                      floatingHeaderAriaLabel="Practice Textを移動"
+                      headerClassName="input-lookup-field-heading"
+                      id={INPUT_LOOKUP_PANEL_ID}
+                      resizeAriaLabel="Practice Textのサイズを変更"
+                      renderHeader={() => (
+                        <>
+                          <span>Practice Text</span>
+                          <span className="input-random-samples">
+                            <button
+                              aria-label={showPracticeAssist ? '入力アシストを非表示' : '入力アシストを表示'}
+                              aria-pressed={showPracticeAssist}
+                              data-active={showPracticeAssist || undefined}
+                              onClick={() => setShowPracticeAssist((current) => !current)}
+                              type="button"
+                            >
+                              アシスト
+                            </button>
+                            <span>ランダム</span>
+                            <button
+                              aria-label="ランダムな単語"
+                              aria-pressed={randomPracticeMode === 'word'}
+                              data-active={randomPracticeMode === 'word' || undefined}
+                              disabled={playableRandomSamples.words.length === 0}
+                              onClick={() => startOrAdvanceRandomPractice('word')}
+                              type="button"
+                            >
+                              単語
+                            </button>
+                            <button
+                              aria-label="ランダムな文章"
+                              aria-pressed={randomPracticeMode === 'phrase'}
+                              data-active={randomPracticeMode === 'phrase' || undefined}
+                              disabled={playableRandomSamples.phrases.length === 0}
+                              onClick={() => startOrAdvanceRandomPractice('phrase')}
+                              type="button"
+                            >
+                              文章
+                            </button>
+                            {randomPracticeMode !== null ? (
+                              <button aria-label="ランダム練習を停止" className="input-random-stop" onClick={stopRandomPractice} type="button">
+                                停止
+                              </button>
+                            ) : null}
+                          </span>
+                        </>
+                      )}
+                    >
+                      <div className="input-lookup-content">
+                        <div className="input-lookup-field input-lookup-field-body" data-random-practice-mode={randomPracticeMode ?? undefined}>
+                          <input
+                            aria-label="打ちたい文字"
+                            type="text"
+                            value={lookupQuery}
+                            onChange={(event) => {
+                              setRandomPracticeMode(null);
+                              setLookupQuery(event.target.value);
+                              setLookupStepIndex(0);
+                            }}
+                            placeholder="例: ぎゃ"
+                            autoComplete="off"
+                          />
+                        </div>
+                        <div className="input-lookup-results" aria-live="polite">
+                          {lookupQuery.length === 0 ? (
+                            <span className="input-muted">打ちたい文字を、この配列でどう打つか調べられます。</span>
+                          ) : activeLookupRoute === undefined || activeLookupStep === undefined || activeLookupAction === undefined ? (
+                            <span className="input-muted">
+                              {lookupTypableElsewhere ? 'この物理配列には必要なキーが無く、打てません。' : 'この配列では打ち方が見つかりません。'}
+                            </span>
+                          ) : (
+                            <>
+                              <fieldset className="plain-group input-lookup-guide" aria-label="入力順ガイド">
+                                <span className="input-lookup-nav">
+                                  <button
+                                    aria-label="前の入力単位"
+                                    disabled={lookupStepIndex <= 0}
+                                    onClick={() => setLookupStepIndex((current) => Math.max(0, current - 1))}
+                                    type="button"
+                                  >
+                                    ←
+                                  </button>
+                                  <button
+                                    aria-label="次の入力単位"
+                                    disabled={activeLookupGuideIndex >= activeLookupGuideActions.length - 1}
+                                    onClick={() => setLookupStepIndex((current) => Math.min(activeLookupGuideActions.length - 1, current + 1))}
+                                    type="button"
+                                  >
+                                    →
+                                  </button>
+                                </span>
+                                <span className="input-lookup-progress">
+                                  {Math.min(activeLookupGuideIndex + 1, activeLookupGuideActions.length)}
+                                  {' / '}
+                                  {activeLookupGuideActions.length}
+                                </span>
+                                <strong>{activeLookupAction.output}</strong>
+                                <code>{reverseLookupGuideActionLabel(layout, activeLookupAction, keyboardStandard, layerKeyNaming)}</code>
+                              </fieldset>
+                              <ol>
+                                <li data-active>
+                                  <code>{reverseLookupRouteLabel(layout, activeLookupRoute, keyboardStandard, layerKeyNaming)}</code>
+                                  {activeLookupRoute.steps.some((step) => step.origin === 'combo') ? <small>コンボ</small> : null}
+                                  {otherLookupRoutes.length > 0 ? (
+                                    <span className="input-lookup-alt">
+                                      <button
+                                        aria-describedby="input-lookup-alt-popover"
+                                        aria-label={`他の打ち方 ${otherLookupRoutes.length}件`}
+                                        className="input-lookup-alt-toggle"
+                                        type="button"
+                                      >
+                                        {`+${otherLookupRoutes.length}`}
+                                      </button>
+                                      {/*
                               hoverだけでなくkeyboard focusでも開くよう、buttonのfocusを
                               :focus-withinで拾う。中身は読み上げ用のstatic textだけなので
                               tooltipとして扱ってよい。
                             */}
-                                    <div className="input-lookup-alt-popover" id="input-lookup-alt-popover" role="tooltip">
-                                      <span className="input-lookup-alt-heading">他の打ち方</span>
-                                      <ol>
-                                        {otherLookupRoutes.map((route, index) => (
-                                          // biome-ignore lint/suspicious/noArrayIndexKey: 打ち方の候補を毎回作り直す表示だけの一覧で、同じ表示が並びうる
-                                          <li key={`${reverseLookupRouteLabel(layout, route)}:${index}`}>
-                                            <code>{reverseLookupRouteLabel(layout, route, keyboardStandard, layerKeyNaming)}</code>
-                                            {route.steps.some((step) => step.origin === 'combo') ? <small>コンボ</small> : null}
-                                          </li>
-                                        ))}
-                                      </ol>
-                                    </div>
-                                  </span>
-                                ) : null}
-                              </li>
-                            </ol>
-                          </>
-                        )}
+                                      <div className="input-lookup-alt-popover" id="input-lookup-alt-popover" role="tooltip">
+                                        <span className="input-lookup-alt-heading">他の打ち方</span>
+                                        <ol>
+                                          {otherLookupRoutes.map((route, index) => (
+                                            // biome-ignore lint/suspicious/noArrayIndexKey: 打ち方の候補を毎回作り直す表示だけの一覧で、同じ表示が並びうる
+                                            <li key={`${reverseLookupRouteLabel(layout, route)}:${index}`}>
+                                              <code>{reverseLookupRouteLabel(layout, route, keyboardStandard, layerKeyNaming)}</code>
+                                              {route.steps.some((step) => step.origin === 'combo') ? <small>コンボ</small> : null}
+                                            </li>
+                                          ))}
+                                        </ol>
+                                      </div>
+                                    </span>
+                                  ) : null}
+                                </li>
+                              </ol>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </WorkspacePanel>
+                    </WorkspacePanel>
+                  </div>
                 </div>
-              </div>
-            </WorkspacePanel>
-          </section>
+              </WorkspacePanel>
+            </section>
+          )}
         </div>
       </section>
     </WorkspaceProvider>

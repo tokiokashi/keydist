@@ -209,8 +209,22 @@ export function PaneFrame({
   // バッジの幅の分だけ対象ボタンが動いて、計算が済むと戻る。前の結果を表示している間と失敗は見出しで伝える
   const bodyShowsBusy = engineState.status === 'computing' && children === undefined;
   const readingLoading = isWaitingForReading(reading);
-  const statusLabel = emptyContent === undefined && assetsReady && !bodyShowsBusy && !readingLoading ? paneStatusLabel(engineState.status) : '';
-  const errorMessage = emptyContent === undefined && engineState.status === 'failed' ? describeEngineRequestError(engineState.error) : undefined;
+  // 配列の表を取得している間は、失敗ではなく読み込み中として出す
+  const layoutLoadingMessage =
+    engineState.status === 'failed' &&
+    engineState.error.kind === 'resolution' &&
+    engineState.error.error.kind === 'layout-table' &&
+    engineState.error.error.status === 'loading'
+      ? describeEngineRequestError(engineState.error)
+      : undefined;
+  const statusLabel =
+    emptyContent === undefined && assetsReady && !bodyShowsBusy && !readingLoading && layoutLoadingMessage === undefined
+      ? paneStatusLabel(engineState.status)
+      : '';
+  const errorMessage =
+    emptyContent === undefined && engineState.status === 'failed' && layoutLoadingMessage === undefined
+      ? describeEngineRequestError(engineState.error)
+      : undefined;
   const paneName = targetName === undefined ? name : `${name} — ${targetName}`;
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   const nameInLead = useContext(PaneNameInLeadContext);
@@ -399,6 +413,10 @@ export function PaneFrame({
         <div className="pane-error" role="alert" data-pane-error="true" data-pane-reading="bodyFailed">
           <p>テキストの本文を読み込めなかったため、数値を出していません。テキストを開いて、もう一度読み込んでください</p>
         </div>
+      ) : layoutLoadingMessage !== undefined ? (
+        <p className="pane-busy" aria-busy="true" data-pane-busy="true" data-pane-layout="loading">
+          {layoutLoadingMessage}
+        </p>
       ) : readingLoading ? (
         <p className="pane-busy" aria-busy="true" data-pane-busy="true" data-pane-reading="loading">
           読みの辞書を読み込み中…

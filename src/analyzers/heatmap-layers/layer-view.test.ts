@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LAYOUTS } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
@@ -19,7 +20,7 @@ import { KANA_TEST_TEXT } from '../../../test/kana-test-text.ts';
 const geometry = buildGeometry('row-staggered');
 
 function extractionFor(layoutId: string, text: string) {
-  const layout = LAYOUT_BY_ID.get(layoutId);
+  const layout = LOADED_LAYOUT_BY_ID.get(layoutId);
   assert.ok(layout, layoutId);
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
@@ -104,8 +105,8 @@ test('英字配列: 面として宣言していないShiftの層は、使われ�
 });
 
 test('全配列: 層別図の押下数の合計とコンボ枠は、ヒートマップの押下数と一致する(まとめ・詳細とも)', () => {
-  for (const layout of [...LAYOUTS, ...LAYOUTS_JA]) {
-    const text = LAYOUTS_JA.includes(layout) ? 'あいがぱ' : 'aAbB';
+  for (const layout of [...LAYOUTS, ...LOADED_LAYOUTS_JA]) {
+    const text = LOADED_LAYOUTS_JA.includes(layout) ? 'あいがぱ' : 'aAbB';
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
     if (trace.skipped > 0) continue;
     const metrics = computeMetrics(trace, geometry);

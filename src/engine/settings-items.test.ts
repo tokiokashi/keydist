@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS, type Layout } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES, type PresetGeometryKind } from '#input/shapes/geometry.ts';
 import type { CascadeContext, InputMethod } from '#input/settings/index.ts';
 import {
@@ -31,12 +32,12 @@ function findLayout(list: readonly Layout[], id: string): Layout {
   return layout;
 }
 
-const naginata = findLayout(LAYOUTS_JA, 'naginata-v18'); // SandS(交代打鍵)を持つ配列
-const asuka = findLayout(LAYOUTS_JA, 'asuka'); // SandSを持たない配列
-const nicola = findLayout(LAYOUTS_JA, 'nicola'); // かな直接（ローマ字表を持たない）
-const qwertyJa = findLayout(LAYOUTS_JA, 'qwerty'); // ローマ字入力（既定でkunreiが焼き込み済み）
-const oonishiJa = findLayout(LAYOUTS_JA, 'oonishi'); // ローマ字入力だが既定がoonishi
-const tomisukeJa = findLayout(LAYOUTS_JA, 'tomisuke'); // ローマ字入力だが既定がtomisuke
+const naginata = findLayout(LOADED_LAYOUTS_JA, 'naginata-v18'); // SandS(交代打鍵)を持つ配列
+const asuka = findLayout(LOADED_LAYOUTS_JA, 'asuka'); // SandSを持たない配列
+const nicola = findLayout(LOADED_LAYOUTS_JA, 'nicola'); // かな直接（ローマ字表を持たない）
+const qwertyJa = findLayout(LOADED_LAYOUTS_JA, 'qwerty'); // ローマ字入力（既定でkunreiが焼き込み済み）
+const oonishiJa = findLayout(LOADED_LAYOUTS_JA, 'oonishi'); // ローマ字入力だが既定がoonishi
+const tomisukeJa = findLayout(LOADED_LAYOUTS_JA, 'tomisuke'); // ローマ字入力だが既定がtomisuke
 const colemakEn = findLayout(LAYOUTS, 'colemak'); // 英字配列（ローマ字表を持たない）
 
 function contextFor(
@@ -113,7 +114,7 @@ test('romajiRuleId: 全体の値は推奨の無い配列に効き、出どころ
 });
 
 test('romajiRuleId: 推奨を持つ配列（大西配列・とみすけ配列・TK音直入力法）は全体を変えても推奨のまま。負けた全体は理由に残る', () => {
-  const tk = findLayout(LAYOUTS_JA, 'tk-onchoku');
+  const tk = findLayout(LOADED_LAYOUTS_JA, 'tk-onchoku');
   for (const [layout, expected] of [
     [oonishiJa, 'oonishi'],
     [tomisukeJa, 'tomisuke'],
@@ -283,7 +284,7 @@ test('上書き無しの解決結果は、全組み込み配列でfixtureに記�
   assert.ok(defaultScenarios.length > 0);
 
   for (const scenario of defaultScenarios) {
-    const list = scenario.language === 'en' ? LAYOUTS : LAYOUTS_JA;
+    const list = scenario.language === 'en' ? LAYOUTS : LOADED_LAYOUTS_JA;
     const layout = findLayout(list, scenario.layoutId);
     // romajiRuleIdはinputMethodに依存しない（layout側の既定のみ）ため、direct/kana-direct/romajiの
     // どれを渡しても値は変わらない。ここではローマ字が絡む配列は'romaji'を使う。

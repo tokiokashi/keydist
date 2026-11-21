@@ -1,10 +1,20 @@
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { KANJI_DIRECT_DECLARATIONS, kanjiDirectLayout } from '#input/layouts/kanji-direct-tables.ts';
+import type { Layout } from '#input/layouts/types.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 
 const BUILTIN_SHAPES: ReadonlyMap<string, PhysicalShape> = new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const));
+
+/**
+ * 組み込みの漢直の配列の今の姿。表を取得済みの配列は表から作った配列、まだの配列は取得する前の配列。
+ * 取得の状態が変わったらカタログを作り直す（`use-pane-catalog.ts`）。
+ */
+function currentKanjiDirectLayouts(): [string, Layout][] {
+  return KANJI_DIRECT_DECLARATIONS.map((declaration) => [declaration.id, kanjiDirectLayout(declaration.id)!]);
+}
 
 /**
  * ペイン（個別画面・Workspace）が`resolveEngineInput`へ渡すカタログの組み立て。
@@ -20,7 +30,7 @@ export function paneCatalog(
   const user = buildUserCatalog(assets.userLayouts, assets.userRomajiRules);
   return {
     setupCatalog: {
-      layouts: new Map([...LAYOUT_BY_ID, ...user.layouts]),
+      layouts: new Map([...LAYOUT_BY_ID, ...currentKanjiDirectLayouts(), ...user.layouts]),
       shapes: BUILTIN_SHAPES,
       romajiRules: new Map(user.romajiRules.map((rule) => [rule.id, rule] as const)),
       ...(assets.fingerAssignments === undefined

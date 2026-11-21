@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { generateTrace, DEFAULT_TRACE_POLICY } from '#trace/generate.ts';
 import { buildGeometry, THUMB_KEY } from '../shapes/geometry.ts';
-import { TUT_CODE, TUT_EMPTY, TUT_KEYS, TUT_ROOT, type TutTable } from './tut-code.ts';
+import { loadedKanjiDirectLayout } from '../../../test/kanji-direct-tables.ts';
+import { isKanjiDirectLayout } from './kanji-direct.ts';
+import { pendingKanjiDirectLayouts } from './kanji-direct-tables.ts';
+import { physicalKeysUsedByLayout } from './physical-keys.ts';
+import { TUT_EMPTY, TUT_KEYS, type TutTable } from './tut-code.ts';
 
 interface TutSource {
   format: string;
@@ -12,6 +16,8 @@ interface TutSource {
   root: TutTable;
 }
 
+const TUT_CODE = loadedKanjiDirectLayout('tut-code');
+const TUT_ROOT = JSON.parse(readFileSync(new URL('./tables/tut-code.json', import.meta.url), 'utf8')) as TutTable;
 const source = JSON.parse(readFileSync(new URL('../../../test/fixtures/sources/tut-code.json', import.meta.url), 'utf8')) as TutSource;
 
 /** 出典の写しの表から、字 → 打鍵の並び（キーのidで、空白キーは右親指）を作る。 */
@@ -78,4 +84,15 @@ test('層は単打の1つだけで、途中の打鍵はトリガーに数えな�
     const keys = strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
     assert.deepEqual(keys[3], [THUMB_KEY.RT]);
   }
+});
+
+test('表を取得する前の配列の宣言が、表から導いた漢直であることと使う物理キーに一致する', () => {
+  const pending = pendingKanjiDirectLayouts().find((layout) => layout.id === 'tut-code');
+  assert.ok(pending !== undefined);
+  assert.notEqual(pending, TUT_CODE);
+  assert.ok(pending.pendingTable !== undefined);
+  assert.equal(pending.name, TUT_CODE.name);
+  assert.deepEqual(pending.aliases, TUT_CODE.aliases);
+  assert.equal(isKanjiDirectLayout(pending), isKanjiDirectLayout(TUT_CODE));
+  assert.deepEqual([...physicalKeysUsedByLayout(pending)].sort(), [...physicalKeysUsedByLayout(TUT_CODE)].sort());
 });

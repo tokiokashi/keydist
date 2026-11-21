@@ -189,7 +189,7 @@ export interface SetAnalyzerWarmup {
  */
 export interface AnalyzerSetMemberFailure {
   readonly target: AnalysisTarget;
-  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'keys-missing' | 'text-too-long' | 'target-missing';
+  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'keys-missing' | 'text-too-long' | 'target-missing' | 'layout-table';
   readonly message: string;
 }
 

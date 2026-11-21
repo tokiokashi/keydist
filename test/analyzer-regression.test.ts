@@ -4,7 +4,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS, withRomaji, type Layout } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from './kanji-direct-tables.ts';
 import { assignmentWithHomeKeys, buildGeometry, PHYSICAL_SHAPES, type FingerAssignment, type PresetGeometryKind } from '#input/shapes/geometry.ts';
 import { generateTrace, type CenterShiftThumb, type SpaceThumb, type TracePolicy } from '#trace/generate.ts';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
@@ -86,7 +87,7 @@ function sha256(text: string): string {
 }
 
 function allLayouts(language: TextLanguage): readonly Layout[] {
-  return language === 'en' ? LAYOUTS : LAYOUTS_JA;
+  return language === 'en' ? LAYOUTS : LOADED_LAYOUTS_JA;
 }
 
 function findLayout(language: TextLanguage, layoutId: string): Layout {

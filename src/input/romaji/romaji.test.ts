@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { buildGeometry, JIS_FINGER_ASSIGNMENT, QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
+import { LAYOUTS, withRomaji } from '../layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { kanaToRomaji, kanaToRomajiChunks, kunrei } from './kunrei.ts';
 import { azik } from './azik.ts';
 import { jlod } from './jlod.ts';
@@ -109,7 +110,7 @@ test('同じテーブルを使う英字配列はステップ数が揃う', () =>
 
 test('日本語の全配列が評価でき、未対応の文字を残さない', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     // JISの物理配列が要る配列（JISかな配列）は、JISの物理配列で測る
     const layoutGeometry = layout.requiresJisShape === true ? buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT) : geometry;
     const t = generateTrace(text, layout, layoutGeometry, opts);
@@ -245,8 +246,8 @@ test('…は綴りを持たず、打てない記号に数える', () => {
 });
 
 test('大西配列は公式の配布物が、TK音直入力法は出典が見つからず置き場を定めない「」と『』を打てない文字に数える', () => {
-  const oonishi = LAYOUTS_JA.find((layout) => layout.id === 'oonishi')!;
-  const custom = LAYOUTS_JA.find((layout) => layout.id === 'tk-onchoku')!;
+  const oonishi = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'oonishi')!;
+  const custom = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'tk-onchoku')!;
   // 大西配列は [ ] のキーを持たず、公式の配布物も置き場を定めない。『』も「」を打てないので打てない文字に数える。/ は日本語の評価でだけ打つ
   const oonishiTrace = generateTrace('「」・『』', oonishi, geometry, opts);
   assert.equal(oonishiTrace.skipped, 4);

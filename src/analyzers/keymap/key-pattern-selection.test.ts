@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
@@ -16,7 +16,7 @@ import {
 import { fixedTestText } from '../../../test/kana-test-text.ts';
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 

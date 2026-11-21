@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createEngineCache } from '#engine/cache.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
@@ -23,7 +23,7 @@ import { axisRange, scatterPlotModel } from './plot-model.ts';
  */
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
@@ -34,7 +34,7 @@ function rowOf(
   text: string,
   notationExcess?: NotationExcess,
 ): { readonly row: ComparisonRowValues; readonly inputChars: number; readonly trace: Trace } {
-  const shapeId = LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
+  const shapeId = LOADED_LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
   const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId };
   const resolution = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
@@ -83,7 +83,7 @@ function relativeError(actual: number, expected: number): number {
   return Math.abs(actual - expected) / Math.max(Math.abs(expected), 1e-12);
 }
 
-const ALL_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({ layoutId, ...rowOf(layoutId, TEXT) }));
+const ALL_ROWS = [...LOADED_LAYOUT_BY_ID.keys()].map((layoutId) => ({ layoutId, ...rowOf(layoutId, TEXT) }));
 
 /**
  * 漢字を読みに直したテキスト。読みの字数と表記の字数が違うので、文字数 `W` が入力かな数 `C` と違う。
@@ -126,7 +126,7 @@ function kanjiTokens(): ReadingToken[] {
 }
 
 const KANJI_CONVERSION = convertToReading(KANJI_SOURCE, kanjiTokens());
-const KANJI_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({
+const KANJI_ROWS = [...LOADED_LAYOUT_BY_ID.keys()].map((layoutId) => ({
   layoutId,
   ...rowOf(layoutId, KANJI_CONVERSION.text, KANJI_CONVERSION.notationExcess),
 }));

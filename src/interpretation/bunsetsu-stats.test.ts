@@ -3,7 +3,7 @@ import test from 'node:test';
 import { generateEngineTrace } from '#engine/pipeline.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../test/kanji-direct-tables.ts';
 import { buildGeometry, PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 
 import { SAMPLE_TEXT_JA_NEKO } from '#input/text/sample-ja-neko.ts';
@@ -204,7 +204,7 @@ test('上位の一覧は20行までで、同じ回数は最初に出た順に並
 // ---------------------------------------------------------------------------
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
@@ -234,7 +234,7 @@ function uncoveredPositions(trace: Trace): number[] {
 test('組み込みの全配列で、打鍵できなかった文字の位置は、覆いから求めた補集合を含み、かな配列では数が skipped と一致する', () => {
   let resolved = 0;
   let withSkipped = 0;
-  for (const layoutId of LAYOUT_BY_ID.keys()) {
+  for (const layoutId of LOADED_LAYOUT_BY_ID.keys()) {
     for (const text of [SAMPLE_TEXT_JA_NEKO, MIXED_TEXT]) {
       const trace = traceFor(layoutId, text);
       if (trace === undefined) continue;
@@ -243,7 +243,7 @@ test('組み込みの全配列で、打鍵できなかった文字の位置は�
       assert.equal(positions.size, trace.skippedPositions.length, `${layoutId}: 位置が重複している`);
       for (const position of uncoveredPositions(trace)) assert.ok(positions.has(position), `${layoutId}: 覆われない位置${position}が入っていない`);
       assert.ok(trace.skippedPositions.every((position) => position >= 0 && position < trace.inputChars));
-      if (LAYOUT_BY_ID.get(layoutId)!.romajiTable === undefined) assert.equal(positions.size, trace.skipped, layoutId);
+      if (LOADED_LAYOUT_BY_ID.get(layoutId)!.romajiTable === undefined) assert.equal(positions.size, trace.skipped, layoutId);
       if (trace.skipped > 0) withSkipped++;
     }
   }
@@ -252,7 +252,7 @@ test('組み込みの全配列で、打鍵できなかった文字の位置は�
 });
 
 test('ローマ字の綴りの一部の英字だけが打てない時は、そのかなの文字を全部、打鍵できなかった文字に数える', () => {
-  const base = LAYOUT_BY_ID.get('qwerty')!;
+  const base = LOADED_LAYOUT_BY_ID.get('qwerty')!;
   // 英字 y の入力だけ配列から外す。きょ（kyo）は k と o が打てても、綴りの一部が欠けるので打てなかったものとして数える
   const layout = { ...base, canonicalInputs: new Map([...base.canonicalInputs].filter(([output]) => output !== 'y')) };
   const trace = generateTrace('きょうはやまにいく', layout, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true });

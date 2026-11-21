@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LAYOUTS } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { sampleText } from '#input/text/samples.ts';
@@ -22,7 +23,7 @@ import { N_SENSITIVITY_RANGE, valuesOf } from './extract.ts';
 import { KANA_TEST_TEXT } from '../../../test/kana-test-text.ts';
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
@@ -35,7 +36,7 @@ test('選択肢の指標は、組み込みの配列でNによって値が変わ�
   const varied = new Set<string>();
   const cases = [
     ...LAYOUTS.map((layout) => ({ layoutId: layout.id, language: 'en' as const, text: sampleText('en', 'default') })),
-    ...LAYOUTS_JA.map((layout) => ({ layoutId: layout.id, language: 'ja' as const, text: KANA_TEST_TEXT })),
+    ...LOADED_LAYOUTS_JA.map((layout) => ({ layoutId: layout.id, language: 'ja' as const, text: KANA_TEST_TEXT })),
   ];
   for (const { layoutId, language, text } of cases) {
     const setup: Setup = {

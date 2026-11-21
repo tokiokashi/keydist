@@ -4,6 +4,8 @@ import { ContextBarLeadingSlot } from '#hosts/shared/ContextBar.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { CorpusBodyLoaderContext } from '#hosts/shared/use-resolved-text-selection.ts';
 import { fetchCorpusBody } from '#platform/corpus/corpus-loader.ts';
+import { configureKanjiDirectLoader } from '#input/layouts/kanji-direct-tables.ts';
+import { fetchKanjiDirectTable } from '#platform/layouts/kanji-direct-loader.ts';
 import { SetupLinkContext, type SetupLinkProps } from '#hosts/shared/setup-link.tsx';
 import { PersonalSpeedLinkContext, type PersonalSpeedLinkProps } from '#ui/primitives/personal-speed-link.tsx';
 import { AddedToWorkspaceNotice } from '../workspace/AddedToWorkspaceNotice.tsx';
@@ -22,6 +24,9 @@ import {
   subscribeSidebarPreferences,
 } from './sidebar-preference.ts';
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
+
+// 組み込みの漢直の配列の表を取得する手段。ブラウザだけで渡し、事前描画では取得しない
+if (typeof window !== 'undefined') configureKanjiDirectLoader(fetchKanjiDirectTable);
 
 /**
  * 全画面を載せる器（docs/architecture.md「画面の構成」）。サイドバーと本体を持つ。

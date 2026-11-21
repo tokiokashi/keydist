@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { generateEngineTrace } from '#engine/pipeline.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride } from '#engine/settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { isAlphanumericChar, isSymbolChar } from '#input/text/evaluation-text.ts';
 import { convertToReading, type ReadingToken } from '#input/text/reading.ts';
@@ -96,7 +96,8 @@ function parseArgs(argv: readonly string[]): Args {
   const window = value('--window');
   return {
     stage,
-    layouts: value('--layouts') === 'all' ? [...LAYOUT_BY_ID.keys()] : (value('--layouts') ?? 'qwerty,jis-kana').split(',').filter((id) => id !== ''),
+    layouts:
+      value('--layouts') === 'all' ? [...LOADED_LAYOUT_BY_ID.keys()] : (value('--layouts') ?? 'qwerty,jis-kana').split(',').filter((id) => id !== ''),
     ranges: integer('--ranges', 3),
     rangeSeed: integer('--range-seed', 1),
     seedStart: integer('--seed-start', DEFAULT_RUN_CHART_OPTIONS.seedStart),
@@ -176,7 +177,7 @@ interface Range {
 // ---------------------------------------------------------------------------
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
@@ -332,7 +333,7 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
     newlineCounts = counts;
     boundaryTotal = boundaries.length;
     newlineDistance = Math.max(newlineDistance, ...boundaries.filter((b) => chars[b] === '\n').map((b) => Math.abs(index.distanceAt[b]!)));
-    const layout = must(LAYOUT_BY_ID.get(layoutId), layoutId);
+    const layout = must(LOADED_LAYOUT_BY_ID.get(layoutId), layoutId);
     conditions.push(
       `${layout.name}（${layoutId}。${resolved.romajiRuleId === null ? 'かな直接入力' : `ローマ字入力、綴り${resolved.romajiRuleId}`}、物理配列${resolved.geometry.id}、指の割り当て${resolved.geometry.assignment.id}、N=${resolved.tracePolicy.windowSize}）`,
     );
@@ -472,7 +473,7 @@ function minMaxPercent(values: readonly number[]): string {
 async function main(): Promise<void> {
   const started = Date.now();
   const args = parseArgs(process.argv.slice(2));
-  for (const id of args.layouts) must(LAYOUT_BY_ID.get(id), `配列${id}が無い`);
+  for (const id of args.layouts) must(LOADED_LAYOUT_BY_ID.get(id), `配列${id}が無い`);
   const lap = (label: string): void => console.error(`[kana-chain] ${label} ${((Date.now() - started) / 1000).toFixed(1)}秒`);
 
   // コーパス: 取得と除去は`scripts/generate-neko-sample.ts`と同じ（archiveBytes・extractBody・convertAozora）
@@ -680,7 +681,7 @@ async function main(): Promise<void> {
   out.push('# かな3文字までの並びの統計で説明できるか（コーパスの範囲）', '');
   out.push('## 再現の条件', '');
   const layoutNames = args.layouts.map((id) => {
-    const layout = must(LAYOUT_BY_ID.get(id), id);
+    const layout = must(LOADED_LAYOUT_BY_ID.get(id), id);
     const state = must(
       layoutStates.find((s) => s.layoutId === id),
       id,

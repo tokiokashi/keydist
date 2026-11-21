@@ -4,11 +4,12 @@ import { DEFAULT_TRACE_POLICY, generateTrace, uncoveredTextPositions } from '#tr
 import { defaultRomajiRuleId, isRomajiBase, isUserRomajiRule, recommendedRomajiRuleId, tableForRule } from '../romaji/rules.ts';
 import { buildGeometry, THUMB_KEY } from '../shapes/geometry.ts';
 import { prepareEvaluationText } from '../text/evaluation-text.ts';
-import { faceCells, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './index.ts';
+import { faceCells, LAYOUTS, withRomaji, type Layout } from './index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { SEOTO_FACES } from './seoto.ts';
 
 const geometry = buildGeometry('row-staggered');
-const seotoJa = LAYOUTS_JA.find((layout) => layout.id === 'seoto')!;
+const seotoJa = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'seoto')!;
 const seotoEn = LAYOUTS.find((layout) => layout.id === 'seoto')!;
 const LAYER_ID = 'layer:左親指';
 
@@ -78,7 +79,7 @@ test('左親指の層は ん ー っ を右手の中指・薬指・小指の位�
 
 test('組み込みの配列は、英文の一覧と日本語の一覧の両方に入り、推奨の規則はせおと配列の綴りである', () => {
   assert.equal(seotoEn.name, 'せおと配列');
-  assert.equal(LAYOUT_BY_ID.get('seoto')?.id, 'seoto');
+  assert.equal(LOADED_LAYOUT_BY_ID.get('seoto')?.id, 'seoto');
   assert.equal(recommendedRomajiRuleId('seoto'), 'seoto');
   assert.equal(defaultRomajiRuleId('seoto'), 'seoto');
   assert.equal(seotoJa.romajiTable?.get('か'), 'ca');
@@ -163,7 +164,7 @@ test('せおと配列に別の規則を組むと、nnなどで打てるが層は
 });
 
 test('せおと配列の規則を別の配列と組むと、ん っ ー は打てない文字に数えられる', () => {
-  const qwerty = LAYOUTS_JA.find((layout) => layout.id === 'qwerty')!;
+  const qwerty = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'qwerty')!;
   const trace = generateTrace('かんっー', withRomaji(qwerty, tableForRule('seoto')), geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 3);
 });

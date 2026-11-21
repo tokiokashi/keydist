@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '#input/shapes/geometry.ts';
 import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing, meanStdDevMax, textCharMetrics } from './metrics.ts';
-import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA, LOADED_LAYOUT_BY_ID } from '../../test/kanji-direct-tables.ts';
 import { dist } from '#input/shapes/geometry.ts';
 import { SAMPLE_TEXT_JA } from '../../test/kana-sample-text.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from './structure/chain.ts';
@@ -12,7 +13,7 @@ import { DEFAULT_ARPEGGIO_INTERPRETATION } from './structure/arpeggio.ts';
 const geometry = buildGeometry('row-staggered');
 // LAYOUT_BY_IDの 'qwerty' はローマ字テーブル付きのJA版で上書きされる。
 // ローマ字表に無いasciiはそのまま通るので、英字のテストにもそのまま使える。
-const qwerty = LAYOUT_BY_ID.get('qwerty')!;
+const qwerty = LOADED_LAYOUT_BY_ID.get('qwerty')!;
 const opts = (o: Partial<TracePolicy> = {}): TracePolicy => ({
   windowSize: 3,
   sfbHomeCost: true,
@@ -131,11 +132,11 @@ test('1文字あたりの押下キー数は押下数を入力文字数で割っ�
 });
 
 test('単打面率は単打面の1キー直接出力だけを文字数ベースで数える', () => {
-  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const asuka = LOADED_LAYOUT_BY_ID.get('asuka')!;
   const asukaMetrics = computeMetrics(generateTrace('はあ', asuka, geometry, opts()), geometry);
   near(asukaMetrics.singleTapLayerRate, 50, '飛鳥: 単打面「は」だけを数える');
 
-  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const shingeta = LOADED_LAYOUT_BY_ID.get('shingeta')!;
   const shingetaMetrics = computeMetrics(generateTrace('のきゃ', shingeta, geometry, opts()), geometry);
   near(shingetaMetrics.singleTapLayerRate, 100 / 3, '新下駄: 2文字コンボ「きゃ」は単打面率へ含めない');
 
@@ -209,19 +210,19 @@ test('単打率はかなを1キーで直接出す独立actionだけを数える'
   near(romajiMetrics.singleTapRate, 0, 'ローマ字のa / k / aをかな配列の単打とは数えない');
   near(romajiMetrics.singleKeyRate, 100, 'ローマ字の各actionは1キー入力として数える');
 
-  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const tsuki = LOADED_LAYOUT_BY_ID.get('tsuki-2-263')!;
   const prefixMetrics = computeMetrics(generateTrace('あ', tsuki, geometry, opts()), geometry);
   near(prefixMetrics.singleTapRate, 0, '月配列: 前置シフトを含む入力は単打には含めない');
   near(prefixMetrics.singleKeyRate, 100, '月配列: 前置シフトも出力も各actionは1キー');
 
-  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const shingeta = LOADED_LAYOUT_BY_ID.get('shingeta')!;
   const comboMetrics = computeMetrics(generateTrace('きゃ', shingeta, geometry, opts()), geometry);
   near(comboMetrics.singleTapRate, 0, '新下駄: 多キー同時押しは単打に含めない');
   near(comboMetrics.singleKeyRate, 0, '新下駄: 多キー同時押しは1キー打鍵でもない');
 });
 
 test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数える', () => {
-  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const asuka = LOADED_LAYOUT_BY_ID.get('asuka')!;
   const combinedTrace = generateTrace(
     'あだ',
     asuka,
@@ -263,7 +264,7 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
 });
 
 test('1キー率はsemanticを見ずrealized Strokeのfresh key数だけ数える', () => {
-  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const asuka = LOADED_LAYOUT_BY_ID.get('asuka')!;
   const trace = generateTrace(
     'あだ',
     asuka,
@@ -292,7 +293,7 @@ test('1キー率はsemanticを見ずrealized Strokeのfresh key数だけ数え�
 });
 
 test('月配列2-263は全actionが1キーならサンプルでも1キー率100%', () => {
-  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const tsuki = LOADED_LAYOUT_BY_ID.get('tsuki-2-263')!;
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const metrics = computeMetrics(generateTrace(text, tsuki, geometry, opts()), geometry);
   near(metrics.singleKeyRate, 100);
@@ -311,7 +312,7 @@ test('複数文字の単打見出しは単打面率では文字数、単打率�
 });
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {
-  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const asuka = LOADED_LAYOUT_BY_ID.get('asuka')!;
   const trace = generateTrace(
     'あだ',
     asuka,
@@ -329,7 +330,7 @@ test('単打率はhold継続中の1キー入力を単打に含めない', () => 
 });
 
 test('単打面率はhold継続中のシフト文字を単打面扱いしない', () => {
-  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const asuka = LOADED_LAYOUT_BY_ID.get('asuka')!;
   const trace = generateTrace(
     'あだ',
     asuka,
@@ -366,7 +367,7 @@ test('コンボはアクション/文字を下げるが、押下/文字は下げ
 });
 
 test('コンボの定義数・命中定義数・延べ命中回数を分けて数える', () => {
-  const combo = LAYOUT_BY_ID.get('tk-onchoku')!;
+  const combo = LOADED_LAYOUT_BY_ID.get('tk-onchoku')!;
   const trace = generateTrace('やくやまにゅうりょくきゃ', combo, geometry, opts());
   const m = computeMetrics(trace, geometry);
 
@@ -376,7 +377,7 @@ test('コンボの定義数・命中定義数・延べ命中回数を分けて�
 
 test('層別集計とヒートマップのキー押下数は保存則を満たす', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     const m = computeMetrics(generateTrace(text, layout, geometry, opts()), geometry);
     const layerPresses = m.layers.reduce((sum, layer) => sum + layer.presses, 0);
     assert.equal(layerPresses + m.comboPresses, m.presses, `${layout.id} の層別押下数`);
@@ -400,7 +401,7 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
     { layoutId: 'shingeta', text: 'れ', trigger: 'k', output: 'd' },
   ];
   for (const { layoutId, text, trigger, output } of cases) {
-    const layout = LAYOUTS_JA.find((entry) => entry.id === layoutId)!;
+    const layout = LOADED_LAYOUTS_JA.find((entry) => entry.id === layoutId)!;
     const trace = generateTrace(text, layout, geometry, opts());
     const metrics = computeMetrics(trace, geometry);
     const layer = metrics.layers.find((stat) => stat.presses > 0)!;
@@ -447,7 +448,7 @@ test('層トリガー1個の同時打鍵は対向トリガー扱いしない', (
     { layoutId: 'shingeta', text: 'ご', trigger: 'k', output: 'w' },
   ];
   for (const { layoutId, text, trigger, output } of cases) {
-    const layout = LAYOUTS_JA.find((entry) => entry.id === layoutId)!;
+    const layout = LOADED_LAYOUTS_JA.find((entry) => entry.id === layoutId)!;
     const trace = generateTrace(text, layout, geometry, opts());
     const metrics = computeMetrics(trace, geometry);
     const layer = metrics.layers.find((stat) => stat.presses > 0)!;
@@ -460,9 +461,9 @@ test('層トリガー1個の同時打鍵は対向トリガー扱いしない', (
 
 test('指ごとの押下数はサンプル文の実測値と一致する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const qwerty = LAYOUTS_JA.find((l) => l.id === 'qwerty')!;
-  const oonishi = LAYOUTS_JA.find((l) => l.id === 'oonishi')!;
-  const naginata = LAYOUTS_JA.find((l) => l.id === 'naginata-v18')!;
+  const qwerty = LOADED_LAYOUTS_JA.find((l) => l.id === 'qwerty')!;
+  const oonishi = LOADED_LAYOUTS_JA.find((l) => l.id === 'oonishi')!;
+  const naginata = LOADED_LAYOUTS_JA.find((l) => l.id === 'naginata-v18')!;
   const qwertyMetrics = computeMetrics(generateTrace(text, qwerty, geometry, opts()), geometry);
   const oonishiMetrics = computeMetrics(generateTrace(text, oonishi, geometry, opts()), geometry);
   const naginataMetrics = computeMetrics(generateTrace(text, naginata, geometry, opts()), geometry);
@@ -477,7 +478,7 @@ test('指ごとの押下数の合計は総押下数と一致する', () => {
   // マトリックスは指ごとの押下数を並べる図なので、そこに出ない押下があってはいけない。
   // 親指のように移動距離が0の指を列から落とすと、この和が崩れる
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     const m = computeMetrics(generateTrace(text, layout, geometry, opts()), geometry);
     const sum = ALL_FINGERS.reduce((a, f) => a + m.perFingerPresses[f], 0);
     assert.equal(sum, m.presses, `${layout.id} の指ごとの押下数の合計`);
@@ -528,7 +529,7 @@ test('指ごとの同指連続回数の合計は全体の同指連続回数と�
   // 同指連続はPress単位で数える（仕様 §11.7）。内訳の合計が全体とずれてはいけない
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   let anySameFinger = false;
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     const m = computeMetrics(generateTrace(text, layout, geometry, opts()), geometry);
     const sum = ALL_FINGERS.reduce((a, f) => a + m.perFingerSameFinger[f], 0);
     assert.equal(sum, m.sameFinger, `${layout.id} の指ごとの同指連続回数の合計`);
@@ -539,7 +540,7 @@ test('指ごとの同指連続回数の合計は全体の同指連続回数と�
 
 test('指ごとのPressの回数の合計は全Pressの数と一致する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     const trace = generateTrace(text, layout, geometry, opts());
     const m = computeMetrics(trace, geometry);
     const total = trace.strokes.reduce((a, stroke) => a + stroke.presses.length, 0);

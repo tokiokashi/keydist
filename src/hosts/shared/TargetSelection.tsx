@@ -9,6 +9,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
+import { retryFailedKanjiDirectLayouts } from '#input/layouts/kanji-direct-tables.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import {
   filterTargetChoiceGroups,
@@ -289,6 +290,8 @@ export function TargetSelection({
   };
 
   const toggle = (target: AnalysisTarget, key: string, checked: boolean) => {
+    // 配列を選び直した時に、表の取得に失敗していた漢直の配列を取得し直せるようにする
+    if (checked) retryFailedKanjiDirectLayouts();
     if (mode === 'single') {
       if (checked) onChange([target]);
       if (pointerRef.current) close(true);
