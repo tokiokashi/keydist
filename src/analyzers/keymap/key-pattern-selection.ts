@@ -20,8 +20,10 @@ export function toggleSelectedKey(layout: Layout, selected: readonly string[], k
     const next = [...selected, keyId];
     const extended = matchKeySequences(layout, next);
     if (selected.length === 0 || extended.exact.length > 0 || extended.continuations.size > 0) return next;
-    const patterns = matchKeyPatterns(layout, new Set(next));
-    if (patterns.exact.length > 0 || patterns.continuations.size > 0) return next;
+    if (!selected.includes(keyId)) {
+      const patterns = matchKeyPatterns(layout, new Set(next));
+      if (patterns.exact.length > 0 || patterns.continuations.size > 0) return next;
+    }
     const index = selected.indexOf(keyId);
     return index >= 0 ? selected.slice(0, index) : [keyId];
   }

@@ -1,24 +1,24 @@
 /**
  * 雪華（secca）の定義から、字ごとの打鍵列を求める。
  *
- * 出典は2種類のファイルに分かれる。`config.kbd` はソフトKMonadの設定で、物理キーの押し方と、それが送り出す記号の並びを決める。
- * `.XCompose` と読み込む表は、送り出された記号の並びを文字に変える。物理キーから文字への対応は、この2つをつなげて求める。
- * XComposeの表の左辺は物理キーではなく、KMonadが送り出す記号の並びである。そのため、`config.kbd` が使う構文の動きを再現し、
+ * 出典は2種類のファイルに分かれる。`config.kbd`はソフトKMonadの設定で、物理キーの押し方と、それが送り出す記号の並びを決める。
+ * `.XCompose`と読み込む表は、送り出された記号の並びを文字に変える。物理キーから文字への対応は、この2つをつなげて求める。
+ * XComposeの表の左辺は物理キーではなく、KMonadが送り出す記号の並びである。そのため、`config.kbd`が使う構文の動きを再現し、
  * キーを押して出る記号の並びを、表の左辺と突き合わせる。
  *
- * 再現する構文は `tap-next`・`tap-next-release`・`tap-hold-next`・`layer-toggle`・`layer-switch`・`around`・
- * マクロ `#(...)`（中の待ち `P10` と `XX` を含む）・層の `_`（下の層を透過）・`XX`（押しを捨てる）。
+ * 再現する構文は`tap-next`・`tap-next-release`・`tap-hold-next`・`layer-toggle`・`layer-switch`・`around`・
+ * マクロ`#(...)`（中の待ち`P10`と`XX`を含む）・層の`_`（下の層を透過）・`XX`（押しを捨てる）。
  *
  * 押し方は、押したキーを最後の打鍵まで押したままにし、最後に打ったキーから順に離す形に固定する。作者の定義が
- * 「同時打鍵」と呼ぶ打ち方で、`tap-next-release` が決める「打つ」と「押したまま」は次のように決まる。
+ * 「同時打鍵」と呼ぶ打ち方で、`tap-next-release`が決める「打つ」と「押したまま」は次のように決まる。
  * - 最後のキーは、自分の離しが最初なので「打つ」になる
  * - 最後でないキーは、後から押されたキーの離しが先に来るので「押したまま」になる
- * 最後のキーより前のキーは、`tap-next` と `tap-hold-next` でも、次の押しが来るので「押したまま」になる。
- * `tap-hold-next` の待ち時間は、押し方が速く、待ち時間の内に次のキーが来るものとして扱う。
+ * 最後のキーより前のキーは、`tap-next`と`tap-hold-next`でも、次の押しが来るので「押したまま」になる。
+ * `tap-hold-next`の待ち時間は、押し方が速く、待ち時間の内に次のキーが来るものとして扱う。
  *
  * 出力は、押したままのキーの状態を持つ。すでに押されている出力のキーを押す指示はカーネルが捨てるので、
- * 記号の並びに現れない（作者の表の `<Multi_key> <bracketleft> <f> <d> <bracketright> <j> <f> <d> <minus> <k>` のように、
- * 押したままの `ralt` と `[` の後ろに、次のキーのマクロの文字だけが続く）。
+ * 記号の並びに現れない（作者の表の`<Multi_key> <bracketleft> <f> <d> <bracketright> <j> <f> <d> <minus> <k>`のように、
+ * 押したままの`ralt`と`[`の後ろに、次のキーのマクロの文字だけが続く）。
  */
 
 export interface SeccaRow {
@@ -26,13 +26,13 @@ export interface SeccaRow {
   readonly file: string;
   /** 表の中の行番号（1始まり） */
   readonly line: number;
-  /** 左辺の記号の並び（`Multi_key` を含む） */
+  /** 左辺の記号の並び（`Multi_key`を含む） */
   readonly symbols: readonly string[];
   /** 出力の文字列。ひらがなの時に無効にするための行は空になる */
   readonly output: string;
 }
 
-/** 物理キー（`defsrc` の名前）の押し順。最後のキーの前のキーは押したまま、最後のキーは打つ */
+/** 物理キー（`defsrc`の名前）の押し順。最後のキーの前のキーは押したまま、最後のキーは打つ */
 export type Chord = readonly string[];
 
 type Sexp = { readonly atom: string } | { readonly items: readonly Sexp[]; readonly macro: boolean };
@@ -146,12 +146,12 @@ function toButton(s: Sexp): Button {
     case 'layer-switch':
       return { t: 'switch', name: name(args[0]) };
     default:
-      // マクロの中の `(around ...)` などは上で扱う。ここに来るのは、操作を持たない括弧（`(esc P10 ...)` のような未対応の形）
+      // マクロの中の`(around ...)`などは上で扱う。ここに来るのは、操作を持たない括弧（`(esc P10 ...)`のような未対応の形）
       throw new Error(`未対応の構文: ${op}`);
   }
 }
 
-/** `config.kbd` を読む。 */
+/** `config.kbd`を読む。 */
 export function parseKmonadConfig(text: string): KmonadConfig {
   const forms = parseSexps(tokenize(text));
   let srcKeys: string[] = [];
@@ -231,7 +231,7 @@ const PLAIN_BY_KEY: Readonly<Record<string, string>> = {
   spc: 'space',
 };
 
-/** すでにShiftを押した形で書かれたキー名（KMonadが `_` `{` のように書けるキー）のkeysym */
+/** すでにShiftを押した形で書かれたキー名（KMonadが`_` `{`のように書けるキー）のkeysym */
 const SHIFT_IMPLIED: Readonly<Record<string, string>> = {
   '!': 'exclam',
   '@': 'at',
@@ -284,7 +284,7 @@ interface SimState {
   stack: string[];
   base: string;
   down: Set<string>;
-  /** 今までに出た記号の並びが当たる木の節。どの行の左辺の先頭にも合わなくなったら `null` */
+  /** 今までに出た記号の並びが当たる木の節。どの行の左辺の先頭にも合わなくなったら`null`*/
   node: TrieNode | null;
   /** 今までに出た記号の数 */
   outLength: number;
@@ -322,7 +322,7 @@ class Simulator {
     return b;
   }
 
-  /** 層の積み上げの上から探し、`_` は下の層へ渡す。`undefined` は押しを捨てる（`XX`） */
+  /** 層の積み上げの上から探し、`_`は下の層へ渡す。`undefined`は押しを捨てる（`XX`） */
   lookup(state: SimState, key: string): Button | undefined {
     const index = this.srcIndex.get(key)!;
     const names = [...state.stack].reverse();
@@ -335,7 +335,7 @@ class Simulator {
       if (cell.t === 'block') return undefined;
       return cell;
     }
-    // 一番下の層で `_` のキーは、キーそのものを出す（`fallthrough true`）
+    // 一番下の層で`_`のキーは、キーそのものを出す（`fallthrough true`）
     return { t: 'key', key };
   }
 
@@ -416,7 +416,7 @@ class Simulator {
     this.release(state, button);
   }
 
-  /** 最後に打つキーとして押す。`tap-next` 系は打つ側の割り当てが出る。 */
+  /** 最後に打つキーとして押す。`tap-next`系は打つ側の割り当てが出る。 */
   pressAsLast(state: SimState, button: Button): void {
     const b = this.resolve(button);
     if (b.t === 'tapnext') this.tap(state, b.tap);
@@ -424,7 +424,7 @@ class Simulator {
   }
 }
 
-/** `.XCompose` の表を読む。`include` の行は読まない。 */
+/** `.XCompose`の表を読む。`include`の行は読まない。 */
 export function parseComposeFile(file: string, text: string): SeccaRow[] {
   const rows: SeccaRow[] = [];
   const lines = text.split('\n');
@@ -444,7 +444,7 @@ export function parseComposeFile(file: string, text: string): SeccaRow[] {
 export const LIFT = '^';
 
 export interface SeccaChords {
-  /** 表の行ごとの、その行を出す押し順の候補（見つけた順）。`LIFT` を含む */
+  /** 表の行ごとの、その行を出す押し順の候補（見つけた順）。`LIFT`を含む */
   readonly chordsByRow: ReadonlyMap<SeccaRow, readonly Chord[]>;
   /** どの押し順でも作れなかった行 */
   readonly unreachable: readonly SeccaRow[];
@@ -471,9 +471,9 @@ export function compareChords(a: Chord, b: Chord): number {
  * 表の各行を出す押し順を探す。キーを押す列を深さ優先でたどり、出た記号の並びが、表の左辺の先頭と合う間だけ進む。
  * 操作は、キーを押す操作と、層を保っているキーを全部離す操作（`LIFT`）の2つ。
  * 離す操作は、記号が出た後に1回だけ入れる。左手の2キーを離して、右手の押したままのキーの後に続けて打つ打ち方（くずし字入力）を表す。
- * `tap-next-release` が待つ間に押したキーは、待ちが決まった後にまとめて処理されるが、押す順と離す順は保たれるので、
+ * `tap-next-release`が待つ間に押したキーは、待ちが決まった後にまとめて処理されるが、押す順と離す順は保たれるので、
  * 押す列を順にたどる再現と同じ結果になる。
- * `isUsable` が偽の行は、探す対象に入れない。
+ * `isUsable`が偽の行は、探す対象に入れない。
  */
 export function findChords(config: KmonadConfig, rows: readonly SeccaRow[], isUsable: (row: SeccaRow) => boolean = () => true): SeccaChords {
   const sim = new Simulator(config);
@@ -546,7 +546,7 @@ export function findChords(config: KmonadConfig, rows: readonly SeccaRow[], isUs
 }
 
 /**
- * 物理キー（`defsrc` の名前）から、作者の表記のキー（QWERTYの位置）へ。作者の `config.kbd` は右手を1列右の物理キーへずらす。
+ * 物理キー（`defsrc`の名前）から、作者の表記のキー（QWERTYの位置）へ。作者の`config.kbd`は右手を1列右の物理キーへずらす。
  * 右手のキーは1列左へ戻す。左手と、右手の外のキーはそのまま。
  */
 const ORZ_TO_AUTHOR: Readonly<Record<string, string>> = {
@@ -568,7 +568,7 @@ const ORZ_TO_AUTHOR: Readonly<Record<string, string>> = {
   rsft: '/',
 };
 
-/** 作者の表記で打つキーを表すid。左手と数字の段はQWERTYの刻印、空白は `space`。 */
+/** 作者の表記で打つキーを表すid。左手と数字の段はQWERTYの刻印、空白は`space`。 */
 export function authorKey(physical: string): string | undefined {
   if (physical === 'spc') return 'space';
   const mapped = ORZ_TO_AUTHOR[physical];

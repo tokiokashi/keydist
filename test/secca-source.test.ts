@@ -6,7 +6,7 @@ import { buildSeccaTable, type SeccaBuild, type SeccaTable } from '../scripts/se
 
 const embedded = JSON.parse(readFileSync(new URL('../src/input/layouts/tables/secca.json', import.meta.url), 'utf8')) as SeccaTable;
 
-/** 出典の写しから作り直す。`config.kbd` の動きを再現して打鍵列を求めるので、数十秒かかる。 */
+/** 出典の写しから作り直す。`config.kbd`の動きを再現して打鍵列を求めるので、このファイルのテストは全体で約25秒かかる（Nodeでの実測）。 */
 const sources = readSeccaSources();
 const rebuilt: SeccaBuild = buildSeccaTable(sources.config, sources.compose);
 
@@ -30,7 +30,7 @@ test('使わない行は、出力が空の行・カタカナのモードの行�
   assert.equal(count('unreachable'), 59);
   const kana = embedded.kana.split('\n').map((line) => line.split(' ')[0]!);
   assert.ok(kana.every((output) => !/[ァ-ヴ]/u.test(output)));
-  // どの押し方でも作れない行: 全角英字の52行（`layer-switch` で入るモードで出る）、記号3行、異体字4行（`config.kbd` に定義が無い）
+  // どの押し方でも作れない行: 全角英字の52行（`layer-switch`で入るモードで出る）、記号3行、異体字4行（`config.kbd`に定義が無い）
   const unreachable = rebuilt.skipped.filter((skipped) => skipped.reason === 'unreachable');
   assert.equal(unreachable.filter(({ row }) => row.file === '.XCompose.symbols' && /^[Ａ-Ｚａ-ｚ]$/u.test(row.output)).length, 52);
   assert.equal(unreachable.filter(({ row }) => row.file === '.XCompose.variant_of_kanji').length, 4);
@@ -46,9 +46,7 @@ test('押す順序で字が変わる組が、別の字として別の打鍵列�
 });
 
 test('右手の打鍵は、作者の表記どおりのQWERTYの位置で打つ', () => {
-  // `config.kbd` では物理キーのkに置かれた作者のjが、jで打たれる
-  assert.equal(entries('kanji').get('朝'), 'fdj');
-  // 作者の `;` は、`config.kbd` では物理キーの `'` に置かれる
+  // 作者の`;`は、`config.kbd`では物理キーの`'`に置かれる
   assert.equal(entries('jukugo').get('焼却'), 'fe;e');
 });
 

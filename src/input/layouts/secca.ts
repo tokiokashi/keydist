@@ -17,14 +17,14 @@ import {
  * 異体字はその後にもう1キーを足し、頻出の熟語は「くずし字入力」で短い打鍵に割り当てる。
  *
  * 出典はh3at2o/seccaのコミット`227517ae7c6b1c6268d68f5031b819d264a37031`（MIT）。写しは`test/fixtures/sources/secca/`。
- * 出典は、ソフトKMonadの設定（`config.kbd`）と、KMonadが送り出す記号の並びを文字に変える表（`.XCompose` と読み込む5つの表）に分かれる。
- * 組み込みの表（`tables/secca.json`）は、`scripts/secca-core.ts` が `config.kbd` の動きを再現して、表の行ごとの打鍵列を求めて作る。
+ * 出典は、ソフトKMonadの設定（`config.kbd`）と、KMonadが送り出す記号の並びを文字に変える表（`.XCompose`と読み込む5つの表）に分かれる。
+ * 組み込みの表（`tables/secca.json`）は、`scripts/secca-core.ts`が`config.kbd`の動きを再現して、表の行ごとの打鍵列を求めて作る。
  *
  * - かな: 空白キーを押さない1〜3キーの組は、同時に押す1ステップで、薙刀式の同じ種類の面（単打・濁音・半濁音・小書き・拗音・外来音）に持つ。
- *   空白キーを先に押すひらがなの面は、薙刀式のセンターシフトと同じ面（親指は `centerShiftThumb` に従う）に持つ
+ *   空白キーを先に押すひらがなの面は、薙刀式のセンターシフトと同じ面（親指は`centerShiftThumb`に従う）に持つ
  * - 漢字・異体字・熟語・固有名詞・記号: 新しく押すキーごとに1ステップの順次打鍵で持つ。空白キーは右親指。どれも層のトリガーに数えない
  *
- * 右手のキーは、作者の表記のQWERTYの位置で打つ。作者の `config.kbd` は右手を1列右の物理キーへずらしているが、それは手の置き方で、字の割り当てではない。
+ * 右手のキーは、作者の表記のQWERTYの位置で打つ。作者の`config.kbd`は右手を1列右の物理キーへずらしているが、それは手の置き方で、字の割り当てではない。
  * 使わない行（出力が空の行・カタカナのモードで出る行・どの押し方でも作れない行）は表に入れていない。
  */
 
@@ -64,13 +64,13 @@ const stepsOf = (keys: string): Sequence => [...keys].map((char) => [char === SP
 /** 出力 → キー の写像から、QWERTYの4行に並べた面の行を作る。 */
 const rowsOf = (cells: ReadonlyMap<string, string>): string[][] => QWERTY_ROWS.map((row) => [...row].map((key) => cells.get(key) ?? ''));
 
-/** かなの節の、キーの集合ごとの出力。キーは並べ替えた文字列（空白キーは先頭の `_`）で表す。 */
+/** かなの節の、キーの集合ごとの出力。キーは並べ替えた文字列（空白キーは先頭の`_`）で表す。 */
 interface KanaCells {
   /** 単打 */
   readonly single: Map<string, string>;
   /** 空白キーを先に押す組 */
   readonly spaceShift: Map<string, string>;
-  /** 空白キーを押さない2〜3キーの組。`出力 + キーの集合` → 使われたか */
+  /** 空白キーを押さない2〜3キーの組。`出力 + キーの集合`→ 使われたか */
   readonly chords: Map<string, boolean>;
 }
 
@@ -158,7 +158,7 @@ export const SECCA_DECLARATION: KanjiDirectDeclaration = {
   name: NAME,
   aliases: ALIASES,
   tableFile: 'secca.json',
-  // 英字26キーと `, . / ;`。空白キーは右親指で打つ。センターシフトのかなは、親指の設定で左親指にもなる
+  // 英字26キーと`, . / ;`。空白キーは右親指で打つ。センターシフトのかなは、親指の設定で左親指にもなる
   physicalKeys: [...'qwertyuiopasdfghjkl;zxcvbnm,./', THUMB_KEY.RT, THUMB_KEY.LT],
   layoutFromTable: seccaLayout,
 };

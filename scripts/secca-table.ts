@@ -1,6 +1,6 @@
 /**
- * 雪華の出典（`config.kbd` と `.XCompose` の表）から、組み込みの表（`src/input/layouts/tables/secca.json`）を作る。
- * 打鍵列の求め方は `secca-core.ts`。ここは、どの行を使い、どう並べて書くかを決める。
+ * 雪華の出典（`config.kbd`と`.XCompose`の表）から、組み込みの表（`src/input/layouts/tables/secca.json`）を作る。
+ * 打鍵列の求め方は`secca-core.ts`。ここは、どの行を使い、どう並べて書くかを決める。
  */
 import { LIFT, authorKey, findChords, parseComposeFile, parseKmonadConfig, type SeccaRow } from './secca-core.ts';
 
@@ -27,8 +27,8 @@ const SECTION_BY_FILE: Readonly<Record<string, SeccaSectionName>> = {
 
 /**
  * 組み込みの表。節ごとに、行を改行でつないだ文字列にする。行は「見出し 打鍵」で、見出しと打鍵は半角空白で区切る。
- * 打鍵は、キーを打つ順に並べた文字列。作者の表記のキー（QWERTYの位置）をそのまま書き、空白キーは `_` と書く。
- * 括弧で囲んだキーは、同時に押す1ステップ（`(wj)`）。かなの節だけが持つ。括弧の中の `_` は、空白キーを先に押す。
+ * 打鍵は、キーを打つ順に並べた文字列。作者の表記のキー（QWERTYの位置）をそのまま書き、空白キーは`_`と書く。
+ * 括弧で囲んだキーは、同時に押す1ステップ（`(wj)`）。かなの節だけが持つ。括弧の中の`_`は、空白キーを先に押す。
  */
 export type SeccaTable = Readonly<Record<SeccaSectionName, string>>;
 
@@ -60,8 +60,8 @@ function factorial(n: number): number {
 }
 
 /**
- * 出典（`config.kbd` と表）から、組み込みの表を作る。
- * 使わない行（出力が空・カタカナのモードの行・どの押し方でも作れない行）は `skipped` に理由を付けて返す。
+ * 出典（`config.kbd`と表）から、組み込みの表を作る。
+ * 使わない行（出力が空・カタカナのモードの行・どの押し方でも作れない行）は`skipped`に理由を付けて返す。
  */
 export function buildSeccaTable(configText: string, composeTexts: Readonly<Record<string, string>>): SeccaBuild {
   const config = parseKmonadConfig(configText);
