@@ -610,7 +610,13 @@ export function RecordPage({
             conditionEditor={conditionEditor}
             conditionProvenance={provenance}
             reading={evaluation.state}
-            engineState={statuses === undefined ? { status: 'computing' } : { status: 'ready', value: undefined }}
+            engineState={
+              !resolution.ok && resolution.error.kind === 'layout-table'
+                ? { status: 'failed', error: { kind: 'resolution', error: resolution.error } }
+                : statuses === undefined
+                  ? { status: 'computing' }
+                  : { status: 'ready', value: undefined }
+            }
           >
             {resolution.ok && boundsCount > 0 ? body : undefined}
           </PaneFrame>
