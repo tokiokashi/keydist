@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { keyId, resolveKeyId } from '../shapes/geometry.ts';
-import { LAYOUTS, LAYOUTS_JA } from './index.ts';
+import { LAYOUTS } from './index.ts';
+import { LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { fromRows, withShiftedOutputs, type Layout } from './types.ts';
 
 /** 作者が記号のShiftの組を定めている英字配列。 */
@@ -235,7 +236,7 @@ test('Shiftの組が2つのキーで同じ文字になる指定は弾く', () =>
 
 test('3配列は日本語のテキスト用の一覧にも入り、Shiftの組が同じ', () => {
   for (const id of IDS) {
-    const ja = LAYOUTS_JA.find((entry) => entry.id === id);
+    const ja = LOADED_LAYOUTS_JA.find((entry) => entry.id === id);
     assert.ok(ja, id);
     assert.deepEqual([...ja.canonicalInputs.keys()].sort(), [...layoutOf(id).canonicalInputs.keys()].sort());
   }

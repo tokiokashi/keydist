@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../test/kanji-direct-tables.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
@@ -42,7 +42,7 @@ function measure(
   const result = resolveEngineInput({
     target: { kind: 'layout', layoutId },
     setups: new Map(),
-    catalog: { layouts: new Map([...LAYOUT_BY_ID, ...user.layouts]), shapes: SHAPES },
+    catalog: { layouts: new Map([...LOADED_LAYOUT_BY_ID, ...user.layouts]), shapes: SHAPES },
     userLayouts: user.userLayouts,
     customRomajiRules: user.romajiRules,
     overrides,

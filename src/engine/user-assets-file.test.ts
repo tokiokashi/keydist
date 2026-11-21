@@ -2,7 +2,7 @@ import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.t
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCommand, emptyCommandHistory, undo } from '#input/commands/index.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../test/kanji-direct-tables.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
@@ -82,7 +82,7 @@ function measure(assets: UserAssetsHoldings, layoutId: string, language: TextLan
   const result = resolveEngineInput({
     target: { kind: 'layout', layoutId },
     setups: new Map(),
-    catalog: { layouts: new Map([...LAYOUT_BY_ID, ...user.layouts]), shapes: SHAPES },
+    catalog: { layouts: new Map([...LOADED_LAYOUT_BY_ID, ...user.layouts]), shapes: SHAPES },
     userLayouts: user.userLayouts,
     customRomajiRules: user.romajiRules,
     customFingerAssignments: new Map(assets.fingerAssignments.map((assignment) => [assignment.id, assignment] as const)),
@@ -307,10 +307,10 @@ test('組み込みの配列と同じidは別のidで足し、組み込みの規�
   const merged = mergeUserAssets(EMPTY, parsed.bundle, STAMP);
   assert.equal(merged.assets.userLayouts.length, 1);
   assert.equal(merged.assets.userLayouts[0]!.id, 'user-stamp-1');
-  assert.equal(LAYOUT_BY_ID.has(merged.assets.userLayouts[0]!.id), false);
+  assert.equal(LOADED_LAYOUT_BY_ID.has(merged.assets.userLayouts[0]!.id), false);
   const outcome = merged.entries[0]!.outcome;
   assert.equal(outcome.kind, 'added-renamed');
-  assert.deepEqual(outcome.kind === 'added-renamed' ? outcome.overlap : undefined, { with: 'builtin', name: LAYOUT_BY_ID.get('qwerty')!.name });
+  assert.deepEqual(outcome.kind === 'added-renamed' ? outcome.overlap : undefined, { with: 'builtin', name: LOADED_LAYOUT_BY_ID.get('qwerty')!.name });
 });
 
 test('手元と重なって別名で足した時、重なった相手の手元の名前を持つ', () => {
@@ -534,7 +534,7 @@ const SETUP_HOLDINGS: UserAssetsHoldings = {
 test('Setup: 書き出して空の手元へ読み込むと、Setupとそのレベルの条件・ラベル・番号が戻る', () => {
   const merged = mergeUserAssets(EMPTY, read(SETUP_HOLDINGS), STAMP);
   assert.deepEqual(merged.assets.setupLibrary, SETUP_HOLDINGS.setupLibrary);
-  const unlabeled = `${LAYOUT_BY_ID.get('qwerty')!.name}/${PHYSICAL_SHAPES['row-staggered'].name}`;
+  const unlabeled = `${LOADED_LAYOUT_BY_ID.get('qwerty')!.name}/${PHYSICAL_SHAPES['row-staggered'].name}`;
   assert.deepEqual(
     merged.entries.filter((entry) => entry.assetKind === 'setup').map((entry) => [entry.name, entry.outcome.kind]),
     [

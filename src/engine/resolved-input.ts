@@ -23,6 +23,7 @@ import { evaluationBoundaries, evaluationNotationWords, prepareEvaluationText } 
 import { resolveTargetForText } from './target-resolution.ts';
 import { appliedCombos, overlaySetupComboSet } from './setup-combo-set.ts';
 import { isKanjiDirectLayout } from '#input/layouts/kanji-direct.ts';
+import { kanjiDirectStatus } from '#input/layouts/kanji-direct-tables.ts';
 import { layoutKind } from '#input/layouts/kind.ts';
 import type { ComboSet } from '#input/combo-set/combo-set.ts';
 
@@ -103,7 +104,12 @@ export type ResolvedInputError =
    * （対象自体は見つかるが、参照先の配列・物理配列が無い）とは別のケース:
    * `resolveTargetForText`（`target-resolution.ts`）がこのモジュールを呼ぶ前に判定して返す。
    */
-  | { readonly kind: 'target-missing'; readonly target: AnalysisTarget };
+  | { readonly kind: 'target-missing'; readonly target: AnalysisTarget }
+  /**
+   * 組み込みの漢直の配列の表を、まだ使えない。`loading` は取得中、`failed` は取得に失敗して試し直していない。
+   * 表が使えるようになるまで、計算をしない（表が空のまま数値を出さない）。
+   */
+  | { readonly kind: 'layout-table'; readonly layout: Layout; readonly status: 'loading' | 'failed' };
 
 export type ResolvedInputResult = { readonly ok: true; readonly input: ResolvedInput } | { readonly ok: false; readonly error: ResolvedInputError };
 
@@ -210,6 +216,11 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
           ok: false,
           error: { kind: 'incompatible-text', layout: textResolution.layout, language: textResolution.language },
         };
+  }
+
+  if (textResolution.layout.pendingTable !== undefined) {
+    const status = kanjiDirectStatus(textResolution.layout.id);
+    return { ok: false, error: { kind: 'layout-table', layout: textResolution.layout, status: status === 'failed' ? 'failed' : 'loading' } };
   }
 
   const cascade = resolveSettings(options.overrides, textResolution.context);

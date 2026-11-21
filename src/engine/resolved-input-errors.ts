@@ -1,4 +1,5 @@
 import type { ResolvedInputError } from './resolved-input.ts';
+import { describeKanjiDirectWait } from '#input/layouts/kanji-direct-tables.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { SetupReferenceError } from '#input/setup/index.ts';
 import { LAYOUT_MISSING_REASON, SETUP_MISSING_REASON, SHAPE_MISSING_REASON } from '#input/setup/index.ts';
@@ -48,6 +49,8 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
       return `「${error.layout.name}」が使うキーが物理配列に足りません。${keysMissingHint(error.layout)}`;
     case 'text-too-long':
       return `テキストが長すぎて計算できません（計算に使う字数が${formatChars(error.length)}字で、${formatChars(error.limit)}字までです）。テキストを短くしてください`;
+    case 'layout-table':
+      return describeKanjiDirectWait(error.layout.name, error.status);
     case 'target-missing':
       return error.target.kind === 'setup' ? SETUP_MISSING_REASON : LAYOUT_MISSING_REASON;
   }

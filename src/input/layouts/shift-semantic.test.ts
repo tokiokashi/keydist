@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { TypingInputEngine } from '#tester/engine/index.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { buildGeometry, SHIFT_KEY } from '../shapes/geometry.ts';
-import { LAYOUTS, LAYOUTS_JA } from './index.ts';
+import { LAYOUTS } from './index.ts';
+import { LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { classifyTriggerActivation, DEFAULT_ACTION_REALIZATION_POLICY, type ActionRealizationPolicy } from '#input/semantics/index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 
@@ -309,7 +310,7 @@ test('Testerで通常Shiftを後から押しても大文字にならない', () 
 });
 
 test('Testerの通常Shiftの判定は、かな配列のShiftの面と同じ動きになる', () => {
-  const kana = LAYOUTS_JA.find((layout) => layout.id === 'jis-kana')!;
+  const kana = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'jis-kana')!;
   const sequences = {
     shiftFirst: (key: string) => [
       { type: 'down' as const, key: SHIFT_KEY.L },

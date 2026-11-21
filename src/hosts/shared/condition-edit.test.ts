@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCommand, emptyCommandHistory, undo } from '#input/commands/index.ts';
 import { emptyCascadeOverrides, type CascadeContext } from '#input/settings/index.ts';
-import { LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
 import { DEFAULT_ACTION_REALIZATION_POLICY } from '#input/semantics/index.ts';
@@ -362,7 +362,7 @@ test('既定の物理配列: 配列の上書きがある行は、全体を変え
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: 'naginata-v18' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
-  const layout = LAYOUTS_JA.find((candidate) => candidate.id === 'naginata-v18')!;
+  const layout = LOADED_LAYOUTS_JA.find((candidate) => candidate.id === 'naginata-v18')!;
   const context: CascadeContext = {
     targetKind: 'layout',
     shapeId: 'ortholinear',

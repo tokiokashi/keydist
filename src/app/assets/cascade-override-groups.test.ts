@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { applyCommand, emptyCommandHistory, undo } from '#input/commands/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
@@ -21,7 +21,7 @@ const CUSTOM_FINGER = { ...DEFAULT_FINGER_ASSIGNMENT, id: 'finger-a', name: '自
 
 const NAMES: ConditionValueNames = {
   shapes: SHAPES,
-  layouts: new Map<string, { readonly name: string }>([...LAYOUT_BY_ID, ['user-a', { name: '自作A' }]]),
+  layouts: new Map<string, { readonly name: string }>([...LOADED_LAYOUT_BY_ID, ['user-a', { name: '自作A' }]]),
   romajiRules: new Map([['rule-a', { name: '自作の規則' }]]),
   fingerAssignments: new Map([[CUSTOM_FINGER.id, CUSTOM_FINGER]]),
 };
@@ -88,7 +88,7 @@ test('適用範囲はカスケードの順に並び、継承する値と同じ�
       'ワークスペース',
       `物理配列「${SHAPES.get('row-staggered')!.name}」`,
       'ローマ字入力',
-      `配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`,
+      `配列「${LOADED_LAYOUT_BY_ID.get('qwerty')!.name}」`,
       'Setup A',
     ],
   );
@@ -134,7 +134,13 @@ test('手持ちに無い配列・物理配列・Setupは見つからない旨で
   );
   assert.deepEqual(
     groups.map((group) => group.title),
-    ['（見つからない物理配列）', `配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`, '（見つからない配列1）', '（見つからない配列2）', '（削除されたSetup）'],
+    [
+      '（見つからない物理配列）',
+      `配列「${LOADED_LAYOUT_BY_ID.get('qwerty')!.name}」`,
+      '（見つからない配列1）',
+      '（見つからない配列2）',
+      '（削除されたSetup）',
+    ],
   );
   assert.deepEqual(
     groups.map((group) => group.missingSetup),

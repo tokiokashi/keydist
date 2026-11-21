@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS, type Layout } from '#input/layouts/index.ts';
+import { LOADED_LAYOUTS_JA } from '../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES, type PresetGeometryKind } from '#input/shapes/geometry.ts';
 import { resolveSetup, type AnalysisTarget, type Setup, type SetupCatalog } from '#input/setup/index.ts';
 import { DEFAULT_SHAPE_ID, EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride, type SettingsCascadeOverrides } from './settings-items.ts';
@@ -31,7 +32,7 @@ function catalogFor(layout: Layout, shapeId: PresetGeometryKind = 'row-staggered
   };
 }
 
-const asuka = findLayout(LAYOUTS_JA, 'asuka');
+const asuka = findLayout(LOADED_LAYOUTS_JA, 'asuka');
 
 test('カスケードの追従: 上書きの無いSetupはグローバルの変更に追従し、Setupレベルで上書きしたSetupは追従しない', () => {
   const followingSetup: Setup = { id: 'setup-follow', number: 1, layoutId: asuka.id, shapeId: 'row-staggered' };
@@ -124,7 +125,7 @@ test('配列を対象にした解決は、実カタログではfixtureの既定�
   assert.ok(defaultScenarios.length > 0);
 
   for (const scenario of defaultScenarios) {
-    const list = scenario.language === 'en' ? LAYOUTS : LAYOUTS_JA;
+    const list = scenario.language === 'en' ? LAYOUTS : LOADED_LAYOUTS_JA;
     const layout = findLayout(list, scenario.layoutId);
     assert.equal(
       scenario.conditions.geometryShapeId,

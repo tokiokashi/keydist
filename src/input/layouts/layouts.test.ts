@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { mapInputAlternativePhysicalKeys } from '../semantics/index.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
-import { COMBO_LAYER_ID, faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from './index.ts';
+import { COMBO_LAYER_ID, faceFromEntries, fromFaces, fromRows, LAYOUTS, withCombos, type Face } from './index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../../../test/kana-sample-text.ts';
 import { toLayout } from './user-layouts.ts';
@@ -193,7 +194,7 @@ test('JISかな配列はJIS専用列・Shift面・濁点合成を持つ', () => 
 
 test('TK音直入力法は英文でも同じidで選べ、英文ではコンボを持たない単打配置になる', () => {
   const en = LAYOUTS.find((entry) => entry.id === 'tk-onchoku');
-  const ja = LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku');
+  const ja = LOADED_LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku');
   assert.ok(en);
   assert.ok(ja);
   assert.equal(en.name, 'TK音直入力法');
@@ -212,20 +213,20 @@ test('TK音直入力法は英文でも同じidで選べ、英文ではコンボ�
 });
 
 test('TK音直入力法のコンボは全件ローマ字入力だけに適用する（仕様 §4.3）', () => {
-  const ja = LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku');
+  const ja = LOADED_LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku');
   assert.ok(ja?.romajiTable);
   assert.ok((ja.resolvedComboDefinitions ?? []).every((combo) => combo.condition?.romajiOnly === true));
   const comboAlternatives = [...ja.canonicalInputs.values()].flat().filter((alternative) => alternative.origin === 'combo');
   assert.equal(comboAlternatives.length > 0, true);
   assert.ok(comboAlternatives.every((alternative) => alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input')));
   assert.equal(
-    [...LAYOUTS, ...LAYOUTS_JA].filter((entry) => entry.name === 'TK音直入力法').every((entry) => entry.id === 'tk-onchoku'),
+    [...LAYOUTS, ...LOADED_LAYOUTS_JA].filter((entry) => entry.name === 'TK音直入力法').every((entry) => entry.id === 'tk-onchoku'),
     true,
   );
 });
 
 test('romajiOnlyのコンボはローマ字表を持たない配列のTraceで使わず、定義数にも数えない', () => {
-  const ja = LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku')!;
+  const ja = LOADED_LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku')!;
   const en = LAYOUTS.find((entry) => entry.id === 'tk-onchoku')!;
   const { romajiTable: _table, ...direct } = ja;
   const geometry = buildGeometry('row-staggered');
@@ -243,7 +244,7 @@ test('romajiOnlyのコンボはローマ字表を持たない配列のTraceで�
 });
 
 test('romajiOnlyのコンボは、かなから展開した綴りの区間だけで成立する（仕様 §4.3）', () => {
-  const ja = LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku')!;
+  const ja = LOADED_LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku')!;
   const geometry = buildGeometry('row-staggered');
   const hits = (text: string) => generateTrace(text, ja, geometry, DEFAULT_TRACE_POLICY).comboHits;
 
@@ -271,7 +272,7 @@ test('romajiOnlyのコンボは、かなから展開した綴りの区間だけ�
 });
 
 test('romajiOnlyのコンボの成立は、呼び出し側が渡す綴りの列でも塊の由来で決まる', () => {
-  const ja = LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku')!;
+  const ja = LOADED_LAYOUTS_JA.find((entry) => entry.id === 'tk-onchoku')!;
   const geometry = buildGeometry('row-staggered');
   const run = (chunks: { kana: string; roman: string; fromTable: boolean }[]) =>
     generateTrace(chunks.map((chunk) => chunk.kana).join(''), ja, geometry, DEFAULT_TRACE_POLICY, chunks).comboHits;
@@ -285,7 +286,7 @@ test('romajiOnlyのコンボの成立は、呼び出し側が渡す綴りの列�
 });
 
 test('日本語の配列一覧にDvorakを含める', () => {
-  const dvorak = LAYOUTS_JA.find((layout) => layout.id === 'dvorak');
+  const dvorak = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'dvorak');
 
   assert.ok(dvorak);
   assert.equal(dvorak.name, 'Dvorak');
@@ -293,9 +294,9 @@ test('日本語の配列一覧にDvorakを含める', () => {
 });
 
 test('TK音直入力法は正式名称を表示する', () => {
-  const oonishi = LAYOUT_BY_ID.get('oonishi');
-  const combo = LAYOUT_BY_ID.get('tk-onchoku');
-  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263');
+  const oonishi = LOADED_LAYOUT_BY_ID.get('oonishi');
+  const combo = LOADED_LAYOUT_BY_ID.get('tk-onchoku');
+  const tsuki = LOADED_LAYOUT_BY_ID.get('tsuki-2-263');
 
   assert.equal(oonishi?.name, '大西配列');
   assert.equal(combo?.id, 'tk-onchoku');
@@ -336,7 +337,7 @@ test('TK音直入力法は正式名称を表示する', () => {
     二重母音拡張: 13,
   });
   assert.equal(combo?.resolvedComboDefinitions?.length, 76);
-  assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'tk-onchoku'));
+  assert.ok(LOADED_LAYOUTS_JA.some((layout) => layout.id === 'tk-onchoku'));
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
   assert.ok(!tsuki?.name.includes(' '));
@@ -454,12 +455,12 @@ test('presentation分類はcompiled aggregation metadataをauthorityにする', 
 });
 
 test('組み込み配列の層の名前は「面」を出さず、名前の無い層はトリガーの刻印から作る', () => {
-  for (const layout of [...LAYOUTS, ...LAYOUTS_JA]) {
+  for (const layout of [...LAYOUTS, ...LOADED_LAYOUTS_JA]) {
     for (const definition of layerDefinitionsWithLabels(layout)) {
       assert.doesNotMatch(definition.label, /面/, `${layout.id}: ${definition.id}`);
     }
   }
-  const nicola = layerDefinitionsWithLabels(LAYOUT_BY_ID.get('nicola')!);
+  const nicola = layerDefinitionsWithLabels(LOADED_LAYOUT_BY_ID.get('nicola')!);
   assert.equal(nicola.find((definition) => definition.id === 'layer:左親指')?.label, '左親指');
   assert.equal(nicola.find((definition) => definition.id === 'layer:右親指')?.label, '右親指');
   assert.equal(
@@ -482,7 +483,7 @@ test('layer aggregationのpresentationRole欠落は表示契約違反としてer
 });
 
 test('Faceを持つLayoutは全FaceのfaceLayerIdsを明示する', () => {
-  for (const layout of LAYOUTS_JA) {
+  for (const layout of LOADED_LAYOUTS_JA) {
     if (!layout.faces) continue;
     assert.ok(layout.faceLayerIds, `${layout.id}: faceLayerIds`);
     for (const face of layout.faces) {
@@ -492,10 +493,10 @@ test('Faceを持つLayoutは全FaceのfaceLayerIdsを明示する', () => {
 });
 
 test('宣言された面だけを逆手の条件でレイヤーへ集約する', () => {
-  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
-  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
-  const nicola = LAYOUT_BY_ID.get('nicola')!;
-  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const shingeta = LOADED_LAYOUT_BY_ID.get('shingeta')!;
+  const tsuki = LOADED_LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const nicola = LOADED_LAYOUT_BY_ID.get('nicola')!;
+  const naginata = LOADED_LAYOUT_BY_ID.get('naginata-v18')!;
 
   const counts = [shingeta, tsuki, nicola, naginata].map((layout) => {
     const groups = classifyPresentationFaces(layout);
@@ -556,7 +557,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
 });
 
 test('畳んだレイヤーはauthoringで明示したpresentation membershipだけを表示する', () => {
-  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('shingeta')!;
   const layers = classifyPresentationFaces(layout).layers;
   const middleLeft = layers[1].faces[0];
   const middleRight = layers[1].faces[1];
@@ -579,7 +580,7 @@ test('畳んだレイヤーはauthoringで明示したpresentation membershipだ
   assert.deepEqual(layout.map.get('じ'), [['k', 's']]);
   assert.deepEqual(layout.map.get('さ'), [['l', 's']]);
 
-  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const tsuki = LOADED_LAYOUT_BY_ID.get('tsuki-2-263')!;
   const tsukiLayer = classifyPresentationFaces(tsuki).layers[1];
   const tsukiCells = new Map(tsukiLayer.faces.flatMap((face) => [...faceDisplayCells(face)]));
   assert.equal(tsukiCells.get('d'), 'ら');
@@ -587,7 +588,7 @@ test('畳んだレイヤーはauthoringで明示したpresentation membershipだ
 });
 
 test('薙刀式v18は面から生成され、全定義を1ステップで保持する', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('naginata-v18')!;
 
   assert.equal(layout.map.size, 180);
   assert.equal(layout.map.has(' '), false);
@@ -600,7 +601,7 @@ test('薙刀式v18は面から生成され、全定義を1ステップで保持�
 });
 
 test('薙刀式の装飾triggerはcanonical logical groupを保持する', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('naginata-v18')!;
 
   const sandS = layout.canonicalInputs.get('お')?.[0]?.semanticInputs[0];
   const youon = layout.canonicalInputs.get('きゃ')?.[0]?.semanticInputs[0];
@@ -631,7 +632,7 @@ test('薙刀式の装飾triggerはcanonical logical groupを保持する', () =>
 });
 
 test('薙刀式のSandS presentationをFace authoringで明示する', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('naginata-v18')!;
   const centerShift = classifyPresentationFaces(layout).layers[1].faces[0];
 
   assert.deepEqual(centerShift.trigger, ['space']);
@@ -653,7 +654,7 @@ test('薙刀式のSandS presentationをFace authoringで明示する', () => {
 
 test('新JISの親指shift presentationは左右を同じSpaceとして扱う', () => {
   for (const id of ['shin-jis-prefix', 'shin-jis-simultaneous']) {
-    const layout = LAYOUT_BY_ID.get(id)!;
+    const layout = LOADED_LAYOUT_BY_ID.get(id)!;
     const shifted = classifyPresentationFaces(layout).layers[1]?.faces[0];
     assert.ok(shifted);
     assert.deepEqual(shifted.presentationTriggerAlternatives, [['thumb-l'], ['thumb-r']]);
@@ -780,7 +781,7 @@ test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
 });
 
 test('シフトの表示色は手ではなく所属aggregationで揃え、singleはshift扱いしない', () => {
-  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('shingeta')!;
   const layers = classifyPresentationFaces(layout).layers;
   const styles = layerShiftStyles(layers);
 
@@ -794,7 +795,7 @@ test('シフトの表示色は手ではなく所属aggregationで揃え、single
 });
 
 test('相互同時シフトは両トリガーを1回分の色として残す', () => {
-  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('shingeta')!;
   const layers = classifyPresentationFaces(layout).layers;
   for (const [layerIndex, trigger, output] of [
     [1, 'k', 'd'],
@@ -816,7 +817,7 @@ test('相互同時シフトは両トリガーを1回分の色として残す', (
 });
 
 test('薙刀式の合算表示はスペースなし層のトリガーを単打側の色に残す', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('naginata-v18')!;
   const base = classifyPresentationFaces(layout).layers[0];
   const colors = normalizedRoleColors(base.role, {
     keyCounts: new Map([
@@ -833,7 +834,7 @@ test('薙刀式の合算表示はスペースなし層のトリガーを単打�
 });
 
 test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外する', () => {
-  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const shingeta = LOADED_LAYOUT_BY_ID.get('shingeta')!;
   const middle = classifyPresentationFaces(shingeta).layers[1];
   const normalColors = normalizedRoleColors(middle.role, {
     keyCounts: new Map([
@@ -845,7 +846,7 @@ test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外�
   });
   assert.deepEqual([...normalColors], [['w', 1]]);
 
-  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const naginata = LOADED_LAYOUT_BY_ID.get('naginata-v18')!;
   const modifiers = classifyPresentationFaces(naginata).modifiers;
   const voiced = modifiers.find((layer) => layer.faces.some((face) => face.layer === '濁音'))!;
   const detailColors = normalizedRoleColors(voiced.role, {
@@ -863,17 +864,17 @@ test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外�
 });
 
 test('NICOLAの配列は、表示名が「親指シフト」で、idは変わらない', () => {
-  const layout = LAYOUT_BY_ID.get('nicola')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('nicola')!;
   assert.equal(layout.name, '親指シフト');
   assert.equal(layout.id, 'nicola');
-  assert.ok(LAYOUTS_JA.some((entry) => entry.id === 'nicola' && entry.name === '親指シフト'));
-  assert.equal(LAYOUTS_JA.filter((entry) => entry.name.includes('親指シフト')).length, 1);
+  assert.ok(LOADED_LAYOUTS_JA.some((entry) => entry.id === 'nicola' && entry.name === '親指シフト'));
+  assert.equal(LOADED_LAYOUTS_JA.filter((entry) => entry.name.includes('親指シフト')).length, 1);
   // 名前から外した規格の名前は、絞り込みの読みに残す
   assert.deepEqual(layout.aliases, ['NICOLA', 'にこら', 'おやゆびしふと', 'にこらはいれつ']);
 });
 
 test('NICOLAは3面の直接かな入力を同時押しとして保持する', () => {
-  const layout = LAYOUT_BY_ID.get('nicola')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('nicola')!;
 
   assert.equal(layout.map.size, 89);
   assert.deepEqual(layout.map.get('。'), [['q']]);
@@ -888,7 +889,7 @@ test('NICOLAは3面の直接かな入力を同時押しとして保持する', (
 });
 
 test('新下駄配列は7面の直接かな入力を同時押しとして保持する', () => {
-  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('shingeta')!;
 
   assert.deepEqual(layout.map.get('ー'), [['q']]);
   assert.deepEqual(layout.map.get('あ'), [['d', 'j']]);
@@ -902,7 +903,7 @@ test('新下駄配列は7面の直接かな入力を同時押しとして保持�
 });
 
 test('かわせみ配列+はKikyo版の4拡張を同時打鍵として保持する', () => {
-  const layout = LAYOUT_BY_ID.get('kawasemi-plus')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('kawasemi-plus')!;
 
   assert.equal(layout.name, 'かわせみ配列+');
   assert.deepEqual(layout.map.get('あ'), [[';']]);
@@ -936,12 +937,12 @@ test('かわせみ配列+はKikyo版の4拡張を同時打鍵として保持す�
 
 test('面定義を出典フィクスチャの全セルと照合する', () => {
   for (const id of ['naginata-v18', 'nicola', 'asuka', 'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'shin-koume', 'tsuki-2-263']) {
-    assertKanaLayoutFixture(LAYOUT_BY_ID.get(id)!);
+    assertKanaLayoutFixture(LOADED_LAYOUT_BY_ID.get(id)!);
   }
 });
 
 test('月配列2-263式はクロスシフトと濁音の逐次合成を保持する', () => {
-  const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('tsuki-2-263')!;
 
   assert.deepEqual(layout.map.get('そ'), [['q']]);
   assert.deepEqual(layout.map.get('ら'), [['k'], ['d']]);
@@ -956,8 +957,8 @@ test('月配列2-263式はクロスシフトと濁音の逐次合成を保持す
 });
 
 test('新JISは同じかな配置を逐次シフトと通常シフトで共有する', () => {
-  const prefix = LAYOUT_BY_ID.get('shin-jis-prefix')!;
-  const simultaneous = LAYOUT_BY_ID.get('shin-jis-simultaneous')!;
+  const prefix = LOADED_LAYOUT_BY_ID.get('shin-jis-prefix')!;
+  const simultaneous = LOADED_LAYOUT_BY_ID.get('shin-jis-simultaneous')!;
 
   assertKanaLayout(prefix, ['ゎ', 'ヴ']);
   assertKanaLayout(simultaneous, ['ゎ', 'ヴ']);
@@ -1042,7 +1043,7 @@ test('保存済み凡例のspaceもthumb-rへ解決する', () => {
 
 test('薙刀式v18の面移行で入力可能範囲とphysical action数を維持する', () => {
   const geometry = buildGeometry('row-staggered');
-  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('naginata-v18')!;
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   const metrics = computeMetrics(trace, geometry);
@@ -1054,7 +1055,7 @@ test('薙刀式v18の面移行で入力可能範囲とphysical action数を維�
 });
 
 test('custom combo classificationはpresentation groupと独立してcanonicalへ保持する', () => {
-  const layout = LAYOUT_BY_ID.get('tk-onchoku')!;
+  const layout = LOADED_LAYOUT_BY_ID.get('tk-onchoku')!;
   const vocabulary = layout.canonicalInputs.get('desita')?.[0]?.semanticInputs[0];
   const youon = layout.canonicalInputs.get('yaku')?.[0]?.semanticInputs[0];
   assert.ok(vocabulary);
@@ -1147,7 +1148,7 @@ test('コンボ枠に計上するcomposition FaceのpresentationLabelはsilent i
 });
 
 test('組み込み配列の名前はすべて異なる（配列を選ぶ一覧・並べた時の名前で見分けられる）', () => {
-  const names = [...LAYOUT_BY_ID.values()].map((layout) => layout.name);
+  const names = [...LOADED_LAYOUT_BY_ID.values()].map((layout) => layout.name);
   assert.equal(new Set(names).size, names.length, names.join(', '));
 });
 
@@ -1206,7 +1207,7 @@ test('composition Faceは層とコンボ枠のどちらに計上するかを明�
 });
 
 test('組み込みの配列の一覧は、英字・日本語ともidが重ならない', () => {
-  for (const list of [LAYOUTS, LAYOUTS_JA]) {
+  for (const list of [LAYOUTS, LOADED_LAYOUTS_JA]) {
     const ids = list.map((layout) => layout.id);
     assert.deepEqual(
       ids.filter((id, index) => ids.indexOf(id) !== index),

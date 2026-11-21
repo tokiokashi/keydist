@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCommand, emptyCommandHistory } from '#input/commands/index.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../test/kanji-direct-tables.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import type { UserLayoutContent } from '#input/layouts/layout-edit.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
@@ -45,7 +45,7 @@ function measure(assets: KeydistAssets, layoutId: string) {
   const result = resolveEngineInput({
     target: { kind: 'layout', layoutId },
     setups: new Map(),
-    catalog: { layouts: new Map([...LAYOUT_BY_ID, ...user.layouts]), shapes: SHAPES },
+    catalog: { layouts: new Map([...LOADED_LAYOUT_BY_ID, ...user.layouts]), shapes: SHAPES },
     userLayouts: user.userLayouts,
     customRomajiRules: user.romajiRules,
     overrides: EMPTY_SETTINGS_OVERRIDES,

@@ -31,8 +31,7 @@ import { YUMI } from './yumi.ts';
 import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
 import { JIS_KANA } from './jis-kana.ts';
 import { SEOTO } from './seoto.ts';
-import { TCODE } from './tcode.ts';
-import { TUT_CODE } from './tut-code.ts';
+import { pendingKanjiDirectLayouts } from './kanji-direct-tables.ts';
 
 export type {
   ComboCondition,
@@ -280,8 +279,8 @@ export const LAYOUTS_JA: Layout[] = [
   YUMI,
   KAWASEMI_PLUS,
   JIS_KANA,
-  TCODE,
-  TUT_CODE,
+  // 漢直の配列は表を別のファイルとして配る。ここに並ぶのは表を取得する前の配列で、計算に使う前に取得した配列へ置き換える（`kanji-direct-tables.ts`）
+  ...pendingKanjiDirectLayouts(),
 ];
 
 export const LAYOUT_BY_ID = new Map([...LAYOUTS, ...LAYOUTS_JA].map((l) => [l.id, l]));

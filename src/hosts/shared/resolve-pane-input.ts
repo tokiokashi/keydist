@@ -1,3 +1,4 @@
+import { requestKanjiDirectLayout } from '#input/layouts/kanji-direct-tables.ts';
 import { resolveEngineInput, type ResolvedInputResult } from '#engine/resolved-input.ts';
 import type { SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { AnalysisTarget, Setup, SetupCatalog } from '#input/setup/index.ts';
@@ -57,7 +58,7 @@ export function resolvePaneInput(
   segmentation?: SegmentationInput,
   keystrokeRecord?: KeystrokeRecord,
 ): ResolvedInputResult {
-  return resolveEngineInput({
+  const resolution = resolveEngineInput({
     target,
     setups,
     catalog: catalog.setupCatalog,
@@ -76,4 +77,9 @@ export function resolvePaneInput(
     segmentation,
     keystrokeRecord,
   });
+  // 組み込みの漢直の配列の表は、配列が計算に使われる時に取得する。取得が済むとカタログが作り直され、ペインが解決し直す
+  if (!resolution.ok && resolution.error.kind === 'layout-table' && resolution.error.status === 'loading') {
+    void requestKanjiDirectLayout(resolution.error.layout.id);
+  }
+  return resolution;
 }

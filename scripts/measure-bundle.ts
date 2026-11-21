@@ -7,7 +7,9 @@
 //   トップ`/`、Workspace `/workspace/_`（保存したWorkspaceを開く画面の殻）、個別画面の代表`/analyzer/heatmap/`の3ページ
 // - 計算用Worker: `engine-worker-<hash>.js`
 // - 公開物のJavaScript全体・CSS全体（遅延読み込みのチャンクを含む）
+// - 漢直の表（`src/input/layouts/tables/*.json`。配列が使われる時に取得する独立したファイル）のうち、gzipが最も大きい1ファイル
 import { readdir, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
@@ -77,6 +79,13 @@ export async function measureBundle(publicDir: string): Promise<Record<string, S
   if (worker.length !== 1) throw new Error(`engine-workerのチャンクが ${worker.length} 件ある（1件のはず）`);
   result['計算用Worker'] = await sizeOfAsset(`assets/${worker[0]}`);
   result['JavaScript全体'] = sum(await Promise.all(assets.filter((name) => name.endsWith('.js')).map((name) => sizeOfAsset(`assets/${name}`))));
+  // 表は取得する時に1ファイルずつ読むので、合計でなく最も大きい1ファイルを測る。ファイル名は `<元の名前>-<ハッシュ>.json` になる
+  const tableNames = (await readdir(fileURLToPath(new URL('../src/input/layouts/tables/', import.meta.url)))).filter((name) => name.endsWith('.json'));
+  const tableAssets = assets.filter((name) => tableNames.some((table) => new RegExp(`^${table.slice(0, -'.json'.length)}-[^/]*\\.json$`).test(name)));
+  if (tableAssets.length !== tableNames.length)
+    throw new Error(`漢直の表のファイルが公開物に ${tableAssets.length} 件ある（${tableNames.length} 件のはず）`);
+  const tableSizes = await Promise.all(tableAssets.map((name) => sizeOfAsset(`assets/${name}`)));
+  result['漢直の表（最大の1ファイル）'] = tableSizes.reduce((largest, size) => (size.gzip > largest.gzip ? size : largest));
   result.CSS全体 = sum(await Promise.all(assets.filter((name) => name.endsWith('.css')).map((name) => sizeOfAsset(`assets/${name}`))));
   return result;
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../test/kanji-direct-tables.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import type { FaceUserLayout } from '#input/layouts/user-layouts.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
@@ -22,7 +22,7 @@ const KANJI_LAYOUT: FaceUserLayout = {
 
 const USER = buildUserCatalog([KANJI_LAYOUT], []);
 const CATALOG = {
-  layouts: new Map([...LAYOUT_BY_ID, ...USER.layouts]),
+  layouts: new Map([...LOADED_LAYOUT_BY_ID, ...USER.layouts]),
   shapes: new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const)),
 };
 
@@ -245,7 +245,7 @@ test('表記が読みより短い語の後ろの片仮名は、見出しに無�
   const result = resolveEngineInput({
     target: { kind: 'layout', layoutId: 'kanji-small-2' },
     setups: new Map(),
-    catalog: { layouts: new Map([...LAYOUT_BY_ID, ...user.layouts]), shapes: CATALOG.shapes },
+    catalog: { layouts: new Map([...LOADED_LAYOUT_BY_ID, ...user.layouts]), shapes: CATALOG.shapes },
     userLayouts: user.userLayouts,
     overrides: EMPTY_SETTINGS_OVERRIDES,
     text: conversion.text,

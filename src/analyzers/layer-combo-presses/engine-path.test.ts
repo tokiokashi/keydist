@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LAYOUTS } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID, LOADED_LAYOUTS_JA } from '../../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
@@ -16,13 +17,13 @@ import { fixedTestText } from '../../../test/kana-test-text.ts';
  */
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: LOADED_LAYOUT_BY_ID,
   shapes: new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
 function tryResolve(layoutId: string, language: 'ja' | 'en', text: string) {
   // JISの物理配列が要る配列（JISかな配列）は、JISの物理配列で測る
-  const shapeId = LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
+  const shapeId = LOADED_LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
   const setup: Setup = { id: 'setup-layer-combo-presses', number: 1, layoutId, shapeId };
   return resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
@@ -42,7 +43,7 @@ function measureInput(input: ResolvedInput) {
 }
 
 test('帰属先ごとの押下数の和は、全配列・日本語と英文のどちらでも全押下数に一致する', () => {
-  const ids = [...new Set([...LAYOUTS, ...LAYOUTS_JA].map((layout) => layout.id))];
+  const ids = [...new Set([...LAYOUTS, ...LOADED_LAYOUTS_JA].map((layout) => layout.id))];
   let measured = 0;
   for (const id of ids) {
     for (const language of ['ja', 'en'] as const) {

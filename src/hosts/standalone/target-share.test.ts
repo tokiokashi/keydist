@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { decodeUserLayouts } from '#input/layouts/user-layouts.ts';
@@ -28,9 +28,9 @@ const shapes = new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map
 
 /** 組み込みの配列に、自作の配列を1つ足した手持ち。 */
 function source(setups: readonly Setup[] = []): TargetShareSource {
-  const mine: Layout = { ...LAYOUT_BY_ID.get('qwerty')!, id: 'user-1', name: '自作,配列' };
+  const mine: Layout = { ...LOADED_LAYOUT_BY_ID.get('qwerty')!, id: 'user-1', name: '自作,配列' };
   return {
-    layouts: new Map([...LAYOUT_BY_ID, [mine.id, mine]]),
+    layouts: new Map([...LOADED_LAYOUT_BY_ID, [mine.id, mine]]),
     userLayoutIds: new Set([mine.id]),
     shapes,
     setups,
@@ -214,7 +214,7 @@ test('送る側へ示す文は、載らなかった対象と名前だけが載�
 
 /** 保存データの読み込みは名前の中身を見ない（型だけ）ので、先頭が空白・改行入りの名前の自作の配列とSetupが手持ちに入りうる。 */
 function oddNameSource(): { src: TargetShareSource; targets: AnalysisTarget[] } {
-  const base = LAYOUT_BY_ID.get('qwerty')!;
+  const base = LOADED_LAYOUT_BY_ID.get('qwerty')!;
   const stored = ['  先頭空白', '改行\nあり', '', '普通'].map((name, i) => ({
     kind: 'alpha',
     id: `u${i}`,
@@ -235,7 +235,7 @@ function oddNameSource(): { src: TargetShareSource; targets: AnalysisTarget[] } 
   ];
   return {
     src: {
-      layouts: new Map([...LAYOUT_BY_ID, ...mine.map((l): [string, Layout] => [l.id, l])]),
+      layouts: new Map([...LOADED_LAYOUT_BY_ID, ...mine.map((l): [string, Layout] => [l.id, l])]),
       userLayoutIds: new Set(mine.map((l) => l.id)),
       shapes,
       setups,

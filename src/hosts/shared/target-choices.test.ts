@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import {
   filterTargetChoiceGroups,
@@ -18,7 +18,7 @@ import { analysisTargetKey, type AnalysisTarget, type Setup } from '#input/setup
 const SHAPES = new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape]));
 
 function source(overrides: Partial<TargetChoiceSource> = {}): TargetChoiceSource {
-  return { layouts: LAYOUT_BY_ID, userLayouts: new Map(), shapes: SHAPES, setups: [], selected: [], ...overrides };
+  return { layouts: LOADED_LAYOUT_BY_ID, userLayouts: new Map(), shapes: SHAPES, setups: [], selected: [], ...overrides };
 }
 
 const USER_ALPHA: UserLayout = { kind: 'alpha', id: 'dvorak', name: 'Dvorak', rows: ['', '', '', ''] };
@@ -182,8 +182,8 @@ test('種類の切り替えは名前の絞り込みと同時に使え、自作�
     faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
     composition: { dakuten: false, handakuten: false },
   };
-  const layouts = new Map(LAYOUT_BY_ID);
-  layouts.set('mine-kana', { ...LAYOUT_BY_ID.get('qwerty')!, id: 'mine-kana', name: '自作かな' });
+  const layouts = new Map(LOADED_LAYOUT_BY_ID);
+  layouts.set('mine-kana', { ...LOADED_LAYOUT_BY_ID.get('qwerty')!, id: 'mine-kana', name: '自作かな' });
   const setups: Setup[] = [
     ...SETUPS,
     { id: 'c', number: 3, layoutId: 'mine-kana', shapeId: 'row-staggered' },
