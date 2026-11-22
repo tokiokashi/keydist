@@ -75,14 +75,14 @@ test('画面の種類と違う種類のJSONは、読まずに、開ける画面�
     alphaInKana.map((problem) => problem.path),
     ['kind'],
   );
-  assert.match(alphaInKana[0]!.message, /英字の配列の定義です。ローマ字配列の画面で貼り付けてください/);
+  assert.match(alphaInKana[0]!.message, /ローマ字配列の定義です。ローマ字配列の画面で貼り付けてください/);
 
   const kanaInAlpha = problemsOf(faceLayoutFileText(KANA), 'alpha');
   assert.deepEqual(
     kanaInAlpha.map((problem) => problem.path),
     ['kind'],
   );
-  assert.match(kanaInAlpha[0]!.message, /かなの配列の定義です。かな配列の画面で貼り付けてください/);
+  assert.match(kanaInAlpha[0]!.message, /かな配列の定義です。かな配列の画面で貼り付けてください/);
 });
 
 test('かなの種類のJSONにromaji、英字の種類のJSONにcompositionがあれば、読み込みで落ちる', () => {

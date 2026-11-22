@@ -54,7 +54,7 @@ function distance(a: string, b: string): number {
 
 const THEMES = ['light', 'dark'] as const;
 const SURFACES = ['--bg', '--surface', '--surface-raised', '--surface-subtle', '--surface-muted'];
-const KINDS = ['--kind-color-kana', '--kind-color-alpha'];
+const KINDS = ['--kind-color-kana', '--kind-color-romaji', '--kind-color-kanji-direct'];
 
 test('配列の種類の色: どの面に対してもコントラスト比3以上（明暗それぞれ）', () => {
   for (const kind of KINDS) {
@@ -82,10 +82,14 @@ test('配列の種類の色: 対象の色のどれともOKLabの距離で0.1以�
   }
 });
 
-test('配列の種類の色: 2色は互いにOKLabの距離で0.2以上離れている（明暗それぞれ）', () => {
-  const [kana, alpha] = KINDS.map((kind) => lightDark(kind)) as [ReturnType<typeof lightDark>, ReturnType<typeof lightDark>];
-  for (const theme of THEMES) {
-    const d = distance(kana[theme], alpha[theme]);
-    assert.ok(d >= 0.2, `${theme}: ${d.toFixed(3)}`);
+test('配列の種類の色: 3色のどの2色の組も、OKLabの距離で0.2以上離れている（明暗それぞれ）', () => {
+  for (const [i, first] of KINDS.entries()) {
+    for (const second of KINDS.slice(i + 1)) {
+      const [a, b] = [lightDark(first), lightDark(second)];
+      for (const theme of THEMES) {
+        const d = distance(a[theme], b[theme]);
+        assert.ok(d >= 0.2, `${first} と ${second}（${theme}）の距離 ${d.toFixed(3)}`);
+      }
+    }
   }
 });

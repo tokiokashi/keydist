@@ -53,7 +53,6 @@ const fail = (...problems: FaceLayoutProblem[]): FaceLayoutFileReadResult => ({ 
 
 /** 画面の種類ごとの、その種類の定義を開く画面の名前。 */
 const SCREEN_OF_KIND: Readonly<Record<LayoutKind, string>> = { kana: 'かな配列', alpha: 'ローマ字配列' };
-const KIND_NAME: Readonly<Record<LayoutKind, string>> = { kana: 'かな', alpha: '英字' };
 
 function readHomeKeys(raw: unknown, problems: FaceLayoutProblem[]): Partial<Record<NonThumb, string>> | undefined {
   if (!isRecord(raw)) {
@@ -114,7 +113,7 @@ export function parseFaceLayoutFile(text: string, expected: LayoutKind): FaceLay
   if ((parsed.kind === 'kana' || parsed.kind === 'alpha') && parsed.kind !== expected) {
     return fail({
       path: 'kind',
-      message: `${KIND_NAME[parsed.kind]}の配列の定義です。${SCREEN_OF_KIND[parsed.kind]}の画面で貼り付けてください`,
+      message: `${SCREEN_OF_KIND[parsed.kind]}の定義です。${SCREEN_OF_KIND[parsed.kind]}の画面で貼り付けてください`,
     });
   }
 

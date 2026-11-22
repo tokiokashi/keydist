@@ -39,7 +39,7 @@ function rowsOfSomeLayouts() {
     const targetKey = `layout:${layout.id}`;
     rows.push({ kind: 'ok', targetKey, values: computeComparisonRowValues(metrics, trace), inputChars: trace.inputChars });
     order.push(targetKey);
-    rowContext.set(targetKey, { label: layout.id, fullName: layout.id, kind: 'alpha' });
+    rowContext.set(targetKey, { label: layout.id, fullName: layout.id, kind: 'romaji' });
   }
   return { rows, order, rowContext };
 }
