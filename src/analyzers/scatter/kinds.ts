@@ -24,5 +24,5 @@ export const SCATTER_KIND_ORDER: readonly LayoutCategory[] = ['kana', 'romaji', 
 export const SCATTER_KIND_STYLES: Readonly<Record<LayoutCategory, ScatterKindStyle>> = {
   kana: { label: 'かな配列', shape: 'diamond', shapeName: '菱形', color: 'var(--kind-color-kana)', colorName: '赤' },
   romaji: { label: 'ローマ字配列', shape: 'circle', shapeName: '丸', color: 'var(--kind-color-romaji)', colorName: '濃い青' },
-  'kanji-direct': { label: '漢直', shape: 'triangle', shapeName: '三角', color: 'var(--kind-color-kanji-direct)', colorName: '黄緑' },
+  'kanji-direct': { label: '漢直', shape: 'triangle', shapeName: '三角', color: 'var(--kind-color-kanji-direct)', colorName: '緑' },
 };
