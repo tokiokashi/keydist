@@ -1,4 +1,5 @@
-import { layoutKind, type LayoutKind } from '#input/layouts/kind.ts';
+import { layoutKind } from '#input/layouts/kind.ts';
+import { layoutCategory, LAYOUT_CATEGORY_LABELS, type LayoutCategory } from '#input/layouts/layout-category.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
@@ -19,7 +20,7 @@ import { withComboSetSummary } from './condition-summary.ts';
 /**
  * 対象の選択（docs/architecture.md「対象の選択」）に並べる候補。
  *
- * 候補は区分（組み込み・英字 / 組み込み・かな / 自作の配列 / Setup）に分ける。区分と名前だけの
+ * 候補は区分（組み込み・ローマ字配列 / 組み込み・かな配列 / 組み込み・漢直 / 自作の配列 / Setup）に分ける。区分と名前だけの
  * 純粋な組み立てなので、ペインの枠（個別画面・Workspace）のどちらからも同じものを使う。
  */
 
@@ -28,7 +29,7 @@ export function setupNumbersOf(setups: readonly Setup[]): ReadonlyMap<string, nu
   return new Map(setups.map((setup) => [setup.id, setup.number] as const));
 }
 
-export type TargetChoiceGroupId = 'missing' | 'builtin-alphabet' | 'builtin-kana' | 'user' | 'setup';
+export type TargetChoiceGroupId = 'missing' | 'builtin-romaji' | 'builtin-kana' | 'builtin-kanji-direct' | 'user' | 'setup';
 
 export interface TargetChoice {
   /** `analysisTargetKey`。チェックの値にもなる。 */
@@ -41,7 +42,7 @@ export interface TargetChoice {
   /** 名前の右に小さく添える種類（`Setup n`）。 */
   readonly tag?: string;
   /** 配列の種類。種類で絞り込む時に使う。配列が見つからない候補は決められないので持たない。 */
-  readonly kind?: LayoutKind;
+  readonly kind?: LayoutCategory;
   /** 絞り込みだけに効く読み・別名（`Layout.aliases`）。画面には出さない。 */
   readonly aliases?: readonly string[];
 }
@@ -87,8 +88,9 @@ const overrideSummaryOf = (summary: string | undefined): { readonly overrideSumm
   summary === undefined ? {} : { overrideSummary: summary };
 
 export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, comboSets, selected }: TargetChoiceSource): readonly TargetChoiceGroup[] {
-  const alphabet: TargetChoice[] = [];
+  const romaji: TargetChoice[] = [];
   const kana: TargetChoice[] = [];
+  const kanjiDirect: TargetChoice[] = [];
   const user: TargetChoice[] = [];
   // 並びはカタログの並び（配列の定義順）のまま。名前順にすると、英字の配列の中でQWERTYが先頭に来ない。
   for (const layout of layouts.values()) {
@@ -97,13 +99,14 @@ export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, combo
       key: analysisTargetKey(target),
       target,
       name: layout.name,
-      kind: layoutKind(layout, userLayouts),
+      kind: layoutCategory(layout, userLayouts),
       ...(layout.aliases === undefined || layout.aliases.length === 0 ? {} : { aliases: layout.aliases }),
     };
     if (userLayouts.has(layout.id)) user.push(choice);
-    // 英字とかなの区分は配列の種類の対応表（`input/layouts/kind.ts`）に従う。`Layout`の形からは決まらない。
+    // 組み込みの区分は配列の分類（`input/layouts/layout-category.ts`）に従う。`Layout`の形からは決まらない。
     else if (choice.kind === 'kana') kana.push(choice);
-    else alphabet.push(choice);
+    else if (choice.kind === 'kanji-direct') kanjiDirect.push(choice);
+    else romaji.push(choice);
   }
 
   // Setupのフル名は`nameTargets`のfullName（集合によらない全部を含む名前）。一覧は「取りうる全部から
@@ -129,19 +132,20 @@ export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, combo
       name: label ?? fullName,
       ...(label === undefined ? {} : { fullName }),
       tag: `Setup ${setupNumbers.get(setup.id)!}`,
-      ...(layout === undefined ? {} : { kind: layoutKind(layout, userLayouts) }),
+      ...(layout === undefined ? {} : { kind: layoutCategory(layout, userLayouts) }),
     };
   });
 
-  const known = new Set([...alphabet, ...kana, ...user, ...setupChoices].map((choice) => choice.key));
+  const known = new Set([...romaji, ...kana, ...kanjiDirect, ...user, ...setupChoices].map((choice) => choice.key));
   const missing: TargetChoice[] = selected
     .filter((target) => !known.has(analysisTargetKey(target)))
     .map((target) => ({ key: analysisTargetKey(target), target, name: missingName(target) }));
 
   const groups: TargetChoiceGroup[] = [
     { id: 'missing', label: '見つからない配列・Setup', choices: missing },
-    { id: 'builtin-alphabet', label: '組み込み・英字の配列', choices: alphabet },
-    { id: 'builtin-kana', label: '組み込み・かな配列', choices: kana },
+    { id: 'builtin-romaji', label: `組み込み・${LAYOUT_CATEGORY_LABELS.romaji}`, choices: romaji },
+    { id: 'builtin-kana', label: `組み込み・${LAYOUT_CATEGORY_LABELS.kana}`, choices: kana },
+    { id: 'builtin-kanji-direct', label: `組み込み・${LAYOUT_CATEGORY_LABELS['kanji-direct']}`, choices: kanjiDirect },
     { id: 'user', label: '自作の配列', choices: user },
     { id: 'setup', label: 'Setup', choices: setupChoices },
   ];
@@ -159,8 +163,8 @@ export function normalizeSearchText(text: string): string {
     .replace(/[\u30A1-\u30F6]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
 }
 
-/** 配列の種類での絞り込み。`all`は絞らない。 */
-export type TargetKindFilter = 'all' | LayoutKind;
+/** 配列の分類での絞り込み。`all`は絞らない。 */
+export type TargetKindFilter = 'all' | LayoutCategory;
 
 /**
  * 種類の切り替えと絞り込み欄の語で候補を絞る。

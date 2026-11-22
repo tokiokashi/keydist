@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
-import { layoutKind } from '#input/layouts/kind.ts';
+import { layoutCategory } from '#input/layouts/layout-category.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { KeystrokeRecordChoice, PlaybackJump, SegmentationStatus, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
 import { recordTargetMatches } from '#interpretation/record/keystroke-gaps.ts';
@@ -170,7 +170,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         header: member.resolution.ok
           ? {
               ...conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry),
-              layoutKind: layoutKind(member.resolution.input.layout, catalog.userLayouts),
+              layoutCategory: layoutCategory(member.resolution.input.layout, catalog.userLayouts),
             }
           : undefined,
         // 色は集合が配った番号から引く（加えた順。表示順とは別）。

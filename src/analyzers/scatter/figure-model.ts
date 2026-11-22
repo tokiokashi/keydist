@@ -1,4 +1,4 @@
-import type { LayoutKind } from '#input/layouts/kind.ts';
+import type { LayoutCategory } from '#input/layouts/layout-category.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { ComparisonColumnId } from '../comparison-column-text.ts';
 import type { ComparisonRowValues } from '../comparison-column-values.ts';
@@ -27,7 +27,7 @@ export interface ScatterFigureRowContext {
   readonly label: string;
   readonly fullName: string;
   /** 配列の種類。対象を解決できなかった行には無い。 */
-  readonly kind: LayoutKind | undefined;
+  readonly kind: LayoutCategory | undefined;
 }
 
 /** 図に描く対象1つ。 */
@@ -35,7 +35,7 @@ export interface ScatterPlottedRow {
   readonly targetKey: string;
   readonly label: string;
   readonly fullName: string;
-  readonly kind: LayoutKind;
+  readonly kind: LayoutCategory;
   readonly x: number;
   readonly y: number;
   /** 全列の値。点の読み取りで、等位線の量の列が値を持つかを見る。 */
@@ -77,7 +77,7 @@ export interface ScatterFigureModel {
   /** 細い線を引く組の細い線の量。引かない組は`undefined`。 */
   readonly lineContour: ScatterContour | undefined;
   readonly logScale: boolean;
-  readonly usedKinds: readonly LayoutKind[];
+  readonly usedKinds: readonly LayoutCategory[];
   readonly model: ScatterPlotModel;
 }
 
@@ -102,7 +102,7 @@ export function scatterFigureModel(preset: ScatterPresetId, axes: ScatterAxes, i
       const x = row.values[axes.x];
       const y = row.values[axes.y];
       if (Number.isFinite(x) && Number.isFinite(y))
-        plotted.push({ targetKey, label, fullName, kind: context?.kind ?? 'alpha', x, y, values: row.values });
+        plotted.push({ targetKey, label, fullName, kind: context?.kind ?? 'romaji', x, y, values: row.values });
       else excluded.push({ targetKey, label, fullName, status: 'no-value', message: '値なし' });
     }
   }

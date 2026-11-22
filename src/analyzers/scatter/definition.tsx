@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
-import type { LayoutKind } from '#input/layouts/kind.ts';
+import type { LayoutCategory } from '#input/layouts/layout-category.ts';
 import { ChipSelectOptionField } from '#ui/primitives/chip-select-option-field.tsx';
 import { bindOption, CheckboxGroupOptionField, SegmentedOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
@@ -45,7 +45,7 @@ export interface ScatterRowContext {
   /** 集合によらない完全な名前。hoverとフォーカスの読み取りに出す。 */
   readonly fullName: string;
   /** 配列の種類。対象を解決できなかった行には無い。 */
-  readonly kind: LayoutKind | undefined;
+  readonly kind: LayoutCategory | undefined;
 }
 
 export type ScatterBodyProps = SetBodyProps<ScatterExtracted, ScatterOptions, ScatterRowContext>;
@@ -90,7 +90,7 @@ function FreeNotice({ slot, language }: { readonly slot: Extract<ScatterSlot, { 
   );
 }
 
-function KindMark({ kind, size = MARK_SIZE }: { readonly kind: LayoutKind; readonly size?: number }) {
+function KindMark({ kind, size = MARK_SIZE }: { readonly kind: LayoutCategory; readonly size?: number }) {
   const style = SCATTER_KIND_STYLES[kind];
   // 色は`var(--kind-color-*)`が来るので、属性でなくstyleで渡す
   return <path className="scatter-mark" data-kind={kind} data-mark={style.shape} d={targetMarkPath(style.shape, size)} style={{ fill: style.color }} />;
@@ -583,5 +583,5 @@ export const scatterAnalyzer = {
   Settings: ScatterSettings,
   defaultOptions: DEFAULT_SCATTER_OPTIONS,
   urlOptions: scatterOptions,
-  rowContext: ({ targetKey, label, fullName, header }) => ({ targetKey, label, fullName, kind: header?.layoutKind }),
+  rowContext: ({ targetKey, label, fullName, header }) => ({ targetKey, label, fullName, kind: header?.layoutCategory }),
 } satisfies SetAnalyzerPaneParts<ScatterOptions, ScatterExtracted, ScatterRowContext>;

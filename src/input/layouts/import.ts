@@ -769,7 +769,7 @@ export type KanaFileImportResult =
 export function importKanaLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): KanaFileImportResult {
   const result = classifyLayoutFile(fileName, bytes);
   if (result.kind === 'error') return { ok: false, message: result.message };
-  if (result.kind === 'alpha') return { ok: false, message: '英字の配列の定義です。ローマ字配列の画面で取り込んでください', romajiLayout: true };
+  if (result.kind === 'alpha') return { ok: false, message: 'ローマ字配列の定義です。ローマ字配列の画面で取り込んでください', romajiLayout: true };
   if (result.kind === 'stage') return { ok: false, message: 'かな配列ではない定義のため、取り込めません', romajiLayout: true };
   return { ok: true, content: result.content, warnings: result.warnings };
 }

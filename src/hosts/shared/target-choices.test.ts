@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import {
@@ -28,31 +29,43 @@ const SETUPS: readonly Setup[] = [
   { id: 'b', number: 2, layoutId: 'tsuki-2-263', shapeId: 'row-staggered', label: '会社の月配列' },
 ];
 
-test('組み込みの配列を英字とかなに分け、空の区分は出さない', () => {
+test('組み込みの配列をローマ字配列・かな配列・漢直に分け、空の区分は出さない', () => {
   const groups = targetChoiceGroups(source());
   assert.deepEqual(
     groups.map((group) => group.id),
-    ['builtin-alphabet', 'builtin-kana'],
+    ['builtin-romaji', 'builtin-kana', 'builtin-kanji-direct'],
   );
-  const [alphabet, kana] = groups;
-  assert.equal(alphabet!.choices[0]!.key, 'layout:qwerty');
-  assert.ok(alphabet!.choices.some((choice) => choice.name === 'Colemak-DH'));
+  const [romaji, kana, kanjiDirect] = groups;
+  assert.equal(romaji!.choices[0]!.key, 'layout:qwerty');
+  assert.ok(romaji!.choices.some((choice) => choice.name === 'Colemak-DH'));
   assert.ok(kana!.choices.some((choice) => choice.key === 'layout:naginata-v18'));
   assert.ok(!kana!.choices.some((choice) => choice.key === 'layout:qwerty'));
+  assert.deepEqual(
+    kanjiDirect!.choices.map((choice) => choice.key),
+    ['layout:tcode', 'layout:tut-code', 'layout:secca'],
+  );
+  assert.ok(!kana!.choices.some((choice) => ['layout:tcode', 'layout:tut-code', 'layout:secca'].includes(choice.key)));
+});
+
+test('漢直の分類は、表を取得する前の配列でも同じ', () => {
+  const pending = targetChoiceGroups(source({ layouts: LAYOUT_BY_ID }));
+  const loaded = targetChoiceGroups(source());
+  const keys = (groups: ReturnType<typeof targetChoiceGroups>) => groups.map((group) => [group.id, group.choices.map((choice) => choice.key)]);
+  assert.deepEqual(keys(pending), keys(loaded));
 });
 
 test('自作の配列とSetupはそれぞれの区分に入り、Setupには番号を添える', () => {
   const groups = targetChoiceGroups(source({ userLayouts: new Map([['dvorak', USER_ALPHA]]), setups: SETUPS }));
   assert.deepEqual(
     groups.map((group) => group.id),
-    ['builtin-alphabet', 'builtin-kana', 'user', 'setup'],
+    ['builtin-romaji', 'builtin-kana', 'builtin-kanji-direct', 'user', 'setup'],
   );
   assert.deepEqual(
-    groups[2]!.choices.map((choice) => choice.key),
+    groups[3]!.choices.map((choice) => choice.key),
     ['layout:dvorak'],
   );
   assert.ok(!groups[0]!.choices.some((choice) => choice.key === 'layout:dvorak'));
-  const [plain, labeled] = groups[3]!.choices;
+  const [plain, labeled] = groups[4]!.choices;
   assert.equal(plain!.tag, 'Setup 1');
   assert.equal(labeled!.tag, 'Setup 2');
   assert.match(plain!.name, /QWERTY/);
@@ -81,7 +94,7 @@ test('絞り込みは全角半角・大文字小文字を区別せず、名前�
   const colemak = filterTargetChoiceGroups(groups, 'ＣＯＬＥＭＡＫ');
   assert.deepEqual(
     colemak.map((group) => group.id),
-    ['builtin-alphabet'],
+    ['builtin-romaji'],
   );
   assert.deepEqual(
     colemak[0]!.choices.map((choice) => choice.name),
@@ -174,7 +187,7 @@ test('別名は絞り込みにだけ効き、名前や区分の並びは変え�
   assert.equal(naginata.fullName, undefined);
 });
 
-test('種類の切り替えは名前の絞り込みと同時に使え、自作の配列・Setupも種類で分かれる', () => {
+test('分類の切り替えは名前の絞り込みと同時に使え、自作の配列・Setupも分類で分かれる', () => {
   const kanaMine: UserLayout = {
     kind: 'kana',
     id: 'mine-kana',
@@ -182,12 +195,16 @@ test('種類の切り替えは名前の絞り込みと同時に使え、自作�
     faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
     composition: { dakuten: false, handakuten: false },
   };
+  // 面に漢字を出力として置いた自作のかな配列。漢直ではなく保存した種類で分かれる
+  const kanjiMine: UserLayout = { ...kanaMine, id: 'mine-kanji', name: '自作漢字' };
   const layouts = new Map(LOADED_LAYOUT_BY_ID);
   layouts.set('mine-kana', { ...LOADED_LAYOUT_BY_ID.get('qwerty')!, id: 'mine-kana', name: '自作かな' });
+  layouts.set('mine-kanji', { ...LOADED_LAYOUT_BY_ID.get('tcode')!, id: 'mine-kanji', name: '自作漢字' });
   const setups: Setup[] = [
     ...SETUPS,
     { id: 'c', number: 3, layoutId: 'mine-kana', shapeId: 'row-staggered' },
     { id: 'd', number: 4, layoutId: 'no-such-layout', shapeId: 'row-staggered' },
+    { id: 'e', number: 5, layoutId: 'tcode', shapeId: 'row-staggered' },
   ];
   const groups = targetChoiceGroups(
     source({
@@ -195,33 +212,53 @@ test('種類の切り替えは名前の絞り込みと同時に使え、自作�
       userLayouts: new Map<string, UserLayout>([
         ['dvorak', USER_ALPHA],
         ['mine-kana', kanaMine],
+        ['mine-kanji', kanjiMine],
       ]),
       setups,
       selected: [{ kind: 'setup', setupId: 'gone' }],
     }),
   );
-  const keys = (query: string, kind: 'all' | 'alpha' | 'kana') =>
+  const keys = (query: string, kind: 'all' | 'romaji' | 'kana' | 'kanji-direct') =>
     filterTargetChoiceGroups(groups, query, kind).flatMap((group) => group.choices.map((choice) => choice.key));
 
   const kana = keys('', 'kana');
-  assert.ok(kana.includes('layout:naginata-v18') && kana.includes('layout:mine-kana') && kana.includes('setup:b') && kana.includes('setup:c'));
+  assert.ok(
+    kana.includes('layout:naginata-v18') &&
+      kana.includes('layout:mine-kana') &&
+      kana.includes('layout:mine-kanji') &&
+      kana.includes('setup:b') &&
+      kana.includes('setup:c'),
+  );
   assert.ok(!kana.includes('layout:qwerty') && !kana.includes('layout:dvorak') && !kana.includes('setup:a'));
+  assert.ok(!kana.includes('layout:tcode') && !kana.includes('layout:tut-code') && !kana.includes('layout:secca') && !kana.includes('setup:e'));
 
-  const alpha = keys('', 'alpha');
-  assert.ok(alpha.includes('layout:qwerty') && alpha.includes('layout:dvorak') && alpha.includes('setup:a'));
-  assert.ok(!alpha.includes('layout:naginata-v18') && !alpha.includes('layout:mine-kana') && !alpha.includes('setup:b') && !alpha.includes('setup:c'));
+  const romaji = keys('', 'romaji');
+  assert.ok(romaji.includes('layout:qwerty') && romaji.includes('layout:dvorak') && romaji.includes('setup:a'));
+  assert.ok(
+    !romaji.includes('layout:naginata-v18') && !romaji.includes('layout:mine-kana') && !romaji.includes('setup:b') && !romaji.includes('setup:c'),
+  );
+  assert.ok(!romaji.includes('layout:tcode') && !romaji.includes('setup:e'));
+
+  const kanjiDirect = keys('', 'kanji-direct');
+  assert.ok(['layout:tcode', 'layout:tut-code', 'layout:secca', 'setup:e'].every((key) => kanjiDirect.includes(key)));
+  assert.ok(
+    !kanjiDirect.includes('layout:mine-kanji') &&
+      !kanjiDirect.includes('layout:qwerty') &&
+      !kanjiDirect.includes('layout:naginata-v18') &&
+      !kanjiDirect.includes('setup:a'),
+  );
 
   // 種類を決められない候補（配列が見つからないSetup・見つからない対象）はどの種類でも残る。
-  for (const kind of ['all', 'alpha', 'kana'] as const) {
+  for (const kind of ['all', 'romaji', 'kana', 'kanji-direct'] as const) {
     assert.ok(keys('', kind).includes('setup:d'));
     assert.ok(keys('', kind).includes('setup:gone'));
   }
 
   // 名前の語とは両方を満たすものだけ残る。
-  assert.deepEqual(keys('自作', 'kana'), ['layout:mine-kana', 'setup:c']);
-  assert.deepEqual(keys('自作', 'alpha'), []);
+  assert.deepEqual(keys('自作', 'kana'), ['layout:mine-kana', 'layout:mine-kanji', 'setup:c']);
+  assert.deepEqual(keys('自作', 'romaji'), []);
   assert.deepEqual(keys('会社', 'kana'), ['setup:b']);
-  assert.deepEqual(keys('会社', 'alpha'), []);
+  assert.deepEqual(keys('会社', 'romaji'), []);
   // 「すべて」は種類を問わない。
   assert.equal(filterTargetChoiceGroups(groups, '', 'all'), groups);
 });

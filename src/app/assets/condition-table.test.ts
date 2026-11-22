@@ -161,7 +161,7 @@ test('適用範囲は全体・Workspace・配列・Setupの順に並び、名前
   const groups = conditionPlacementGroups({ catalog, userLayouts: [], userRomajiRules: [], workspaces, setups, names });
   assert.deepEqual(
     groups.map((group) => group.id),
-    ['global', 'workspace', 'builtin-alphabet', 'builtin-kana', 'setup'],
+    ['global', 'workspace', 'builtin-romaji', 'builtin-kana', 'builtin-kanji-direct', 'setup'],
   );
   const titles = new Map(groups.flatMap((group) => group.placements).map((placement) => [placement.key, placement.title] as const));
   const listed = cascadeOverrideGroups({

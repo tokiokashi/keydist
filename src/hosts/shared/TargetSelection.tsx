@@ -92,7 +92,8 @@ const SHEET_MEDIA = MOBILE_QUERY;
 const KIND_FILTERS: readonly { readonly value: TargetKindFilter; readonly label: string }[] = [
   { value: 'all', label: 'すべて' },
   { value: 'kana', label: 'かな配列' },
-  { value: 'alpha', label: '英字の配列' },
+  { value: 'romaji', label: 'ローマ字配列' },
+  { value: 'kanji-direct', label: '漢直' },
 ];
 
 function isSheet(): boolean {
