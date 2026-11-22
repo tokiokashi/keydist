@@ -1841,27 +1841,22 @@ function kanjiSteps(layoutId: string, char: string): { cursors: number[]; frameA
   return { cursors, frameAtCursor: (cursor) => frameAt(layoutId, sample.text, cursor, {}, 0, 'ja').frame };
 }
 
-test('漢直の順次打鍵は、選択の出力を大きく出し、押した分だけ絞り込んだ表を図に出す', () => {
-  for (const layoutId of ['tcode', 'tut-code']) {
-    const { cursors, frameAtCursor } = kanjiSteps(layoutId, '名');
-    assert.equal(cursors.length, 2);
-    const [first, second] = cursors.map(frameAtCursor);
-    assert.equal(first.currentText, '名');
-    assert.equal(second.currentText, '名');
-    // 1打目の後の表には、続けて押すと出る字が出る。2打目でも同じ表のまま、押したキーが強調される
-    assert.ok(first.keyGuides.size > 0);
-    assert.deepEqual([...second.keyLabels], [...first.keyLabels]);
-    assert.equal(second.keyGuides.get([...second.activeKeys][0]), 'output');
-  }
+test('T-Codeの「名」は、1打目の後の表で、2打目のキーに「名」が出て字が決まるキーとして区別される', () => {
+  const { cursors, frameAtCursor } = kanjiSteps('tcode', '名');
+  const [first, second] = cursors.map(frameAtCursor);
+  assert.equal(first.keyLabels.get('r'), '名');
+  assert.equal(first.keyGuides.get('r'), 'output');
+  // 2打目でも1打目の後の表のまま、最後に押したキーの字が残る
+  assert.equal(second.keyLabels.get('r'), '名');
+  assert.deepEqual([...second.activeKeys], ['r']);
 });
 
-test('雪華の熟語は、全ステップで熟語を大きく出し、かなの同時押しは今の刻印のままにする', () => {
-  const { cursors, frameAtCursor } = kanjiSteps('secca', '見当');
-  assert.equal(cursors.length, 5);
-  for (const cursor of cursors) assert.equal(frameAtCursor(cursor).currentText, '見当');
-  // 1打目の表と3打目の表（空白キーの打鍵）は、押した分だけ絞り込まれる
-  assert.notDeepEqual([...frameAtCursor(cursors[0]).keyLabels], [...frameAtCursor(cursors[2]).keyLabels]);
-  assert.equal(frameAtCursor(cursors[0] - 1).keyGuides.size, 0);
-  const kana = kanjiSteps('secca', 'あ');
-  for (const cursor of kana.cursors) assert.equal(kana.frameAtCursor(cursor).keyGuides.size, 0);
+test('雪華の「暴」は、3打目と4打目の表に、3打目までで決まる「朝」を出さず、4打目のキーに「暴」を出す', () => {
+  // 条件: 雪華・テキスト「暴」（f d j k の4打）・既定の条件
+  for (const cursor of [3, 4]) {
+    const { frame } = frameAt('secca', '暴', cursor, {}, 0, 'ja');
+    assert.ok(![...frame.keyLabels.values()].includes('朝'));
+    assert.equal(frame.keyLabels.get('k'), '暴');
+    assert.equal(frame.currentText, '暴');
+  }
 });
