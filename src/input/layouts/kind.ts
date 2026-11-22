@@ -45,6 +45,7 @@ const BUILT_IN_KANA_LAYOUT_IDS: ReadonlySet<string> = new Set([
   'jis-kana',
   'tcode',
   'tut-code',
+  'secca',
 ]);
 
 /** 組み込み配列のidから種類を引く。未知のidは`alpha`にする（英字系がほとんどのため）。 */

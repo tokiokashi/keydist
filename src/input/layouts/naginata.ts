@@ -357,7 +357,7 @@ export const NAGINATA_V18_FACES: Face[] = [
  * 拗音は裏の「や・ゆ・よ」の位置、外来音は母音の位置（o・n・ピリオドは裏の「え・お・わ」、j・k・lは表の「あ・い・う」）を押す。
  * 濁音・半濁音のキーは文字を持たない修飾のキーとして押す。
  */
-const NAGINATA_TRIGGER_MEANINGS: TriggerMeanings = {
+export const NAGINATA_TRIGGER_MEANINGS: TriggerMeanings = {
   拗音: { h: char('や'), p: char('ゆ'), i: char('よ') },
   外来音: {
     o: char('え'),

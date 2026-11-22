@@ -7,10 +7,11 @@
  * 取得に失敗した配列は、`retryFailedKanjiDirectLayouts` を呼ぶまで取得し直さない。
  */
 import { TCODE_DECLARATION } from './tcode.ts';
+import { SECCA_DECLARATION } from './secca.ts';
 import { TUT_CODE_DECLARATION } from './tut-code.ts';
 import type { KanjiDirectDeclaration, Layout } from './types.ts';
 
-export const KANJI_DIRECT_DECLARATIONS: readonly KanjiDirectDeclaration[] = [TCODE_DECLARATION, TUT_CODE_DECLARATION];
+export const KANJI_DIRECT_DECLARATIONS: readonly KanjiDirectDeclaration[] = [TCODE_DECLARATION, TUT_CODE_DECLARATION, SECCA_DECLARATION];
 
 const DECLARATION_BY_ID = new Map(KANJI_DIRECT_DECLARATIONS.map((declaration) => [declaration.id, declaration] as const));
 
