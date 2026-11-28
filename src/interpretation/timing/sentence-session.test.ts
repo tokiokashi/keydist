@@ -593,12 +593,20 @@ test('Shiftを打つキーに持つ文の測定では、文字のキーの押下
   const session = startSentenceSession([planOf([step(['shift-l', 'a'], 0), step(['s'], 1)])], 1);
   // Shiftを押さずに押したa、Shiftを押したままのsは、違うキーの押下
   const unshifted = pressSentenceSessionKey(session, { ...keyEvent('a'), shiftKey: false }, 100, label);
-  assert.equal(unshifted.outcome.kind, 'wrong-key');
+  assert.deepEqual(unshifted.outcome, { kind: 'wrong-key', expectedKey: 'a', expectedIsOutput: false, shift: 'press' });
+  // 文字のキーが違う押下は、Shiftの過不足を添えない
+  const other = pressSentenceSessionKey(session, { ...keyEvent('d'), shiftKey: false }, 100, label);
+  assert.ok(other.outcome.kind === 'wrong-key' && other.outcome.shift === undefined);
   // Shiftを押す押下を渡さない呼び出し側の押下も、押していないものとみなす
   assert.equal(pressSentenceSessionKey(session, keyEvent('a'), 100, label).outcome.kind, 'wrong-key');
   const shifted = pressSentenceSessionKey(unshifted.session, { ...keyEvent('a'), shiftKey: true }, 200, label);
   assert.equal(shifted.outcome.kind, 'step-finished');
-  assert.equal(pressSentenceSessionKey(shifted.session, { ...keyEvent('s'), shiftKey: true }, 300, label).outcome.kind, 'wrong-key');
+  assert.deepEqual(pressSentenceSessionKey(shifted.session, { ...keyEvent('s'), shiftKey: true }, 300, label).outcome, {
+    kind: 'wrong-key',
+    expectedKey: 's',
+    expectedIsOutput: false,
+    shift: 'release',
+  });
   const last = pressSentenceSessionKey(shifted.session, { ...keyEvent('s'), shiftKey: false }, 300, label);
   assert.equal(last.outcome.kind, 'run-finished');
 });

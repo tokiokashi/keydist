@@ -284,7 +284,16 @@ export type SentencePressOutcome =
    * `expectedKey`は案内するキー。`expectedIsOutput`が真なら、キーのidではなく出力の文字そのもの
    * （出力の文字の読み方だけが残っている時の、次の文字）。
    */
-  | { readonly kind: 'wrong-key'; readonly expectedKey: string; readonly expectedIsOutput: boolean }
+  | {
+      readonly kind: 'wrong-key';
+      readonly expectedKey: string;
+      readonly expectedIsOutput: boolean;
+      /**
+       * 押したキーは次に押すキーで、Shiftの有無だけが食い違った時の、Shiftの過不足。
+       * `press`はShiftを押す必要があった、`release`はShiftを離す必要があった。`expectedKey`はその文字のキー。
+       */
+      readonly shift?: 'press' | 'release';
+    }
   /** 時刻が戻った、または同時刻だった。進行は変わらない。 */
   | { readonly kind: 'ignored' }
   /** 同時に押すキーの一部を押した。または、完了した読み方・綴りがあるが、他方が途中で確定していない。 */
@@ -372,10 +381,17 @@ function pressStep(
       }
       return pressStep(finishStep(run, firstAt, undefined, byOutput), event, atMs, keyLabel, final);
     }
+    // Shiftの有無だけが食い違った押下は、押したキーを次に押すキーとして、Shiftの過不足を添えて案内する。
+    const shiftOnly =
+      run.pressReadingAlive && !pressDone && shiftMismatch
+        ? remainingStepKeys(run).find((key) => !isShiftKeyId(key) && !isThumbKeyId(key) && calibrationKeyMatches(event, key, keyLabel(key)))
+        : undefined;
     const expected =
-      run.pressReadingAlive || output === undefined
-        ? { expectedKey: remainingStepKeys(run)[0], expectedIsOutput: false }
-        : { expectedKey: output[run.outputCount], expectedIsOutput: true };
+      shiftOnly !== undefined
+        ? { expectedKey: shiftOnly, expectedIsOutput: false, shift: event.shiftKey === true ? ('release' as const) : ('press' as const) }
+        : run.pressReadingAlive || output === undefined
+          ? { expectedKey: remainingStepKeys(run)[0], expectedIsOutput: false }
+          : { expectedKey: output[run.outputCount], expectedIsOutput: true };
     return { run: { ...run, clean: false }, outcome: { kind: 'wrong-key', ...expected } };
   }
 
