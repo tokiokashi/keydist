@@ -276,6 +276,22 @@
   fill: var(--text);
 }
 
+/* 順次打鍵の続きの表。字が決まるキーと続きがあるキーの区別は、キーマップの図（`app.css` の `data-guide`）に合わせる */
+.playback-figure [data-playback-guide='continuation'] .playback-key-face {
+  stroke: var(--picker-candidate);
+  stroke-width: 2.5;
+}
+
+.playback-figure [data-playback-guide='output'] .playback-key-face {
+  fill: color-mix(in srgb, var(--picker-candidate) 16%, var(--surface));
+  stroke: var(--picker-candidate);
+  stroke-width: 3;
+}
+
+.playback-figure [data-playback-guide='output'] .playback-key-label {
+  font-weight: 800;
+}
+
 .playback-figure [data-playback-trail='true'] .playback-key-face {
   fill: color-mix(in srgb, var(--accent) calc(var(--playback-trail-opacity) * 100%), var(--surface));
 }
