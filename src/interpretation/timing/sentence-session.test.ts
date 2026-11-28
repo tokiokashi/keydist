@@ -91,9 +91,9 @@ test('前のストロークの時刻より後でない押下は無視する', ()
   assert.equal(ignored.run, run);
 });
 
-test('修飾キー・名前を持たない追加のキーなど、取れないキーが要る列は測れない。親指のキーは取れる', () => {
+test('名前を持たない追加のキーなど、取れないキーが要る列は測れない。親指のキーは取れる', () => {
   assert.equal(sentenceUnmeasurable([]), 'empty');
-  assert.equal(sentenceUnmeasurable([step(['shift-l', 'a'], 0)]), 'uncapturable-key');
+  assert.equal(sentenceUnmeasurable([step(['escape'], 0)]), 'uncapturable-key');
   assert.equal(sentenceUnmeasurable([step(['r0c13'], 0)]), 'uncapturable-key');
   assert.equal(sentenceUnmeasurable([step([], 0)]), 'uncapturable-key');
   assert.equal(sentenceUnmeasurable([step(['a'], 0), step([';'], 1)]), undefined);
@@ -587,4 +587,27 @@ test('左端の列のキーを打つ番に別のキーを押すと違うキー�
   const run = startSentenceRun(planOf([step(['tab'], 0)]));
   assert.equal(pressSentenceKey(run, keyEvent('a'), 100, label).outcome.kind, 'wrong-key');
   assert.equal(pressSentenceKey(run, { key: 'CapsLock', code: 'CapsLock', physicalKey: 'caps-lock' }, 100, label).outcome.kind, 'wrong-key');
+});
+
+test('Shiftを打つキーに持つ文の測定では、文字のキーの押下の時にShiftを押していれば、そのストロークのShiftを押したものとみなす', () => {
+  const session = startSentenceSession([planOf([step(['shift-l', 'a'], 0), step(['s'], 1)])], 1);
+  // Shiftを押さずに押したa、Shiftを押したままのsは、違うキーの押下
+  const unshifted = pressSentenceSessionKey(session, { ...keyEvent('a'), shiftKey: false }, 100, label);
+  assert.equal(unshifted.outcome.kind, 'wrong-key');
+  // Shiftを押す押下を渡さない呼び出し側の押下も、押していないものとみなす
+  assert.equal(pressSentenceSessionKey(session, keyEvent('a'), 100, label).outcome.kind, 'wrong-key');
+  const shifted = pressSentenceSessionKey(unshifted.session, { ...keyEvent('a'), shiftKey: true }, 200, label);
+  assert.equal(shifted.outcome.kind, 'step-finished');
+  assert.equal(pressSentenceSessionKey(shifted.session, { ...keyEvent('s'), shiftKey: true }, 300, label).outcome.kind, 'wrong-key');
+  const last = pressSentenceSessionKey(shifted.session, { ...keyEvent('s'), shiftKey: false }, 300, label);
+  assert.equal(last.outcome.kind, 'run-finished');
+});
+
+test('Shiftを打つキーに持たない文の測定では、Shiftを押していても今までどおり照合する', () => {
+  const session = startSentenceSession([planOf([step(['a'], 0)])], 1);
+  assert.equal(pressSentenceSessionKey(session, { ...keyEvent('a'), shiftKey: true }, 100, label).outcome.kind, 'run-finished');
+});
+
+test('Shiftとろのキーは取れるので、打つキーに持つ文も測れる', () => {
+  assert.equal(sentenceUnmeasurable([step(['shift-l', '0'], 0), step(['r3c10'], 1), step(['shift-r', 'z'], 2)]), undefined);
 });

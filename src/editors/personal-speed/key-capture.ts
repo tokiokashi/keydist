@@ -1,4 +1,9 @@
-import { browserCodeToPhysicalKey, EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
+import {
+  browserCodeToPhysicalKey,
+  EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+  JIS_BROWSER_BINDINGS,
+  type BrowserKeyBindingOverrides,
+} from '#input/shapes/browser-key-codes.ts';
 import { isThumbKeyId } from '#input/shapes/geometry.ts';
 
 /**
@@ -23,15 +28,17 @@ export interface PressLike {
   readonly ctrlKey: boolean;
   readonly metaKey: boolean;
   readonly altKey: boolean;
+  readonly shiftKey?: boolean;
 }
 
-/** 照合に渡す押下。`code`から、利用者の対応を重ねて引いたキーのidを添える（引けなければ添えない）。 */
+/** 照合に渡す押下。`code`から、利用者の対応を重ねて引いたキーのidを添える（引けなければ添えない）。Shiftを押していたかも添える。 */
 export function matchableKeyEvent(
-  event: Pick<KeyboardEvent, 'key' | 'code'>,
+  event: Pick<KeyboardEvent, 'key' | 'code'> & { readonly shiftKey?: boolean },
   bindings: BrowserKeyBindingOverrides,
-): { readonly key: string; readonly code: string; readonly physicalKey?: string } {
+): { readonly key: string; readonly code: string; readonly physicalKey?: string; readonly shiftKey?: boolean } {
   const physicalKey = browserCodeToPhysicalKey(event.code, bindings);
-  return physicalKey === undefined ? { key: event.key, code: event.code } : { key: event.key, code: event.code, physicalKey };
+  const base = event.shiftKey === undefined ? { key: event.key, code: event.code } : { key: event.key, code: event.code, shiftKey: event.shiftKey };
+  return physicalKey === undefined ? base : { ...base, physicalKey };
 }
 
 /**
@@ -42,6 +49,9 @@ export function swallowsPress(outcomeKind: string): boolean {
   return outcomeKind !== 'wrong-key';
 }
 
+/** JISの物理配列の`\`・`¥`・`ろ`の位置のキーのid。 */
+const JIS_CODE_KEY_IDS: readonly string[] = Object.values(JIS_BROWSER_BINDINGS).filter((id): id is string => id !== null);
+
 /** 左端の列のキー（`LEFT_COLUMN_KEYS`）の位置のキーが送る`code`。`event.key`が複数文字になるので、1文字のキーとは別に扱う。 */
 const LEFT_COLUMN_CODES: readonly string[] = ['CapsLock', 'Tab', 'Backquote'];
 
@@ -49,6 +59,8 @@ const LEFT_COLUMN_CODES: readonly string[] = ['CapsLock', 'Tab', 'Backquote'];
  * 測定の打鍵として扱う押下か。`event.key`が1文字で空白でない押下を扱う。
  * `withLeftColumnCodes`が真なら、`code`が`CapsLock`・`Tab`・`Backquote`で、`bindings`を重ねた対応でキーのidが返る押下も扱う
  * （割り当て先は左端の列のキーに限らない）。既定は偽。
+ * `withLeftColumnCodes`が真の時は、Shiftを押しながらの押下で、`code`から1文字のキーかJISの物理配列の`\`・`¥`・`ろ`の位置のキーが引ける押下も扱う。
+ * JISキーボードのShift+0のように、Shiftを押すと`event.key`が1文字にならないキーがあり、Shiftで打つ文字を打てるようにするため。
  */
 export function isCalibrationKeyPress(
   event: PressLike,
@@ -59,6 +71,11 @@ export function isCalibrationKeyPress(
   if (event.ctrlKey || event.metaKey || event.altKey) return false;
   // 1文字のキーだけ。Escape・Tab・Enter・矢印などは名前が複数文字で、Spaceは空白1文字なので除く。
   if ([...event.key].length === 1 && event.key.trim() !== '') return true;
+  if (withLeftColumnCodes && event.shiftKey === true && event.code !== undefined) {
+    const physicalKey = browserCodeToPhysicalKey(event.code, bindings);
+    if (physicalKey !== undefined && (([...physicalKey].length === 1 && physicalKey.trim() !== '') || JIS_CODE_KEY_IDS.includes(physicalKey)))
+      return true;
+  }
   return (
     withLeftColumnCodes &&
     event.code !== undefined &&
