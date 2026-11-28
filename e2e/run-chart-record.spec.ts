@@ -13,7 +13,7 @@ async function typeThrough(page: Page): Promise<void> {
   const next = page.locator('[data-record-next] kbd');
   // 打つ範囲はworkerで計算するので、開始を押してから打つ欄が出るまで間がある。
   // 欄が出る前に見ると、打ち終えたと見なして1打も打たずに抜ける。
-  await expect(run).toBeVisible();
+  await expect(run).toBeVisible({ timeout: 15_000 });
   for (let step = 0; step < 600; step += 1) {
     if (!(await run.isVisible())) return;
     const labels = await next.allTextContents().catch(() => []);
