@@ -90,7 +90,7 @@ test('compact layer guideはlayout presentation policyに従い薙刀式ではSa
   );
 });
 
-test('presentation trigger colorはlegacy layer series順を再利用する', () => {
+test('presentation trigger colorは層ごとのヒートマップのlayer series順を再利用する', () => {
   const colors = presentationTriggerColorSlots(TSUKI_2_263);
   assert.equal(colors.get('d'), colors.get('k'));
   assert.equal(typeof colors.get('d'), 'number');

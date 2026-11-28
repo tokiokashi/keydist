@@ -27,7 +27,7 @@ function fakeStorage() {
   };
 }
 
-test('thumb binding既定値は従来のNonConvert / Space+Convertを保持する', () => {
+test('thumb binding既定値はNonConvert / Space+Convertにする', () => {
   const overrides = thumbKeyBindingsToOverrides(DEFAULT_THUMB_KEY_BINDINGS);
   assert.equal(overrides.NonConvert, 'thumb-l');
   assert.equal(overrides.Space, 'thumb-r');

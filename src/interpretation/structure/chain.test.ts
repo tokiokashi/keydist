@@ -117,7 +117,7 @@ test('ChainInterpretationはsame-finger / trigger-only / 逆手同時を独立�
       [0, 3],
       [4, 5],
     ],
-    '既定ではsame-finger境界Strokeを従来どおりChainから外す',
+    '既定ではsame-finger境界StrokeをChainから外す',
   );
 });
 
