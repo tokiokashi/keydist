@@ -16,11 +16,9 @@ import { KANA_TEST_TEXT } from '../../test/kana-test-text.ts';
  * `cache.getSetExtraction`（`SetAnalyzerDefinition`の実際の配線）を通した、N感度の
  * 実engine経路のテスト。
  *
- * `extract.test.ts`（Analyzerユニット側）のテストは`AnalyzerSetMember.requestTrace`を
- * 手組みのスタブで渡していたため、`engine/cache.ts`の`getSetExtraction`が実際に
- * `createTraceRequesterFor`をどう組み立てているか（部分マージ等）は
- * 検証していなかった。ここでは`cache.getSetExtraction`をそのまま呼び、その結果を
- * 旧`nSensitivity()`と突き合わせる。
+ * `extract.test.ts`は`AnalyzerSetMember.requestTrace`を手組みのスタブで渡すので、
+ * `engine/cache.ts`の`getSetExtraction`が`createTraceRequesterFor`をどう組み立てるか（部分マージ等）は
+ * 検査しない。ここでは`cache.getSetExtraction`をそのまま呼び、その結果を`nSensitivity()`と突き合わせる。
  */
 
 const CATALOG = {
@@ -57,12 +55,12 @@ function memberInputFor(layoutId: string, input: ResolvedInput): EngineSetMember
   return { target: targetFor(layoutId), resolution: { ok: true, input } };
 }
 
-function assertSeriesMatchesLegacy(series: NSensitivitySeries | undefined, input: ResolvedInput): void {
+function assertSeriesMatchesNSensitivity(series: NSensitivitySeries | undefined, input: ResolvedInput): void {
   assert.ok(series, '対応する系列が見つからない');
   assert.equal(series!.kind, 'ok');
   if (series!.kind !== 'ok') return;
 
-  const legacyPoints = nSensitivity(
+  const directPoints = nSensitivity(
     input.text,
     input.layout,
     input.geometry,
@@ -73,14 +71,14 @@ function assertSeriesMatchesLegacy(series: NSensitivitySeries | undefined, input
     input.arpeggioInterpretation,
   );
 
-  assert.equal(series!.points.length, legacyPoints.length);
-  for (let i = 0; i < legacyPoints.length; i++) {
-    assert.equal(series!.points[i]!.windowSize, legacyPoints[i]!.windowSize, `windowSize[${i}]`);
-    assert.equal(series!.points[i]!.values.totalUnits, legacyPoints[i]!.totalUnits, `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`);
+  assert.equal(series!.points.length, directPoints.length);
+  for (let i = 0; i < directPoints.length; i++) {
+    assert.equal(series!.points[i]!.windowSize, directPoints[i]!.windowSize, `windowSize[${i}]`);
+    assert.equal(series!.points[i]!.values.totalUnits, directPoints[i]!.totalUnits, `totalUnits[${i}] (N=${directPoints[i]!.windowSize})`);
   }
 }
 
-test('cache.getSetExtraction: 異なる配列の2メンバーそれぞれが、実engine経由で旧nSensitivityと全11N一致する', () => {
+test('cache.getSetExtraction: 異なる配列の2メンバーそれぞれが、実engine経由でnSensitivityと全11N一致する', () => {
   const cache = createEngineCache();
   const inputA = resolve('qwerty', 'hello world');
   const inputB = resolve('colemak-dh', 'hello world');
@@ -92,17 +90,17 @@ test('cache.getSetExtraction: 異なる配列の2メンバーそれぞれが、�
   );
 
   assert.equal(result.extracted.series.length, 2);
-  assertSeriesMatchesLegacy(
+  assertSeriesMatchesNSensitivity(
     result.extracted.series.find((s) => s.targetKey === 'setup:setup-qwerty'),
     inputA,
   );
-  assertSeriesMatchesLegacy(
+  assertSeriesMatchesNSensitivity(
     result.extracted.series.find((s) => s.targetKey === 'setup:setup-colemak-dh'),
     inputB,
   );
 });
 
-test('cache.getSetExtraction: 長い日本語サンプル・windowSize=7（非既定）の実engine経路でも旧nSensitivityと全11N一致する', () => {
+test('cache.getSetExtraction: 長い日本語サンプル・windowSize=7（非既定）の実engine経路でもnSensitivityと全11N一致する', () => {
   const cache = createEngineCache();
   const text = KANA_TEST_TEXT;
   assert.ok(text.length > 100, '「長い」ことの前提確認（前処理後の文字数）');
@@ -113,7 +111,7 @@ test('cache.getSetExtraction: 長い日本語サンプル・windowSize=7（非�
   const result = cache.getSetExtraction([memberInputFor('qwerty', input)], nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
 
   assert.equal(result.extracted.series.length, 1);
-  assertSeriesMatchesLegacy(result.extracted.series[0], input);
+  assertSeriesMatchesNSensitivity(result.extracted.series[0], input);
 });
 
 test('cache.getSetExtraction: 解決に失敗したメンバーは系列から落ちてfailuresに回る（実engine経路でも部分失敗を保つ）', () => {

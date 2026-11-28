@@ -1,9 +1,4 @@
-import {
-  createAppStateSliceScheduler,
-  loadOrMigrateAppStateSlice,
-  patchAppStateSlice,
-  type AppStateSliceScheduler,
-} from '#app/state/app-state-storage.ts';
+import { createAppStateSliceScheduler, loadOrMigrateAppStateSlice, type AppStateSliceScheduler } from '#app/state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { decodeVersionedState } from '#platform/persistence/versioned-state.ts';
 import { DEFAULT_LAYER_KEY_NAMING, isLayerKeyNaming, type LayerKeyNaming } from './layer-key-names.ts';
@@ -254,10 +249,6 @@ export function loadInputConverterPreferences(
     },
     legacyKeys: [INPUT_CONVERTER_PREFERENCES_STORAGE_KEY],
   });
-}
-
-export function saveInputConverterPreferences(storage: KeyValueStorage, prefs: InputConverterPreferencesV2): void {
-  patchAppStateSlice(storage, 'inputConverter', prefs);
 }
 
 export type InputConverterPreferencesScheduler = AppStateSliceScheduler<InputConverterPreferencesV2>;

@@ -1,19 +1,16 @@
 import {
   DEFAULT_EXTRACTION_ASSETS,
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { analysisTargetKey, LAYOUT_MISSING_REASON, type AnalysisTarget } from '#input/setup/index.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
 import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
 import { segmentPerCharBox, type SegmentPerCharBox } from '#interpretation/bunsetsu-stats.ts';
 import { buildSpanIndex, type SpanIndex } from '#interpretation/span-metrics.ts';
-import { generateTrace } from '#trace/generate.ts';
+import { disciplineSetContext, generatedDisciplineMember } from '../set-discipline-material.ts';
 import { DEFAULT_BOX_PLOT_OPTIONS, boxPlotOptions, type BoxPlotOptions } from './options.ts';
 
 /**
@@ -115,27 +112,10 @@ const FIXTURE_SEGMENTATION = {
   origin: 'kana-only',
   splitter: { name: 'fixture', version: '0' },
 } as const;
-const FIXTURE_TARGET: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
 
 function fixtureMembers(): readonly AnalyzerSetMember[] {
-  const trace = generateTrace(FIXTURE_TEXT, LAYOUT_BY_ID.get('qwerty')!, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true });
-  return [
-    {
-      target: FIXTURE_TARGET,
-      text: FIXTURE_TEXT,
-      trace,
-      // この抽出が読まない値は材料に含めない
-      analysis: undefined as never,
-      metrics: undefined as never,
-      requestTrace: { requestTrace: () => trace },
-      assets: { ...DEFAULT_EXTRACTION_ASSETS, segmentation: FIXTURE_SEGMENTATION },
-      remember: noRemember,
-    },
-  ];
+  return [generatedDisciplineMember(FIXTURE_TEXT, { text: FIXTURE_TEXT, assets: { ...DEFAULT_EXTRACTION_ASSETS, segmentation: FIXTURE_SEGMENTATION } })];
 }
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /** engine（`engine/cache.ts` の `getSetExtraction`）が呼ぶ、Analyzer契約の実体。 */
 export const boxPlotDefinition: SetAnalyzerDefinition<BoxPlotOptions, BoxPlotExtracted> = defineSetAnalyzer({
@@ -149,6 +129,6 @@ export const boxPlotDefinition: SetAnalyzerDefinition<BoxPlotOptions, BoxPlotExt
   optionsDiscipline: {
     sample: DEFAULT_BOX_PLOT_OPTIONS,
     alternates: DEFAULT_BOX_PLOT_OPTIONS,
-    context: () => ({ members: fixtureMembers(), failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(fixtureMembers()),
   },
 });

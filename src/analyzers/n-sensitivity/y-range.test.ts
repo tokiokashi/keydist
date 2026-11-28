@@ -62,7 +62,7 @@ test('値の幅がごく狭い時、目盛りは小数で書き分け、同じ�
   assert.ok(range.ticks.every((tick) => Number.isFinite(tick)));
 });
 
-test('整数の刻みなら小数を付けない（従来の見た目のまま）', () => {
+test('整数の刻みなら小数を付けない', () => {
   assert.deepEqual(formatYTicks('ratio', [0, 20, 40, 60, 80, 100], 'totalUnits', 'ja'), ['0%', '20%', '40%', '60%', '80%', '100%']);
   assert.deepEqual(formatYTicks('value', [0, 76.16, 152.32], 'totalUnits', 'ja'), ['0 u', '76 u', '152 u']);
 });
@@ -130,7 +130,7 @@ test('比がNで100%を超える指標（指間σ）は、最大値を含む区�
     assert.deepEqual(range.ticks.at(-1), range.hi);
   }
   assert.deepEqual(computeYRange('full', 'ratio', values), { lo: 0, hi: 150, ticks: [0, 50, 100, 150] });
-  // 100%以下だけの時は、従来どおり100%に固定する
+  // 100%以下だけの時は、100%に固定する
   assert.equal(computeYRange('fit', 'ratio', [100, 80]).hi, 100);
 });
 

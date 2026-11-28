@@ -5,9 +5,6 @@ import { assignColorSlots, type MultiTargetSelection, type TargetSet } from './m
 /**
  * `MultiTargetSelection`のcodec。payloadは`{ targets, colorSlots, baseline? }`。
  *
- * 版1はAnalyzerごとに持っていた旧資産（`keydist:analyzer-set-selections`）とは別のキーに
- * 置く新しい資産の版で、旧資産からの移行は持たない（互換は守らない。AGENTS.md）。
- *
  * 対象1件ずつのdecodeは`decodeAnalysisTarget`（`input/setup/target-codec.ts`）に委ねる。
  * 壊れた対象1件は診断付きで捨て、集合全体は捨てない（「壊れた要素だけ捨てて残りを読む」方針）。
  * 重複は先に出た方だけ残して1つに畳む（`multi-target-selection.ts`の`dedupeTargets`と同じ規則。

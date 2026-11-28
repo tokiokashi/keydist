@@ -64,7 +64,7 @@ test('Requirementなしのmulti-key入力もcombined/separateをRealization側�
   );
 });
 
-test('legacy Sequence compilerはsource Step境界をbase actionとして保持する', () => {
+test('Sequenceのcompilerはsource Step境界をbase actionとして保持する', () => {
   const artifacts = compileSequenceInputArtifacts('x', [['space', 'j'], ['j']], 'single');
 
   assert.equal(artifacts.semanticInputs.length, 2);
@@ -244,11 +244,11 @@ test('flatten時はaliasをcanonical PhysicalKeyIdへ正規化する', () => {
   );
 });
 
-test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと一致する', () => {
+test('built-in全outputでauthoring-derived base actionがLayout.mapと一致する', () => {
   for (const layout of LOADED_LAYOUT_BY_ID.values()) {
     assert.ok(layout.canonicalInputs, `${layout.id}: canonicalInputs`);
 
-    for (const [output, legacySequence] of layout.map) {
+    for (const [output, mapSequence] of layout.map) {
       const semanticSequence = layout.canonicalInputs.get(output)?.[0]?.semanticInputs;
       const baseRealizations: BaseActionRealizationSequence | undefined = layout.canonicalInputs.get(output)?.[0]?.baseRealizations;
       assert.ok(semanticSequence, `${layout.id}: ${output} semantic sequence`);
@@ -259,10 +259,10 @@ test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと�
       }
 
       const actions = flattenBaseActionRealizations(baseRealizations);
-      assert.equal(actions.length, legacySequence.length, `${layout.id}: ${output} action count`);
+      assert.equal(actions.length, mapSequence.length, `${layout.id}: ${output} action count`);
 
-      for (const [index, legacyStep] of legacySequence.entries()) {
-        const expected = [...new Set(legacyStep.map(resolveKeyId))].sort();
+      for (const [index, mapStep] of mapSequence.entries()) {
+        const expected = [...new Set(mapStep.map(resolveKeyId))].sort();
         const actual = [...actions[index].keys].sort();
         assert.deepEqual(actual, expected, `${layout.id}: ${output} action ${index}`);
       }

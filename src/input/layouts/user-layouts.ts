@@ -144,8 +144,6 @@ function readUserLayout(l: unknown): UserLayout | string {
   return valid ? (value as unknown as StageUserLayout) : form;
 }
 
-export const isValidUserLayout = (l: unknown): l is UserLayout => typeof readUserLayout(l) !== 'string';
-
 /**
  * 保存された自作配列の一覧を読む。値があって配列でない時（nullを含む）と、壊れた要素・id重複を
  * 捨てる時は診断を積む。`undefined`（保存が無い）は空の一覧で正しいので診断しない。
@@ -229,7 +227,7 @@ export function toLayout(def: UserLayout): Layout {
     [...layout.canonicalInputs].map(([output, alternatives]) => [output, [...alternatives]] as const),
   );
   for (const [output, sequence] of def.sequences ?? []) {
-    // imported sequenceは従来mapを上書きしていたためauthoring defaultとして先頭へ置く。
+    // 読み込んだsequenceはmapの値を上書きし、authoring defaultとして先頭へ置く
     map.set(output, sequence);
     const alternative = compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID);
     const alternativeIdentity = canonicalInputAlternativeIdentity(alternative);

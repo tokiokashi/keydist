@@ -416,7 +416,7 @@ export class InvalidSequenceError extends Error {
 }
 
 /**
- * richerなauthoring semanticを持たないlegacy Step列をcanonical入力列へ変換する。
+ * richerなauthoring semanticを持たないStep列をcanonical入力列へ変換する。
  * Step間の順序は返却配列の順序で表し、Requirement.orderへ重複させない。
  */
 export function compileSequenceSemanticInputs(
@@ -462,7 +462,7 @@ export interface CompiledSequenceArtifacts {
 }
 
 /**
- * legacy Step authoringをsemanticとdefault/base realizationへ同時にcompileする。
+ * Step列のauthoringをsemanticとdefault/base realizationへ同時にcompileする。
  * action groupingはRequirementから推測せず、source Step境界をそのまま保持する。
  */
 export function compileSequenceInputArtifacts(

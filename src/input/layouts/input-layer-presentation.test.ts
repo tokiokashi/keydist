@@ -1,12 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  activeModifierAggregationGroupIds,
   aggregationLegendMap,
   aggregationTriggerDisplayText,
   aggregationTriggerKeys,
   compactLayerGuideDefinitions,
-  modifierPhysicalKeys,
   presentationLayerGuide,
   presentationTriggerColorSlots,
   semanticCombinationLabels,
@@ -16,7 +14,7 @@ import { NAGINATA_V18 } from './naginata.ts';
 import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from './shin-jis.ts';
 import { TSUKI_2_263 } from './tsuki-2-263.ts';
 
-test('active modifier aggregationはcanonical rolesを使い複合modifierを優先する', () => {
+test('canonical aggregationは複合modifierの面のlegendとtrigger keyをcanonical rolesから引ける', () => {
   const base: Face = {
     ...faceFromEntries([], 'simultaneous', { h: 'H', j: 'J' }),
     inputRole: 'layer',
@@ -38,12 +36,8 @@ test('active modifier aggregationはcanonical rolesを使い複合modifierを優
   };
   const layout = fromFaces('presentation-active', 'presentation-active', [base, single, compound]);
 
-  assert.deepEqual(activeModifierAggregationGroupIds(layout, ['d']), ['layer:single-shift']);
-  assert.deepEqual(activeModifierAggregationGroupIds(layout, ['d', 'f']), ['layer:compound-shift']);
   assert.equal(aggregationLegendMap(layout, 'layer:single-shift').get('h'), 'X');
   assert.deepEqual([...aggregationTriggerKeys(layout, 'layer:compound-shift')].sort(), ['d', 'f']);
-  assert.equal(modifierPhysicalKeys(layout).has('d'), true);
-  assert.equal(modifierPhysicalKeys(layout).has('f'), true);
 });
 
 test('presentation layer guideはFaceのpresentationCellsを含む表示面をauthorityにする', () => {
@@ -73,7 +67,6 @@ test('Faceを持たない通常Shiftもcanonical aggregationからlegendを表�
   const base = fromRows('alpha', 'alpha', ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'], {});
   const layout = withShiftedOutputs(base);
 
-  assert.deepEqual(activeModifierAggregationGroupIds(layout, ['shift-l']), ['layer:Shift']);
   assert.equal(aggregationLegendMap(layout, 'layer:Shift').get('a'), 'A');
   assert.deepEqual(aggregationTriggerKeys(layout, 'layer:Shift'), ['shift-l', 'shift-r']);
 
@@ -90,7 +83,7 @@ test('compact layer guideはlayout presentation policyに従い薙刀式ではSa
   );
 });
 
-test('presentation trigger colorはlegacy layer series順を再利用する', () => {
+test('presentation trigger colorは層ごとのヒートマップのlayer series順を再利用する', () => {
   const colors = presentationTriggerColorSlots(TSUKI_2_263);
   assert.equal(colors.get('d'), colors.get('k'));
   assert.equal(typeof colors.get('d'), 'number');

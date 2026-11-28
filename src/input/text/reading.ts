@@ -78,13 +78,6 @@ export function isCorrectableSurface(surface: string): boolean {
   return KANJI.test(surface);
 }
 
-/** 直しを、表記の順に並べた表記と読みの対応にする。 */
-export function correctionEntries(corrections: ReadingCorrections): ReadingCorrectionEntry[] {
-  return Object.keys(corrections)
-    .sort()
-    .map((surface) => ({ surface, reading: corrections[surface]! }));
-}
-
 /** 表記の直しを足す・差し替える。`reading`がundefinedなら直しを消す。変化が無ければ同じ参照を返す。 */
 export function withReadingCorrection(corrections: ReadingCorrections, surface: string, reading: string | undefined): ReadingCorrections {
   const has = Object.hasOwn(corrections, surface);
@@ -115,8 +108,6 @@ export interface NotationExcess {
   /** 記号をすべて残し、英字と数字も残す範囲（どちらも真） */
   readonly both: number;
 }
-
-export const NO_NOTATION_EXCESS: NotationExcess = Object.freeze({ base: 0, symbols: 0, alphanumerics: 0, both: 0 });
 
 /** 範囲の条件に合う値。 */
 export function notationExcessFor(excess: NotationExcess, scope: PreparationScope): number {

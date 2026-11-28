@@ -7,11 +7,10 @@ import {
   createWorkspacePersistenceScheduler,
   decodeWorkspaceState,
   loadWorkspaceState,
-  saveWorkspaceState,
   serializeWorkspaceState,
   WORKSPACE_STORAGE_KEY,
 } from './workspace-persistence.ts';
-import { APP_STATE_STORAGE_KEY } from '#app/state/app-state-storage.ts';
+import { APP_STATE_STORAGE_KEY, patchAppStateSlice } from '#app/state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 
 const registry = createWorkspacePanelRegistry([
@@ -188,10 +187,10 @@ test('loadWorkspaceState falls back to default when storage.getItem throws', () 
   assert.deepEqual(result, createWorkspaceState(definitions));
 });
 
-test('saveWorkspaceState writes the workspace slice under AppState and round-trips via load', () => {
+test('the workspace slice written under AppState round-trips via load', () => {
   const storage = memoryStorage();
   const state: WorkspaceStateV1 = createWorkspaceState(definitions);
-  saveWorkspaceState(storage, state);
+  patchAppStateSlice(storage, 'workspace', state);
   const appState = JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
   assert.deepEqual(appState.workspace, state);
   assert.equal(storage.getItem(WORKSPACE_STORAGE_KEY), null);
@@ -207,7 +206,7 @@ test('loadWorkspaceState migrates and removes the legacy workspace key', () => {
   assert.deepEqual(JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).workspace, state);
 });
 
-test('saveWorkspaceState swallows a storage.setItem failure', () => {
+test('writing the workspace slice swallows a storage.setItem failure', () => {
   const storage: KeyValueStorage = {
     getItem: () => null,
     setItem: () => {
@@ -215,7 +214,7 @@ test('saveWorkspaceState swallows a storage.setItem failure', () => {
     },
     removeItem: () => {},
   };
-  assert.doesNotThrow(() => saveWorkspaceState(storage, createWorkspaceState(definitions)));
+  assert.doesNotThrow(() => patchAppStateSlice(storage, 'workspace', createWorkspaceState(definitions)));
 });
 
 test('clampAllFloatingPanels re-clamps every floating rect and is a no-op when nothing changes', () => {

@@ -61,7 +61,8 @@
 | [0019](0019-tut-code-with-space-key-and-bundle-budget.md) | TUT-Codeは「Aモード」の表を使い、空白キーを2打目以降の右親指として持つ | 採用 |
 | [0020](0020-kanji-direct-tables-as-separate-files.md) | 漢直の組み込みの配列の表を独立したファイルで配り、配列を使う時に取得する | 採用 |
 | [0021](0021-secca-layout-from-kmonad-config.md) | 雪華はKMonadの設定を再現して作った1つの表で持ち、かなは同時押し、漢字と熟語は順次打鍵にする | 採用 |
-| [0022](0022-ngram-table-entry-by-last-bunsetsu.md) | 表の項目は、ホームの状態から文脈を打ち、最後の文節の距離だけを数える | 採用 |
-| [0023](0023-bunsetsu-lookahead-by-window-position.md) | 先読みを文節で数える位置と、かなの位置を別々に持つ | 採用 |
-| [0024](0024-ngram-table-orders-up-to-sufficient.md) | 選べる表の次数を、統計が足りている最大の次数までにし、0次は常に選べる | 採用 |
-| [0025](0025-ngram-table-quantities.md) | 表による解析が出す量は、総量・かなあたりの値と、割った分布・割らない分布の2通りにする | 採用 |
+| [0022](0022-unassigned-sequence-cancels-input.md) | 順次打鍵の割り当ての無い組は、打ちかけの入力も今の打鍵も取り消す | 採用 |
+| [0023](0023-ngram-table-entry-by-last-bunsetsu.md) | 表の項目は、ホームの状態から文脈を打ち、最後の文節の距離だけを数える | 採用 |
+| [0024](0024-bunsetsu-lookahead-by-window-position.md) | 先読みを文節で数える位置と、かなの位置を別々に持つ | 採用 |
+| [0025](0025-ngram-table-orders-up-to-sufficient.md) | 選べる表の次数を、統計が足りている最大の次数までにし、0次は常に選べる | 採用 |
+| [0026](0026-ngram-table-quantities.md) | 表による解析が出す量は、総量・かなあたりの値と、割った分布・割らない分布の2通りにする | 採用 |

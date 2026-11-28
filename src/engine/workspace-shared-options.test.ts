@@ -344,7 +344,7 @@ test('個別画面から足す: 散布図でも、同じAnalyzerのペインが�
   assert.deepEqual(workspace.panes.find((p) => p.id === 's2')!.options, DEFAULT_SCATTER_OPTIONS);
 });
 
-test('個別画面から新しいWorkspaceを作って足す経路は、1つ目のペインとして従来どおり組を作って従う', () => {
+test('個別画面から新しいWorkspaceを作って足す経路は、1つ目のペインとして組を作って従う', () => {
   const start = assetsWith(initialWorkspaceLibrary());
   const added = applyCommand(
     start,

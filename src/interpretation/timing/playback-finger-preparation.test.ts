@@ -9,7 +9,7 @@ import { playbackFingerPositionKeys, playbackPreparedFingerPositionKeys, playbac
 const geometry = buildGeometry('row-staggered');
 const layout = LAYOUT_BY_ID.get('qwerty')!;
 
-test('準備時間0では従来の指位置表示と一致する', () => {
+test('準備時間0では、準備を考えない指位置表示と一致する', () => {
   const trace = generateTrace('fjg', layout, geometry);
   const analysis = analyzeStrokeStructure(trace.strokes);
   const current = playbackFingerPositionKeys(trace.strokes[1], geometry);

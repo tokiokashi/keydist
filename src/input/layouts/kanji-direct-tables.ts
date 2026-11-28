@@ -48,11 +48,6 @@ function notify(): void {
   for (const listener of listeners) listener();
 }
 
-/** 表を別のファイルとして配る組み込みの配列のid。 */
-export function isKanjiDirectTableId(id: string): boolean {
-  return DECLARATION_BY_ID.has(id);
-}
-
 /**
  * 組み込みの漢直の配列の、今の姿。取得済みなら表から作った配列、まだなら取得する前の配列。
  * 表を別のファイルとして配る配列のidでなければ `undefined`。

@@ -1,8 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { addNgramTables, countNgrams, countNgramsInRuns, countNgramsOverlapping, ngramTablesWithoutRange, subtractNgramTables } from './ngram-table.ts';
+import { countNgrams, countNgramsInRuns, countNgramsOverlapping, ngramTablesWithoutRange, subtractNgramTables } from './ngram-table.ts';
 
 const SEP = '\u0000';
+
+/** 範囲の前と後を別々に数えた表の和。範囲を除いた表の期待値を作る。 */
+function addNgramTables(a: readonly Map<string, number>[], b: readonly Map<string, number>[]): Map<string, number>[] {
+  const sum = Array.from({ length: Math.max(a.length, b.length) }, () => new Map<string, number>());
+  for (const tables of [a, b]) {
+    tables.forEach((table, order) => {
+      for (const [key, value] of table) sum[order]!.set(key, (sum[order]!.get(key) ?? 0) + value);
+    });
+  }
+  return sum;
+}
 const plainTable = (table: ReadonlyMap<string, number>) => Object.fromEntries([...table].sort());
 const plain = (tables: readonly ReadonlyMap<string, number>[]) => tables.map((table) => Object.fromEntries([...table].sort()));
 

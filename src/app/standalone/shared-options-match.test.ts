@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DEFAULT_BIGRAM_FLOW_OPTIONS, decodeBigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
+import { DEFAULT_BIGRAM_FLOW_OPTIONS, bigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { DEFAULT_FINGER_DISTANCE_OPTIONS, fingerDistanceOptions } from '#analyzers/finger-distance/options.ts';
 import { sameAsSharedOptions } from './shared-options-match.ts';
 
-const decodeBigram = (raw: unknown) => decodeBigramFlowOptions(raw, []);
+const decodeBigram = (raw: unknown) => bigramFlowOptions.decodeOptions(raw, []);
 const decodeFinger = (raw: unknown) => fingerDistanceOptions.decodeOptions(raw, []);
 
 test('共有の設定が未設定で、個別画面が全項目の既定値なら同じ値', () => {

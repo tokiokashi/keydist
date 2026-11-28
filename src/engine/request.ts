@@ -36,9 +36,9 @@ export type EngineRequestState<T> =
 
 /**
  * 計算の戻り値。同期に値を返す実装（メインスレッドの`EngineCache`）と、Worker越しに
- * Promiseを返す実装（`worker-client.ts`）を同じ窓口で扱う。同期の値は従来どおり
- * scheduleしたタスクの中で即座に`ready`になる（Promiseに包み直さない。既存の
- * 決定的なテストと、同期に済む計算の体感を変えないため）。
+ * Promiseを返す実装（`worker-client.ts`）を同じ窓口で扱う。同期の値は
+ * scheduleしたタスクの中で即座に`ready`になる。Promiseに包み直さないのは、
+ * テストの結果を決定的に保ち、同期に済む計算の結果を非同期へ遅らせないため。
  */
 export type MaybePromise<T> = T | Promise<T>;
 

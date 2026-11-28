@@ -72,19 +72,6 @@ export function countNgramsOverlapping(chars: readonly string[], from: number, t
   return tables;
 }
 
-/** 表を足す。 */
-export function addNgramTables(a: NgramTables, b: NgramTables): Map<string, number>[] {
-  const count = Math.max(a.length, b.length);
-  const sum = emptyTables(count - 1);
-  for (let order = 0; order < count; order++) {
-    for (const table of [a[order], b[order]]) {
-      if (table === undefined) continue;
-      for (const [key, value] of table) sum[order]!.set(key, (sum[order]!.get(key) ?? 0) + value);
-    }
-  }
-  return sum;
-}
-
 /** `whole` から `part` を引く。出現回数が0になった並びは表から外す。`part` が `whole` より多い並びがあれば例外を投げる。 */
 export function subtractNgramTables(whole: NgramTables, part: NgramTables): Map<string, number>[] {
   const result: Map<string, number>[] = whole.map((table) => new Map(table));
