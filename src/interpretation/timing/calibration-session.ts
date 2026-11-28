@@ -342,11 +342,6 @@ export function calibrationTaskAcceptsThumbKeys(task: CalibrationTask | undefine
   return task?.item.kind === 'simultaneous' && task.keys.some((key) => resolveKeyId(key) === THUMB_KEY.RT);
 }
 
-/** 次に打つキーのid。済んでいれば無い。 */
-export function expectedCalibrationKey(run: CalibrationRun): string | undefined {
-  return currentCalibrationTask(run)?.keys[run.expected];
-}
-
 /** 今の項目で、あと数える間隔の数。 */
 export function remainingCalibrationIntervals(run: CalibrationRun): number {
   const task = currentCalibrationTask(run);

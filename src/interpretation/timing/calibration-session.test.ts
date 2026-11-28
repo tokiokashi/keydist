@@ -8,7 +8,6 @@ import {
   calibrationKeyLabel,
   calibrationRunFinished,
   currentCalibrationTask,
-  expectedCalibrationKey,
   planCalibration,
   pressCalibrationKey,
   remainingCalibrationIntervals,
@@ -36,6 +35,11 @@ const SAVED: PlaybackCalibration = {
   fallbackMoveMsPerUnit: 1000 / 7,
   measuredAt: 1,
 };
+
+/** 次に打つキーのid。項目が済んでいれば無い。 */
+function expectedCalibrationKey(run: CalibrationRun): string | undefined {
+  return currentCalibrationTask(run)?.keys[run.expected];
+}
 
 function event(keyId: string) {
   return { key: keyId, code: '' };

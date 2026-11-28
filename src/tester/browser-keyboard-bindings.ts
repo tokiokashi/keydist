@@ -46,26 +46,6 @@ export function sanitizeThumbKeyBindings(value: unknown): ThumbKeyBindings {
   return { leftCodes, rightCodes };
 }
 
-export function assignThumbKeyCode(bindings: ThumbKeyBindings, side: 'left' | 'right', code: string): ThumbKeyBindings {
-  const canonical = code.trim();
-  if (canonical.length === 0) return bindings;
-
-  const leftCodes = bindings.leftCodes.filter((entry) => entry !== canonical);
-  const rightCodes = bindings.rightCodes.filter((entry) => entry !== canonical);
-
-  if (side === 'left') leftCodes.push(canonical);
-  else rightCodes.push(canonical);
-
-  return sanitizeThumbKeyBindings({ leftCodes, rightCodes });
-}
-
-export function removeThumbKeyCode(bindings: ThumbKeyBindings, side: 'left' | 'right', code: string): ThumbKeyBindings {
-  return sanitizeThumbKeyBindings({
-    leftCodes: side === 'left' ? bindings.leftCodes.filter((entry) => entry !== code) : bindings.leftCodes,
-    rightCodes: side === 'right' ? bindings.rightCodes.filter((entry) => entry !== code) : bindings.rightCodes,
-  });
-}
-
 /**
  * browser code overrideへ落とす。
  *
@@ -79,27 +59,6 @@ export function thumbKeyBindingsToOverrides(bindings: ThumbKeyBindings): Browser
   for (const code of bindings.leftCodes) overrides[code] = 'thumb-l';
   for (const code of bindings.rightCodes) overrides[code] = 'thumb-r';
   return overrides;
-}
-
-export function loadThumbKeyBindings(storage?: Pick<Storage, 'getItem'>): ThumbKeyBindings {
-  if (storage === undefined) {
-    return {
-      leftCodes: [...DEFAULT_THUMB_KEY_BINDINGS.leftCodes],
-      rightCodes: [...DEFAULT_THUMB_KEY_BINDINGS.rightCodes],
-    };
-  }
-  try {
-    const raw = storage.getItem(LEGACY_THUMB_STORAGE_KEY);
-    if (raw === null) return sanitizeThumbKeyBindings(DEFAULT_THUMB_KEY_BINDINGS);
-    return sanitizeThumbKeyBindings(JSON.parse(raw));
-  } catch {
-    return sanitizeThumbKeyBindings(DEFAULT_THUMB_KEY_BINDINGS);
-  }
-}
-
-export function saveThumbKeyBindings(bindings: ThumbKeyBindings, storage?: Pick<Storage, 'setItem'>): void {
-  if (storage === undefined) return;
-  guardedSetItem(storage, LEGACY_THUMB_STORAGE_KEY, JSON.stringify(sanitizeThumbKeyBindings(bindings)));
 }
 
 const sanitizeBindingValue = (value: unknown): PhysicalKeyEvent['key'] | null | undefined =>

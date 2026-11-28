@@ -490,25 +490,6 @@ export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string
   return undefined;
 }
 
-/** ガイド表示用: canonical pathが持つtriggerキー集合。 */
-export function allTriggerKeys(layout: Layout): ReadonlySet<string> {
-  const keys = new Set<string>();
-  for (const alternatives of layout.canonicalInputs.values()) {
-    for (const alternative of alternatives) {
-      for (const realization of alternative.baseRealizations) {
-        for (const key of realization.defaultTriggerKeys ?? []) keys.add(resolveKeyId(key));
-        for (const view of realization.alternateParticipations ?? []) {
-          for (const key of view.triggerKeys) keys.add(resolveKeyId(key));
-        }
-      }
-      if (alternative.origin === 'combo' && alternative.semanticInputs.length === 1) {
-        for (const key of alternative.semanticInputs[0].physicalKeys) keys.add(resolveKeyId(key));
-      }
-    }
-  }
-  return keys;
-}
-
 /**
  * 常時表示するlayer key。
  * canonical aggregation kind=layerのうち、単キーだけで成立するtrigger variantだけを返す。

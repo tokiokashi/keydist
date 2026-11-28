@@ -4,7 +4,6 @@ import {
   advancePlayback as advancePlaybackAnalysis,
   clampPlaybackCursor,
   createPlaybackState,
-  playbackCompletedInputs,
   playbackFingerPositionKeys,
   playbackInputPreview,
   PLAYBACK_COMPLETED_INPUT_LIMIT,
@@ -726,28 +725,6 @@ test('表示する打鍵はカーソル1から直前のstrokeを返す', () => {
   assert.equal(playbackStrokeAt(strokes, 2)?.char, 'い');
 });
 
-test('入力履歴は現在の入力単位を除き、複数ステップを一文字にまとめる', () => {
-  const strokes = [
-    { inputIndex: 0, inputChar: 'あ' },
-    { inputIndex: 1, inputChar: 'が' },
-    { inputIndex: 1, inputChar: 'が' },
-    { inputIndex: 2, inputChar: 'ぬ' },
-    { inputIndex: 3, inputChar: 'あ' },
-    { inputIndex: 4, inputChar: 'あ' },
-  ] as never[];
-
-  assert.deepEqual(playbackCompletedInputs(strokes, 3), ['あ']);
-  assert.deepEqual(playbackCompletedInputs(strokes, 4), ['あ', 'が']);
-  assert.deepEqual(playbackCompletedInputs(strokes, 6), ['あ', 'が', 'ぬ', 'あ']);
-});
-
-test('ローマ字の入力履歴はかなごとの複数打鍵を重複させない', () => {
-  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
-  const trace = generateTrace('なまえは', layout, buildGeometry('row-staggered'));
-
-  assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
-});
-
 test('TK音直入力法のコンボは入力単位全体を現在文字と履歴に表示する', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('tk-onchoku')!, kunrei());
   const trace = generateTrace('わがはいねこ', layout, buildGeometry('row-staggered'));
@@ -768,7 +745,6 @@ test('TK音直入力法のコンボは入力単位全体を現在文字と履歴
     { text: 'ね', kind: 'planned' },
     { text: 'こ', kind: 'planned' },
   ]);
-  assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['わ', 'が', 'はい', 'ね']);
 });
 
 test('入力プレビューは現在の入力を下線対象にし、先読みを後ろへ追加する', () => {

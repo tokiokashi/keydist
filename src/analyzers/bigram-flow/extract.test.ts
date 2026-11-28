@@ -22,13 +22,7 @@ import {
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
 import { nonStationaryVectors } from '../keyboard-flow-lines.ts';
 import { bigramFlowDefinition, computeBigramFlowExtraction, type BigramFlowExtracted, type BigramFlowFigures } from './extract.ts';
-import {
-  ALTERNATE_BIGRAM_FLOW_OPTIONS,
-  DEFAULT_BIGRAM_FLOW_OPTIONS,
-  bigramFlowOptions,
-  decodeBigramFlowOptions,
-  type BigramFlowOptions,
-} from './options.ts';
+import { ALTERNATE_BIGRAM_FLOW_OPTIONS, DEFAULT_BIGRAM_FLOW_OPTIONS, bigramFlowOptions, type BigramFlowOptions } from './options.ts';
 
 /**
  * `computeBigramFlowExtraction`（`extract.ts`）が、旧`bigram-flow-view.tsx`が
@@ -223,9 +217,9 @@ test('extractKeyOf: selectedFingersは選んだ順ではなく集合として効
   assert.deepEqual(bigramFlowDefinition.extractKeyOf(a), bigramFlowDefinition.extractKeyOf(b));
 });
 
-test('decodeBigramFlowOptions: 壊れた値は既定値へ戻し診断を積む', () => {
+test('bigramFlowOptions.decodeOptions: 壊れた値は既定値へ戻し診断を積む', () => {
   const diagnostics: { path: string; message: string }[] = [];
-  const decoded = decodeBigramFlowOptions(
+  const decoded = bigramFlowOptions.decodeOptions(
     {
       source: 'diagonal', // 未知の値
       selectedFingers: ['thumb', 'index', 'middle', 'ring'], // 未知の値混入 + 3件超過
@@ -244,17 +238,17 @@ test('decodeBigramFlowOptions: 壊れた値は既定値へ戻し診断を積む'
   assert.ok(diagnostics.length >= 5, `診断が積まれていない: ${JSON.stringify(diagnostics)}`);
 });
 
-test('decodeBigramFlowOptions: 未知の形式（配列・null・文字列）は丸ごと既定値へ戻す', () => {
+test('bigramFlowOptions.decodeOptions: 未知の形式（配列・null・文字列）は丸ごと既定値へ戻す', () => {
   const diagnostics: { path: string; message: string }[] = [];
-  assert.deepEqual(decodeBigramFlowOptions(null, diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
-  assert.deepEqual(decodeBigramFlowOptions(['not', 'a', 'record'], diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
-  assert.deepEqual(decodeBigramFlowOptions('nope', diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
+  assert.deepEqual(bigramFlowOptions.decodeOptions(null, diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
+  assert.deepEqual(bigramFlowOptions.decodeOptions(['not', 'a', 'record'], diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
+  assert.deepEqual(bigramFlowOptions.decodeOptions('nope', diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
   assert.ok(diagnostics.length >= 3);
 });
 
-test('decodeBigramFlowOptions: __proto__等の予約名がselectedFingersに混ざっても未知の指クラスとして診断付きで弾かれるだけ', () => {
+test('bigramFlowOptions.decodeOptions: __proto__等の予約名がselectedFingersに混ざっても未知の指クラスとして診断付きで弾かれるだけ', () => {
   const diagnostics: { path: string; message: string }[] = [];
-  const decoded = decodeBigramFlowOptions({ selectedFingers: ['__proto__', 'index'] }, diagnostics);
+  const decoded = bigramFlowOptions.decodeOptions({ selectedFingers: ['__proto__', 'index'] }, diagnostics);
   assert.deepEqual(decoded.selectedFingers, ['index']);
   assert.ok(diagnostics.some((d) => d.message.includes('__proto__')));
 });

@@ -64,12 +64,6 @@ export function readoutParts(row: ReadoutRow, axes: ScatterAxes, contour: Scatte
   };
 }
 
-/** 画面に出す点の読み取りの文。「名前　(横軸の値, 縦軸の値)　線の量の短い名前 値」。部品（`readoutParts`）を全角空白でつなぐ。 */
-export function readoutText(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): string {
-  const { name, coordinates, contour: line } = readoutParts(row, axes, contour, language);
-  return [name, coordinates, ...(line === undefined ? [] : [line])].join('　');
-}
-
 /** 点の読み上げ用の名前。読み上げでは軸の名前と目盛りを見られないので、量の名前を長い形で全て添える。 */
 export function readoutAriaLabel(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): string {
   const parts = [

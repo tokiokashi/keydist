@@ -3,12 +3,8 @@ import assert from 'node:assert/strict';
 import {
   DEFAULT_THUMB_KEY_BINDINGS,
   assignBrowserKeyCode,
-  assignThumbKeyCode,
   loadBrowserKeyBindingOverrides,
-  loadThumbKeyBindings,
-  removeThumbKeyCode,
   saveBrowserKeyBindingOverrides,
-  saveThumbKeyBindings,
   sanitizeBrowserKeyBindingOverrides,
   sanitizeThumbKeyBindings,
   thumbKeyBindingsToOverrides,
@@ -34,22 +30,6 @@ test('thumb binding既定値は従来のNonConvert / Space+Convertを保持す�
   assert.equal(overrides.Convert, 'thumb-r');
 });
 
-test('thumb bindingは任意codeを片側へ移動し既定mappingも無効化できる', () => {
-  const moved = assignThumbKeyCode(DEFAULT_THUMB_KEY_BINDINGS, 'left', 'Space');
-  assert.deepEqual(moved.leftCodes, ['NonConvert', 'Space']);
-  assert.deepEqual(moved.rightCodes, ['Convert']);
-
-  const overrides = thumbKeyBindingsToOverrides(moved);
-  assert.equal(overrides.Space, 'thumb-l');
-  assert.equal(overrides.Convert, 'thumb-r');
-
-  const custom = assignThumbKeyCode(moved, 'right', 'KeyQ');
-  assert.equal(thumbKeyBindingsToOverrides(custom).KeyQ, 'thumb-r');
-
-  const removed = removeThumbKeyCode(custom, 'left', 'NonConvert');
-  assert.equal(thumbKeyBindingsToOverrides(removed).NonConvert, null);
-});
-
 test('thumb binding sanitizeは重複codeを両側へ残さない', () => {
   const sanitized = sanitizeThumbKeyBindings({
     leftCodes: ['Space', 'Space'],
@@ -59,17 +39,6 @@ test('thumb binding sanitizeは重複codeを両側へ残さない', () => {
     leftCodes: ['Space'],
     rightCodes: ['Convert'],
   });
-});
-
-test('thumb bindingはstorageへround-tripする', () => {
-  const storage = fakeStorage();
-  const settings = {
-    leftCodes: ['Space', 'KeyQ'],
-    rightCodes: ['Convert'],
-  };
-
-  saveThumbKeyBindings(settings, storage);
-  assert.deepEqual(loadThumbKeyBindings(storage), settings);
 });
 
 test('general browser bindingは任意physical keyへcodeを移動し解除できる', () => {
@@ -97,13 +66,7 @@ test('general browser bindingはstorageへround-tripしlegacy thumb設定も移�
   });
 
   const legacy = fakeStorage();
-  saveThumbKeyBindings(
-    {
-      leftCodes: ['Space'],
-      rightCodes: ['Convert'],
-    },
-    legacy,
-  );
+  legacy.setItem('keydist:input-thumb-key-bindings', JSON.stringify({ leftCodes: ['Space'], rightCodes: ['Convert'] }));
   assert.deepEqual(loadBrowserKeyBindingOverrides(legacy), {
     NonConvert: null,
     Space: 'thumb-l',

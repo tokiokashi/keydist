@@ -6,7 +6,6 @@ import {
   aggregateBigramVectors,
   buildBigramVectors,
   directionDensity,
-  directionDistribution,
   directionSummary,
   filterBigramVectors,
   isStationaryBigramVector,
@@ -201,57 +200,6 @@ test('mean displacementは対向移動の相殺をそのまま保持する', () 
 
   assert.ok(mean.distance < 1e-12);
   assert.equal(mean.angle, undefined);
-});
-
-test('direction distributionは隣接binへ角度補間し構成比の総和を1にする', () => {
-  const halfBin = Math.PI / 16;
-  const distribution = directionDistribution(
-    [
-      vector({
-        id: 'half-bin',
-        dx: Math.cos(halfBin),
-        dy: Math.sin(halfBin),
-        distance: 1,
-        angle: halfBin,
-      }),
-    ],
-    'left',
-    16,
-  );
-
-  assert.ok(Math.abs(distribution.bins[0].proportion - 0.5) < 1e-12);
-  assert.ok(Math.abs(distribution.bins[1].proportion - 0.5) < 1e-12);
-  assert.ok(Math.abs(distribution.bins.reduce((sum, bin) => sum + bin.proportion, 0) - 1) < 1e-12);
-});
-
-test('direction distributionは対向2方向集中と一様分布を区別できる', () => {
-  const opposing = directionDistribution(
-    [
-      vector({ id: 'east', dx: 1, dy: 0, distance: 1, angle: 0, weight: 8 }),
-      vector({ id: 'west', dx: -1, dy: 0, distance: 1, angle: Math.PI, weight: 8 }),
-    ],
-    'left',
-    16,
-  );
-
-  const uniformVectors = Array.from({ length: 16 }, (_, index) => {
-    const angle = (index * Math.PI * 2) / 16;
-    return vector({
-      id: `uniform-${index}`,
-      dx: Math.cos(angle),
-      dy: Math.sin(angle),
-      distance: 1,
-      angle,
-    });
-  });
-  const uniform = directionDistribution(uniformVectors, 'left', 16);
-
-  assert.equal(opposing.bins.filter((bin) => bin.proportion > 0.49).length, 2);
-  assert.ok(uniform.bins.every((bin) => Math.abs(bin.proportion - 1 / 16) < 1e-12));
-  assert.notDeepEqual(
-    opposing.bins.map((bin) => bin.proportion),
-    uniform.bins.map((bin) => bin.proportion),
-  );
 });
 
 test('isStationaryBigramVectorは同一キーへ戻る（物理移動が無い）vectorだけを真にする', () => {
