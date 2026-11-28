@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { mapWithKanjiDirectTables } from '../../../test/kanji-direct-tables.ts';
 import { builtinTextById } from '#input/text/builtin.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
@@ -60,7 +61,7 @@ const defaultTiming = () => timingConditionsOf(DEFAULT_PLAYBACK_OPTIONS, DEFAULT
  */
 
 const CATALOG = {
-  layouts: LAYOUT_BY_ID,
+  layouts: mapWithKanjiDirectTables(LAYOUT_BY_ID),
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
@@ -1823,4 +1824,39 @@ test('全文の平均: 平均の方式・窓幅・半減期を変えても値は
 test('全文の平均: 打鍵が無いテキストでは値を出さない', () => {
   // 条件: 配列qwerty・テキスト「」（打鍵なし）。
   assert.deepEqual(extractionOf(resolve('qwerty', '', 'ja')).overallRates, {});
+});
+
+// ---------------------------------------------------------------------------
+// 漢直の順次打鍵の表
+// ---------------------------------------------------------------------------
+
+/** 条件: 組み込みのサンプル「ja.legacy」・既定の条件。選択の出力がcharのステップを、1始まりのカーソルで返す。 */
+function kanjiSteps(layoutId: string, char: string): { cursors: number[]; frameAtCursor: (cursor: number) => PlaybackFrame } {
+  const sample = builtinTextById('builtin:ja.legacy');
+  assert.ok(sample);
+  const { trace } = prepare(layoutId, sample.text, 'ja');
+  const first = trace.strokes.find((stroke) => stroke.char === char);
+  assert.ok(first);
+  const cursors = trace.strokes.filter((stroke) => stroke.selectionIndex === first.selectionIndex).map((stroke) => stroke.index + 1);
+  return { cursors, frameAtCursor: (cursor) => frameAt(layoutId, sample.text, cursor, {}, 0, 'ja').frame };
+}
+
+test('T-Codeの「名」は、1打目の後の表で、2打目のキーに「名」が出て字が決まるキーとして区別される', () => {
+  const { cursors, frameAtCursor } = kanjiSteps('tcode', '名');
+  const [first, second] = cursors.map(frameAtCursor);
+  assert.equal(first.keyLabels.get('r'), '名');
+  assert.equal(first.keyGuides.get('r'), 'output');
+  // 2打目でも1打目の後の表のまま、最後に押したキーの字が残る
+  assert.equal(second.keyLabels.get('r'), '名');
+  assert.deepEqual([...second.activeKeys], ['r']);
+});
+
+test('雪華の「暴」は、3打目と4打目の表に、3打目までで決まる「朝」を出さず、4打目のキーに「暴」を出す', () => {
+  // 条件: 雪華・テキスト「暴」（f d j k の4打）・既定の条件
+  for (const cursor of [3, 4]) {
+    const { frame } = frameAt('secca', '暴', cursor, {}, 0, 'ja');
+    assert.ok(![...frame.keyLabels.values()].includes('朝'));
+    assert.equal(frame.keyLabels.get('k'), '暴');
+    assert.equal(frame.currentText, '暴');
+  }
 });

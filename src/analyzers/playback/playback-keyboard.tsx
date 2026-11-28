@@ -168,6 +168,7 @@ export function PlaybackKeyboard({
         data-motion-dx={isMotion ? dx : undefined}
         data-motion-dy={isMotion ? dy : undefined}
         data-motion-duration={isMotion ? motion.durationMs : undefined}
+        data-playback-guide={!isMotion ? frame.keyGuides.get(id) : undefined}
         data-playback-active={!isMotion && frame.activeKeys.has(id) && !motionTargets.has(id) ? 'true' : 'false'}
         data-playback-trigger={!isMotion && frame.triggerKeys.has(id) ? 'true' : 'false'}
         data-playback-finger-position={fingerPosition ?? ''}
