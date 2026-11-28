@@ -1,20 +1,30 @@
 import type { RecordFailure, RecordMeta, RecordRangeStatus } from '#engine/keystroke-record.ts';
-import type { ResolvedInput } from '#engine/resolved-input.ts';
+import type { WireResolvedInput } from '#engine/worker-protocol.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
 import type { SentenceTap } from '#interpretation/timing/sentence-measurement.ts';
 import type { Stroke } from '#trace/generate.ts';
 
 /**
  * 打鍵の記録の計算用Workerとやりとりするメッセージ（構造化複製で運べる値だけ）。
+ * 入力の配列は、表から作った配列なら表（または識別子）で運ぶ（`engine/worker-wire.ts`）。
  * 全文の打鍵の列は長いテキストで大きいので、Workerが持ち、メインスレッドへは範囲のストロークだけを渡す。
  */
 export type RecordWorkerRequest =
-  | { readonly id: number; readonly kind: 'ranges'; readonly input: ResolvedInput }
-  | { readonly id: number; readonly kind: 'range'; readonly input: ResolvedInput; readonly rangeIndex: number }
+  | {
+      readonly id: number;
+      readonly kind: 'ranges';
+      readonly input: WireResolvedInput;
+    }
+  | {
+      readonly id: number;
+      readonly kind: 'range';
+      readonly input: WireResolvedInput;
+      readonly rangeIndex: number;
+    }
   | {
       readonly id: number;
       readonly kind: 'finish';
-      readonly input: ResolvedInput;
+      readonly input: WireResolvedInput;
       readonly rangeIndex: number;
       readonly typed: readonly string[];
       readonly taps: readonly SentenceTap[];
