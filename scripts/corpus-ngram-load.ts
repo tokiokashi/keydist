@@ -12,7 +12,7 @@ import { createReadingAnalyzer, type LinderaModule } from '#platform/reading/ana
 import { readDictionaryZip } from '#platform/reading/dictionary-files.ts';
 import { extractZip } from '#platform/reading/zip.ts';
 import { ensureDictionaryZip } from './dictionary-fetch.ts';
-import { convertAozora, extractBody } from './aozora-core.ts';
+import { chapterBodiesOf, convertAozora, extractBody } from './aozora-core.ts';
 import { AOZORA_SOURCE, archiveBytes } from './generate-neko-sample.ts';
 
 const root = resolve(fileURLToPath(import.meta.url), '..', '..');
@@ -32,6 +32,8 @@ export interface StandardCorpus {
   readonly sourceBoundaryCount: number;
   /** 読みのテキストの上の文節の区切り（コードポイントの位置） */
   readonly readingBoundaries: readonly number[];
+  /** 章の始まりの、読みのテキストの上の位置（コードポイント）。章の数は長さ+1 */
+  readonly chapterReadingBoundaries: readonly number[];
 }
 
 /** 取得と除去は`scripts/generate-neko-sample.ts`と同じ。読みへの変換と区切りの写しはアプリと同じ経路。 */
@@ -40,7 +42,17 @@ export async function loadStandardCorpus(source: string | undefined): Promise<St
   const entry = (await extractZip(zip)).get(AOZORA_SOURCE.entryName);
   if (entry === undefined) throw new Error(`zipに${AOZORA_SOURCE.entryName}が無い`);
   const raw = new TextDecoder('shift_jis', { fatal: true }).decode(entry).replace(/\r\n?/g, '\n');
-  const corpus = convertAozora(extractBody(raw)).text;
+  const body = extractBody(raw);
+  const corpus = convertAozora(body).text;
+  // 章の始まりは、章見出しの行を取り除く前の本文で決める。章ごとに変換してつなぐと、全体の変換と同じになる
+  const chapterTexts = chapterBodiesOf(body).map((chapter) => convertAozora(chapter).text);
+  if (chapterTexts.join('') !== corpus) throw new Error('章ごとの変換をつないだ結果が、全体の変換と違う');
+  const chapterSourceBoundaries: number[] = [];
+  let sourceOffset = 0;
+  for (const text of chapterTexts.slice(0, -1)) {
+    sourceOffset += text.length;
+    chapterSourceBoundaries.push(sourceOffset);
+  }
   const lines = raw.split('\n');
   const footer = lines.findIndex((line) => line.startsWith('底本：'));
   if (footer === -1) throw new Error('末尾の底本の情報が見つからない');
@@ -55,5 +67,6 @@ export async function loadStandardCorpus(source: string | undefined): Promise<St
   const reading = convertToReading(corpus, tokens);
   const sourceBoundaries = offsetsOfChunks(splitBunsetsu(corpus));
   const readingBoundaries = mapBoundariesToReading(corpus, tokens, sourceBoundaries);
-  return { corpus, work, colophon, reading, sourceBoundaryCount: sourceBoundaries.length, readingBoundaries };
+  const chapterReadingBoundaries = mapBoundariesToReading(corpus, tokens, chapterSourceBoundaries);
+  return { corpus, work, colophon, reading, sourceBoundaryCount: sourceBoundaries.length, readingBoundaries, chapterReadingBoundaries };
 }

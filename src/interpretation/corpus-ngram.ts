@@ -23,6 +23,12 @@ export interface SequenceCuts {
   readonly otherUnreadable: number;
 }
 
+/** かなの系列の走りの両端が、文節の境界に当たるか。 */
+export interface RunEdges {
+  readonly start: boolean;
+  readonly end: boolean;
+}
+
 export interface CorpusSequences {
   /** かなの系列。走りごとのコードポイントの列 */
   readonly kana: readonly (readonly string[])[];
@@ -31,6 +37,13 @@ export interface CorpusSequences {
   /** 前処理の後の文字数（切った文字を含む） */
   readonly chars: number;
   readonly cuts: SequenceCuts;
+  /**
+   * 走りごとの、両端が文節の境界に当たるか。端が空白か読みのテキストの上の文節の区切りに当たる時と、テキストの端の時だけ境界。
+   * 読みに直せない文字やかなでない文字で切れた端は、文節の区切りの位置でなければ境界でない（文節がその文字をまたいで続く）
+   */
+  readonly runEdges: readonly RunEdges[];
+  /** 渡した章の始まりが、かなの系列の何単位目に当たるか（全走りをつないだ列の先頭からのコードポイント数。昇順） */
+  readonly chapterStarts: readonly number[];
 }
 
 const WHITESPACE = /\s/u;
@@ -41,11 +54,17 @@ const SEQUENCE_CHAR = /[\p{Script=Hiragana}\p{Script=Katakana}\u30FC\u3099-\u309
 /**
  * 読みのテキストと、その上の文節の区切り（コードポイントの位置。先頭と末尾を含まない）から、2つの系列を作る。
  * 前処理は、配列を参照せずに決まる段だけを当てる（`docs/corpus-ngram.md`の「入力」）。
+ * `chapterBoundaries`は章の始まり（読みのテキストのコードポイントの位置）で、文節の区切りと同じ写し方でかなの系列の位置にする。
  */
-export function buildCorpusSequences(readingText: string, readingBoundaries: readonly number[]): CorpusSequences {
+export function buildCorpusSequences(
+  readingText: string,
+  readingBoundaries: readonly number[],
+  chapterBoundaries: readonly number[] = [],
+): CorpusSequences {
   const scope = { language: 'ja', keepSymbols: false, keepAlphanumerics: false } as const;
   const prepared = prepareEvaluationText(readingText, { ...scope, layoutHasChar: () => false, uncoveredPositions: () => [] });
   const boundaries = new Set(evaluationBoundaries(readingText, readingBoundaries, scope));
+  const chapters = new Set(evaluationBoundaries(readingText, chapterBoundaries, scope));
   const chars = [...prepared];
 
   const kana: string[][] = [];
@@ -56,31 +75,39 @@ export function buildCorpusSequences(readingText: string, readingBoundaries: rea
   let whitespace = 0;
   let unreadableKanji = 0;
   let otherUnreadable = 0;
+  let kanaCount = 0;
+  const runEdges: RunEdges[] = [];
+  let runStartsAtBoundary = false;
+  const chapterStarts: number[] = [];
   const endUnit = (): void => {
     if (unit !== '') bunsetsuRun.push(unit);
     unit = '';
   };
-  const endRun = (): void => {
+  const endRun = (endsAtBoundary: boolean): void => {
     endUnit();
+    if (kanaRun.length > 0) runEdges.push({ start: runStartsAtBoundary, end: endsAtBoundary });
     if (kanaRun.length > 0) kana.push(kanaRun);
     if (bunsetsuRun.length > 0) bunsetsu.push(bunsetsuRun);
     kanaRun = [];
     bunsetsuRun = [];
   };
   for (const [index, char] of chars.entries()) {
+    if (chapters.has(index)) chapterStarts.push(kanaCount);
     if (!SEQUENCE_CHAR.test(char)) {
       if (WHITESPACE.test(char)) whitespace++;
       else if (isKanjiChar(char)) unreadableKanji++;
       else otherUnreadable++;
-      endRun();
+      endRun(WHITESPACE.test(char) || boundaries.has(index));
       continue;
     }
     if (boundaries.has(index)) endUnit();
+    if (kanaRun.length === 0) runStartsAtBoundary = index === 0 || boundaries.has(index) || WHITESPACE.test(chars[index - 1]!);
     unit += char;
     kanaRun.push(char);
+    kanaCount++;
   }
-  endRun();
-  return { kana, bunsetsu, chars: chars.length, cuts: { whitespace, unreadableKanji, otherUnreadable } };
+  endRun(true);
+  return { kana, bunsetsu, chars: chars.length, cuts: { whitespace, unreadableKanji, otherUnreadable }, runEdges, chapterStarts };
 }
 
 /** 次数`r`の表についての、統計が足りているかの量。 */
