@@ -300,6 +300,11 @@ export function unassignedThumbKeysText(keyIds: readonly string[]): string {
   return `${sides}の親指のキーに割り当てたキーが無いため、測定を始められません。Testerの画面でキーを割り当ててください。`;
 }
 
+/** 打つJISの物理配列の`\`・`¥`・`ろ`の位置のキーに割り当てたキーが無くて、測定を始められない時の文。`labels`はそのキーの刻印の名前。 */
+export function unassignedJisCodeKeysText(labels: readonly string[]): string {
+  return `${labels.map((label) => `「${label}」`).join('・')}のキーに割り当てたキーが無いため、測定を始められません。Testerの画面でキーを割り当ててください。`;
+}
+
 /** 1回目は文を覚える回で、数えないことを示す文。 */
 export const SENTENCE_LEARNING_ROUND_TEXT = '1回目は文を覚える回です。この回は数えません。';
 

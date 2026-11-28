@@ -20,7 +20,7 @@ import { browserKeyBindingsForShape, type BrowserKeyBindingOverrides } from '#in
 import { isPresetGeometryKind, presetGeometryStandard } from '#input/shapes/geometry.ts';
 import { textRangeBounds } from '#input/text/display-ranges.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
-import { calibrationKeyLabel, unassignedThumbKeys } from '#interpretation/timing/calibration-session.ts';
+import { calibrationKeyLabel, unassignedJisCodeKeys, unassignedThumbKeys } from '#interpretation/timing/calibration-session.ts';
 import {
   remainingSentenceKeys,
   remainingSentenceStrokes,
@@ -50,7 +50,7 @@ import { useHeldEvaluation, useResolvedTextSelection } from '#hosts/shared/use-r
 import type { ConditionEditorContext } from '#hosts/shared/ConditionEditor.tsx';
 import { downloadText } from '#platform/browser-download.ts';
 import { readTextFile } from '#platform/browser-file.ts';
-import { wrongKeyText, unassignedThumbKeysText } from '#editors/personal-speed/calibration-text.ts';
+import { wrongKeyText, unassignedJisCodeKeysText, unassignedThumbKeysText } from '#editors/personal-speed/calibration-text.ts';
 import type { RecordComputer } from './record-computer.ts';
 import {
   CANCEL_LABEL,
@@ -301,6 +301,11 @@ export function RecordPage({
       const unassigned = unassignedThumbKeys(sentenceKeyIds([planned.plan]), nextBindings);
       if (unassigned.length > 0) {
         setPhase({ kind: 'failed', text: unassignedThumbKeysText(unassigned) });
+        return;
+      }
+      const unassignedJis = unassignedJisCodeKeys(sentenceKeyIds([planned.plan]), nextBindings);
+      if (unassignedJis.length > 0) {
+        setPhase({ kind: 'failed', text: unassignedJisCodeKeysText(unassignedJis.map(keyLabel)) });
         return;
       }
       const targetLabel = named?.fullName ?? analysisTargetKey(target);

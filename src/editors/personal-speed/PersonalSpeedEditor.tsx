@@ -21,6 +21,7 @@ import {
   calibrationBasis,
   calibrationKeyLabel,
   planCalibration,
+  unassignedJisCodeKeys,
   unassignedThumbKeys,
   type CalibrationPlan,
   type CalibrationRun,
@@ -62,6 +63,7 @@ import {
   zeroMoveRowNote,
   calibrationProgressText,
   clearedSimultaneousText,
+  unassignedJisCodeKeysText,
   unassignedThumbKeysText,
   simultaneousWrongKeyText,
   MEASUREMENT_DESCRIPTION,
@@ -627,6 +629,12 @@ export function PersonalSpeedEditor({
     const unassigned = unassignedThumbKeys(sentenceKeyIds(sentence.plans), bindings);
     if (unassigned.length > 0) {
       setNotices({ sentence: { kind: 'error', text: unassignedThumbKeysText(unassigned) } });
+      return;
+    }
+    // JISの物理配列の`ろ`などのキーは`code`から引いて照合するので、割り当てたキーが無ければ打てない。
+    const unassignedJis = unassignedJisCodeKeys(sentenceKeyIds(sentence.plans), bindings);
+    if (unassignedJis.length > 0) {
+      setNotices({ sentence: { kind: 'error', text: unassignedJisCodeKeysText(unassignedJis.map(keyLabel)) } });
       return;
     }
     const started: SentenceStart = { setup: sentence, calibration };
