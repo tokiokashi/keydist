@@ -8,7 +8,7 @@ import { DEFAULT_LAYER_KEY_NAMING, isLayerKeyNaming, type LayerKeyNaming } from 
  * keydist:input-converter-preferences はread-once migration sourceとしてのみ残す。
  *
  * 次のstorageはUI preferenceではなくdomain/user assetなのでAppStateへ吸収しない。
- * - keydist:input-key-bindings（レガシーキー: keydist:input-thumb-key-bindings）
+ * - keydist:input-key-bindings
  *
  * 現在選択中の配列と物理配列はTester全体の状態として保存し、
  * 練習環境は配列ごとに保存する。

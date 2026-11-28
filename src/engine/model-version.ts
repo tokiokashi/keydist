@@ -21,4 +21,4 @@
  * - 計算結果（`EngineTraceResult` / `EngineInterpretationResult`）に載せる。共有リンク・
  *   書き出しに添えれば、受け取った側が「どの版で計算した数値か」を表示できる
  */
-export const MODEL_VERSION = 22;
+export const MODEL_VERSION = 23;
