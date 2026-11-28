@@ -9,6 +9,7 @@ import type { PaneHelp } from './pane-help.tsx';
 import type { TargetMark } from '#ui/theme/target-marks.ts';
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from './contract.ts';
 import type { UrlOptionsCodec } from './options.ts';
+import type { CurrentAnalysisExtracted, CurrentAnalysisState } from './current-analysis.ts';
 
 /**
  * Analyzerがペインに渡すもの（docs/architecture.md「Analyzerがペインに渡すもの」）。
@@ -205,6 +206,11 @@ export interface SetBodyProps<Extracted, Options, RowContext> {
   readonly segmentation?: SegmentationStatus;
   /** 表を入力にする解析の、表の用意の状態。`SetAnalyzerPaneParts.ngramTable` を宣言したAnalyzerにだけ渡す。 */
   readonly ngramTable?: NgramTableStatus;
+  /**
+   * 表の元のテキストと同じテキストを今の解析で測った値の状態。`SetAnalyzerPaneParts.ngramTable.currentAnalysis` を宣言したAnalyzerに、
+   * 表の元が選んだテキストの時だけ渡す（標準のコーパスの時は渡さない）。
+   */
+  readonly currentAnalysis?: CurrentAnalysisState;
   /** ペインで選べる打鍵の記録。`SetAnalyzerPaneParts.selectedRecordId` を宣言したAnalyzerにだけ渡す。 */
   readonly keystrokeRecords?: readonly KeystrokeRecordChoice[];
   /** 選んでいる打鍵の記録の、物理配列・指の割り当て・条件の名前。選んでいない時は渡さない。 */
@@ -319,6 +325,12 @@ export interface NgramTableDeclaration<Options> {
   readonly usesText: (options: Options) => boolean;
   /** 条件の要約に添える出どころ（表の元のテキスト・次数・先読み・区切り・読みの変換・表の規模）。表を読み込む前は`undefined`が渡る。 */
   readonly provenance: (asset: NgramTableAsset | undefined, options: Options) => readonly { readonly label: string; readonly value: string }[];
+  /**
+   * 表の元のテキストと同じテキストを今の解析（評価に渡すテキストを頭から打鍵する解析）で測って、表による解析の値と並べる抽出。
+   * `usesText`の設定の時だけ、ホストが評価に渡すテキストで対象を解決して依頼し、結果を本体へ`currentAnalysis`で渡す。
+   * 表による解析の対象の解決（固定の最小のテキスト）とは別の依頼で、解析設定を持たない。
+   */
+  readonly currentAnalysis?: SetAnalyzerDefinition<Record<string, never>, CurrentAnalysisExtracted>;
 }
 
 /**
@@ -336,7 +348,7 @@ export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
    * 条件の要約・条件の編集・表示名の作り分けから除く項目のid。このAnalyzerが自分で振る軸など、
    * 全員に共通の軸として別に見せる項目を挙げる。
    */
-  readonly conditionExcludeIds?: readonly string[];
+  readonly conditionExcludeIds?: readonly string[] | ((options: Options) => readonly string[]);
   /**
    * Workspaceのペインで、画面に入るまで計算を始めない。計算が長く、いつも見ているとは限らないAnalyzerだけが立てる。
    * 個別画面は開いた時に計算する。

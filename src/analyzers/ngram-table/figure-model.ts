@@ -1,15 +1,20 @@
-import type { WeightedDistribution } from '#interpretation/ngram-table-analysis.ts';
+import type { TableAnalysis, WeightedDistribution } from '#interpretation/ngram-table-analysis.ts';
+import type { CurrentAnalysisOkRow, CurrentAnalysisState } from '../current-analysis.ts';
 import type { FigureTableModel } from '../figure-table.ts';
 import { distanceText, type BoxFigureRow, type BoxQuantiles, type BoxRowContext } from '../box-figure-model.ts';
 import type { NgramTableExtracted, NgramTableOkRow } from './extract.ts';
 import {
+  CURRENT_ANALYSIS_FAILED_MESSAGE,
+  CURRENT_ANALYSIS_LABEL,
   DISTANCE_FIGURE,
+  INPUT_CHARS_COLUMN_LABEL,
   NGRAM_TABLE_PANE_META,
   NO_TABLE_MESSAGE,
   PER_KANA_COLUMN_LABEL,
   UNTYPED_COLUMN_LABEL,
   PER_KANA_DISTANCE_UNIT,
   PER_KANA_FIGURE,
+  TABLE_ANALYSIS_LABEL,
   TOTAL_DISTANCE_LABEL,
   TOTAL_DISTANCE_UNIT,
 } from './pane-meta.ts';
@@ -129,6 +134,103 @@ export function resultsTableModel(rows: readonly NgramDisplayRow[]): FigureTable
           integer.format(analysis.skipped),
         ],
       };
+    }),
+  };
+}
+
+/** 表による解析と今の解析の、結果の表の1行。どちらの解析の値かと、その先読みの数え方を持つ。 */
+export interface ResultLine {
+  readonly key: string;
+  readonly analysis: 'table' | 'current';
+  /** 解析の名前 */
+  readonly name: string;
+  /** その行の先読みの数え方（「文節の先読み2」「かなの先読み3」） */
+  readonly lookahead: string;
+  /** 値の列の文字。値を出せない時は`undefined`で、`message`を出す */
+  readonly cells: readonly string[] | undefined;
+  readonly message: string | undefined;
+  /** 値を出せない理由が、計算中ではなく失敗か */
+  readonly failed: boolean;
+}
+
+export interface ResultGroup {
+  readonly targetKey: string;
+  /** 配列・Setupの名前 */
+  readonly header: string;
+  readonly title: string;
+  /** 表による解析の行、今の解析の行の順 */
+  readonly lines: readonly ResultLine[];
+}
+
+/** 表による解析の値と今の解析の値を、配列・Setupごとに並べる結果の表。差・比・順位の列は持たない。 */
+export interface SideBySideResultsModel {
+  readonly caption: string;
+  readonly rowHeader: string;
+  readonly columns: readonly string[];
+  readonly groups: readonly ResultGroup[];
+}
+
+function tableCells(analysis: TableAnalysis): readonly string[] {
+  return [
+    totalDistanceText(analysis.totalDistance),
+    analysis.perChar === undefined ? '—' : analysis.perChar.toFixed(2),
+    integer.format(analysis.chars),
+    integer.format(analysis.skipped),
+  ];
+}
+
+function currentCells(row: CurrentAnalysisOkRow): readonly string[] {
+  return [
+    totalDistanceText(row.totalDistance),
+    row.perChar === undefined ? '—' : row.perChar.toFixed(2),
+    integer.format(row.chars),
+    integer.format(row.skipped),
+  ];
+}
+
+/**
+ * 表による解析の値と、同じテキストを今の解析で測った値を並べる表。行は対象の順で、値で並べ替えない。
+ * 今の解析の値を測れない行は、値の代わりに理由を出す。表による解析の値は、その影響を受けない。
+ */
+export function sideBySideResultsModel(rows: readonly NgramDisplayRow[], current: CurrentAnalysisState, tableLookahead: number): SideBySideResultsModel {
+  const currentByKey = current.status === 'ready' ? new Map(current.extracted.rows.map((row) => [row.targetKey, row] as const)) : undefined;
+  return {
+    caption: NGRAM_TABLE_PANE_META.name,
+    rowHeader: '解析',
+    columns: [
+      `${TOTAL_DISTANCE_LABEL} [${TOTAL_DISTANCE_UNIT}]`,
+      `${PER_KANA_COLUMN_LABEL} [${PER_KANA_DISTANCE_UNIT}]`,
+      INPUT_CHARS_COLUMN_LABEL,
+      UNTYPED_COLUMN_LABEL,
+    ],
+    groups: rows.map((row): ResultGroup => {
+      const tableLine: ResultLine = {
+        key: `${row.targetKey}:table`,
+        analysis: 'table',
+        name: TABLE_ANALYSIS_LABEL,
+        lookahead: `先読み${tableLookahead}文節`,
+        cells: tableCells(row.row.analysis),
+        message: undefined,
+        failed: false,
+      };
+      const currentRow = currentByKey?.get(row.targetKey);
+      const currentLine = ((): ResultLine => {
+        const knownLookahead = current.lookaheads.get(row.targetKey);
+        const unknown = knownLookahead === undefined ? 'かなの先読み' : `先読み${knownLookahead}かな`;
+        const base = { key: `${row.targetKey}:current`, analysis: 'current' as const, name: CURRENT_ANALYSIS_LABEL };
+        if (current.status === 'failed') {
+          return { ...base, lookahead: unknown, cells: undefined, message: CURRENT_ANALYSIS_FAILED_MESSAGE, failed: true };
+        }
+        if (currentRow === undefined) {
+          // 依頼の作り直し途中の一瞬は、値の欠落を偽らず計算中と出す
+          return { ...base, lookahead: unknown, cells: undefined, message: COMPUTING_MESSAGE, failed: false };
+        }
+        if (currentRow.kind === 'failed') {
+          return { ...base, lookahead: unknown, cells: undefined, message: currentRow.message, failed: true };
+        }
+        return { ...base, lookahead: `先読み${currentRow.lookahead}かな`, cells: currentCells(currentRow), message: undefined, failed: false };
+      })();
+      return { targetKey: row.targetKey, header: row.label, title: row.fullName || row.label, lines: [tableLine, currentLine] };
     }),
   };
 }

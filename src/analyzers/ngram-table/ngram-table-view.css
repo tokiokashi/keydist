@@ -72,6 +72,70 @@
 }
 
 /*
+ * 表による解析と今の解析を並べる結果の表。配列・Setupの名前を1行で置き、その下に解析ごとの行を置く。
+ * 解析の名前とその先読みは折り返して、狭い幅でも全列が初めから見えるようにする。
+ */
+.ngram-table-side-by-side tbody + tbody .ngram-table-side-by-side-target {
+  padding-top: 0.6rem;
+}
+
+.ngram-table-side-by-side .ngram-table-side-by-side-target {
+  font-weight: 600;
+}
+
+.ngram-table-side-by-side tbody th[scope='row'] {
+  vertical-align: top;
+}
+
+.ngram-table-side-by-side td {
+  vertical-align: top;
+}
+
+.ngram-table-side-by-side th,
+.ngram-table-side-by-side td {
+  padding-right: 0.5rem;
+}
+
+/* 解析の名前は長いので折り返し、値の列の見出しが1字ずつ折り返すほど狭くならないようにする。 */
+.ngram-table-side-by-side tbody th[scope='row'] {
+  min-width: 6.2rem;
+  max-width: 8rem;
+}
+
+.ngram-table-side-by-side thead th:not(:first-child) {
+  min-width: 3.5rem;
+  max-width: 7rem;
+}
+
+.ngram-table-side-by-side-name,
+.ngram-table-side-by-side-lookahead {
+  display: block;
+}
+
+.ngram-table-side-by-side-name {
+  white-space: normal;
+}
+
+.ngram-table-side-by-side-lookahead {
+  white-space: nowrap;
+}
+
+.ngram-table-side-by-side-lookahead {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.ngram-table-side-by-side td.ngram-table-side-by-side-message {
+  color: var(--text-muted);
+  text-align: left;
+  white-space: normal;
+}
+
+.ngram-table-side-by-side td.ngram-table-side-by-side-message[role='alert'] {
+  color: var(--danger);
+}
+
+/*
  * 個別画面の見出し。名前・対象の欄・解析設定・操作を1つのgridの列に置くと、名前と操作が幅を取って対象の欄が潰れ、
  * 次数と先読みが他のボタンに重なる。この見出しは折り返す並びにして、入らない部品だけを下の行へ送る。
  */

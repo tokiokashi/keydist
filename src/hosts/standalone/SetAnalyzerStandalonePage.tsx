@@ -33,7 +33,7 @@ import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { changedConditionLabels, setPaneConditionScope } from '#hosts/shared/changed-condition.ts';
-import { settingsItemIds } from '#hosts/shared/condition-summary.ts';
+import { conditionExcludeIdsOf } from '#hosts/shared/condition-summary.ts';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
 import {
   describeConditionShareNotice,
@@ -226,7 +226,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
               overrides: assets.setupLibrary.overrides,
               text: evaluation.text,
               scope: setPaneConditionScope(evaluation.text.language),
-              excludeIds: settingsItemIds(analyzer.conditionExcludeIds),
+              excludeIds: conditionExcludeIdsOf(analyzer.conditionExcludeIds, optionsDraft),
             });
             return {
               params,

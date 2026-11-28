@@ -3,7 +3,7 @@ import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * 文節の表による解析のe2e。値はunit testで固定しているので、ここでは画面の配線を見る。
- * 表の元を選んだテキストにして、そのテキストから作った表で結果の表と2つの図が出て、テキストの選択が現れることを見る。
+ * 表の元を選んだテキストにして、そのテキストから作った表と今の解析の値を並べた結果の表と2つの図が出て、テキストの選択が現れることを見る。
  */
 
 test('表の元を選んだテキストにすると、そのテキストから作った表で、結果の表と2つの分布の図が出る', { tag: PAGE_TAG }, async ({ page }) => {
@@ -27,7 +27,10 @@ test('表の元を選んだテキストにすると、そのテキストから�
   const results = feature.locator('[data-ngram-table-results]');
   await expect(results).toBeVisible({ timeout: 120_000 });
   await expect(page.locator('.context-bar button.text-chip')).toBeVisible();
-  await expect(results.locator('tbody tr')).toHaveCount(2);
+  // 配列ごとに、表による解析の行と、同じテキストを今の解析で測った行が並ぶ
+  await expect(results.locator('[data-ngram-table-analysis="table"]')).toHaveCount(2);
+  await expect(results.locator('[data-ngram-table-analysis="current"]')).toHaveCount(2);
+  await expect(results.locator('[data-ngram-table-analysis="current"] td[aria-busy]')).toHaveCount(0, { timeout: 120_000 });
   await expect(feature.locator('[data-ngram-table-distribution="distance"] [data-box-plot-box]')).toHaveCount(2);
   await expect(feature.locator('[data-ngram-table-distribution="perKana"] [data-box-plot-box]')).toHaveCount(2);
 });
