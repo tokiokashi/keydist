@@ -1,5 +1,5 @@
 // 標準のコーパス（『吾輩は猫である』全文）を読みに直し、文節の区切りを読みのテキストの位置へ写す。
-// `scripts/corpus-ngram-tables.ts` と `scripts/corpus-ngram-table-analysis.ts` が使う。
+// `scripts/corpus-ngram-tables.ts`と`scripts/corpus-ngram-table-analysis.ts`が使う。
 // 辞書（IPADIC）は .cache/dictionary/ に取る（CONTRIBUTING.md「読みの辞書」）。無ければ取得する。
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -30,7 +30,7 @@ export interface StandardCorpus {
   readonly readingBoundaries: readonly number[];
 }
 
-/** 取得と除去は `scripts/generate-neko-sample.ts` と同じ。読みへの変換と区切りの写しはアプリと同じ経路。 */
+/** 取得と除去は`scripts/generate-neko-sample.ts`と同じ。読みへの変換と区切りの写しはアプリと同じ経路。 */
 export async function loadStandardCorpus(source: string | undefined): Promise<StandardCorpus> {
   const zip = await archiveBytes(source);
   const entry = (await extractZip(zip)).get(AOZORA_SOURCE.entryName);

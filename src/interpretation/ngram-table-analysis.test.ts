@@ -213,6 +213,9 @@ test('表の次数の既定は、選べる次数の最大', () => {
   assert.equal(defaultTableOrder([row(0, undefined), row(1, 0.3)]), 0);
 });
 
-test('文節の先読みの範囲と既定は、表の次数によらない定数', () => {
-  assert.deepEqual(BUNSETSU_LOOKAHEAD, { min: 1, max: 8, default: 1 });
+test('入力が文節の境界をまたぐ時、先読みの終わりは終わりの文節、始まりは始まりの文節で測る', () => {
+  // っは は、っ（文節0）と は（文節1）をまたぐ入力を含む。終わりの文節は1なので、N=2で次の文節まで見て指を残す
+  near(analyzeTableEntry(['っ', 'は', 'ひ'], setup, 2).distance, 1.0307764064044151, '終わりの文節');
+  // ひ の入力は文節2から始まる。始まりの文節で測るので、N=2では文節1より前の指は残らない
+  near(analyzeTableEntry(['ひ', 'っ', 'は'], setup, 2).distance, 0, '始まりの文節');
 });

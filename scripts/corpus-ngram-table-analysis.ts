@@ -1,9 +1,9 @@
 // 標準のコーパス（『吾輩は猫である』全文）の文節の読みの表を、組み込みの配列で解析し、結果をMarkdownの表で出す。
-// 定義は `spec/distance-model.md` §13。表の作り方と、統計が足りているかの量は `docs/corpus-ngram.md`。
+// 定義は`spec/distance-model.md` §13。表の作り方と、統計が足りているかの量は`docs/corpus-ngram.md`。
 //
 //   node --experimental-strip-types scripts/corpus-ngram-table-analysis.ts
-//   ... --layouts qwerty,jis-kana  解析する組み込みの配列のid（既定は6つの配列。下の DEFAULT_LAYOUTS）
-//   ... --lookahead 1,2,3          文節で数える先読みN。複数渡すとNごとに出す（既定は1）
+//   ... --layouts qwerty,jis-kana  解析する組み込みの配列のid（既定は6つの配列。下のDEFAULT_LAYOUTS）
+//   ... --lookahead 1,2,3          文節で数える先読みN。複数渡すとNごとに出す（既定は2）
 //   ... --reference-orders 2       選べる次数の上限より上の次数も、参考として何次まで出すか（既定は0。出さない）
 //   ... --source <zipのパス>        取得済みの青空文庫のzipを使う
 //
@@ -107,6 +107,7 @@ async function main(): Promise<void> {
   const source: TableSource = {
     kind: 'corpus',
     name: `青空文庫『${AOZORA_SOURCE.title}』（作品789）全文`,
+    archive: { fileName: AOZORA_SOURCE.fileName, sha256: AOZORA_SOURCE.sha256 },
     segmentation: { origin: 'splitter', splitter: BUNSETSU_SPLITTER },
     reading: { library: LIBRARY_SPEC, dictionary: DICTIONARY_SPEC },
   };

@@ -6,15 +6,15 @@ import { generateTrace, uncoveredTextPositions, type CenterShiftThumb, type Spac
 import { BUNSETSU_KEY_SEPARATOR, sufficientOrder, type OrderSufficiency } from './corpus-ngram.ts';
 
 /**
- * 文節のn-gramの表の項目を打鍵して集計する解析（定義は `spec/distance-model.md` §13）。
+ * 文節のn-gramの表の項目を打鍵して集計する解析（定義は`spec/distance-model.md` §13）。
  * 項目ごとに、すべての指をホームに置いた状態から文脈の文節を打ち、続けて最後の文節を打って、最後の文節の距離を出現回数の重みで足す。
  * 先読みは文節の数で数える（§13.3）。
  */
 
 /** 文節で数える先読みの、選べる範囲と既定値（仕様 §13.3）。表の次数によらない。 */
-export const BUNSETSU_LOOKAHEAD = { min: 1, max: 8, default: 1 } as const;
+export const BUNSETSU_LOOKAHEAD = { min: 1, max: 8, default: 2 } as const;
 
-/** 分布で出す分位点。重みの累積が `⌈q · W⌉` に達する最初の値（補間しない）。 */
+/** 分布で出す分位点。重みの累積が`⌈q · W⌉`に達する最初の値（補間しない）。 */
 export const DISTRIBUTION_LEVELS = [0.1, 0.25, 0.5, 0.75, 0.9] as const;
 
 /** 表の元のテキストの出どころ。結果に併記する条件（仕様 §13.6）で、計算には使わない。 */
@@ -23,17 +23,19 @@ export interface TableSource {
   readonly kind: 'corpus' | 'user-text';
   /** 表の元のテキストの名前。標準のコーパスなら作品名と版が分かる文字列 */
   readonly name: string;
-  /** 文節の区切りの出どころ。分割器を使ったなら分割器の名前と版、利用者が指定したなら `user` */
+  /** 標準のコーパスの版を決める取得元のファイル名とsha256。利用者のテキストでは持たない */
+  readonly archive?: { readonly fileName: string; readonly sha256: string };
+  /** 文節の区切りの出どころ。分割器を使ったなら分割器の名前と版、利用者が指定したなら`user` */
   readonly segmentation: { readonly origin: 'splitter'; readonly splitter: SegmenterInfo } | { readonly origin: 'user' };
   /** 読みへの変換器と辞書。読みに変換しないテキストはnull */
   readonly reading: { readonly library: SegmenterInfo; readonly dictionary: SegmenterInfo } | null;
 }
 
-/** 解析に使う配列と物理配列。`layout` はローマ字入力ならローマ字の表を持つ最終形（`ResolvedInput.layout`）を渡す。 */
+/** 解析に使う配列と物理配列。`layout`はローマ字入力ならローマ字の表を持つ最終形（`ResolvedInput.layout`）を渡す。 */
 export interface TableAnalysisSetup {
   readonly layout: Layout;
   readonly geometry: Geometry;
-  /** `windowSize` は読まない。先読みは `lookahead` で渡す */
+  /** `windowSize`は読まない。先読みは`lookahead`で渡す */
   readonly tracePolicy: TracePolicy;
   /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
   readonly romajiRuleId: string | null;
@@ -60,23 +62,23 @@ export interface WeightedDistribution {
   readonly min: number;
   readonly max: number;
   readonly mean: number;
-  /** `DISTRIBUTION_LEVELS` の順 */
+  /** `DISTRIBUTION_LEVELS`の順 */
   readonly quantiles: readonly { readonly level: number; readonly value: number }[];
 }
 
 export interface TableAnalysis {
   readonly conditions: TableAnalysisConditions;
-  /** 項目の数 `E` */
+  /** 項目の数`E` */
   readonly entries: number;
-  /** 出現数 `W`（項目の出現回数の合計） */
+  /** 出現数`W`（項目の出現回数の合計） */
   readonly occurrences: number;
-  /** 総移動距離 `D` [u]。最後の文節の距離を出現回数の重みで足した値 */
+  /** 総移動距離`D` [u]。最後の文節の距離を出現回数の重みで足した値 */
   readonly totalDistance: number;
-  /** 入力かな数 `C`。最後の文節のかな数を出現回数の重みで足した値 */
+  /** 入力かな数`C`。最後の文節のかな数を出現回数の重みで足した値 */
   readonly chars: number;
-  /** 打てなかった文字 `S`。最後の文節の範囲にあるものを出現回数の重みで足した値 */
+  /** 打てなかった文字`S`。最後の文節の範囲にあるものを出現回数の重みで足した値 */
   readonly skipped: number;
-  /** 入力1かなあたりの移動距離 [u]。`C` が0ならundefined */
+  /** 入力1かなあたりの移動距離 [u]。`C`が0ならundefined */
   readonly perChar: number | undefined;
   /** 文節の移動距離の分布。項目が無ければundefined */
   readonly distanceDistribution: WeightedDistribution | undefined;
@@ -99,7 +101,7 @@ export function defaultTableOrder(sufficiency: readonly OrderSufficiency[]): num
 }
 
 /**
- * 重みを付けた値の分布。分位点は、値を小さい順に並べ、重みの累積が `⌈q · W⌉` に達する最初の値。
+ * 重みを付けた値の分布。分位点は、値を小さい順に並べ、重みの累積が`⌈q · W⌉`に達する最初の値。
  * 値と重みは同じ長さで、重みは正の整数。空ならundefined。
  */
 export function weightedDistribution(values: readonly number[], weights: readonly number[]): WeightedDistribution | undefined {
@@ -127,7 +129,7 @@ export function weightedDistribution(values: readonly number[], weights: readonl
   return { min: values[order[0]!]!, max: values[order.at(-1)!]!, mean: weightedSum / total, quantiles };
 }
 
-/** 項目の1つ分。`distance` は最後の文節の距離、`length` は最後の文節のかな数。 */
+/** 項目の1つ分。`distance`は最後の文節の距離、`length`は最後の文節のかな数。 */
 interface EntryResult {
   readonly distance: number;
   readonly length: number;
@@ -135,8 +137,8 @@ interface EntryResult {
 }
 
 /**
- * 表の項目 `units`（文節の読みの並び）を、すべての指をホームに置いた状態から打ち、最後の文節の距離を返す（仕様 §13.1）。
- * `lookahead` は文節で数える先読み `N`（仕様 §13.3）。
+ * 表の項目`units`（文節の読みの並び）を、すべての指をホームに置いた状態から打ち、最後の文節の距離を返す（仕様 §13.1）。
+ * `lookahead`は文節で数える先読み`N`（仕様 §13.3）。
  */
 export function analyzeTableEntry(units: readonly string[], setup: TableAnalysisSetup, lookahead: number): EntryResult {
   const { layout, geometry, tracePolicy } = setup;
@@ -170,8 +172,8 @@ export function analyzeTableEntry(units: readonly string[], setup: TableAnalysis
 }
 
 /**
- * 次数 `order` の、文節の読みの系列の表（鍵は文節の読みを `BUNSETSU_KEY_SEPARATOR` でつないだ文字列）の全項目を解析する（仕様 §13）。
- * 選べる次数の上限（§13.5）は検査しない。呼び出し側が `selectableOrders` で決める。
+ * 次数`order`の、文節の読みの系列の表（鍵は文節の読みを`BUNSETSU_KEY_SEPARATOR`でつないだ文字列）の全項目を解析する（仕様 §13）。
+ * 選べる次数の上限（§13.5）は検査しない。呼び出し側が`selectableOrders`で決める。
  */
 export function analyzeNgramTable(
   table: ReadonlyMap<string, number>,
@@ -183,7 +185,7 @@ export function analyzeNgramTable(
   if (!Number.isInteger(lookahead) || lookahead < BUNSETSU_LOOKAHEAD.min || lookahead > BUNSETSU_LOOKAHEAD.max) {
     throw new Error(`文節の先読みは${BUNSETSU_LOOKAHEAD.min}以上${BUNSETSU_LOOKAHEAD.max}以下の整数: ${lookahead}`);
   }
-  // `N` を `k+1` より大きくしても、結果は `k+1` と同じ（仕様 §13.3）。同じ計算を2度しないために丸める
+  // `N`を`k+1`より大きくしても、結果は`k+1`と同じ（仕様 §13.3）。同じ計算を2度しないために丸める
   const effective = Math.min(lookahead, order + 1);
   const distances: number[] = [];
   const perChars: number[] = [];
