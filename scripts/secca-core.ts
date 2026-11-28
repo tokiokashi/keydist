@@ -10,9 +10,10 @@
  * マクロ`#(...)`（中の待ち`P10`と`XX`を含む）・層の`_`（下の層を透過）・`XX`（押しを捨てる）。
  *
  * 押し方は、押したキーを最後の打鍵まで押したままにし、最後に打ったキーから順に離す形に固定する。作者の定義が
- * 「同時打鍵」と呼ぶ打ち方で、`tap-next-release`が決める「打つ」と「押したまま」は次のように決まる。
+ * 「同時打鍵」と呼ぶ打ち方で、保留中の`tap-next-release`は、自分の離しでタップに、自分より後に押したキーの離しでホールドに決まる。
  * - 最後のキーは、自分の離しが最初なので「打つ」になる
  * - 最後でないキーは、後から押されたキーの離しが先に来るので「押したまま」になる
+ * 保留中の`tap-next-release`が溜めるのは、自分より後に押したキーのイベントだけである。自分より前に押したキーの離しは溜まらず即時に処理される。
  * 最後のキーより前のキーは、`tap-next`と`tap-hold-next`でも、次の押しが来るので「押したまま」になる。
  * `tap-hold-next`の待ち時間は、押し方が速く、待ち時間の内に次のキーが来るものとして扱う。
  *
@@ -272,6 +273,8 @@ interface HeldKey {
   readonly key: string;
   /** このキーを押して積んだ層 */
   readonly layers: readonly string[];
+  /** `tap-next-release`のホールド側の役で押したキー */
+  readonly pendingRelease: boolean;
 }
 
 /** 表の左辺の記号の並びの木。行の左辺の先頭と合う間だけ、押す列をたどるために使う。 */
@@ -471,8 +474,10 @@ export function compareChords(a: Chord, b: Chord): number {
  * 表の各行を出す押し順を探す。キーを押す列を深さ優先でたどり、出た記号の並びが、表の左辺の先頭と合う間だけ進む。
  * 操作は、キーを押す操作と、層を保っているキーを全部離す操作（`LIFT`）の2つ。
  * 離す操作は、記号が出た後に1回だけ入れる。左手の2キーを離して、右手の押したままのキーの後に続けて打つ打ち方（くずし字入力）を表す。
- * `tap-next-release`が待つ間に押したキーは、待ちが決まった後にまとめて処理されるが、押す順と離す順は保たれるので、
- * 押す列を順にたどる再現と同じ結果になる。
+ * 離す操作は、押したままのキーに`tap-next-release`が無い時と、最初の`tap-next-release`が最後に押したキーで、そのキーのホールド側が層を持たない時に許す。
+ * 保留中の`tap-next-release`より前に押したキーの離しは、溜まらず即時に処理されて層が外れる。
+ * 最初の`tap-next-release`が最後でない時は、後に押したキーの離しでそのキーがホールドに決まり、溜めたイベントをその時点の層で再生する。
+ * それ以外の、`tap-next-release`が待つ間に押したキーは、待ちが決まった後にまとめて処理されるが、押す順と離す順は保たれるので、押す列を順にたどる再現と同じ結果になる。
  * `isUsable`が偽の行は、探す対象に入れない。
  */
 export function findChords(config: KmonadConfig, rows: readonly SeccaRow[], isUsable: (row: SeccaRow) => boolean = () => true): SeccaChords {
@@ -520,10 +525,15 @@ export function findChords(config: KmonadConfig, rows: readonly SeccaRow[], isUs
       const before = next.stack.length;
       sim.press(next, button);
       if (next.invalid || next.node === null) continue;
-      next.held.push({ key, layers: next.stack.slice(before) });
+      const resolved = sim.resolve(button);
+      next.held.push({ key, layers: next.stack.slice(before), pendingRelease: resolved.t === 'tapnext' && resolved.release });
       explore(next, [...ops, key]);
     }
-    if (ops.length + 1 < MAX_DEPTH && state.outLength > 0 && !ops.includes(LIFT) && state.held.some((h) => h.layers.length > 0)) {
+    // 押したままのキーの中で最初の`tap-next-release`が、最後に押したキーで、層を持たない時だけ許す。
+    // それより前に`tap-next-release`があると、後から押したキーの離しでそのキーがホールドに決まり、溜めたイベントをその時点の層で再生する
+    const firstPending = state.held.findIndex((h) => h.pendingRelease);
+    const liftable = firstPending === -1 || (firstPending === state.held.length - 1 && state.held[firstPending]!.layers.length === 0);
+    if (liftable && ops.length + 1 < MAX_DEPTH && state.outLength > 0 && !ops.includes(LIFT) && state.held.some((h) => h.layers.length > 0)) {
       const next = cloneState(state);
       const kept: HeldKey[] = [];
       for (const h of next.held) {

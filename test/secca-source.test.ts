@@ -27,13 +27,16 @@ test('使わない行は、出力が空の行・カタカナのモードの行�
   const count = (reason: string) => rebuilt.skipped.filter((skipped) => skipped.reason === reason).length;
   assert.equal(count('empty'), 112);
   assert.equal(count('katakana-mode'), 375);
-  assert.equal(count('unreachable'), 59);
+  assert.equal(count('unreachable'), 136);
   const kana = embedded.kana.split('\n').map((line) => line.split(' ')[0]!);
   assert.ok(kana.every((output) => !/[ァ-ヴ]/u.test(output)));
-  // どの押し方でも作れない行: 全角英字の52行（`layer-switch`で入るモードで出る）、記号3行、異体字4行（`config.kbd`に定義が無い）
+  // どの押し方でも作れない行: 全角英字の52行（`layer-switch`で入るモードで出る）、記号3行、異体字4行（`config.kbd`に定義が無い）、
+  // 熟語77行（保留中の`tap-next-release`の後に空白キーを押して左手を離す打ち方が、`tap-next-release`の挙動では別の出力になる）
   const unreachable = rebuilt.skipped.filter((skipped) => skipped.reason === 'unreachable');
   assert.equal(unreachable.filter(({ row }) => row.file === '.XCompose.symbols' && /^[Ａ-Ｚａ-ｚ]$/u.test(row.output)).length, 52);
   assert.equal(unreachable.filter(({ row }) => row.file === '.XCompose.variant_of_kanji').length, 4);
+  assert.equal(unreachable.filter(({ row }) => row.file === '.XCompose.set_of_kanji').length, 77);
+  assert.equal(entries('jukugo').has('荊妻'), false);
 });
 
 test('押す順序で字が変わる組が、別の字として別の打鍵列を持つ', () => {
