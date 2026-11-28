@@ -62,3 +62,4 @@
 | [0020](0020-kanji-direct-tables-as-separate-files.md) | 漢直の組み込みの配列の表を独立したファイルで配り、配列を使う時に取得する | 採用 |
 | [0021](0021-secca-layout-from-kmonad-config.md) | 雪華はKMonadの設定を再現して作った1つの表で持ち、かなは同時押し、漢字と熟語は順次打鍵にする | 採用 |
 | [0022](0022-unassigned-sequence-cancels-input.md) | 順次打鍵の割り当ての無い組は、打ちかけの入力も今の打鍵も取り消す | 採用 |
+| [0023](0023-secca-tap-next-release-reduction.md) | 雪華の簡約で、保留中のtap-next-releaseがあるとき層を保つキーの離しを許さない | 採用 |
