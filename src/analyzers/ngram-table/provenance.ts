@@ -1,6 +1,6 @@
 import type { NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
 import type { NgramTableOptions } from './options.ts';
-import { SOURCE_TEXT_LABEL } from './pane-meta.ts';
+import { CURRENT_ANALYSIS_LABEL, SOURCE_TEXT_LABEL } from './pane-meta.ts';
 
 /**
  * 結果に併記する条件（仕様 §13.6）のうち、配列・物理配列・指の割り当て・綴り・親指の条件（対象の条件。条件の要約が出す）を除いたもの。
@@ -36,8 +36,8 @@ export function tableSize(asset: NgramTableAsset): { readonly occurrences: numbe
 
 /** 表の元が選んだテキストの時に並べる、今の解析の値の測り方。先読みの数え方が、表による解析と違うことを添える。 */
 const CURRENT_ANALYSIS_ITEM: NgramTableProvenanceItem = {
-  label: '今の解析',
-  value: '選んだテキストを頭から打鍵して集計。先読みNはかなで数える',
+  label: CURRENT_ANALYSIS_LABEL,
+  value: '選んだテキストを頭から打鍵して集計。先読みNはかなで数えます',
 };
 
 /** 選んだ表と解析設定から、出どころの札を作る。`asset` が無い間（読み込み中・読み込めなかった）は出さない。 */

@@ -38,7 +38,7 @@ export interface CurrentAnalysisExtracted {
  * 本体へ渡す、今の解析の値の状態。表の元が選んだテキストでない時は、本体へ渡さない。
  * `loading`は計算を依頼してから値が届くまで、`failed`は計算そのものが失敗した時（対象ごとの失敗は`ready`の行に載る）。
  */
-export type CurrentAnalysisState =
-  | { readonly status: 'loading' }
-  | { readonly status: 'failed' }
-  | { readonly status: 'ready'; readonly extracted: CurrentAnalysisExtracted };
+export type CurrentAnalysisState = {
+  /** 対象ごとの、かなで数える先読み`N`。値を測れない行や計算中の行の見出しにも付ける */
+  readonly lookaheads: ReadonlyMap<string, number>;
+} & ({ readonly status: 'loading' } | { readonly status: 'failed' } | { readonly status: 'ready'; readonly extracted: CurrentAnalysisExtracted });

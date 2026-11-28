@@ -96,9 +96,27 @@
   padding-right: 0.5rem;
 }
 
+/* 解析の名前は長いので折り返し、値の列の見出しが1字ずつ折り返すほど狭くならないようにする。 */
+.ngram-table-side-by-side tbody th[scope='row'] {
+  min-width: 6.2rem;
+  max-width: 8rem;
+}
+
+.ngram-table-side-by-side thead th:not(:first-child) {
+  min-width: 3.5rem;
+  max-width: 7rem;
+}
+
 .ngram-table-side-by-side-name,
 .ngram-table-side-by-side-lookahead {
   display: block;
+}
+
+.ngram-table-side-by-side-name {
+  white-space: normal;
+}
+
+.ngram-table-side-by-side-lookahead {
   white-space: nowrap;
 }
 

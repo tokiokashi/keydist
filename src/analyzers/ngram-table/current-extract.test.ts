@@ -34,7 +34,11 @@ test('並べる表は、表による解析の行に今の解析の値と失敗�
   } as unknown as NgramDisplayRow;
   const ready = sideBySideResultsModel(
     [row],
-    { status: 'ready', extracted: { rows: [{ kind: 'ok', targetKey, totalDistance: 90, perChar: 1.5, chars: 60, skipped: 0, lookahead: 3 }] } },
+    {
+      lookaheads: new Map([[targetKey, 3]]),
+      status: 'ready',
+      extracted: { rows: [{ kind: 'ok', targetKey, totalDistance: 90, perChar: 1.5, chars: 60, skipped: 0, lookahead: 3 }] },
+    },
     2,
   );
   assert.deepEqual(
@@ -46,10 +50,15 @@ test('並べる表は、表による解析の行に今の解析の値と失敗�
   );
   assert.deepEqual(
     ready.groups[0]?.lines.map((line) => line.lookahead),
-    ['文節の先読み2', 'かなの先読み3'],
+    ['先読み2文節', '先読み3かな'],
   );
-  const failed = sideBySideResultsModel([row], { status: 'ready', extracted: { rows: [{ kind: 'failed', targetKey, message: '長すぎます' }] } }, 2);
+  const failed = sideBySideResultsModel(
+    [row],
+    { lookaheads: new Map([[targetKey, 3]]), status: 'ready', extracted: { rows: [{ kind: 'failed', targetKey, message: '長すぎます' }] } },
+    2,
+  );
   assert.deepEqual(failed.groups[0]?.lines[0]?.cells, ['100.0', '2.00', '50', '2']);
   assert.equal(failed.groups[0]?.lines[1]?.cells, undefined);
   assert.equal(failed.groups[0]?.lines[1]?.message, '長すぎます');
+  assert.equal(failed.groups[0]?.lines[1]?.lookahead, '先読み3かな');
 });

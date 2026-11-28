@@ -208,25 +208,27 @@ export function sideBySideResultsModel(rows: readonly NgramDisplayRow[], current
         key: `${row.targetKey}:table`,
         analysis: 'table',
         name: TABLE_ANALYSIS_LABEL,
-        lookahead: `文節の先読み${tableLookahead}`,
+        lookahead: `先読み${tableLookahead}文節`,
         cells: tableCells(row.row.analysis),
         message: undefined,
         failed: false,
       };
       const currentRow = currentByKey?.get(row.targetKey);
       const currentLine = ((): ResultLine => {
+        const knownLookahead = current.lookaheads.get(row.targetKey);
+        const unknown = knownLookahead === undefined ? '先読みはかなで数える' : `先読み${knownLookahead}かな`;
         const base = { key: `${row.targetKey}:current`, analysis: 'current' as const, name: CURRENT_ANALYSIS_LABEL };
         if (current.status === 'failed') {
-          return { ...base, lookahead: 'かなの先読み', cells: undefined, message: CURRENT_ANALYSIS_FAILED_MESSAGE, failed: true };
+          return { ...base, lookahead: unknown, cells: undefined, message: CURRENT_ANALYSIS_FAILED_MESSAGE, failed: true };
         }
         if (currentRow === undefined) {
           // 依頼の作り直し途中の一瞬は、値の欠落を偽らず計算中と出す
-          return { ...base, lookahead: 'かなの先読み', cells: undefined, message: COMPUTING_MESSAGE, failed: false };
+          return { ...base, lookahead: unknown, cells: undefined, message: COMPUTING_MESSAGE, failed: false };
         }
         if (currentRow.kind === 'failed') {
-          return { ...base, lookahead: 'かなの先読み', cells: undefined, message: currentRow.message, failed: true };
+          return { ...base, lookahead: unknown, cells: undefined, message: currentRow.message, failed: true };
         }
-        return { ...base, lookahead: `かなの先読み${currentRow.lookahead}`, cells: currentCells(currentRow), message: undefined, failed: false };
+        return { ...base, lookahead: `先読み${currentRow.lookahead}かな`, cells: currentCells(currentRow), message: undefined, failed: false };
       })();
       return { targetKey: row.targetKey, header: row.label, title: row.fullName || row.label, lines: [tableLine, currentLine] };
     }),

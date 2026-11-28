@@ -312,7 +312,8 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading && !segmentationLoading && !tableLoading && shown);
   // 表の元が選んだテキストの時は、同じテキストを今の解析で測って並べる。対象は評価に渡すテキストで解決し直す（表による解析の対象の解決は変えない）。
   // 辞書の読み込み中は、表による解析と同じく依頼を出さない
-  const currentDefinition = fromText ? analyzer.ngramTable?.currentAnalysis : undefined;
+  // 表が使える間（値を出せる表がある間）だけ依頼する。表による解析の行が無い表に、今の解析の行だけを出さない
+  const currentDefinition = fromText && tableStatus === 'ready' && tableAsset !== undefined ? analyzer.ngramTable?.currentAnalysis : undefined;
   const currentMembers = useMemo(
     (): readonly EngineSetMemberInput[] =>
       currentDefinition === undefined
@@ -323,7 +324,16 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
     [currentDefinition, targets, setupsById, catalog, overrides, env.resolvedText],
   );
   const current = useAnalyzerSetPane(cache, currentDefinition, NO_ANALYSIS_OPTIONS, currentMembers, !readingLoading && shown);
-  const currentAnalysis = currentAnalysisState(currentDefinition !== undefined, current.extraction);
+  const currentLookaheads = useMemo(
+    () =>
+      new Map(
+        members.flatMap((member) =>
+          member.resolution.ok ? [[analysisTargetKey(member.target), member.resolution.input.cascade.windowSize.value] as const] : [],
+        ),
+      ),
+    [members],
+  );
+  const currentAnalysis = currentAnalysisState(currentDefinition !== undefined, current.extraction, currentLookaheads);
   const { Body, Settings, HeaderControl, TargetItem } = analyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
@@ -477,8 +487,12 @@ function textTableStatus(
 const NO_ANALYSIS_OPTIONS: Record<string, never> = {};
 
 /** 今の解析の値の依頼の状態を、本体へ渡す状態にする。依頼しない時は`undefined`。 */
-function currentAnalysisState(requested: boolean, extraction: ExtractionRequestState<CurrentAnalysisExtracted>): CurrentAnalysisState | undefined {
+function currentAnalysisState(
+  requested: boolean,
+  extraction: ExtractionRequestState<CurrentAnalysisExtracted>,
+  lookaheads: ReadonlyMap<string, number>,
+): CurrentAnalysisState | undefined {
   if (!requested) return undefined;
-  if (extraction.status === 'ready' || extraction.status === 'stale') return { status: 'ready', extracted: extraction.value.extracted };
-  return extraction.status === 'failed' ? { status: 'failed' } : { status: 'loading' };
+  if (extraction.status === 'ready' || extraction.status === 'stale') return { lookaheads, status: 'ready', extracted: extraction.value.extracted };
+  return extraction.status === 'failed' ? { lookaheads, status: 'failed' } : { lookaheads, status: 'loading' };
 }
