@@ -13,6 +13,7 @@ import {
 import {
   browserCodeDisplayLabel,
   browserCodesOfKey,
+  JIS_BROWSER_BINDINGS,
   EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
   type BrowserKeyBindingOverrides,
 } from '#input/shapes/browser-key-codes.ts';
@@ -188,6 +189,21 @@ export function calibrationKeyLabel(
   const legend = legends.get(resolveKeyId(keyId));
   const label = legend !== undefined && legend.trim().length > 0 ? legend : keyId;
   return /^[a-z]$/i.test(label) ? label.toUpperCase() : label;
+}
+
+/**
+ * `bindings`の対応で、引ける`event.code`が1つも無い、JISの物理配列の`\`・`¥`・`ろ`の位置のキーのid（重複なし）。
+ * このキーは`code`から引いて照合するので、引けなければ打てず、測定を始められない。
+ * 対応に`code`があっても、利用者のキーボードがそのキーを持つとは限らない。そのキーが無いキーボードは、この判定では分からない。
+ */
+export function unassignedJisCodeKeys(keyIds: Iterable<string>, bindings: BrowserKeyBindingOverrides): string[] {
+  const jisKeys: readonly string[] = Object.values(JIS_BROWSER_BINDINGS).filter((id): id is string => id !== null);
+  const result: string[] = [];
+  for (const keyId of keyIds) {
+    const resolved = resolveKeyId(keyId);
+    if (jisKeys.includes(resolved) && !result.includes(resolved) && browserCodesOfKey(resolved, bindings).length === 0) result.push(resolved);
+  }
+  return result;
 }
 
 /** `bindings`の対応で、引ける`event.code`が1つも無い親指のキーのid（重複なし）。この親指のキーは打てないので、測定を始められない。 */

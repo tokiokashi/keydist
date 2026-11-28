@@ -14,6 +14,7 @@ import {
   type SentenceKeyEvent,
   type SentencePlan,
 } from '#interpretation/timing/sentence-session.ts';
+import { unassignedJisCodeKeys } from '#interpretation/timing/calibration-session.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
 const BASE = { userLayouts: [], userRomajiRules: [], fingerAssignments: [] };
@@ -99,6 +100,17 @@ for (const selection of SELECTIONS) {
     assert.equal(sentenceSessionFinished(played.session), true);
   });
 }
+
+test('ろのキーに引けるcodeが無い利用者は、ろのキーを打てないので、測定を始める前に分かる', () => {
+  const setup = setupOf(SELECTIONS[2]);
+  assert.ok(setup.ok);
+  const keys = sentenceKeyIds(setup.plans);
+  const jis = browserKeyBindingsForShape('jis-row-staggered');
+  assert.deepEqual(unassignedJisCodeKeys(keys, jis), []);
+  assert.deepEqual(unassignedJisCodeKeys(keys, { ...jis, IntlRo: null }), ['r3c10']);
+  // 別のcodeを割り当て直せば打てる
+  assert.deepEqual(unassignedJisCodeKeys(keys, { ...jis, IntlRo: null, Lang2: 'r3c10' }), []);
+});
 
 for (const selection of [
   { shapeId: 'jis-row-staggered', fingerAssignmentId: 'default' },
