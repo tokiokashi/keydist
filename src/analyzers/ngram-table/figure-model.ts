@@ -216,7 +216,7 @@ export function sideBySideResultsModel(rows: readonly NgramDisplayRow[], current
       const currentRow = currentByKey?.get(row.targetKey);
       const currentLine = ((): ResultLine => {
         const knownLookahead = current.lookaheads.get(row.targetKey);
-        const unknown = knownLookahead === undefined ? '先読みはかなで数える' : `先読み${knownLookahead}かな`;
+        const unknown = knownLookahead === undefined ? 'かなの先読み' : `先読み${knownLookahead}かな`;
         const base = { key: `${row.targetKey}:current`, analysis: 'current' as const, name: CURRENT_ANALYSIS_LABEL };
         if (current.status === 'failed') {
           return { ...base, lookahead: unknown, cells: undefined, message: CURRENT_ANALYSIS_FAILED_MESSAGE, failed: true };

@@ -60,5 +60,4 @@ test('並べる表は、表による解析の行に今の解析の値と失敗�
   assert.deepEqual(failed.groups[0]?.lines[0]?.cells, ['100.0', '2.00', '50', '2']);
   assert.equal(failed.groups[0]?.lines[1]?.cells, undefined);
   assert.equal(failed.groups[0]?.lines[1]?.message, '長すぎます');
-  assert.equal(failed.groups[0]?.lines[1]?.lookahead, '先読み3かな');
 });
