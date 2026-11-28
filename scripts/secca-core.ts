@@ -477,7 +477,7 @@ export function compareChords(a: Chord, b: Chord): number {
  * 離す操作は、押したままのキーに`tap-next-release`が無い時と、最初の`tap-next-release`が最後に押したキーで、そのキーのホールド側が層を持たない時に許す。
  * 保留中の`tap-next-release`より前に押したキーの離しは、溜まらず即時に処理されて層が外れる。
  * 最初の`tap-next-release`が最後でない時は、後に押したキーの離しでそのキーがホールドに決まり、溜めたイベントをその時点の層で再生する。
- * それ以外の、`tap-next-release`が待つ間に押したキーは、待ちが決まった後にまとめて処理されるが、押す順と離す順は保たれるので、押す列を順にたどる再現と同じ結果になる。
+ * 上の2つに当たらない形で、`tap-next-release`が待つ間に押したキーは、待ちが決まった後にまとめて処理されるが、押す順と離す順は保たれるので、押す列を順にたどる再現と同じ結果になる。
  * `isUsable`が偽の行は、探す対象に入れない。
  */
 export function findChords(config: KmonadConfig, rows: readonly SeccaRow[], isUsable: (row: SeccaRow) => boolean = () => true): SeccaChords {
@@ -530,7 +530,7 @@ export function findChords(config: KmonadConfig, rows: readonly SeccaRow[], isUs
       explore(next, [...ops, key]);
     }
     // 押したままのキーの中で最初の`tap-next-release`が、最後に押したキーで、層を持たない時だけ許す。
-    // それより前に`tap-next-release`があると、後から押したキーの離しでそのキーがホールドに決まり、溜めたイベントをその時点の層で再生する
+    // 最後に押したキーより前に`tap-next-release`があると、後から押したキーの離しでそのキーがホールドに決まり、溜めたイベントをその時点の層で再生する
     const firstPending = state.held.findIndex((h) => h.pendingRelease);
     const liftable = firstPending === -1 || (firstPending === state.held.length - 1 && state.held[firstPending]!.layers.length === 0);
     if (liftable && ops.length + 1 < MAX_DEPTH && state.outLength > 0 && !ops.includes(LIFT) && state.held.some((h) => h.layers.length > 0)) {
