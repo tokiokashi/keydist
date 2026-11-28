@@ -12,6 +12,10 @@ export interface NgramTableProvenanceItem {
   readonly keepWidth?: boolean;
 }
 
+/** 表の元のテキストに加えた変更（画面に出す文。表のファイルの `colophon.changes` は作業履歴として別に持つ）。 */
+const CHANGES_TEXT =
+  'ルビ・入力者注・外字の注・章見出しの行を取り除き、漢字を含む語を辞書の読みに置き換えて文節に区切り、文節の読みの並びの出現回数だけを数えました。';
+
 const integer = new Intl.NumberFormat('ja-JP');
 
 /** 表の出現数 `W` と項目の数 `E`。 */
@@ -43,7 +47,7 @@ export function ngramTableProvenance(asset: NgramTableAsset | undefined, options
   }
   const { colophon } = asset;
   items.push({ label: '底本・入力・校正など', value: colophon.original.replaceAll('\n', ' ').replace(/\s+/g, ' ') });
-  items.push({ label: '加えた変更', value: colophon.changes });
+  items.push({ label: '加えた変更', value: CHANGES_TEXT });
   items.push({ label: '表の規模', value: `出現数 ${integer.format(size.occurrences)}、項目 ${integer.format(size.entries)}` });
   return items;
 }

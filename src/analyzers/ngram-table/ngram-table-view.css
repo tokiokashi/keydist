@@ -83,3 +83,10 @@
   flex: none;
   padding: 0 0.45rem;
 }
+
+/* 見出しの行に次数と先読みが入らない幅では、対象の欄の下の行へ送る。解析設定のボタンと重ならない。 */
+@container pane (width <= 32rem) {
+  .pane-frame-target:has(.ngram-table-header-control) {
+    flex-wrap: wrap;
+  }
+}

@@ -15,7 +15,7 @@ export const TOTAL_DISTANCE_UNIT = 'u';
 
 /** 結果の表の列の名前。画面の幅が狭くても読める短さにする。 */
 export const PER_KANA_COLUMN_LABEL = '1かなあたり';
-export const UNTYPED_COLUMN_LABEL = '打てない文字';
+export const UNTYPED_COLUMN_LABEL = '打てなかった文字';
 
 export const PER_KANA_DISTANCE_UNIT = PER_KANA.unit;
 
@@ -52,13 +52,13 @@ export const NGRAM_TABLE_PANE_META = {
       '表の項目を1つずつ、すべての指をホームポジションに置いた状態から打ち、最後の文節の移動距離を、出現回数の重みで足します。最後の文節より前の文節は、指の位置を作るために打つだけで、距離に数えません。',
       '評価に渡すテキストは使いません。テキストの選択は、この解析の値を変えません。',
       '先読みは文節で数えます。条件の「先読みN」（かなで数える）は使いません。0次の表では、先読みを変えても値は変わりません。',
-      `文節の長さはかなで数えます。1かなあたりの移動距離は、移動距離の合計を、文節のかな数の合計で割った値です。`,
+      '文節の長さはかなで数えます。',
       '統計は1つの作品から数えたもので、日本語の文章一般の値ではありません。',
     ],
     listLabel: '結果の表の列',
     items: [
       { name: TOTAL_DISTANCE_LABEL, description: '表の全項目の、最後の文節の移動距離を、出現回数の重みで足した値です。' },
-      { name: PER_KANA_COLUMN_LABEL, description: '総移動距離を、入力したかなの数で割った値です。' },
+      { name: PER_KANA_COLUMN_LABEL, description: '総移動距離を、入力したかなの数の合計で割った値です。' },
       { name: UNTYPED_COLUMN_LABEL, description: 'この配列で打てなかった文字の数です。' },
     ],
   },

@@ -177,7 +177,7 @@ export function NgramTableBody({ extracted, order, rowContext, ngramTable, copyF
 
 const LOOKAHEAD_CHOICES = Array.from({ length: BUNSETSU_LOOKAHEAD.max - BUNSETSU_LOOKAHEAD.min + 1 }, (_, index) => {
   const value = BUNSETSU_LOOKAHEAD.min + index;
-  return { value: String(value), label: `先読み${value}` };
+  return { value: String(value), label: `${value}文節` };
 });
 
 /** 解析設定が選ぶ次数を、選べる次数に直した値。表を読み込む前は、解析設定の値のまま。 */
@@ -188,7 +188,7 @@ function effectiveOrder(options: NgramTableOptions, choices: ReturnType<typeof u
 
 function orderChoices(options: NgramTableOptions, choices: ReturnType<typeof useNgramTableChoices>) {
   const orders = choices?.selectableOrders ?? [effectiveOrder(options, choices)];
-  return orders.map((order) => ({ value: String(order), label: `${order}次` }));
+  return orders.map((order) => ({ value: String(order), label: `${order}次の表` }));
 }
 
 /** 表の次数と文節の先読みの選択。別々の項目で、片方を変えてももう片方の選べる範囲と既定は変わらない。 */
