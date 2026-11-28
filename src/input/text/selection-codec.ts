@@ -4,10 +4,8 @@ import { builtinTextById } from './builtin.ts';
 import { DEFAULT_TEXT_REF, type TextRef, type TextSelectionState } from './selection.ts';
 
 /**
- * `TextSelectionState`のcodec。`standalone-text-codec.ts`（旧資産、削除済み）と
- * 同じ「小さく、他資産との整合が無い」規模の資産。`ref`が壊れていれば**選択全体**を
- * 既定（`DEFAULT_TEXT_REF`）へ戻す（`ref`が無いと何を指しているか決められないため。
- * 旧`STANDALONE_TEXT_CODEC`の`text`と同じ判断）。
+ * `TextSelectionState`のcodec。小さく、他資産との整合が無い資産。`ref`が壊れていれば**選択全体**を
+ * 既定（`DEFAULT_TEXT_REF`）へ戻す（`ref`が無いと何を指しているか決められないため）。
  *
  * 参照先のユーザーテキストが手持ちに無い場合のフォールバックは、decode時ではなく
  * `resolve.ts`の`resolveTextSelection`が担う（`TextLibrary`と`TextSelectionState`は

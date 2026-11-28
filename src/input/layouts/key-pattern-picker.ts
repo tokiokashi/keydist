@@ -36,7 +36,7 @@ export interface KeyPatternTriggerActivation {
 }
 
 export interface KeyPatternPresentationState {
-  /** 現在のgestureをlegacy pickerへ渡すpress順付きphysical key列。 */
+  /** 現在のgestureを`matchKeyPatterns`へ渡すpress順付きphysical key列。 */
   readonly selectedKeys: readonly string[];
   /** release後も次の1打まで有効なone-shot trigger。 */
   readonly oneShotActivations: readonly KeyPatternTriggerActivation[];

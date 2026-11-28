@@ -229,7 +229,7 @@ export function toLayout(def: UserLayout): Layout {
     [...layout.canonicalInputs].map(([output, alternatives]) => [output, [...alternatives]] as const),
   );
   for (const [output, sequence] of def.sequences ?? []) {
-    // imported sequenceは従来mapを上書きしていたためauthoring defaultとして先頭へ置く。
+    // 読み込んだsequenceはmapの値を上書きし、authoring defaultとして先頭へ置く
     map.set(output, sequence);
     const alternative = compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID);
     const alternativeIdentity = canonicalInputAlternativeIdentity(alternative);

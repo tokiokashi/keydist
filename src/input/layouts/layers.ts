@@ -653,7 +653,7 @@ export function compactLayerGuideDefinitions(layout: DefaultLayerNameLayout & Pi
 }
 
 /**
- * legacy layer diagramと同じseries color slotを、単キーで成立するlayer keyへ割り当てる。
+ * 層ごとのヒートマップ（`layerShiftStyles`）と同じseries color slotを、単キーで成立するlayer keyへ割り当てる。
  * 複合triggerの構成キーは常時着色せず、必要時の動的ガイドへ委ねる。
  * 同一physical keyが複数layerの起点ならauthoring順で先に現れるlayerの色を採用する。
  */

@@ -3,8 +3,7 @@
  * `#engine/multi-target-selection.ts`）の保存先キー。
  *
  * 他の資産キーと同じ形（codecは`engine`にあり`platform`から直接importできないため、
- * キーの定数だけをここに持つ）。Analyzerごとに持つ旧キー（`keydist:analyzer-set-selections`）
- * とは別の名前にし、旧データは読まない（互換は守らない）。
+ * キーの定数だけをここに持つ）。
  *
  * 既存の資産キーと衝突しない名前にする（`test/asset-storage-keys.test.ts`が検査する）。
  */
