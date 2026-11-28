@@ -1,5 +1,6 @@
 import { finishKeystrokeRecord, recordBaseTrace, recordRangeStatuses, type RecordRangeStatus } from '#engine/keystroke-record.ts';
 import { traceKeyOf } from '#engine/keys.ts';
+import { fromWireInput, type WireLayoutStore } from '#engine/worker-wire.ts';
 import type { Trace } from '#trace/generate.ts';
 import type { RecordFinishValue, RecordRangesValue, RecordRangeValue, RecordWorkerRequest, RecordWorkerResponse } from './record-worker-protocol.ts';
 
@@ -8,7 +9,16 @@ import type { RecordFinishValue, RecordRangesValue, RecordRangeValue, RecordWork
  * 全文の打鍵の列と範囲ごとの状態は、直近の1つの入力ぶんだけ覚える。
  */
 export function createRecordHandler(): (request: RecordWorkerRequest) => RecordWorkerResponse {
-  let remembered: { readonly key: string; readonly trace: Trace; readonly statuses: readonly RecordRangeStatus[] } | undefined;
+  let remembered:
+    | {
+        readonly key: string;
+        readonly trace: Trace;
+        readonly statuses: readonly RecordRangeStatus[];
+      }
+    | undefined;
+
+  // 表から作った配列。同じ識別子の依頼には、識別子だけが届く（`engine/worker-wire.ts`）
+  const layouts: WireLayoutStore = new Map();
 
   const basisOf = (input: Parameters<typeof recordBaseTrace>[0]) => {
     const key = traceKeyOf(input);
@@ -21,10 +31,14 @@ export function createRecordHandler(): (request: RecordWorkerRequest) => RecordW
 
   return (request) => {
     try {
-      const basis = basisOf(request.input);
+      const input = fromWireInput(request.input, layouts);
+      const basis = basisOf(input);
       switch (request.kind) {
         case 'ranges': {
-          const value: RecordRangesValue = { statuses: basis.statuses, inputChars: basis.trace.inputChars };
+          const value: RecordRangesValue = {
+            statuses: basis.statuses,
+            inputChars: basis.trace.inputChars,
+          };
           return { id: request.id, ok: true, value };
         }
         case 'range': {
@@ -39,7 +53,7 @@ export function createRecordHandler(): (request: RecordWorkerRequest) => RecordW
         }
         case 'finish': {
           const value: RecordFinishValue = finishKeystrokeRecord(
-            request.input,
+            input,
             basis.trace,
             request.rangeIndex,
             request.typed,
@@ -51,7 +65,11 @@ export function createRecordHandler(): (request: RecordWorkerRequest) => RecordW
         }
       }
     } catch (error) {
-      return { id: request.id, ok: false, message: error instanceof Error ? error.message : String(error) };
+      return {
+        id: request.id,
+        ok: false,
+        message: error instanceof Error ? error.message : String(error),
+      };
     }
   };
 }
