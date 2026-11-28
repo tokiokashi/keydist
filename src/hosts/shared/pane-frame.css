@@ -917,13 +917,44 @@ h2.pane-frame-title {
   color: var(--text-muted);
 }
 
+/*
+ * 閉じた1行。省略できる札は、名前と値の先頭が読める幅を下限に縮み（下限はConditionSummaryが測って決める）、
+ * 並べきれない札は件数にまとめる。省略しない札だけでも1行に入らない狭い幅では、札を次の行へ送る。
+ * 縮む札は基準の幅を0にして下限の幅で行に詰め、残った幅を本来の幅まで分け合う。
+ */
 .pane-condition-summary:not([data-compact]) .pane-condition-trigger {
+  position: relative;
+  flex-wrap: wrap;
+  row-gap: 0.15rem;
   overflow: hidden;
+}
+
+.pane-condition-summary:not([data-compact]) .pane-condition-items,
+.pane-condition-summary:not([data-compact]) .pane-condition-provenance:not([data-keep-width]) {
+  flex: 1 1 0;
+  max-width: max-content;
+}
+
+.pane-condition-items {
+  min-width: min(6em, 100%);
 }
 
 .pane-condition-provenance[data-keep-width] {
   flex-shrink: 0;
   overflow: visible;
+}
+
+.pane-condition-provenance-more {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* 閉じた1行に並べない札。幅を測れるよう描いたまま、位置を外して見せない。 */
+.pane-condition-provenance[data-overflow],
+.pane-condition-provenance-more[data-overflow] {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .pane-condition-diffs h4 {
