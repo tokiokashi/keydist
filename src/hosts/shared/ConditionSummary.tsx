@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
   conditionSummaryLine,
   conditionTriggerTitle,
@@ -58,9 +58,83 @@ function compactLabel(changedCount: number, hasTargetDiffs: boolean): string {
   return hasTargetDiffs ? '条件: 対象ごとに差あり' : '条件: 既定値';
 }
 
+/** 省略できる札に、名前に続けて値の先頭を読ませる最小の字数（em）。これより狭くなる札は出さず、件数にまとめる。 */
+const PROVENANCE_VALUE_MIN_EM = 4;
+
+/** 変えた項目の札が、幅が足りない時に縮む下限（em）。項目の名前の先頭を読める幅を残す。 */
+const ITEMS_MIN_EM = 6;
+
+/** 閉じた1行に並べる、省略できる出どころの札の数と、それぞれの縮む下限（px）。 */
+interface ProvenanceFit {
+  readonly shown: number;
+  readonly minWidths: readonly number[];
+}
+
+const FIT_ALL: ProvenanceFit = { shown: Number.POSITIVE_INFINITY, minWidths: [] };
+
+function sameFit(a: ProvenanceFit, b: ProvenanceFit): boolean {
+  return a.shown === b.shown && a.minWidths.length === b.minWidths.length && a.minWidths.every((width, index) => width === b.minWidths[index]);
+}
+
+/**
+ * 閉じた1行の幅を測り、省略できる出どころの札を先頭から何枚並べられるかを決める。
+ * 札は「名前: 値の先頭4字」が読める幅より縮めない。並べきれない札は、それ以降をまとめて件数の札にする。
+ * 並べない札も位置を外して描いておくので、ここで本来の幅を測れる。
+ */
+function measureProvenanceFit(trigger: HTMLElement): ProvenanceFit {
+  const style = getComputedStyle(trigger);
+  const em = Number.parseFloat(style.fontSize);
+  const gap = Number.parseFloat(style.columnGap) || 0;
+  const available = trigger.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight);
+  let fixed = 0;
+  let parts = 0;
+  let moreWidth = 0;
+  const minWidths: number[] = [];
+  for (const child of trigger.children) {
+    if (!(child instanceof HTMLElement || child instanceof SVGElement)) continue;
+    if (child.matches('.pane-condition-provenance-more')) {
+      moreWidth = child.getBoundingClientRect().width;
+    } else if (child.matches('.pane-condition-provenance:not([data-keep-width])')) {
+      const label = child.querySelector('.pane-condition-provenance-label');
+      const labelWidth = label === null ? 0 : label.getBoundingClientRect().width;
+      minWidths.push(Math.ceil(Math.min(child.scrollWidth, labelWidth + PROVENANCE_VALUE_MIN_EM * em)));
+    } else {
+      fixed += child.matches('.pane-condition-items') ? Math.min(child.scrollWidth, ITEMS_MIN_EM * em) : child.getBoundingClientRect().width;
+      parts += 1;
+    }
+  }
+  const base = fixed + gap * Math.max(parts - 1, 0);
+  const all = minWidths.reduce((sum, width) => sum + gap + width, base);
+  if (all <= available) return { shown: minWidths.length, minWidths };
+  let used = base + gap + moreWidth;
+  let shown = 0;
+  for (const width of minWidths) {
+    if (used + gap + width > available) break;
+    used += gap + width;
+    shown += 1;
+  }
+  return { shown, minWidths };
+}
+
 export function ConditionSummary({ rows, header, targetDiffs = [], provenance = [], editor, compact = false }: ConditionSummaryProps) {
   const [open, setOpen] = useState(false);
+  const [fit, setFit] = useState<ProvenanceFit>(FIT_ALL);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // 閉じた1行の幅が変わるたびに、並べる札を決め直す。描いた直後に測り、断片の札が一瞬も見えないようにする
+  useLayoutEffect(() => {
+    const trigger = buttonRef.current;
+    if (compact || trigger === null) return undefined;
+    const measure = () => {
+      const next = measureProvenanceFit(trigger);
+      setFit((current) => (sameFit(current, next) ? current : next));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  });
+
   if (rows.length === 0) return null;
   const line = conditionSummaryLine(rows);
 
@@ -122,16 +196,49 @@ export function ConditionSummary({ rows, header, targetDiffs = [], provenance = 
               </>
             )}
             {targetDiffs.length > 0 ? <span className="pane-condition-diff-flag">対象ごとに差あり</span> : null}
-            {provenance.map((item) => (
-              <span key={item.label} className="pane-condition-provenance" data-keep-width={item.keepWidth || undefined}>
-                {item.label}: {item.value}
-              </span>
-            ))}
+            {renderProvenance(provenance, fit)}
           </>
         )}
       </button>
       {open ? <ConditionModal rows={rows} header={header} targetDiffs={targetDiffs} provenance={provenance} editor={editor} onClose={close} /> : null}
     </div>
+  );
+}
+
+/**
+ * 閉じた1行の出どころの札。省略できる札は先頭から`fit.shown`枚だけ並べ、残りは件数の札にまとめる。
+ * 並べない札と、0件の時の件数の札も、幅を測れるよう位置を外して描く。中身は押して開くモーダルで読める。
+ */
+function renderProvenance(provenance: readonly ConditionProvenanceItem[], fit: ProvenanceFit) {
+  let shrinkIndex = 0;
+  let hiddenCount = 0;
+  const chips = provenance.map((item) => {
+    const index = item.keepWidth ? undefined : shrinkIndex++;
+    const hidden = index !== undefined && index >= fit.shown;
+    if (hidden) hiddenCount += 1;
+    const minWidth = index === undefined || hidden ? undefined : fit.minWidths[index];
+    return (
+      <span
+        key={item.label}
+        className="pane-condition-provenance"
+        data-keep-width={item.keepWidth || undefined}
+        data-overflow={hidden || undefined}
+        style={minWidth === undefined ? undefined : { minWidth }}
+      >
+        <span className="pane-condition-provenance-label">{item.label}: </span>
+        {item.value}
+      </span>
+    );
+  });
+  if (shrinkIndex === 0) return chips;
+  return (
+    <>
+      {chips}
+      {/* 件数は、まとめた札が1枚でも「他N件」の形にそろえる */}
+      <span className="pane-condition-provenance-more" data-overflow={hiddenCount === 0 || undefined}>
+        出どころ他{Math.max(hiddenCount, 1)}件
+      </span>
+    </>
   );
 }
 
