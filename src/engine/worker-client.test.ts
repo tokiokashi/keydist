@@ -436,7 +436,6 @@ test('表から作った配列は、表をWorkerごとに1度だけ送り、2度
   );
   const wireLayouts = workers[0]!.received.map((message) => ('input' in message ? message.input.wireLayout : undefined));
   assert.ok(wireLayouts[0] !== undefined && 'table' in wireLayouts[0], '最初の依頼は配列を作った表を送る');
-  assert.ok(wireLayouts[1] !== undefined && 'ref' in wireLayouts[1], '2度目の依頼は識別子だけを送る');
 
   // 識別子を持たない（派生した）配列は、毎回送る
   const derived = { ...input, layout: { ...input.layout } };

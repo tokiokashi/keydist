@@ -6,15 +6,15 @@
  * キーは、識別子を持つ配列を識別子で代用する（`engine/keys.ts`）。Workerへは、配列の代わりに元の表（数百KB）を1度だけ送り、
  * Workerが同じ関数で配列を作る（`engine/worker-wire.ts`）。
  *
- * 識別子は配列のオブジェクトに結びつける。`{ ...layout }` やコンボの重ね合わせのように配列を派生させると、
+ * 識別子は配列のオブジェクトに結びつける。`{ ...layout }`やコンボの重ね合わせのように配列を派生させると、
  * 派生した配列は別のオブジェクトなので識別子を持たず、中身でキーを作る。派生が中身を変えても、識別子が残って古い結果を返すことはない。
- * 識別子を付けられるのは `tableLayoutWithIdentity` だけで、表と、表から配列を作る関数を渡した時に限る。
+ * 識別子を付けられるのは`tableLayoutWithIdentity`だけで、表と、表から配列を作る関数を渡した時に限る。
  */
 import type { Layout } from './types.ts';
 
 declare const tableIdentityBrand: unique symbol;
 
-/** 配列のidと表の中身から決まる識別子。`tableLayoutWithIdentity` が作る。 */
+/** 配列のidと表の中身から決まる識別子。`tableLayoutWithIdentity`が作る。 */
 export type TableIdentity = string & { readonly [tableIdentityBrand]: true };
 
 /** 識別子と、配列を作った表。配列のオブジェクトに結びつける。 */
