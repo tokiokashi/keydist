@@ -37,7 +37,7 @@ export function tableSize(asset: NgramTableAsset): { readonly occurrences: numbe
 /** 表の元が選んだテキストの時に並べる、今の解析の値の測り方。先読みの数え方が、表による解析と違うことを添える。 */
 const CURRENT_ANALYSIS_ITEM: NgramTableProvenanceItem = {
   label: CURRENT_ANALYSIS_LABEL,
-  value: '選んだテキストを頭から打鍵して集計。先読みNはかなで数えます',
+  value: '比較表と同じ値。先読みNはかなで数えます',
 };
 
 /** 選んだ表と解析設定から、出どころの札を作る。`asset` が無い間（読み込み中・読み込めなかった）は出さない。 */
