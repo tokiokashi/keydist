@@ -107,7 +107,7 @@ export interface Press {
   /** 前回この指を使ってから挟まったrealized Stroke数。SFB判定用。 */
   gap: number;
   /**
-   * 今の入力の開始が、前回この指が参加した入力の終わりから何かな先か。N判定用。重なる時は0、参加が初めてなら無限大。
+   * 今の入力の開始が、前回この指が参加した入力の終わりから何かな先か（先読みを文節で数える時は何文節先か）。N判定用。重なる時は0、参加が初めてなら無限大。
    * generateTrace生成時は必ず入る。
    */
   inputDistance?: number;
@@ -451,6 +451,13 @@ export function generateTrace(
    * 渡さなければ、語はすべて読みで打つ。
    */
   notationWords: readonly NotationWord[] = [],
+  /**
+   * 先読みを文節の数で数える時の、文節の区切り（仕様 §13）。`text`のかなの位置（コードポイント。区切りは位置の直前。昇順）。
+   * 渡すと、指を残す候補を持つか（§9）と指を選ぶ範囲（§9.1）を、かなの位置の差`ΔI`の代わりに、入力が始まる文節と指が最後に参加した入力が終わる文節の番号の差`ΔB`で測る。
+   * このとき`windowSize`は文節の数から1を引いた値を渡す。指の左右の入れ替わりと同じ指が近くに戻る打鍵（§9.1の2.と3.）は、`ΔI`のままで測る。
+   * 打鍵の`kanaStart`・`kanaEnd`は文字の位置のまま変わらない。渡さなければ、先読みはかなの位置で数える（仕様 §7 R3）。
+   */
+  lookaheadBoundaries?: readonly number[],
 ): Trace {
   // 仕様 §4.3。ローマ字を経ない打ち方ではromajiOnlyのコンボを配列に無いものとして扱う。
   // 見出し探索だけでなく定義数B（§11.8）とコンボ枠の有無も揃えるため、alternativeの
@@ -459,10 +466,12 @@ export function generateTrace(
   const prev = {} as Record<Finger, Point>;
   const last = {} as Record<Finger, number>;
   const lastInputEnd = {} as Record<Finger, number>;
+  const lastWindowEnd = {} as Record<Finger, number>;
   for (const finger of ALL_FINGERS) {
     prev[finger] = geometry.homes[finger];
     last[finger] = Number.NEGATIVE_INFINITY;
     lastInputEnd[finger] = Number.NEGATIVE_INFINITY;
+    lastWindowEnd[finger] = Number.NEGATIVE_INFINITY;
   }
 
   const strokes: Stroke[] = [];
@@ -482,6 +491,7 @@ export function generateTrace(
   let inputOrdinal = 0;
   let triggerHoldState: TriggerHoldState | undefined;
   const inputs: PlannedGeneratedInput[] = [];
+  const lookaheadPositionOf = lookaheadBoundaries === undefined ? undefined : lookaheadPositionFunction(lookaheadBoundaries);
 
   const { rawChars, chunks, chars, chunkRanges, canonicalInputs, substitution } = evaluationUnitsOf(text, layout, romajiChunks, notationWords);
   const barrierPositions = comboBarrierPositions(comboBarriers, chunkRanges, chunks !== undefined, substitution);
@@ -612,6 +622,7 @@ export function generateTrace(
       ordinal: currentInputOrdinal,
       start: kanaStart,
       end: kanaEnd,
+      ...(lookaheadPositionOf === undefined ? {} : { windowStart: lookaheadPositionOf(kanaStart), windowEnd: lookaheadPositionOf(kanaEnd) }),
       actions: plannedActions,
       strokes: plannedActions.map((planned) => planned.stroke),
       ambiguous: plannedActions.some((planned) => planned.stroke.candidates.some((fingers) => fingers.length > 1)),
@@ -630,7 +641,15 @@ export function generateTrace(
       ? selectFingers(
           geometry,
           selectionPolicy,
-          { prev, last, lastInputEnd, nextStrokeIndex: index, position: input.start, holders },
+          {
+            prev,
+            last,
+            lastInputEnd,
+            nextStrokeIndex: index,
+            position: input.start,
+            ...(input.windowStart === undefined ? {} : { windowPosition: input.windowStart, lastWindowEnd }),
+            holders,
+          },
           inputs,
           inputPosition,
         ).strokes
@@ -657,8 +676,10 @@ export function generateTrace(
       const presses: Press[] = [...byFinger].map(([finger, keys]) => {
         const target = targetOf(finger, keys);
         const gap = index - last[finger] - 1;
-        const previousInputEnd = lastInputEnd[finger];
-        const inputDistance = Number.isFinite(previousInputEnd) ? Math.max(0, input.start - previousInputEnd) : Number.POSITIVE_INFINITY;
+        const previousWindowEnd = lastWindowEnd[finger];
+        const inputDistance = Number.isFinite(previousWindowEnd)
+          ? Math.max(0, (input.windowStart ?? input.start) - previousWindowEnd)
+          : Number.POSITIVE_INFINITY;
         inputDistanceByFinger.set(finger, inputDistance);
         const at = prev[finger];
         return {
@@ -719,6 +740,7 @@ export function generateTrace(
         prev[press.finger] = press.target;
         last[press.finger] = index;
         lastInputEnd[press.finger] = input.end;
+        lastWindowEnd[press.finger] = input.windowEnd ?? input.end;
       }
 
       const heldByFinger = new Map<Finger, Key[]>();
@@ -739,6 +761,7 @@ export function generateTrace(
         prev[finger] = targetOf(finger, keys);
         last[finger] = index;
         lastInputEnd[finger] = input.end;
+        lastWindowEnd[finger] = input.windowEnd ?? input.end;
       }
       holders.clear();
       for (const [id, finger] of nextHolders) holders.set(id, finger);
@@ -780,6 +803,22 @@ export function generateTrace(
     comboDefinitions,
     layerDefinitions,
     errors,
+  };
+}
+
+/**
+ * 先読みを文節で数える時の、先読みの位置への写し。文字の位置`p`を、`p`以下の区切りの数（`p`が属する文節の番号。先頭の文節が0）にする。
+ */
+function lookaheadPositionFunction(boundaries: readonly number[]): (position: number) => number {
+  return (position) => {
+    let low = 0;
+    let high = boundaries.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (boundaries[middle]! <= position) low = middle + 1;
+      else high = middle;
+    }
+    return low;
   };
 }
 

@@ -53,6 +53,9 @@ interface PlannedStroke {
   readonly ordinal: number;
   readonly start: number;
   readonly end: number;
+  /** 先読みを測る位置。省略すると`start`・`end`と同じ */
+  readonly windowStart?: number;
+  readonly windowEnd?: number;
   readonly keys: readonly string[];
 }
 
@@ -67,19 +70,35 @@ function planOf(text: string, defs: Record<string, string[][]>): PlannedStroke[]
 
 /** 入力ごとに、覆う文字の範囲を渡す。同じ範囲を持つ入力が複数あってよい */
 function planWithSpans(
-  inputs: readonly { readonly keys: readonly (readonly string[])[]; readonly start: number; readonly end: number }[],
+  inputs: readonly {
+    readonly keys: readonly (readonly string[])[];
+    readonly start: number;
+    readonly end: number;
+    readonly windowStart?: number;
+    readonly windowEnd?: number;
+  }[],
 ): PlannedStroke[] {
-  return inputs.flatMap((input, ordinal) => input.keys.map((keys) => ({ ordinal, start: input.start, end: input.end, keys })));
+  return inputs.flatMap((input, ordinal) =>
+    input.keys.map((keys) => ({
+      ordinal,
+      start: input.start,
+      end: input.end,
+      ...(input.windowStart === undefined ? {} : { windowStart: input.windowStart }),
+      ...(input.windowEnd === undefined ? {} : { windowEnd: input.windowEnd }),
+      keys,
+    })),
+  );
 }
 
 interface RefState {
   prev: Record<Finger, Point>;
   last: Record<Finger, number>;
   lastEnd: Record<Finger, number>;
+  lastWindowEnd: Record<Finger, number>;
 }
 
 function cloneRef(state: RefState): RefState {
-  return { prev: { ...state.prev }, last: { ...state.last }, lastEnd: { ...state.lastEnd } };
+  return { prev: { ...state.prev }, last: { ...state.last }, lastEnd: { ...state.lastEnd }, lastWindowEnd: { ...state.lastWindowEnd } };
 }
 
 /** 左から右へ並べた、手ごとの親指以外の指。同じ手の隣の指は、この並びで隣り合う指。横の座標は、この並びの順に増える */
@@ -118,6 +137,7 @@ function refStep(
     };
     const gap = strokeIndex - state.last[finger] - 1;
     const inputDistance = Math.max(0, stroke.start - state.lastEnd[finger]);
+    const windowDistance = Math.max(0, (stroke.windowStart ?? stroke.start) - state.lastWindowEnd[finger]);
     const stay = refDist(finger, state.prev[finger], target);
     const home = refDist(finger, geometry.homes[finger], target);
     const moved = state.prev[finger].x !== target.x || state.prev[finger].y !== target.y;
@@ -137,7 +157,7 @@ function refStep(
     if (gap === 0) {
       total += stay;
       if (moved) sfb++;
-    } else if (inputDistance <= windowSize) total += Math.min(stay, home);
+    } else if (windowDistance <= windowSize) total += Math.min(stay, home);
     else total += home;
     next.push([finger, target]);
   }
@@ -145,6 +165,7 @@ function refStep(
     state.prev[finger] = target;
     state.last[finger] = strokeIndex;
     state.lastEnd[finger] = stroke.end;
+    state.lastWindowEnd[finger] = stroke.windowEnd ?? stroke.end;
   }
   const base = stroke.keys.filter((key, slot) => geometry.keys.get(key)!.finger === fingers[slot]).length;
   return { sfb, swaps: swapped ? 1 : 0, returns: returned ? 1 : 0, distance: Math.round(total * 1e6), base };
@@ -172,18 +193,24 @@ function refChoices(geometry: Geometry, stroke: PlannedStroke): Finger[][] {
  * 最小の並びのうち今の入力の指だけを確定していく
  */
 function referenceFingers(geometry: Geometry, strokes: readonly PlannedStroke[], windowSize: number): Finger[][] {
-  const state: RefState = { prev: {} as RefState['prev'], last: {} as RefState['last'], lastEnd: {} as RefState['lastEnd'] };
+  const state: RefState = {
+    prev: {} as RefState['prev'],
+    last: {} as RefState['last'],
+    lastEnd: {} as RefState['lastEnd'],
+    lastWindowEnd: {} as RefState['lastWindowEnd'],
+  };
   for (const finger of ALL_FINGERS) {
     state.prev[finger] = geometry.homes[finger];
     state.last[finger] = Number.NEGATIVE_INFINITY;
     state.lastEnd[finger] = Number.NEGATIVE_INFINITY;
+    state.lastWindowEnd[finger] = Number.NEGATIVE_INFINITY;
   }
   const result: Finger[][] = [];
   let index = 0;
   while (index < strokes.length) {
     const ordinal = strokes[index].ordinal;
-    const currentEnd = strokes[index].end;
-    const end = strokes.findIndex((stroke) => stroke.ordinal > ordinal && stroke.start - currentEnd > windowSize);
+    const currentEnd = strokes[index].windowEnd ?? strokes[index].end;
+    const end = strokes.findIndex((stroke) => stroke.ordinal > ordinal && (stroke.windowStart ?? stroke.start) - currentEnd > windowSize);
     const windowEnd = end < 0 ? strokes.length : end;
     const firstEnd = strokes.findIndex((stroke) => stroke.ordinal > ordinal);
     const inputEnd = firstEnd < 0 ? strokes.length : firstEnd;
@@ -411,6 +438,60 @@ test('複数のかなを覆う入力と読み飛ばした文字があっても�
     assert.equal(trace.strokes.length, strokes.length);
     const actual = fingersOf(trace).map((map, index) => strokes[index].keys.map((key) => map.get(key)!));
     assert.deepEqual(actual, expected, `text=${text} N=${windowSize}`);
+  }
+});
+
+test('先読みを文節で数える時、指を選ぶ範囲と距離の候補は文節の番号の差で測り、入れ替わりと近くに戻る打鍵はかなの位置の差のままにする', () => {
+  // きゃ は2文字を1つの入力で打ち、文節の境をまたぐ（先読みの位置は、開始の文節と終わりの文節）
+  const defs: Record<string, string[][]> = {
+    ...Object.fromEntries([...'abcdefghijklmnoprstuvwyz'].map((c) => [c, [[c]]])),
+    きゃ: [['q']],
+    ゆむ: [['x'], ['z', 'x']],
+  };
+  const layout = fromKana('bunsetsu-window', 'bunsetsu-window', defs);
+  const geometry = buildGeometry(SHAPE, richAssignment());
+  const tokens = ['きゃ', 'ゆむ', ...'ykjiubnmhlaoe'];
+  for (const [seed, windowSize] of [
+    [41, 0],
+    [42, 1],
+    [43, 2],
+    [44, 0],
+    [45, 1],
+    [46, 3],
+    [47, 1],
+    [48, 0],
+  ] as const) {
+    const random = lcg(seed);
+    const picked = Array.from({ length: 10 }, () => tokens[Math.floor(random() * tokens.length)]);
+    const text = picked.join('');
+    // 文字の位置の昇順の区切り。0と末尾を含まない
+    const boundaries: number[] = [];
+    for (let position = 1; position < [...text].length; position++) if (random() < 0.3) boundaries.push(position);
+    const bunsetsuOf = (position: number): number => boundaries.filter((boundary) => boundary <= position).length;
+    const inputs: { keys: string[][]; start: number; end: number; windowStart: number; windowEnd: number }[] = [];
+    let position = 0;
+    for (const token of picked) {
+      const length = [...token].length;
+      inputs.push({
+        keys: defs[token],
+        start: position,
+        end: position + length - 1,
+        windowStart: bunsetsuOf(position),
+        windowEnd: bunsetsuOf(position + length - 1),
+      });
+      position += length;
+    }
+    const strokes = planWithSpans(inputs);
+    const expected = referenceFingers(geometry, strokes, windowSize);
+    const trace = generateTrace(text, layout, geometry, opts({ windowSize }), undefined, [], [], boundaries);
+    assert.equal(trace.strokes.length, strokes.length);
+    const actual = fingersOf(trace).map((map, index) => strokes[index].keys.map((key) => map.get(key)!));
+    assert.deepEqual(actual, expected, `text=${text} boundaries=${boundaries.join(',')} windowSize=${windowSize}`);
+    // 打鍵の位置は文字の位置のまま
+    assert.deepEqual(
+      trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+      strokes.map((stroke) => [stroke.start, stroke.end]),
+    );
   }
 });
 

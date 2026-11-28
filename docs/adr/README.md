@@ -65,3 +65,7 @@
 | [0023](0023-secca-tap-next-release-reduction.md) | 雪華の簡約で、保留中のtap-next-releaseがあるとき層を保つキーの離しを許さない | 採用 |
 | [0024](0024-kanji-direct-table-identity.md) | 表から作った配列は識別子でキーに入れ、Workerへは表を送る | 採用 |
 | [0025](0025-kanji-direct-build-yields.md) | 表から配列を作る処理は、途中で画面のスレッドへ処理を返しながら進める | 採用 |
+| [0026](0026-ngram-table-entry-by-last-bunsetsu.md) | 表の項目は、ホームの状態から文脈を打ち、最後の文節の距離だけを数える | 採用 |
+| [0027](0027-bunsetsu-lookahead-by-window-position.md) | 先読みを文節で数える位置と、かなの位置を別々に持つ | 採用 |
+| [0028](0028-ngram-table-orders-up-to-sufficient.md) | 選べる表の次数を、統計が足りている最大の次数までにし、0次は常に選べる | 採用 |
+| [0029](0029-ngram-table-quantities.md) | 表による解析が出す量は、総量・かなあたりの値と、割った分布・割らない分布の2通りにする | 採用 |

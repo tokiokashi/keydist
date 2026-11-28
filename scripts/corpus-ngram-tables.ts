@@ -8,12 +8,7 @@
 //   ... --context          次数ごとの量の代わりに、検出できた文脈の長さと、コーパスの大きさを変えた時の変化を出す
 //
 // 辞書（IPADIC）は .cache/dictionary/ に取る（CONTRIBUTING.md「読みの辞書」）。無ければ取得する。
-import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { convertToReading } from '#input/text/reading.ts';
-import { mapBoundariesToReading, offsetsOfChunks } from '#input/text/segmentation.ts';
 import {
   BUNSETSU_KEY_SEPARATOR,
   buildCorpusNgramTables,
@@ -35,17 +30,10 @@ import {
 } from '#interpretation/corpus-context.ts';
 import { PRNG_NAME } from '#interpretation/prng.ts';
 import { countNgramsInRuns } from '#interpretation/ngram-table.ts';
-import { splitBunsetsu } from '#platform/bunsetsu/budoux.ts';
 import { BUNSETSU_SPLITTER } from '#platform/bunsetsu/info.ts';
-import { createReadingAnalyzer, type LinderaModule } from '#platform/reading/analyzer.ts';
-import { readDictionaryZip } from '#platform/reading/dictionary-files.ts';
 import { DICTIONARY_SPEC, LIBRARY_SPEC } from '#platform/reading/dictionary-spec.ts';
-import { extractZip } from '#platform/reading/zip.ts';
-import { ensureDictionaryZip } from './dictionary-fetch.ts';
-import { convertAozora, extractBody } from './aozora-core.ts';
-import { AOZORA_SOURCE, archiveBytes } from './generate-neko-sample.ts';
-
-const root = resolve(fileURLToPath(import.meta.url), '..', '..');
+import { AOZORA_SOURCE } from './generate-neko-sample.ts';
+import { loadStandardCorpus, sha256Of } from './corpus-ngram-load.ts';
 
 function parseArgs(argv: readonly string[]): { maxOrder: number; top: number; source: string | undefined; context: boolean } {
   const value = (name: string): string | undefined => {
@@ -67,8 +55,6 @@ function parseArgs(argv: readonly string[]): { maxOrder: number; top: number; so
     context: argv.includes('--context'),
   };
 }
-
-const sha256Of = (data: string | Uint8Array): string => createHash('sha256').update(data).digest('hex');
 
 function table(header: readonly string[], rows: readonly (readonly string[])[]): string {
   return [`| ${header.join(' | ')} |`, `|${header.map(() => '---').join('|')}|`, ...rows.map((row) => `| ${row.join(' | ')} |`)].join('\n');
@@ -264,20 +250,8 @@ function sizeTable(
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
 
-  // コーパス: 取得と除去は`scripts/generate-neko-sample.ts`と同じ
-  const zip = await archiveBytes(args.source);
-  const entry = (await extractZip(zip)).get(AOZORA_SOURCE.entryName);
-  if (entry === undefined) throw new Error(`zipに${AOZORA_SOURCE.entryName}が無い`);
-  const corpus = convertAozora(extractBody(new TextDecoder('shift_jis', { fatal: true }).decode(entry))).text;
-
-  // 読みへの変換と文節の区切り: アプリと同じ経路（原文を形態素解析 → 読みに置き換え。分割器は原文に1回だけ当て、語の境目へ寄せて読みの位置へ写す）
-  const lindera = await import('lindera-wasm');
-  lindera.initSync({ module: await readFile(resolve(root, 'node_modules/lindera-wasm/lindera_wasm_bg.wasm')) });
-  const analyzer = createReadingAnalyzer(lindera as unknown as LinderaModule, await readDictionaryZip(await ensureDictionaryZip()));
-  const tokens = analyzer.tokenize(corpus);
-  const reading = convertToReading(corpus, tokens);
-  const sourceBoundaries = offsetsOfChunks(splitBunsetsu(corpus));
-  const readingBoundaries = mapBoundariesToReading(corpus, tokens, sourceBoundaries);
+  const { corpus, reading, sourceBoundaryCount, readingBoundaries } = await loadStandardCorpus(args.source);
+  const sourceBoundaries = { length: sourceBoundaryCount };
 
   const result = buildCorpusNgramTables(reading.text, readingBoundaries, args.maxOrder);
   const { sequences } = result;

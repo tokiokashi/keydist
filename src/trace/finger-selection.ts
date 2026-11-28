@@ -23,9 +23,25 @@ export interface PlannedInput {
   readonly start: number;
   /** 入力が覆うテキストの最後の文字の位置。その文字を含む */
   readonly end: number;
+  /**
+   * 先読みの範囲を測る位置（仕様 §13.3）。省略すると`start`と同じ。
+   * 先読みを文節の数で数える時は、`start`が属する文節の番号。指の左右の入れ替わりと同じ指が近くに戻る打鍵は、この値によらず`start`・`end`で測る。
+   */
+  readonly windowStart?: number;
+  /** 先読みの範囲を測る、入力の最後の文字の位置。省略すると`end`と同じ */
+  readonly windowEnd?: number;
   readonly strokes: readonly PlannedStroke[];
   /** 担当する指が2本以上の枠を持つか */
   readonly ambiguous: boolean;
+}
+
+/** 入力の先読みの位置（`PlannedInput.windowStart`）。 */
+function windowStartOf(input: PlannedInput): number {
+  return input.windowStart ?? input.start;
+}
+
+function windowEndOf(input: PlannedInput): number {
+  return input.windowEnd ?? input.end;
 }
 
 export interface FingerSelectionPolicy {
@@ -119,6 +135,10 @@ export interface FingerSelectionStart {
   readonly nextStrokeIndex: number;
   /** 今の入力の開始の位置 */
   readonly position: number;
+  /** 今の入力の先読みの位置（`PlannedInput.windowStart`と同じ数え方）。省略すると`position` */
+  readonly windowPosition?: number;
+  /** 指が最後に参加した入力の、先読みの位置の終わり。省略すると`lastInputEnd` */
+  readonly lastWindowEnd?: Readonly<Record<Finger, number>>;
   /** 押さえ続けているキーを押した指 */
   readonly holders: ReadonlyMap<string, Finger>;
 }
@@ -410,6 +430,8 @@ class Layer {
   capacity = 0;
   pos = new Int32Array(0);
   age = new Int32Array(0);
+  /** 最後に参加した入力の終わりから、先読みの位置で数えた差（`age`と別に持つのは、先読みを文節で数える時に`age`と値が違うため） */
+  wage = new Int32Array(0);
   adj = new Uint8Array(0);
   holders = new Int32Array(0);
   sfb = new Int32Array(0);
@@ -437,6 +459,7 @@ class Layer {
     };
     this.pos = grow(this.pos, capacity * FINGER_COUNT, Int32Array);
     this.age = grow(this.age, capacity * FINGER_COUNT, Int32Array);
+    this.wage = grow(this.wage, capacity * FINGER_COUNT, Int32Array);
     this.adj = grow(this.adj, capacity * FINGER_COUNT, Uint8Array);
     this.holders = grow(this.holders, capacity, Int32Array);
     this.sfb = grow(this.sfb, capacity, Int32Array);
@@ -490,6 +513,7 @@ const layerA = new Layer();
 const layerB = new Layer();
 const scratchPos = new Int32Array(FINGER_COUNT);
 const scratchAge = new Int32Array(FINGER_COUNT);
+const scratchWage = new Int32Array(FINGER_COUNT);
 const scratchAdj = new Uint8Array(FINGER_COUNT);
 
 /** 指ごとに、前の呼び出しで見た位置の点とその番号 */
@@ -517,11 +541,16 @@ interface SearchContext {
   readonly inputs: readonly PlannedInput[];
   /** 打鍵ごとの、その入力の開始の位置。末尾に1つ余分に持つ */
   readonly startAt: Float64Array;
+  /** 打鍵ごとの、その入力の開始の先読みの位置。末尾に1つ余分に持つ */
+  readonly windowStartAt: Float64Array;
+  /** 先読みの位置がかなの位置と別か。別なら、`age`とは別に`wage`を持つ。同じなら`wage`は読まず、`age`が先読みの位置の差も表す */
+  readonly dual: boolean;
   readonly nextRead: Int32Array;
   readonly nextReadAny: Int32Array;
   readonly homeIds: readonly number[];
   readonly initialPos: Int32Array;
   readonly initialAge: Int32Array;
+  readonly initialWage: Int32Array;
   readonly initialAdj: Uint8Array;
   readonly initialHolders: number;
 }
@@ -537,18 +566,22 @@ interface SearchResult {
  * `scratch*`を書き換える。
  */
 function fold(c: SearchContext, t: number): void {
-  const { nextRead, nextReadAny, startAt, cap, homeIds } = c;
+  const { nextRead, nextReadAny, startAt, windowStartAt, cap, homeIds } = c;
   for (let f = 0; f < FINGER_COUNT; f++) {
     const u = nextRead[t * FINGER_COUNT + f];
     const w = nextReadAny[t * FINGER_COUNT + f];
     let reset = w < 0;
     if (!reset && !(u === t && scratchAdj[f] !== 0)) {
       scratchAdj[f] = 0;
-      reset = Math.min(cap, scratchAge[f] + startAt[w] - startAt[t]) >= cap;
+      // 次に読む時点で、指の左右の入れ替わりと同じ指が近くに戻る打鍵（`age`）も、距離の計算（`wage`）も位置を読まない時だけ、区別しない値にそろえる
+      reset = c.dual
+        ? scratchAge[f] + startAt[w] - startAt[t] > 1 && scratchWage[f] + windowStartAt[w] - windowStartAt[t] > c.policy.windowSize
+        : Math.min(cap, scratchAge[f] + startAt[w] - startAt[t]) >= cap;
     }
     if (reset) {
       scratchPos[f] = homeIds[f];
       scratchAge[f] = cap;
+      if (c.dual) scratchWage[f] = cap;
       scratchAdj[f] = 0;
     }
   }
@@ -574,7 +607,7 @@ function compareCost(layer: Layer, j: number, sfb: number, swaps: number, return
  *   厳密な最小ではないが、範囲の全打鍵に通じる1通りの指の並びなので、その3つの数を上限に使える
  */
 function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchResult {
-  const { policy, geometry, cache, cap, total, flat, prepared, inputs, startAt } = c;
+  const { policy, geometry, cache, cap, total, flat, prepared, inputs, startAt, windowStartAt, dual } = c;
   const windowSize = policy.windowSize;
   const sfbHomeCost = policy.sfbHomeCost;
   const bSfb = bound?.sfb ?? 0;
@@ -590,6 +623,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
   cur.count = 1;
   cur.pos.set(c.initialPos);
   cur.age.set(c.initialAge);
+  if (c.dual) cur.wage.set(c.initialWage);
   cur.adj.set(c.initialAdj);
   cur.holders[0] = c.initialHolders;
   cur.sfb[0] = 0;
@@ -612,9 +646,11 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
     const entry = prepared[t];
     // 今の入力に参加した指の値。開始から終わりを引くので、複数のかなを覆う入力では負になる
     const joined = inputs[input].start - inputs[input].end;
+    const windowJoined = windowStartOf(inputs[input]) - windowEndOf(inputs[input]);
     const isLast = t === total - 1;
     const advances = !isLast && flat[t + 1].input !== input;
     const step = advances ? startAt[t + 1] - inputs[input].start : 0;
+    const windowStep = advances ? windowStartAt[t + 1] - windowStartOf(inputs[input]) : 0;
     nxt.reset(cur.count * 2);
     const keyCount = stroke.keys.length;
 
@@ -673,7 +709,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
         for (let p = 0; p < presses.length; p++) {
           const press = presses[p];
           const index = press.index;
-          const age = cur.age[sBase + index];
+          const age = dual ? cur.wage[sBase + index] : cur.age[sBase + index];
           if (cur.adj[sBase + index] !== 0) {
             strokeDistance += !sfbHomeCost && press.onHome ? 0 : fingerDist(press.finger, registry[cur.pos[sBase + index]], press.target);
           } else if (age <= windowSize) {
@@ -722,24 +758,30 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
         for (let f = 0; f < F; f++) {
           scratchPos[f] = cur.pos[sBase + f];
           scratchAge[f] = cur.age[sBase + f];
+          if (dual) scratchWage[f] = cur.wage[sBase + f];
           scratchAdj[f] = 0;
         }
         for (let p = 0; p < presses.length; p++) {
           const press = presses[p];
           scratchPos[press.index] = press.targetId;
           scratchAge[press.index] = joined;
+          if (dual) scratchWage[press.index] = windowJoined;
           scratchAdj[press.index] = 1;
         }
         for (let h = 0; h < option.held.length; h++) {
           const held = option.held[h];
           scratchPos[held.index] = held.pointId;
           scratchAge[held.index] = joined;
+          if (dual) scratchWage[held.index] = windowJoined;
           scratchAdj[held.index] = 1;
         }
         if (advances) {
           // 入力が進むと、全指の最後に参加した入力の終わりからのかな数が、開始の差だけ増える。
           // 打鍵の無い入力（読み飛ばした文字だけの区間を含む）の分も、開始の差に入っている
-          for (let f = 0; f < F; f++) scratchAge[f] = Math.min(cap, scratchAge[f] + step);
+          for (let f = 0; f < F; f++) {
+            scratchAge[f] = Math.min(cap, scratchAge[f] + step);
+            if (dual) scratchWage[f] = Math.min(cap, scratchWage[f] + windowStep);
+          }
         }
         fold(c, t + 1);
 
@@ -747,6 +789,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
         for (let f = 0; f < F; f++) {
           hash = Math.imul(hash ^ scratchPos[f], 0x01000193);
           hash = Math.imul(hash ^ ((scratchAge[f] << 1) | scratchAdj[f]), 0x01000193);
+          if (dual) hash = Math.imul(hash ^ scratchWage[f], 0x01000193);
         }
         hash ^= hash >>> 15;
 
@@ -760,7 +803,12 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
             const jBase = j * F;
             let same = true;
             for (let f = 0; f < F; f++) {
-              if (nxt.pos[jBase + f] !== scratchPos[f] || nxt.age[jBase + f] !== scratchAge[f] || nxt.adj[jBase + f] !== scratchAdj[f]) {
+              if (
+                nxt.pos[jBase + f] !== scratchPos[f] ||
+                nxt.age[jBase + f] !== scratchAge[f] ||
+                (dual && nxt.wage[jBase + f] !== scratchWage[f]) ||
+                nxt.adj[jBase + f] !== scratchAdj[f]
+              ) {
                 same = false;
                 break;
               }
@@ -782,6 +830,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
           for (let f = 0; f < F; f++) {
             nxt.pos[tBase + f] = scratchPos[f];
             nxt.age[tBase + f] = scratchAge[f];
+            if (dual) nxt.wage[tBase + f] = scratchWage[f];
             nxt.adj[tBase + f] = scratchAdj[f];
           }
           nxt.holders[target] = option.holdersId;
@@ -812,7 +861,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
     }
 
     if (isLast) break;
-    if (guide) keepOne(nxt, previousChoice.get(stroke));
+    if (guide) keepOne(nxt, previousChoice.get(stroke), dual);
     const swap = cur;
     cur = nxt;
     nxt = swap;
@@ -826,7 +875,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
 }
 
 /** 層の状態を1つだけ残す。`preferred`と同じ選び方で作った状態があればそれを、無ければ最も良い状態を残す */
-function keepOne(layer: Layer, preferred: readonly number[] | undefined): void {
+function keepOne(layer: Layer, preferred: readonly number[] | undefined, dual: boolean): void {
   const F = FINGER_COUNT;
   let chosen = -1;
   if (preferred !== undefined) {
@@ -854,6 +903,7 @@ function keepOne(layer: Layer, preferred: readonly number[] | undefined): void {
     for (let f = 0; f < F; f++) {
       layer.pos[f] = layer.pos[chosen * F + f];
       layer.age[f] = layer.age[chosen * F + f];
+      if (dual) layer.wage[f] = layer.wage[chosen * F + f];
       layer.adj[f] = layer.adj[chosen * F + f];
     }
     layer.holders[0] = layer.holders[chosen];
@@ -891,7 +941,7 @@ export function selectFingers(
   // 距離の計算は`ΔI ≤ N`の指の位置を読み、指の左右の入れ替わりと同じ指が近くに戻る打鍵は`ΔI ≤ 1`の指の位置を読む
   const cap = Math.max(policy.windowSize, 1) + 1;
   let last = from;
-  while (last + 1 < inputs.length && inputs[last + 1].start - inputs[from].end <= policy.windowSize) last++;
+  while (last + 1 < inputs.length && windowStartOf(inputs[last + 1]) - windowEndOf(inputs[from]) <= policy.windowSize) last++;
   const cache = cacheOf(geometry);
   const homeIds = cache.homeIds;
 
@@ -912,7 +962,11 @@ export function selectFingers(
     return entry;
   });
   const startAt = new Float64Array(total + 1);
-  for (let t = 0; t < total; t++) startAt[t] = inputs[flat[t].input].start;
+  const windowStartAt = new Float64Array(total + 1);
+  for (let t = 0; t < total; t++) {
+    startAt[t] = inputs[flat[t].input].start;
+    windowStartAt[t] = windowStartOf(inputs[flat[t].input]);
+  }
   // nextRead[t * 指数 + f]: 打鍵t以降で、指fが最初に候補に入る打鍵。無ければ-1
   // nextReadAny: 候補に入る隣の指の位置を読む打鍵も含めた、最初の打鍵
   const nextRead = new Int32Array((total + 1) * FINGER_COUNT).fill(-1);
@@ -931,6 +985,7 @@ export function selectFingers(
 
   const initialPos = new Int32Array(FINGER_COUNT);
   const initialAge = new Int32Array(FINGER_COUNT);
+  const initialWage = new Int32Array(FINGER_COUNT);
   const initialAdj = new Uint8Array(FINGER_COUNT);
   for (let f = 0; f < FINGER_COUNT; f++) {
     const finger = ALL_FINGERS[f];
@@ -942,6 +997,7 @@ export function selectFingers(
     }
     initialPos[f] = lastPointIds[f];
     initialAge[f] = Math.min(cap, start.position - start.lastInputEnd[finger]);
+    initialWage[f] = Math.min(cap, (start.windowPosition ?? start.position) - (start.lastWindowEnd ?? start.lastInputEnd)[finger]);
     initialAdj[f] = start.last[finger] === start.nextStrokeIndex - 1 ? 1 : 0;
   }
   const initialHolders = holderIdOf([...start.holders].map(([id, finger]) => [id, FINGER_INDEX.get(finger)!] as const));
@@ -955,20 +1011,25 @@ export function selectFingers(
     prepared,
     inputs,
     startAt,
+    windowStartAt,
+    dual: inputs[from].windowStart !== undefined,
     nextRead,
     nextReadAny,
     homeIds,
     initialPos,
     initialAge,
+    initialWage,
     initialAdj,
     initialHolders,
   };
   scratchPos.set(initialPos);
   scratchAge.set(initialAge);
+  scratchWage.set(initialWage);
   scratchAdj.set(initialAdj);
   fold(context, 0);
   initialPos.set(scratchPos);
   initialAge.set(scratchAge);
+  initialWage.set(scratchWage);
   initialAdj.set(scratchAdj);
 
   const guided = search(context, null, true);
