@@ -500,7 +500,7 @@ test('最長一致の探索上限はcanonicalInputsだけから決まる', () =>
   canonicalInputs.set('きゃ', [compileSequenceInputAlternative('きゃ', [['f']], 'single')]);
   const layout = { ...base, canonicalInputs };
 
-  assert.equal(layout.map.has('きゃ'), false, 'legacy mapには長い見出しを追加しない');
+  assert.equal(layout.map.has('きゃ'), false, 'mapには長い見出しを追加しない');
 
   const trace = generateTrace('きゃ', layout, geometry, opts());
   assert.equal(trace.skipped, 0);
