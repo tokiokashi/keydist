@@ -186,7 +186,7 @@ function helpOf(extracted: NgramTableExtracted) {
 
 const LOOKAHEAD_CHOICES = Array.from({ length: BUNSETSU_LOOKAHEAD.max - BUNSETSU_LOOKAHEAD.min + 1 }, (_, index) => {
   const value = BUNSETSU_LOOKAHEAD.min + index;
-  return { value: String(value), label: `先読み ${value}文節` };
+  return { value: String(value), label: `先読み${value}文節` };
 });
 
 /** 解析設定が選ぶ次数を、選べる次数に直した値。表を読み込む前は、解析設定の値のまま。 */

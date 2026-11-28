@@ -84,7 +84,7 @@ async function main(): Promise<void> {
     if (stored === undefined) throw new Error(`${STANDARD_TABLE_PATH} が無い。生成して置く`);
     if (stored !== text) {
       throw new Error(
-        `${STANDARD_TABLE_PATH} が、出典から作り直した表と違う。node --experimental-strip-types scripts/generate-corpus-ngram-table.ts で作り直す`,
+        `${STANDARD_TABLE_PATH}が、出典から作り直した表と違う。node --experimental-strip-types scripts/generate-corpus-ngram-table.tsで作り直す`,
       );
     }
     console.log(`同梱の表は、出典から作り直した表と一致している（選べる次数 ${built.selectableOrders.join('・')}、既定 ${built.defaultOrder}次）`);

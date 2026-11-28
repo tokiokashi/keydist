@@ -46,7 +46,7 @@ test('表を取得して、総移動距離の表と2つの分布の図が出て�
     .getByRole('button', { name: /文節の先読み/ })
     .first()
     .click();
-  await page.getByRole('option', { name: '先読み 4文節' }).click();
+  await page.getByRole('option', { name: '先読み4文節' }).click();
   await expect(results).toBeVisible({ timeout: 120_000 });
   expect(await results.textContent()).toBe(before);
 
