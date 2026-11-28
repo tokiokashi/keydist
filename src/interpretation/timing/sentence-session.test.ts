@@ -603,7 +603,7 @@ test('Shiftを打つキーに持つ文の測定では、文字のキーの押下
   assert.equal(last.outcome.kind, 'run-finished');
 });
 
-test('Shiftを打つキーに持たない文の測定では、Shiftを押していても今までどおり照合する', () => {
+test('Shiftを打つキーに持たない文の測定では、Shiftの有無を照合に使わない', () => {
   const session = startSentenceSession([planOf([step(['a'], 0)])], 1);
   assert.equal(pressSentenceSessionKey(session, { ...keyEvent('a'), shiftKey: true }, 100, label).outcome.kind, 'run-finished');
 });
