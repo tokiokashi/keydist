@@ -81,11 +81,6 @@ export function thumbKeyBindingsToOverrides(bindings: ThumbKeyBindings): Browser
   return overrides;
 }
 
-export function thumbBindingLabel(bindings: ThumbKeyBindings, side: 'left' | 'right'): string {
-  const codes = side === 'left' ? bindings.leftCodes : bindings.rightCodes;
-  return codes.length === 0 ? '未割当' : codes.join(' / ');
-}
-
 export function loadThumbKeyBindings(storage?: Pick<Storage, 'getItem'>): ThumbKeyBindings {
   if (storage === undefined) {
     return {

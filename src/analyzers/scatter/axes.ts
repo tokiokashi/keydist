@@ -1,5 +1,5 @@
 import type { TextLanguage } from '#input/text/language.ts';
-import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
+import { type ComparisonColumnId } from '../comparison-column-text.ts';
 import { kanaUnitOf } from '../unit-words.ts';
 import { axisName, axisPlotTitle, KEY_COUNT_NAME, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 
@@ -436,6 +436,3 @@ export function scatterContour(x: ComparisonColumnId, y: ComparisonColumnId, inp
   }
   return undefined;
 }
-
-/** 軸に選べる列。比較表の列の全部。 */
-export const SCATTER_AXIS_COLUMN_IDS: readonly ComparisonColumnId[] = COMPARISON_COLUMN_IDS;

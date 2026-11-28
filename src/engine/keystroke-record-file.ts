@@ -11,8 +11,6 @@ export const KEYSTROKE_RECORD_FILE_FORMAT = 'keydist-keystroke-records';
 /** 読み込める大きさ。データ・設定の管理のファイルと同じ上限にする。 */
 export const KEYSTROKE_RECORD_FILE_MAX_BYTES = USER_ASSETS_FILE_MAX_BYTES;
 
-export const KEYSTROKE_RECORD_FILE_MAX_LABEL = '16MB';
-
 /** 書き出すファイルの文字列。インデントを付けない（記録は数値の並びが大きく、インデントで数倍になるため）。 */
 export function keystrokeRecordFileText(records: readonly KeystrokeRecord[]): string {
   return `${JSON.stringify({ format: KEYSTROKE_RECORD_FILE_FORMAT, ...KEYSTROKE_RECORDS_CODEC.encode(records) })}\n`;

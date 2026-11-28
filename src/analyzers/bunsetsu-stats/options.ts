@@ -1,5 +1,5 @@
-import { columnSortOption, type ColumnSortOptionValue, defineOptions } from '#analyzers/options.ts';
-import { BUNSETSU_STATS_COLUMN_IDS, type BunsetsuStatsColumnId } from './columns.ts';
+import { columnSortOption, defineOptions } from '#analyzers/options.ts';
+import { BUNSETSU_STATS_COLUMN_IDS } from './columns.ts';
 
 /**
  * 文節ごとの統計の解析設定。
@@ -10,9 +10,6 @@ import { BUNSETSU_STATS_COLUMN_IDS, type BunsetsuStatsColumnId } from './columns
  *
  * 上位の一覧の行数や統計の定義は固定で、利用者が選ぶ項目が無い（`AGENTS.md`「設定項目を足すか決める」。要望が出たら足す）。
  */
-
-/** 並び替えの状態。`null`は並び替えなし（対象の順のまま）。 */
-export type BunsetsuStatsSort = ColumnSortOptionValue<BunsetsuStatsColumnId>;
 
 export const bunsetsuStatsOptions = defineOptions({
   sort: columnSortOption('sort', BUNSETSU_STATS_COLUMN_IDS),
