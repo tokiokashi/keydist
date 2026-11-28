@@ -64,3 +64,4 @@
 | [0022](0022-unassigned-sequence-cancels-input.md) | 順次打鍵の割り当ての無い組は、打ちかけの入力も今の打鍵も取り消す | 採用 |
 | [0023](0023-secca-tap-next-release-reduction.md) | 雪華の簡約で、保留中のtap-next-releaseがあるとき層を保つキーの離しを許さない | 採用 |
 | [0024](0024-kanji-direct-table-identity.md) | 表から作った配列は識別子でキーに入れ、Workerへは表を送る | 採用 |
+| [0028](0028-kanji-direct-build-yields.md) | 表から配列を作る処理は、途中で画面のスレッドへ処理を返しながら進める | 採用 |

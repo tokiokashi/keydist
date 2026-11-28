@@ -6,6 +6,9 @@ import {
   mapInputAlternativePhysicalKeys,
   validateBaseActionRealization,
   validateCanonicalInputMap,
+  validateCanonicalInputMapSteps,
+  runStepsToEnd,
+  STEP_INTERVAL,
   type CanonicalInputMap,
   type InputAlternative,
   type InputClassification,
@@ -323,6 +326,11 @@ export interface KanjiDirectDeclaration {
   readonly physicalKeys: readonly string[];
   /** 取得して読み込んだ表（JSON）から配列を作る。形が違えば例外を投げる。 */
   readonly layoutFromTable: (table: unknown) => Layout;
+  /**
+   * `layoutFromTable` と同じ配列を、途中で `yield` する形で作る。持つ配列は、呼び出し側が `yield` のたびに画面のスレッドへ処理を返しながら作れる。
+   * 最後まで進めた結果は `layoutFromTable` の結果と一致する。
+   */
+  readonly layoutStepsFromTable?: (table: unknown) => Generator<void, Layout>;
 }
 
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
@@ -690,13 +698,23 @@ export function fromKana(id: string, name: string, def: KanaDefinition): Layout 
  * 同じ出力がすでにある時は、足した列が後の経路になる（既定の経路は先にあった方）。
  */
 export function withSequenceInputs(layout: Layout, entries: readonly (readonly [string, Sequence])[]): Layout {
+  return runStepsToEnd(withSequenceInputsSteps(layout, entries));
+}
+
+/**
+ * `withSequenceInputs` と同じ配列を、一定の項目数ごとに `yield` する形で作る。
+ * 数万の字を持つ配列（漢直）を、呼び出し側が途中で画面のスレッドへ処理を返しながら作るために使う。
+ */
+export function* withSequenceInputsSteps(layout: Layout, entries: readonly (readonly [string, Sequence])[]): Generator<void, Layout> {
   const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
   const map = new Map(layout.map);
+  let count = 0;
   for (const [output, sequence] of entries) {
     appendCanonicalAlternative(canonicalInputs, output, compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID));
     if (!map.has(output)) map.set(output, sequence);
+    if (++count % STEP_INTERVAL === 0) yield;
   }
-  validateCanonicalInputMap(canonicalInputs);
+  yield* validateCanonicalInputMapSteps(canonicalInputs);
   const layerDefinitions = layout.layerDefinitions ?? [];
   return {
     ...layout,

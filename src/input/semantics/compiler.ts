@@ -667,6 +667,17 @@ const activationPathsCanConflict = (left: InputAlternative, right: InputAlternat
   });
 };
 
+/** 途中で処理を返せる処理の、返す位置の間隔。1回の `yield` までに進める項目数。 */
+export const STEP_INTERVAL = 512;
+
+/** 途中で処理を返せる処理を、返さずに最後まで進めて結果を取る。 */
+export function runStepsToEnd<T>(steps: Generator<void, T>): T {
+  for (;;) {
+    const next = steps.next();
+    if (next.done) return next.value;
+  }
+}
+
 /**
  * CanonicalInputMapのkeymap境界invariantを検証する。
  *
@@ -674,25 +685,38 @@ const activationPathsCanConflict = (left: InputAlternative, right: InputAlternat
  * 同じphysicalKeys + 両立可能Requirement setを持つpathが共存する場合は曖昧なのでrejectする。
  */
 export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
+  runStepsToEnd(validateCanonicalInputMapSteps(inputs));
+}
+
+/**
+ * `validateCanonicalInputMap` と同じ検証を、`STEP_INTERVAL` 項目ごとに `yield` する形で進める。
+ * 見出しが数万ある配列（漢直）の検証を、呼び出し側が途中で画面のスレッドへ処理を返しながら進めるために使う。
+ */
+export function* validateCanonicalInputMapSteps(inputs: CanonicalInputMap): Generator<void, void> {
   for (const [output, alternatives] of inputs) {
     if (alternatives.length === 0) {
       throw new Error(`canonical input「${output}」には1つ以上のalternativeが必要`);
     }
   }
 
-  const paths = [...inputs].flatMap(([output, alternatives]) => alternatives.map((alternative) => ({ output, alternative })));
-
+  const paths: { output: string; alternative: InputAlternative }[] = [];
+  const buckets = new Map<string, number[]>();
   // 同時成立し得るのは、ステップの数が同じで、各ステップの物理キーの集合も同じpathだけ（`activationPathsCanConflict`）。
   // 組ごとに全部を比べると、見出しが数万ある配列（漢直）で時間が二乗に増えるので、その形が同じpathの間だけを比べる。
-  const buckets = new Map<string, number[]>();
-  paths.forEach(({ alternative }, index) => {
-    const shape = alternative.semanticInputs.map((input) => sortedUniqueKeys(input.physicalKeys).join('\u0001')).join('\u0002');
-    const bucket = buckets.get(shape);
-    if (bucket === undefined) buckets.set(shape, [index]);
-    else bucket.push(index);
-  });
+  for (const [output, alternatives] of inputs) {
+    for (const alternative of alternatives) {
+      const index = paths.length;
+      paths.push({ output, alternative });
+      const shape = alternative.semanticInputs.map((input) => sortedUniqueKeys(input.physicalKeys).join('\u0001')).join('\u0002');
+      const bucket = buckets.get(shape);
+      if (bucket === undefined) buckets.set(shape, [index]);
+      else bucket.push(index);
+      if (index % STEP_INTERVAL === STEP_INTERVAL - 1) yield;
+    }
+  }
   // 見つかる最初の衝突は、全部の組を並びの順に比べた時と同じ組にする
   let first: readonly [number, number] | undefined;
+  let compared = 0;
   for (const bucket of buckets.values()) {
     for (let i = 0; i < bucket.length; i++) {
       const leftIndex = bucket[i]!;
@@ -701,6 +725,7 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
       for (let j = i + 1; j < bucket.length; j++) {
         const rightIndex = bucket[j]!;
         if (first !== undefined && leftIndex === first[0] && rightIndex >= first[1]) break;
+        if (++compared % STEP_INTERVAL === 0) yield;
         const right = paths[rightIndex]!;
         if (left.output === right.output) continue;
         if (!activationPathsCanConflict(left.alternative, right.alternative)) continue;

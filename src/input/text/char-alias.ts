@@ -15,10 +15,14 @@ export const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = (() => 
   return aliases;
 })();
 
+/** 別名を持つ字（全角形の記号）が入りうる範囲。見出しの大半はこの範囲の字を含まないので、別名を当てる前の足切りに使う。 */
+const FULLWIDTH_SYMBOL_RANGE = /[\uff01-\uff5e]/;
+
 export const normalizeEvaluationChar = (char: string): string => EVALUATION_CHAR_ALIASES[char] ?? char;
 
 /** 文字列の各文字に全角形の記号の別名を当てる。文字数は変わらない。 */
-export const normalizeEvaluationHeading = (heading: string): string => [...heading].map(normalizeEvaluationChar).join('');
+export const normalizeEvaluationHeading = (heading: string): string =>
+  FULLWIDTH_SYMBOL_RANGE.test(heading) ? [...heading].map(normalizeEvaluationChar).join('') : heading;
 
 const normalizedCanonicalInputsCache = new WeakMap<object, CanonicalInputMap>();
 
@@ -41,14 +45,30 @@ export function evaluationCanonicalInputs(layout: Pick<Layout, 'canonicalInputs'
   let result: CanonicalInputMap = source;
   if (changed) {
     const merged = new Map<string, InputAlternative[]>();
+    // 打ち方が2つ以上になった見出しだけ、重複を見分けるための識別子を作る。見出しの数万に1つずつ作ると、文字列化だけで時間がかかる
+    const identitiesByHeading = new Map<string, Set<string>>();
     for (const [heading, alternatives] of source) {
       const key = normalizeEvaluationHeading(heading);
-      const current = merged.get(key) ?? [];
-      for (const alternative of alternatives) {
-        const identity = canonicalInputAlternativeIdentity(alternative);
-        if (!current.some((candidate) => canonicalInputAlternativeIdentity(candidate) === identity)) current.push(alternative);
+      let current = merged.get(key);
+      if (current === undefined) {
+        current = [];
+        merged.set(key, current);
       }
-      merged.set(key, current);
+      for (const alternative of alternatives) {
+        if (current.length === 0) {
+          current.push(alternative);
+          continue;
+        }
+        let identities = identitiesByHeading.get(key);
+        if (identities === undefined) {
+          identities = new Set(current.map(canonicalInputAlternativeIdentity));
+          identitiesByHeading.set(key, identities);
+        }
+        const identity = canonicalInputAlternativeIdentity(alternative);
+        if (identities.has(identity)) continue;
+        identities.add(identity);
+        current.push(alternative);
+      }
     }
     result = merged;
   }

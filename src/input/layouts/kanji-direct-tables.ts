@@ -8,7 +8,8 @@
  */
 import { TCODE_DECLARATION } from './tcode.ts';
 import { SECCA_DECLARATION } from './secca.ts';
-import { tableIdentityOf, tableLayoutWithIdentity } from './table-identity.ts';
+import { physicalKeysUsedByLayoutSteps } from './physical-keys.ts';
+import { tableIdentityOf, tableLayoutWithIdentity, withTableIdentity } from './table-identity.ts';
 import { TUT_CODE_DECLARATION } from './tut-code.ts';
 import type { KanjiDirectDeclaration, Layout } from './types.ts';
 
@@ -36,6 +37,40 @@ export function layoutFromTableSource(id: string, table: unknown, identity: stri
   const layout = tableLayoutWithIdentity(table, declaration.layoutFromTable);
   if (tableIdentityOf(layout) !== identity) throw new Error(`表の識別子が送り手と食い違う: ${id}`);
   return layout;
+}
+
+/** 配列を作る処理が、画面のスレッドを続けて占めてよい時間（ミリ秒）。超えたら、次の `yield` で処理を返す。 */
+const BUILD_BUDGET_MS = 16;
+
+/** 画面のスレッドへ処理を返す。`scheduler.yield` があればそれで、なければ次のタスクへ回す。 */
+function yieldToMainThread(): Promise<void> {
+  const scheduler = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  if (scheduler?.yield !== undefined) return scheduler.yield();
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/** 配列を作った後に、使う物理キーの集合を先に求めて覚えさせる。配列が使われる最初の処理が、画面のスレッドを長く占めないようにする。 */
+function* stepsWithWarmup(steps: Generator<void, Layout>): Generator<void, Layout> {
+  const layout = yield* steps;
+  yield* physicalKeysUsedByLayoutSteps(layout);
+  return layout;
+}
+
+/**
+ * 表から配列を作る。途中で `yield` する作り方を持つ宣言は、一定の時間ごとに画面のスレッドへ処理を返しながら作る。
+ * 持たない宣言は一度に作る。どちらも、できる配列は `layoutFromTable` と同じ。
+ */
+async function buildLayoutYielding(declaration: KanjiDirectDeclaration, table: unknown): Promise<Layout> {
+  if (declaration.layoutStepsFromTable === undefined) return tableLayoutWithIdentity(table, declaration.layoutFromTable);
+  const steps = stepsWithWarmup(declaration.layoutStepsFromTable(table));
+  let sliceStart = performance.now();
+  for (;;) {
+    const next = steps.next();
+    if (next.done) return withTableIdentity(next.value, table);
+    if (performance.now() - sliceStart < BUILD_BUDGET_MS) continue;
+    await yieldToMainThread();
+    sliceStart = performance.now();
+  }
 }
 
 /** 表を取得する前の配列。同じidに対して、いつも同じ値を返す。 */
@@ -112,13 +147,13 @@ export function requestKanjiDirectLayout(id: string): Promise<void> {
   const task = Promise.resolve()
     .then(() => load(declaration.tableFile))
     .then(
-      (table) => {
-        inFlight.delete(id);
+      async (table) => {
         try {
-          loadedLayouts.set(id, tableLayoutWithIdentity(table, declaration.layoutFromTable));
+          loadedLayouts.set(id, await buildLayoutYielding(declaration, table));
         } catch {
           failed.add(id);
         }
+        inFlight.delete(id);
         notify();
       },
       () => {
