@@ -1,6 +1,8 @@
 import { stableStringify } from './cache-key.ts';
 import { MODEL_VERSION } from './model-version.ts';
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition, TraceRequestInput } from '#analyzers/contract.ts';
+import type { Layout } from '#input/layouts/types.ts';
+import { tableIdentityOf } from '#input/layouts/table-identity.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
@@ -22,6 +24,8 @@ import { describeResolvedInputError } from './resolved-input-errors.ts';
  * 生成側が参照するフィールドを増やした時にキーの更新を忘れる事故を防げる
  * （代わりに、数値に影響しないフィールドの編集でも再計算が走ることがある。
  * 大きくしなくてよい規模のキャッシュなので、この向きを採る）。
+ * 表から作った組み込みの配列だけは、中身の代わりに識別子（配列のidと表の中身から決まる）を入れる。
+ * 数十MBの配列を文字列にする時間を省くためで、派生させた配列は識別子を持たないので中身で区別する。
  *
  * 引数を`TraceRequestInput`（`TraceRequester`が差し替えられるフィールドの集合）に絞っている。
  * ここでキーに足すフィールドは`TraceRequestInput`にも足さないとコンパイルが通らないので、
@@ -33,7 +37,7 @@ export function traceKeyOf(input: TraceRequestInput): string {
   const key = stableStringify({
     modelVersion: MODEL_VERSION,
     text: input.text,
-    layout: input.layout,
+    layout: layoutKeyOf(input.layout),
     geometry: input.geometry,
     tracePolicy: input.tracePolicy,
     comboBarriers: input.comboBarriers,
@@ -41,6 +45,15 @@ export function traceKeyOf(input: TraceRequestInput): string {
   });
   traceKeyByInput.set(input, key);
   return key;
+}
+
+/**
+ * Traceのキーに入れる配列の値。表から作った配列は識別子だけを入れる（`input/layouts/table-identity.ts`）。
+ * 識別子を持たない配列（派生した配列・自作の配列）は、中身をそのまま入れる。
+ */
+function layoutKeyOf(layout: Layout | undefined): unknown {
+  const identity = layout === undefined ? undefined : tableIdentityOf(layout);
+  return identity === undefined ? layout : { tableIdentity: identity };
 }
 
 /**

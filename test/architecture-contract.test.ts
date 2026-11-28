@@ -306,7 +306,7 @@ test('logical output matching lengthはcanonicalInputsをauthorityにする', as
     /const canonicalInputs = evaluationCanonicalInputs\(layout\);/,
     'canonicalInputs must be the authority for logical output match length',
   );
-  assert.match(traceSource, /\[\.\.\.canonicalInputs\.keys\(\)\]/, 'canonicalInputs must be the authority for logical output match length');
+  assert.match(traceSource, /of canonicalInputs\.keys\(\)/, 'canonicalInputs must be the authority for logical output match length');
   const charAliasSource = await readFile(join(SRC, 'input/text/char-alias.ts'), 'utf8');
   assert.match(charAliasSource, /const source = layout\.canonicalInputs;/, 'the match table must be derived from layout.canonicalInputs');
 });

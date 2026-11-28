@@ -6,6 +6,7 @@ import type { ResolvedInput } from './resolved-input.ts';
 import { LruCache } from './lru-cache.ts';
 import { setExtractionKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from './worker-protocol.ts';
+import { toWireInput, toWireMember } from './worker-wire.ts';
 
 /**
  * ブラウザの`Worker`のうち、ここが使う部分だけ。Nodeのテストでは、メッセージを構造化複製して
@@ -47,7 +48,7 @@ export interface WorkerEngineComputer extends EngineComputer {
 
 interface Job {
   readonly id: number;
-  readonly build: (id: number) => EngineWorkerRequest;
+  readonly build: (id: number, sent: Set<string>) => EngineWorkerRequest;
   readonly resolve: (value: unknown) => void;
   readonly reject: (error: unknown) => void;
   readonly signal: AbortSignal | undefined;
@@ -102,6 +103,8 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
   const traceMirror = new LruCache<string, EngineTraceSummaryResult>(TRACE_MIRROR_MAX_ENTRIES);
   const extractionMirror = new LruCache<string, EngineExtractionResult<unknown>>(EXTRACTION_MIRROR_MAX_ENTRIES);
   let worker: WorkerLike | undefined;
+  // 今のWorkerへ送った配列の識別子（`worker-wire.ts`）。Workerを止めたら、Workerが持つ配列も無くなるので空にする
+  let sentLayouts = new Set<string>();
   let current: Job | undefined;
   const queue: Job[] = [];
   let nextId = 1;
@@ -109,6 +112,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
   function stopWorker(): void {
     const stopping = worker;
     worker = undefined;
+    sentLayouts = new Set();
     if (stopping === undefined) return;
     stopping.onmessage = null;
     stopping.onerror = null;
@@ -150,7 +154,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       try {
         if (worker === undefined) worker = attach(spawn());
         current = job;
-        worker.postMessage(job.build(job.id));
+        worker.postMessage(job.build(job.id, sentLayouts));
       } catch (error) {
         current = undefined;
         stopWorker();
@@ -159,7 +163,11 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
     }
   }
 
-  function enqueue<T>(build: (id: number) => EngineWorkerRequest, signal: AbortSignal | undefined, how: EnqueueOptions = {}): Promise<T> {
+  function enqueue<T>(
+    build: (id: number, sent: Set<string>) => EngineWorkerRequest,
+    signal: AbortSignal | undefined,
+    how: EnqueueOptions = {},
+  ): Promise<T> {
     if (signal?.aborted) return Promise.reject(new EngineAbortError());
     return new Promise<T>((resolve, reject) => {
       const job: Job = {
@@ -208,7 +216,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       return remember(
         traceMirror,
         traceKeyOf(input),
-        enqueue((id) => ({ id, kind: 'trace-summary', input }), signal),
+        enqueue((id, sent) => ({ id, kind: 'trace-summary', input: toWireInput(input, sent) }), signal),
       );
     },
     peekTraceSummary(input: ResolvedInput): EngineTraceSummaryResult | undefined {
@@ -237,7 +245,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       return remember(
         extractionMirror as LruCache<string, EngineExtractionResult<Extracted>>,
         singleExtractionKeyOf(input, definition, options),
-        enqueue((id) => ({ id, kind: 'extraction', input, definitionId: definition.id, options }), signal),
+        enqueue((id, sent) => ({ id, kind: 'extraction', input: toWireInput(input, sent), definitionId: definition.id, options }), signal),
       );
     },
     async getSetExtraction<Options, Extracted>(
@@ -256,17 +264,31 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
         for (const member of members) {
           if (!member.resolution.ok) continue;
           for (let step = 0; step < warmup.steps; step += 1) {
-            await enqueue<void>((id) => ({ id, kind: 'set-warmup', member, definitionId: definition.id, step }), signal, {
-              deferred: true,
-              shortLived: true,
-            });
+            await enqueue<void>(
+              (id, sent) => ({ id, kind: 'set-warmup', member: toWireMember(member, sent), definitionId: definition.id, step }),
+              signal,
+              {
+                deferred: true,
+                shortLived: true,
+              },
+            );
           }
         }
       }
       return remember(
         extractionMirror as LruCache<string, EngineExtractionResult<Extracted>>,
         key,
-        enqueue((id) => ({ id, kind: 'set-extraction', members, definitionId: definition.id, options }), signal, { deferred: warmup !== undefined }),
+        enqueue(
+          (id, sent) => ({
+            id,
+            kind: 'set-extraction',
+            members: members.map((member) => toWireMember(member, sent)),
+            definitionId: definition.id,
+            options,
+          }),
+          signal,
+          { deferred: warmup !== undefined },
+        ),
       );
     },
     dispose(): void {
