@@ -1,5 +1,5 @@
 import type { TextLanguage } from '#input/text/language.ts';
-import { type ComparisonColumnId } from '../comparison-column-text.ts';
+import type { ComparisonColumnId } from '../comparison-column-text.ts';
 import { kanaUnitOf } from '../unit-words.ts';
 import { axisName, axisPlotTitle, KEY_COUNT_NAME, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 
