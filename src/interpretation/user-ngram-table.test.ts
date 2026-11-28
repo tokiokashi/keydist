@@ -72,6 +72,11 @@ test('同じ入力は同じ表と同じ中身のキーになり、読みのテ�
   assert.equal(keyOf({ name: '別の名前' }), base.contentKey);
 });
 
+test('加えた変更の文は、読みに直したかどうかで分け、辞書を読み込めなかった表に読みの置き換えを書かない', () => {
+  assert.match(buildUserNgramTable(request()).changesText, /辞書の読みに置き換えて/);
+  assert.doesNotMatch(buildUserNgramTable(request({ reading: null })).changesText, /置き換え/);
+});
+
 test('抽出が読む表のキーに、中身のキーと次数が入る', () => {
   const set = buildUserNgramTable(request());
   const key = ngramTableAssetKey(ngramTableAssetOf(set, 0));

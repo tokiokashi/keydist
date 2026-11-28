@@ -15,9 +15,13 @@ export const USER_TABLE_MAX_ORDER = 5;
 /** 表の識別子。利用者のテキストの表はどれもこの識別子で、中身は`contentKey`が見分ける。 */
 export const USER_TABLE_ID = 'user-text';
 
-/** 利用者のテキストの表の、条件の要約に出す「加えた変更」の文。 */
-export const USER_TEXT_CHANGES_TEXT =
+/** 読みに直したテキストの表の、条件の要約に出す「加えた変更」の文。 */
+export const USER_TEXT_CONVERTED_CHANGES_TEXT =
   '漢字を含む語を、読みの直しを当てた辞書の読みに置き換えて文節に区切り、文節の読みの並びの出現回数だけを数えました。';
+
+/** 読みに直さなかったテキスト（漢字を含まない・辞書を読み込めなかった）の表の、「加えた変更」の文。 */
+export const USER_TEXT_UNCONVERTED_CHANGES_TEXT =
+  'テキストを文節に区切り、文節の読みの並びの出現回数だけを数えました。読みに直していない漢字は数えず、そこで区切りました。';
 
 /** 表を作る入力。計算用Workerへ複製して渡す値。 */
 export interface UserNgramTableRequest {
@@ -58,6 +62,7 @@ export function buildUserNgramTable(request: UserNgramTableRequest): NgramTableS
   const built = buildCorpusNgramTables(request.readingText, request.boundaries, USER_TABLE_MAX_ORDER);
   const { sufficiency } = built.bunsetsu;
   const orders = selectableOrders(sufficiency);
+  const changesText = request.reading === null ? USER_TEXT_UNCONVERTED_CHANGES_TEXT : USER_TEXT_CONVERTED_CHANGES_TEXT;
   return {
     id: USER_TABLE_ID,
     contentKey: userTableContentKey(request),
@@ -67,8 +72,8 @@ export function buildUserNgramTable(request: UserNgramTableRequest): NgramTableS
       segmentation: { origin: 'splitter', splitter: request.splitter },
       reading: request.reading,
     },
-    colophon: { work: request.name, original: '', changes: USER_TEXT_CHANGES_TEXT },
-    changesText: USER_TEXT_CHANGES_TEXT,
+    colophon: { work: request.name, original: '', changes: changesText },
+    changesText,
     sufficiency,
     selectableOrders: orders,
     defaultOrder: defaultTableOrder(sufficiency),

@@ -12,6 +12,11 @@ export interface NgramTableProvenanceItem {
   readonly keepWidth?: boolean;
 }
 
+/** テキストの名前をかぎ括弧で囲む。組み込みの名前は、すでに「」で始まるので二重にしない。 */
+function quotedName(name: string): string {
+  return name.startsWith('「') ? name : `「${name}」`;
+}
+
 const SELECTABLE_ORDERS_LABEL = '選べる次数';
 
 /** 選べる次数は0次から途切れずに続く。1つだけなら、その旨を添える。 */
@@ -38,7 +43,7 @@ export function ngramTableProvenance(asset: NgramTableAsset | undefined, options
   const items: NgramTableProvenanceItem[] = [
     { label: '表の次数', value: `${asset.order}次`, keepWidth: true },
     { label: '文節の先読み', value: `${options.lookahead}文節`, keepWidth: true },
-    { label: SOURCE_TEXT_LABEL, value: source.kind === 'user-text' ? `選んだテキスト「${source.name}」` : `${source.name}${archive}` },
+    { label: SOURCE_TEXT_LABEL, value: source.kind === 'user-text' ? `選んだテキスト${quotedName(source.name)}` : `${source.name}${archive}` },
     { label: SELECTABLE_ORDERS_LABEL, value: selectableOrdersText(asset.selectableOrders), keepWidth: true },
   ];
   if (source.segmentation.origin === 'splitter') {
