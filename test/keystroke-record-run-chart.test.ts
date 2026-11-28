@@ -179,12 +179,26 @@ test('同時押しのかな配列でも、eの集合はRun Chartの点の位置�
 });
 
 test('打てない範囲は、理由を返して記録を始めさせない', () => {
-  // 名前が複数文字のキー（°）が要る配列は、取れないキーが要る
+  // 取れないキー（名前を持たない追加のキー）が要るストロークを含む範囲は、取れないキーが要る
+  const qwerty = resolve('qwerty');
+  const base = recordBaseTrace(qwerty);
+  const [first, ...rest] = base.strokes;
+  assert.ok(first !== undefined);
+  const uncapturable = {
+    ...base,
+    strokes: [{ ...first, presses: first.presses.map((press) => ({ ...press, keys: press.keys.map((key) => ({ ...key, id: 'r0c13' })) })) }, ...rest],
+  };
+  const statuses = recordRangeStatuses(qwerty, uncapturable);
+  assert.equal(statuses[0]?.unmeasurable, 'uncapturable-key');
+  assert.deepEqual(recordPlanOf(qwerty, uncapturable, 0), { ok: false, reason: 'uncapturable-key' });
+  assert.deepEqual(recordPlanOf(qwerty, base, 99), { ok: false, reason: 'no-range' });
+});
+
+test('JISかな配列は、Shiftとろのキーを取れるので、全部の範囲を記録できる', () => {
   const jisKana = resolve('jis-kana');
   const statuses = recordRangeStatuses(jisKana, recordBaseTrace(jisKana));
-  assert.ok(statuses.every((status) => status.unmeasurable === 'uncapturable-key'));
-  assert.deepEqual(recordPlanOf(jisKana, recordBaseTrace(jisKana), 0), { ok: false, reason: 'uncapturable-key' });
-  assert.deepEqual(recordPlanOf(jisKana, recordBaseTrace(jisKana), 99), { ok: false, reason: 'no-range' });
+  assert.ok(statuses.length > 0);
+  assert.ok(statuses.every((status) => status.unmeasurable === undefined));
 });
 
 test('範囲に打てずに飛ばした文字がある時は、その範囲だけを打てない範囲にする', () => {

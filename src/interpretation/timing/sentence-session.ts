@@ -1,4 +1,5 @@
-import { isThumbKeyId, LEFT_COLUMN_KEYS, resolveKeyId } from '#input/shapes/geometry.ts';
+import { JIS_BROWSER_BINDINGS } from '#input/shapes/browser-key-codes.ts';
+import { isThumbKeyId, LEFT_COLUMN_KEYS, resolveKeyId, SHIFT_KEY } from '#input/shapes/geometry.ts';
 import type { Stroke } from '#trace/generate.ts';
 import { calibrationKeyMatches } from './calibration.ts';
 import type { SentenceAnalysis, SentenceSample, SentenceSpellingSource, SentenceTap } from './sentence-measurement.ts';
@@ -31,18 +32,37 @@ function singleCharKey(keyId: string): boolean {
   return [...keyId].length === 1 && keyId.trim() !== '';
 }
 
+/** Shiftのキーか。Shiftは押下として取らず、文字のキーの押下の時に押しているかだけを読む。 */
+export function isShiftKeyId(keyId: string): boolean {
+  return keyId === SHIFT_KEY.L || keyId === SHIFT_KEY.R;
+}
+
+/** JISの物理配列の格子の中にあり、`code`から引くキー（`\`・`¥`・`ろ`の位置）。押下の`event.key`は1文字なので、1文字のキーと同じく取る。 */
+const JIS_CODE_KEYS: readonly string[] = Object.values(JIS_BROWSER_BINDINGS).filter((id): id is string => id !== null);
+
 /**
  * 測定の打鍵として取れるキーか。取れるのは1文字のキー、物理配列の左端の列のキー（CapsLock・Tab・半角/全角の位置。
- * `LEFT_COLUMN_KEYS`）、親指のキー（`thumb-l`・`thumb-r`）で（`key-capture.ts`）、
- * 修飾キー・名前を持たない追加のキーは取れない。
+ * `LEFT_COLUMN_KEYS`）、親指のキー（`thumb-l`・`thumb-r`）、JISの物理配列の`\`・`¥`・`ろ`の位置のキー、Shiftで（`key-capture.ts`）、
+ * Shift以外の修飾キー・名前を持たない追加のキーは取れない。
  */
 function capturableKey(keyId: string): boolean {
-  return singleCharKey(keyId) || (LEFT_COLUMN_KEYS as readonly string[]).includes(keyId) || isThumbKeyId(keyId);
+  return (
+    singleCharKey(keyId) ||
+    (LEFT_COLUMN_KEYS as readonly string[]).includes(keyId) ||
+    isThumbKeyId(keyId) ||
+    JIS_CODE_KEYS.includes(keyId) ||
+    isShiftKeyId(keyId)
+  );
 }
 
 /** 示す文の打つキーのid（親指のキーを含む。重複なし）。 */
 export function sentenceKeyIds(plans: readonly SentencePlan[]): string[] {
   return [...new Set(plans.flatMap((plan) => plan.baseSteps.flatMap((group) => group.flatMap((step) => step.keys))))];
+}
+
+/** 示す文の打つキーの列のどこかにShiftがあるか。ある時だけ、押下の時にShiftを押しているかを照合に使う。 */
+export function sentenceUsesShiftKeys(plans: readonly SentencePlan[]): boolean {
+  return plans.some((plan) => plan.baseSteps.some((group) => group.some((step) => step.keys.some(isShiftKeyId))));
 }
 
 /** 示す文の打つキーの列のどこかに親指のキーがあるか。ある時だけ、測定の間、親指のキーの押下を取る。 */
@@ -250,6 +270,12 @@ export interface SentenceKeyEvent {
    * 文字のキーの押下が今のステップの押すキーに一致した時だけ読み、ステップの押すキーのうち、押し続けている親指のキーを押したものとみなす。
    */
   readonly heldThumbKeys?: readonly string[];
+  /**
+   * この押下の時にShiftを押していたか（`KeyboardEvent.shiftKey`）。示す文の打つキーにShiftがある測定の間だけ読む。
+   * 読む間は、文字のキーの押下が一致するのは、Shiftを押していることと、ステップの押すキーにShiftがあることが揃う時だけで、
+   * 揃えばステップの押すキーのShiftを押したものとみなす。左右のShiftは区別しない。
+   */
+  readonly shiftKey?: boolean;
 }
 
 export type SentencePressOutcome =
@@ -316,8 +342,15 @@ function pressStep(
   const pressDone = run.pressReadingAlive && run.pressed.length >= step.keys.length;
   const outputDone = run.outputReadingAlive && output !== undefined && run.outputCount >= output.length;
 
+  // Shiftを照合に使う測定では、Shiftの有無がステップと食い違う文字のキーの押下は、違うキーの押下にする。
+  // Shiftの有無で打つ文字が変わる（JISかな配列の「よ」と「ょ」）ので、押し方の違いは打ち間違いである。
+  const shiftMismatch = event.shiftKey !== undefined && step.keys.some(isShiftKeyId) !== event.shiftKey;
   const pressMatch =
-    run.pressReadingAlive && !pressDone ? remainingStepKeys(run).find((key) => calibrationKeyMatches(event, key, keyLabel(key))) : undefined;
+    run.pressReadingAlive && !pressDone
+      ? remainingStepKeys(run).find(
+          (key) => !isShiftKeyId(key) && calibrationKeyMatches(event, key, keyLabel(key)) && (isThumbKeyId(key) || !shiftMismatch),
+        )
+      : undefined;
   const outputMatches = run.outputReadingAlive && output !== undefined && !outputDone && outputCharMatches(event, output[run.outputCount]);
 
   if (pressMatch === undefined && !outputMatches) {
@@ -353,11 +386,15 @@ function pressStep(
 
   // 文字のキーの押下では、押し続けている親指のキーを、このステップで押したものとみなす。親指のキーの押下には使わない。
   // 時刻は新しい押下だけが決めるので、押し続けは`firstAtMs`に関わらない。
+  // Shiftは押下として取らないので、文字のキーの押下の時に押していれば、ステップのShiftを押したものとみなす。
   const heldPressed =
-    pressMatch === undefined || isThumbKeyId(pressMatch) || event.heldThumbKeys === undefined
+    pressMatch === undefined || isThumbKeyId(pressMatch)
       ? []
       : remainingStepKeys(run).filter(
-          (key) => key !== pressMatch && isThumbKeyId(key) && event.heldThumbKeys?.some((held) => resolveKeyId(held) === resolveKeyId(key)) === true,
+          (key) =>
+            key !== pressMatch &&
+            ((isThumbKeyId(key) && event.heldThumbKeys?.some((held) => resolveKeyId(held) === resolveKeyId(key)) === true) ||
+              (isShiftKeyId(key) && event.shiftKey === true)),
         );
   const firstAtMs = run.firstAtMs ?? atMs;
   const advanced: StepRun = {
@@ -606,7 +643,10 @@ export function pressSentenceSessionKey(
   keyLabel: (keyId: string) => string,
 ): { readonly session: SentenceSession; readonly outcome: SentenceSessionOutcome } {
   if (sentenceSessionFinished(session)) return { session, outcome: { kind: 'ignored' } };
-  const pressed = pressSentenceKey(session.run, event, atMs, keyLabel);
+  // Shiftを打つキーに持たない文の測定では、Shiftの有無を照合に使わない。持つ文の測定では、渡されない時を押していないとみなす。
+  const { shiftKey, ...rest } = event;
+  const matched: SentenceKeyEvent = sentenceUsesShiftKeys(session.plans) ? { ...rest, shiftKey: shiftKey === true } : rest;
+  const pressed = pressSentenceKey(session.run, matched, atMs, keyLabel);
   if (pressed.outcome.kind !== 'run-finished') return { session: { ...session, run: pressed.run }, outcome: pressed.outcome };
 
   const records = [...session.records, { sentence: session.sentence, round: session.round, typed: pressed.run.typed, taps: pressed.run.taps }];

@@ -3,7 +3,9 @@ import { generateEngineTrace, interpretEngineTrace } from '#engine/pipeline.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { hasRomajiOnlyCombos } from '#input/layouts/types.ts';
 import { romajiSpellingUnits } from '#input/romaji/spelling-variants.ts';
-import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
+import { defaultFingerAssignmentId } from '#engine/finger-assignment.ts';
+import { EMPTY_SETTINGS_OVERRIDES, resetSettingsItem, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
+import type { PhysicalShape } from '#input/shapes/geometry.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
 import type { SentenceBuildResult, SentenceSpellingSource } from '#interpretation/timing/sentence-measurement.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
@@ -18,19 +20,25 @@ const UNBUILDABLE_TEXT = 'この配列・物理配列・指の割り当ての組
 /**
  * 全体の条件に、選んだ物理配列と指の割り当てを重ねた上書き。配列・物理配列・Setupなどのレベルの上書きは
  * 読まない（この画面で選んだ組を、そのまま使うため）。
+ * 選んだ指の割り当てが、選んだ物理配列の既定の時は書かない。JISの物理配列が要る配列は、選んだ物理配列と同じ形のJISの物理配列へ
+ * 導かれるので、既定の指の割り当ては導かれた物理配列から決める。ANSIの既定を書くと、JISのキーを持たない指の割り当てになる。
  */
-function selectionOverrides(assets: SentenceAssets, selection: PersonalSpeedSelection): SettingsCascadeOverrides | undefined {
+function selectionOverrides(
+  assets: SentenceAssets,
+  selection: PersonalSpeedSelection,
+  shapes: ReadonlyMap<string, PhysicalShape>,
+): SettingsCascadeOverrides | undefined {
   const { global } = assets.setupLibrary.overrides;
   let overrides: SettingsCascadeOverrides = global === undefined ? EMPTY_SETTINGS_OVERRIDES : { global };
-  for (const [item, value] of [
-    ['defaultShapeId', selection.shapeId],
-    ['fingerAssignmentId', selection.fingerAssignmentId],
-  ] as const) {
-    const written = setSettingsOverride(overrides, { kind: 'global' }, item, value);
-    if (!written.ok) return undefined;
-    overrides = written.overrides;
+  const written = setSettingsOverride(overrides, { kind: 'global' }, 'defaultShapeId', selection.shapeId);
+  if (!written.ok) return undefined;
+  overrides = written.overrides;
+  const shape = shapes.get(selection.shapeId);
+  if (shape !== undefined && selection.fingerAssignmentId === defaultFingerAssignmentId(shape)) {
+    return resetSettingsItem(overrides, { kind: 'global' }, 'fingerAssignmentId');
   }
-  return overrides;
+  const assignment = setSettingsOverride(overrides, { kind: 'global' }, 'fingerAssignmentId', selection.fingerAssignmentId);
+  return assignment.ok ? assignment.overrides : undefined;
 }
 
 /** 打てる打鍵の列か。配列定義の不備・打てない文字・空の列は打てない。 */
@@ -80,7 +88,7 @@ export function personalSpeedSentenceBuilder(assets: SentenceAssets): (selection
   const catalog = paneCatalog(assets);
   const customFingerAssignments = new Map(assets.fingerAssignments.map((assignment) => [assignment.id, assignment] as const));
   return (selection, text) => {
-    const overrides = selectionOverrides(assets, selection);
+    const overrides = selectionOverrides(assets, selection, catalog.setupCatalog.shapes);
     if (overrides === undefined) return { ok: false, message: UNBUILDABLE_TEXT };
     try {
       const resolved = resolveEngineInput({

@@ -103,7 +103,8 @@ button.context-chip:hover:not(:disabled),
 
 .text-chip {
   position: relative;
-  max-width: 28rem;
+  /* 包むrootが縮んだ時に、チップがrootからはみ出して隣のチップに重ならないよう、rootの幅も上限にする。 */
+  max-width: min(28rem, 100%);
 }
 
 /* 競合で選ばれずに残ったコピーの印。チップの角に重ねるので、狭くて中身を絞っても見える */
