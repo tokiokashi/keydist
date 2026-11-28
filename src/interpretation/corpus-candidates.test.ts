@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { extractRepeatCandidates, type Candidate } from './corpus-candidates.ts';
+import type { RunEdges } from './corpus-ngram.ts';
 import { createMulberry32 } from './prng.ts';
 import { buildLcpArray, buildSuffixArray } from './suffix-array.ts';
 
@@ -8,6 +9,7 @@ import { buildLcpArray, buildSuffixArray } from './suffix-array.ts';
 function bruteForce(
   runs: readonly (readonly string[])[],
   unitRuns: readonly (readonly string[])[],
+  runEdges: readonly RunEdges[],
   minCount: number,
   chapterStarts: readonly number[],
 ): Candidate[] {
@@ -17,7 +19,7 @@ function bruteForce(
     chapter: number;
   }
   const occurrences = new Map<string, Occurrence[]>();
-  const unitStarts = unitRuns.map((units) => {
+  const unitStarts = unitRuns.map((units, index) => {
     const set = new Set<number>();
     let offset = 0;
     for (const unit of units) {
@@ -25,6 +27,8 @@ function bruteForce(
       offset += [...unit].length;
     }
     set.add(offset);
+    if (!runEdges[index]!.start) set.delete(0);
+    if (!runEdges[index]!.end) set.delete(offset);
     return set;
   });
   let consumed = 0;
@@ -92,11 +96,12 @@ function bruteForce(
   return result.sort((a, b) => b.count - a.count || (a.text < b.text ? -1 : a.text > b.text ? 1 : 0));
 }
 
-function randomInput(seed: number): { runs: string[][]; units: string[][]; chapterStarts: number[] } {
+function randomInput(seed: number): { runs: string[][]; units: string[][]; runEdges: RunEdges[]; chapterStarts: number[] } {
   const random = createMulberry32(seed);
   const alphabet = 'あいう'.slice(0, 2 + Math.floor(random() * 2));
   const runs: string[][] = [];
   const units: string[][] = [];
+  const runEdges: RunEdges[] = [];
   const runCount = 1 + Math.floor(random() * 4);
   let total = 0;
   for (let r = 0; r < runCount; r++) {
@@ -114,18 +119,19 @@ function randomInput(seed: number): { runs: string[][]; units: string[][]; chapt
     parts.push(current);
     runs.push(chars);
     units.push(parts);
+    runEdges.push({ start: random() < 0.5, end: random() < 0.5 });
     total += length;
   }
   const chapterStarts = [Math.floor(total / 3), Math.floor((total * 2) / 3)].filter((at, i, all) => at > 0 && at !== all[i - 1]);
-  return { runs, units, chapterStarts };
+  return { runs, units, runEdges, chapterStarts };
 }
 
 test('候補: 小さな列で、全部分文字列を数える参照実装と、文字列・統計量・並びが一致する', () => {
   for (let seed = 1; seed <= 200; seed++) {
-    const { runs, units, chapterStarts } = randomInput(seed);
+    const { runs, units, runEdges, chapterStarts } = randomInput(seed);
     for (const minCount of [2, 3]) {
-      const actual = extractRepeatCandidates(runs, units, { minCount, chapterStarts }).candidates;
-      const expected = bruteForce(runs, units, minCount, chapterStarts);
+      const actual = extractRepeatCandidates(runs, units, { minCount, chapterStarts, runEdges }).candidates;
+      const expected = bruteForce(runs, units, runEdges, minCount, chapterStarts);
       assert.equal(actual.length, expected.length, `seed ${seed} minCount ${minCount}`);
       for (const [index, candidate] of actual.entries()) {
         const want = expected[index]!;
@@ -138,6 +144,7 @@ test('候補: 小さな列で、全部分文字列を数える参照実装と、
         assert.equal(candidate.alignedRatio, want.alignedRatio);
         assert.equal(candidate.dispersion!.chaptersPresent, want.dispersion!.chaptersPresent);
         assert.ok(Math.abs(candidate.dispersion!.dp - want.dispersion!.dp) < 1e-9);
+        assert.ok(Math.abs(candidate.dispersion!.dpNormalized - want.dispersion!.dpNormalized) < 1e-9);
       }
     }
   }
@@ -151,7 +158,8 @@ test('候補: 手で数えた例。走りをまたぐ文字列を出さず、走
     ['あ', 'い', 'う'],
   ];
   const units = [['あいう'], ['あい', 'え'], ['あ', 'いう']];
-  const { candidates } = extractRepeatCandidates(runs, units, { minCount: 2, chapterStarts: [] });
+  const allEdges = runs.map(() => ({ start: true, end: true }));
+  const { candidates } = extractRepeatCandidates(runs, units, { minCount: 2, chapterStarts: [], runEdges: allEdges });
   assert.deepEqual(
     candidates.map((c) => [c.text, c.count]),
     [
@@ -166,6 +174,14 @@ test('候補: 手で数えた例。走りをまたぐ文字列を出さず、走
   assert.ok(Math.abs(ai.rightEntropy - (-(2 / 3) * Math.log2(2 / 3) - (1 / 3) * Math.log2(1 / 3))) < 1e-12);
   // 「あい」の出現のうち、始まりと終わりがどちらも文節の境界にそろうのは、文節「あい」の2つ目だけ（1つ目は文節「あいう」の途中で終わり、3つ目は文節「いう」の途中で終わる）
   assert.equal(ai.alignedRatio, 1 / 3);
+  // 「あいう」の出現は1つ目（文節「あいう」）と3つ目（文節「あ」「いう」の終わり）。1つ目の走りの終わりが境界でなければ、そろうのは3つ目だけ
+  assert.equal(candidates[1]!.alignedRatio, 1);
+  const open = extractRepeatCandidates(runs, units, {
+    minCount: 2,
+    chapterStarts: [],
+    runEdges: [{ start: true, end: false }, allEdges[1]!, allEdges[2]!],
+  });
+  assert.equal(open.candidates[1]!.alignedRatio, 1 / 2);
 });
 
 test('接尾辞配列とLCP配列: 全接尾辞を直接並べた結果と一致する', () => {

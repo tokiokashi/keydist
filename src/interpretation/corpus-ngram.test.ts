@@ -37,6 +37,23 @@ test('系列: 章の始まりは、取り除く記号の分だけ詰めて、か
   assert.deepEqual(sequences.chapterStarts, [4]);
 });
 
+test('系列: 走りの端は、空白か文節の区切りか文章の端に当たる時だけ境界になり、読みに直せない漢字で切れた端は境界でない', () => {
+  // 「ねこ」の後は空白、「いぬ」の後は漢字「偸」（区切りは「偸」の手前に無い）、「さる」の後は漢字「猿」で、その手前に文節の区切りがある
+  const reading = 'ねこ いぬ偸うさぎさる猿とり';
+  const chars = [...reading];
+  const sequences = buildCorpusSequences(reading, [chars.indexOf('猿')]);
+  assert.deepEqual(
+    sequences.kana.map((run) => run.join('')),
+    ['ねこ', 'いぬ', 'うさぎさる', 'とり'],
+  );
+  assert.deepEqual(sequences.runEdges, [
+    { start: true, end: true },
+    { start: true, end: false },
+    { start: false, end: true },
+    { start: false, end: true },
+  ]);
+});
+
 test('系列: 片仮名は書き換えず、英字と数字は取り除く', () => {
   const sequences = buildCorpusSequences('ニャーabc12ねこ', []);
   assert.deepEqual(sequences.kana[0]!.join(''), 'ニャーねこ');

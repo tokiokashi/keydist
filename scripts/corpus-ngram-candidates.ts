@@ -96,13 +96,16 @@ async function main(): Promise<void> {
     offset += run.length;
   }
 
-  const memoryBefore = process.resourceUsage().maxRSS / 1024;
+  const edgeStarts = sequences.runEdges.filter((edge) => edge.start).length;
+  const edgeEnds = sequences.runEdges.filter((edge) => edge.end).length;
   const started = performance.now();
-  const result = extractRepeatCandidates(sequences.kana, sequences.bunsetsu, { minCount: args.minCount, chapterStarts: sequences.chapterStarts });
+  const result = extractRepeatCandidates(sequences.kana, sequences.bunsetsu, {
+    minCount: args.minCount,
+    chapterStarts: sequences.chapterStarts,
+    runEdges: sequences.runEdges,
+  });
   const seconds = (performance.now() - started) / 1000;
   const { candidates } = result;
-  const peakMemoryMb = process.resourceUsage().maxRSS / 1024;
-  const memoryGrowthMb = peakMemoryMb - memoryBefore;
 
   const out: string[] = [];
   out.push('# コーパスの文字列の候補の一覧', '');
@@ -122,11 +125,11 @@ async function main(): Promise<void> {
   out.push(`- 走りの数: ${sequences.kana.length}。かなの数: ${result.units}`);
   out.push(`- 取り出し: 接尾辞配列とLCP配列で、出現回数が${args.minCount}以上の極大な繰り返し。長さの上限は置かない`);
   out.push(`- 章: 全${result.chapterSizes.length}章。章ごとのかなの数 ${result.chapterSizes.join('・')}`);
-  out.push('- 文節の境界にそろう割合: 走りの端を文節の境界に数える。章の間のばらつき: 出現は始まりの位置の章に数え、章の大きさはかなの数');
-  out.push(`- 章の切れ目をまたぐ走り: ${crossing}個`);
   out.push(
-    `- 計算: 取り出しと統計量に${seconds.toFixed(1)}秒、プロセスの最大の常駐メモリは取り出しの前の${memoryBefore.toFixed(0)}MiBから${peakMemoryMb.toFixed(0)}MiBへ増えた（増分${memoryGrowthMb.toFixed(0)}MiB。Node ${process.version}。取り出しの前は、コーパスの読み込みと読みの変換が占める）`,
+    `- 文節の境界にそろう割合: 走りの端は、空白か読みの上の文節の区切りに当たる時だけ境界に数える（走りの始まり${edgeStarts}個・終わり${edgeEnds}個が境界）。章の間のばらつき: 出現は始まりの位置の章に数え、章の大きさはかなの数`,
   );
+  out.push(`- 章の切れ目をまたぐ走り: ${crossing}個`);
+  out.push(`- 計算: 取り出しと統計量に${seconds.toFixed(1)}秒（Node ${process.version}。メモリは別のプロセスで、取り出しだけを測る）`);
   out.push('');
 
   const byLength = new Map<number, Candidate[]>();

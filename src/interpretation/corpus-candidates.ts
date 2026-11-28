@@ -1,3 +1,4 @@
+import type { RunEdges } from './corpus-ngram.ts';
 import { buildLcpArray, buildSuffixArray, forEachLcpInterval } from './suffix-array.ts';
 
 /**
@@ -5,12 +6,14 @@ import { buildLcpArray, buildSuffixArray, forEachLcpInterval } from './suffix-ar
  * かなの系列の走りごとの列と、文節の読みの系列を受け取る。配列の定義と品詞を参照しない。
  */
 
-/** 候補にする出現回数の下限。結果を見る前に固定した。 */
+/** 候補にする出現回数の下限。 */
 export const CANDIDATE_MIN_COUNT = 5;
 
 export interface CandidateOptions {
   /** 出現回数の下限 */
   readonly minCount: number;
+  /** 走りごとの、両端が文節の境界に当たるか（`CorpusSequences.runEdges`）。端の出現が境界にそろうかは、これで決める */
+  readonly runEdges: readonly RunEdges[];
   /** 章の始まりのかなの位置（全走りをつないだ列の先頭からのコードポイント数。昇順）。章の数は長さ+1 */
   readonly chapterStarts: readonly number[];
 }
@@ -73,7 +76,7 @@ export function extractRepeatCandidates(
   unitRuns: readonly (readonly string[])[],
   options: CandidateOptions,
 ): CandidateResult {
-  if (kanaRuns.length !== unitRuns.length) throw new Error('かなの走りと文節の走りの数が違う');
+  if (kanaRuns.length !== unitRuns.length || kanaRuns.length !== options.runEdges.length) throw new Error('かなの走りと文節の走りの数が違う');
   const ids = new Map<string, number>();
   for (const run of kanaRuns) for (const char of run) if (!ids.has(char)) ids.set(char, ids.size);
   const chars = [...ids.keys()].sort();
@@ -92,7 +95,8 @@ export function extractRepeatCandidates(
   let chapter = 0;
   for (const [runIndex, run] of kanaRuns.entries()) {
     symbols[position] = base + runIndex;
-    unitStart[position] = 1;
+    // この記号は前の走りの終わりの後ろでもある。終わりが境界に当たるかは、前の走りの端で決まる
+    unitStart[position] = runIndex === 0 || options.runEdges[runIndex - 1]!.end ? 1 : 0;
     chapterOf[position] = chapter;
     position++;
     const starts = new Set<number>();
@@ -105,7 +109,7 @@ export function extractRepeatCandidates(
     for (const [offsetInRun, char] of run.entries()) {
       while (chapter < options.chapterStarts.length && options.chapterStarts[chapter]! <= unitCount) chapter++;
       symbols[position] = ids.get(char)!;
-      unitStart[position] = starts.has(offsetInRun) ? 1 : 0;
+      unitStart[position] = (offsetInRun === 0 ? options.runEdges[runIndex]!.start : starts.has(offsetInRun)) ? 1 : 0;
       chapterOf[position] = chapter;
       chapterSizes[chapter]!++;
       position++;
@@ -113,7 +117,7 @@ export function extractRepeatCandidates(
     }
   }
   symbols[position] = base + kanaRuns.length;
-  unitStart[position] = 1;
+  unitStart[position] = kanaRuns.length === 0 || options.runEdges[kanaRuns.length - 1]!.end ? 1 : 0;
   chapterOf[position] = chapter;
 
   const sa = buildSuffixArray(symbols, base + kanaRuns.length + 1);
