@@ -1,15 +1,21 @@
 import {
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
-import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
+import { type Metrics } from '#interpretation/metrics.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
 import { ADJACENT_PAIRS, ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
-import type { Trace } from '#trace/generate.ts';
+import {
+  DISCIPLINE_TARGET_A,
+  disciplineMember,
+  disciplineMetrics,
+  disciplineSetContext,
+  disciplineTrace,
+  zeroFingerRecord,
+} from '../set-discipline-material.ts';
 import {
   ALTERNATE_FINGER_MATRIX_OPTIONS,
   DEFAULT_FINGER_MATRIX_OPTIONS,
@@ -18,7 +24,6 @@ import {
   type FingerMatrixOptions,
   type FingerMatrixSurfaceId,
 } from './options.ts';
-import { LAYOUT_MISSING_REASON } from '#input/setup/index.ts';
 
 /**
  * 配列×指のマトリックスの抽出（仕様 §11.1・§11.2・§11.6）。
@@ -153,99 +158,31 @@ export function computeFingerMatrixExtraction(
 // 入れ忘れ防止テストの材料
 // ---------------------------------------------------------------------------
 
-function fixtureMetrics(): Metrics {
-  const perFinger = {} as Metrics['perFinger'];
-  const perFingerPresses = {} as Metrics['perFingerPresses'];
-  for (const finger of ALL_FINGERS) {
-    perFinger[finger] = 0;
-    perFingerPresses[finger] = 0;
-  }
-  const perFingerPressEvents = { ...perFingerPresses };
-  const perFingerSameFinger = { ...perFingerPresses };
-  perFinger.LI = 2;
-  perFingerPresses.LI = 2;
-  perFingerPressEvents.LI = 2;
-  perFingerSameFinger.LI = 1;
-  return {
-    geometryId: 'row-staggered',
-    geometryName: 'Row-staggered',
-    fingerAssignmentId: 'default',
-    fingerAssignmentName: '既定',
-    fingerAssignmentHasMultiFingerKeys: false,
-    conditions: DEFAULT_METRIC_CONDITIONS,
-    strokes: 2,
-    actions: 2,
-    presses: 2,
-    skipped: 0,
-    inputChars: 2,
-    perFinger,
-    perFingerPresses,
-    perFingerPressEvents,
-    totalUnits: 2,
-    totalMm: 38,
-    meanPerStroke: 1,
-    perCharUnits: 1,
-    perCharSteps: 1,
-    perCharPresses: 1,
-    perActionPresses: 1,
-    perPressUnits: 1,
-    movedPressShare: 100,
-    perMovedPressUnits: 1,
-    textChars: 3,
-    textCharsPerAction: 1,
-    actionsPerTextChar: 1,
-    actionsPerUnit: 1.5,
-    textCharsPerUnit: 1.5,
-    unitsPerTextChar: 2 / 3,
-    singleTapLayerRate: 100,
-    singleTapRate: 100,
-    singleKeyRate: 100,
-    adjacent: ADJACENT_PAIRS.map((pair, i) => ({ pair, meanExcess: i * 0.1, stdDev: i * 0.05, maxExcess: i * 0.2 })),
-    adjacentHomeSpacings: ADJACENT_PAIRS.map(() => 1),
-    adjacentDistribution: [],
-    sameFinger: 1,
-    perFingerSameFinger,
-    combos: { definitions: 0, matched: 0, hits: 0 },
-    layers: [],
-    comboPresses: 0,
-    comboKeyCounts: new Map(),
-    comboKeyDistance: new Map(),
-    keyCounts: new Map(),
-    keyDistance: new Map(),
-  };
-}
-
-const FIXTURE_TRACE: Trace = {
-  strokes: [],
-  errors: [],
-  skipped: 0,
-  skippedPositions: [],
-  skippedByKind: { kanji: 0, symbol: 0, other: 0 },
-  inputChars: 2,
-  comboHits: [],
-  comboDefinitions: 0,
-  layerDefinitions: [],
-};
-
-const FIXTURE_TARGET: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
-
 const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
-  {
-    target: FIXTURE_TARGET,
-    trace: FIXTURE_TRACE,
-    analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
-    metrics: fixtureMetrics(),
-    requestTrace: {
-      requestTrace: () => {
-        throw new Error('unused');
-      },
-    },
-    remember: noRemember,
-  },
+  disciplineMember(DISCIPLINE_TARGET_A, {
+    trace: disciplineTrace([], 2),
+    metrics: disciplineMetrics(2, {
+      strokes: 2,
+      actions: 2,
+      presses: 2,
+      inputChars: 2,
+      perFinger: { ...zeroFingerRecord(), LI: 2 },
+      perFingerPresses: { ...zeroFingerRecord(), LI: 2 },
+      perFingerPressEvents: { ...zeroFingerRecord(), LI: 2 },
+      perFingerSameFinger: { ...zeroFingerRecord(), LI: 1 },
+      meanPerStroke: 1,
+      perCharUnits: 1,
+      perPressUnits: 1,
+      perMovedPressUnits: 1,
+      actionsPerUnit: 1.5,
+      textCharsPerUnit: 1.5,
+      unitsPerTextChar: 2 / 3,
+      adjacent: ADJACENT_PAIRS.map((pair, i) => ({ pair, meanExcess: i * 0.1, stdDev: i * 0.05, maxExcess: i * 0.2 })),
+      adjacentHomeSpacings: ADJACENT_PAIRS.map(() => 1),
+      sameFinger: 1,
+    }),
+  }),
 ];
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /**
  * engine（`engine/cache.ts` の `getSetExtraction`）が呼ぶ、Analyzer契約の実体。
@@ -260,6 +197,6 @@ export const fingerMatrixDefinition: SetAnalyzerDefinition<FingerMatrixOptions, 
   optionsDiscipline: {
     sample: DEFAULT_FINGER_MATRIX_OPTIONS,
     alternates: ALTERNATE_FINGER_MATRIX_OPTIONS,
-    context: () => ({ members: FIXTURE_MEMBERS, failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(FIXTURE_MEMBERS),
   },
 });
