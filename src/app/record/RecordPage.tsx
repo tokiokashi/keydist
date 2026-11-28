@@ -458,7 +458,7 @@ export function RecordPage({
             この後: {upcoming.join(' ')}
           </p>
           <p className="record-warning" role="status">
-            {runner.wrongKey === undefined ? '' : wrongKeyText(runner.wrongKey)}
+            {runner.wrongKey === undefined ? '' : wrongKeyText(runner.wrongKey, runner.wrongShift)}
           </p>
           <button type="button" onClick={cancel} data-record-cancel>
             {CANCEL_LABEL}

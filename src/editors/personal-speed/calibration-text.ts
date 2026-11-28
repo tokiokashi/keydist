@@ -227,7 +227,9 @@ export function calibrationProgressText(run: CalibrationRun): string {
   return run.tasks.length > 1 ? `${run.index + 1} / ${run.tasks.length}、${remaining}` : remaining;
 }
 
-export function wrongKeyText(keyLabel: string): string {
+export function wrongKeyText(keyLabel: string, shift?: 'press' | 'release'): string {
+  if (shift === 'press') return `今はShiftを押しながら「${keyLabel}」を押す番です。`;
+  if (shift === 'release') return `今はShiftを離して「${keyLabel}」を押す番です。`;
   return `今は「${keyLabel}」を押す番です。`;
 }
 

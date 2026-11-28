@@ -17,6 +17,7 @@ import {
   sentenceSavedMessage,
   sentenceTableSavedDetail,
   sentenceTableSavedText,
+  wrongKeyText,
 } from './calibration-text.ts';
 
 /** 文章の知らせの文だけを検査するための測定結果。表に使う値は持たない。 */
@@ -251,4 +252,10 @@ test('表の「保存したか」は、選ぶ前は保存する時の状態、�
   // 詳しい文は、マスの中の文と同じ語を引く
   assert.ok(sentenceTableSavedDetail('below-minimum', 'pending').startsWith('「保存しない（10打未満）」は'));
   assert.ok(sentenceTableSavedDetail('below-minimum', 'after-save').startsWith('「未保存（10打未満）」は'));
+});
+
+test('Shiftの有無だけが違う打ち間違いの案内は、Shiftを押すか離すかを示す', () => {
+  assert.equal(wrongKeyText('よ', 'press'), '今はShiftを押しながら「よ」を押す番です。');
+  assert.equal(wrongKeyText('よ', 'release'), '今はShiftを離して「よ」を押す番です。');
+  assert.equal(wrongKeyText('よ'), '今は「よ」を押す番です。');
 });
