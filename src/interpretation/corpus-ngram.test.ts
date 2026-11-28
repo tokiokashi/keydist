@@ -30,6 +30,13 @@ test('系列: 句読点は切らずに文節の末尾に残り、取り除く記
   assert.deepEqual(sequences.kana[0]!.join(''), 'わたしは、ねこだ。');
 });
 
+test('系列: 章の始まりは、取り除く記号の分だけ詰めて、かなの系列の位置になる', () => {
+  // 「いぬ」の前で章が始まる。「」と改行は系列に入らず、改行は走りを切る。かなの系列は「ねこだ。」「いぬ」で、章の始まりは4単位の後
+  const reading = '「ねこ」だ。\nいぬ';
+  const sequences = buildCorpusSequences(reading, [], [[...reading].indexOf('い')]);
+  assert.deepEqual(sequences.chapterStarts, [4]);
+});
+
 test('系列: 片仮名は書き換えず、英字と数字は取り除く', () => {
   const sequences = buildCorpusSequences('ニャーabc12ねこ', []);
   assert.deepEqual(sequences.kana[0]!.join(''), 'ニャーねこ');

@@ -72,3 +72,4 @@
 | [0030](0030-ngram-table-analyzer.md) | 表による解析を、固定の最小テキストで解決したSet Analyzerとして置き、表は主スレッドで取得してWorkerへ渡す | 採用 |
 | [0031](0031-ngram-table-from-user-text.md) | 表による解析の表の元に、利用者のテキストを足し、表は計算用Workerの依頼で作る | 採用 |
 | [0032](0032-ngram-table-current-analysis-side-by-side.md) | 表による解析の結果の表に、今の解析の値を、別の依頼で求めて並べる | 採用 |
+| [0033](0033-corpus-candidates-by-maximal-repeats.md) | コーパスの文字列の候補を、かなの系列の極大な繰り返しとして、接尾辞配列で取り出す | 採用 |

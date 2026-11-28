@@ -158,6 +158,16 @@ export function firstChapterOf(body: string): string {
 }
 
 /**
+ * 変換前の本文を、章見出しの行で分けた章の本文にする。先頭の章見出しの前が空白だけなら、その空白は最初の章に入れる。
+ * 章ごとに `convertAozora` で変換してつなぐと、全体を変換した結果と同じになる（章見出しの行は取り除かれる）。
+ */
+export function chapterBodiesOf(body: string): string[] {
+  const pieces = body.split(HEADING_LINE);
+  if (pieces[0]!.trim() === '' && pieces.length > 1) pieces.splice(0, 2, pieces[0]! + pieces[1]!);
+  return pieces;
+}
+
+/**
  * 本文の先頭から、空白を除いた字数が `target` に最も近い文末（`。`）までを返す。
  * 文や語の途中で切ると、打鍵の列の終わりが半端になるので、文末で切る。
  * 字数は評価に渡す前処理と同じく、空白を除いて数える。同じ近さの文末が2つあれば短い方を取る。
