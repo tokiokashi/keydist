@@ -11,10 +11,16 @@ import { useKanaText } from './kana-text-helper.ts';
 async function typeThrough(page: Page): Promise<void> {
   const run = page.locator('[data-record-run="active"]');
   const next = page.locator('[data-record-next] kbd');
+  // 打つ範囲はworkerで計算するので、開始を押してから打つ欄が出るまで間がある。
+  // 欄が出る前に見ると、打ち終えたと見なして1打も打たずに抜ける。
+  await expect(run).toBeVisible();
   for (let step = 0; step < 600; step += 1) {
     if (!(await run.isVisible())) return;
     const labels = await next.allTextContents().catch(() => []);
-    if (labels.length === 0) continue;
+    if (labels.length === 0) {
+      await page.waitForTimeout(20);
+      continue;
+    }
     await page.keyboard.press(labels.map((label) => label.toLowerCase()).join('+'));
     await page.waitForTimeout(20);
   }
