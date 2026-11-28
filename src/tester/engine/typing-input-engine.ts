@@ -143,6 +143,11 @@ export class TypingInputEngine {
   readonly #actionPolicy: ActionRealizationPolicy;
   readonly #contextSatisfied: (requirements: readonly InputContextRequirement[]) => boolean;
   readonly #commitKey: PhysicalKeyId | undefined;
+  /**
+   * 全ての入力が、他のキーとの同時押しや順序の条件を持たない1キーの打鍵だけでできている配列か。
+   * そうでない配列は、順次打鍵の1打目のキーが単独でも別の入力に使われ、打ちかけの打鍵が黙って消えると原因を追えなくなるので、取り消しを当てない。
+   */
+  readonly #allStepsAreSingleKeys: boolean;
   readonly #commitRules: CommitStrokeRules;
 
   readonly #pressed = new Set<PhysicalKeyId>();
@@ -187,6 +192,9 @@ export class TypingInputEngine {
       }
     }
     this.#candidates = candidates;
+    this.#allStepsAreSingleKeys = candidates.every((candidate) =>
+      candidate.alternative.semanticInputs.every((input) => input.physicalKeys.length === 1 && input.requirements.length === 0),
+    );
     this.#maxSequenceLength = Math.max(1, ...candidates.map((candidate) => candidate.operationSignatures.length));
     this.#triggerPolicy = options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY;
     this.#actionPolicy = options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY;
@@ -497,9 +505,10 @@ export class TypingInputEngine {
 
   /**
    * 文字をまだ出していない打鍵（打ちかけの入力）に、今の打鍵を続けても、どの入力にも続かない時の、打ちかけの打鍵の数。
-   * 打ちかけの入力が無い時と、今の打鍵が何かの入力に続く時は `undefined`。
+   * 打ちかけの入力が無い時と、今の打鍵が何かの入力に続く時と、配列が単純な順次打鍵だけでできていない時は `undefined`。
    */
   #unassignedContinuation(signature: string): number | undefined {
+    if (!this.#allStepsAreSingleKeys) return undefined;
     let count = 0;
     while (count < this.#segments.length) {
       const segment = this.#segments[this.#segments.length - 1 - count];

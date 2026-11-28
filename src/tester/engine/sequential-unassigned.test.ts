@@ -40,6 +40,7 @@ test('TUT-Code: 3打の入力の途中で割り当ての無い打鍵を続けて
   assert.deepEqual(typeKeys(TUT, ['q', 't', '1', 'q', 'q']), ['並']);
 });
 
-test('雪華: 1打目が文字を出す入力の後は取り消す打ちかけが無いので、割り当ての無い組でも2打目は新しい入力になる', () => {
+test('雪華: かなを単打や同時押しで打つ配列には取り消しを当てず、漢字の1打目を兼ねるキーの後のかなも出る', () => {
+  assert.deepEqual(typeKeys(SECCA, ['t', 'a']), ['ろ']);
   assert.deepEqual(typeKeys(SECCA, [',', ',']), ['ん', 'ん']);
 });
