@@ -12,6 +12,8 @@ import { useElementWidth } from '../use-element-width.tsx';
 import { BoxFigure, composeImageSvg } from '../box-figure.tsx';
 import { boxAxis, boxOwnRange, distanceText } from '../box-figure-model.ts';
 import { ngramTableDefinition, type NgramTableExtracted } from './extract.ts';
+import { ngramTableCurrentDefinition } from './current-extract.ts';
+import { SideBySideTable } from './side-by-side-table.tsx';
 import {
   DISTRIBUTION_COLUMNS,
   distributionBoxRows,
@@ -19,6 +21,7 @@ import {
   distributionValue,
   ngramTableModel,
   resultsTableModel,
+  sideBySideResultsModel,
   type DistributionKind,
   type NgramDisplayRow,
   type NgramRowContext,
@@ -131,7 +134,7 @@ function DistributionFigure({ kind, rows, width, copyFigureImage }: Distribution
 
 const NO_KEYS: ReadonlySet<string> = new Set();
 
-export function NgramTableBody({ extracted, order, rowContext, ngramTable, options, copyFigureImage }: NgramTableBodyProps) {
+export function NgramTableBody({ extracted, order, rowContext, ngramTable, currentAnalysis, options, copyFigureImage }: NgramTableBodyProps) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [measured, measureFigure] = useElementWidth(measureRef);
   const width = measured === undefined || measured <= 0 ? FALLBACK_WIDTH : measured;
@@ -151,7 +154,11 @@ export function NgramTableBody({ extracted, order, rowContext, ngramTable, optio
       {rows.length > 0 ? (
         <>
           <div data-ngram-table-results="">
-            <FigureTable model={resultsTableModel(rows)} />
+            {currentAnalysis === undefined ? (
+              <FigureTable model={resultsTableModel(rows)} />
+            ) : (
+              <SideBySideTable model={sideBySideResultsModel(rows, currentAnalysis, options.lookahead)} />
+            )}
           </div>
           <div ref={measureFigure} className="ngram-table-figures">
             <DistributionFigure kind="distance" rows={rows} width={width} copyFigureImage={copyFigureImage} />
@@ -268,11 +275,16 @@ export const ngramTableAnalyzer = {
   defaultOptions: DEFAULT_NGRAM_TABLE_OPTIONS,
   urlOptions: ngramTableOptions,
   rowContext: ({ targetKey, label, fullName }) => ({ targetKey, label, fullName }),
-  // 今の解析の先読みN（かなで数える）と、Traceを解釈する条件（連鎖・アルペジオ）、評価に渡すテキストの前処理は、この解析の値を変えない
-  conditionExcludeIds: ['windowSize', 'chainInterpretation', 'arpeggioInterpretation', 'keepSymbols', 'keepAlphanumerics'],
+  // 表による解析の値は、今の解析の先読みN（かなで数える）と、評価に渡すテキストの前処理（記号と英数字の範囲）を読まない。
+  // 表の元が選んだテキストの時は、並べる今の解析の値がこの3つで変わるので、条件に残す。Traceを解釈する条件（連鎖・アルペジオ）は、どちらの値も変えない
+  conditionExcludeIds: (options: NgramTableOptions) =>
+    options.source === 'text'
+      ? ['chainInterpretation', 'arpeggioInterpretation']
+      : ['windowSize', 'chainInterpretation', 'arpeggioInterpretation', 'keepSymbols', 'keepAlphanumerics'],
   ngramTable: {
     orderOf: (options: NgramTableOptions) => options.order,
     usesText: (options: NgramTableOptions) => options.source === 'text',
     provenance: (asset: NgramTableAsset | undefined, options: NgramTableOptions) => ngramTableProvenance(asset, options),
+    currentAnalysis: ngramTableCurrentDefinition,
   },
 } satisfies SetAnalyzerPaneParts<NgramTableOptions, NgramTableExtracted, NgramTableRowContext>;

@@ -87,6 +87,14 @@ export function settingsItemIds(ids: readonly string[] | undefined): readonly Se
   return (ids ?? []).filter((id): id is SettingsItemId => id in SETTINGS_ITEMS);
 }
 
+/** Analyzerが宣言した、条件から除く項目のid。解析設定で変わる宣言は、その時の解析設定で決める。 */
+export function conditionExcludeIdsOf<Options>(
+  declared: readonly string[] | ((options: Options) => readonly string[]) | undefined,
+  options: Options,
+): readonly SettingsItemId[] {
+  return settingsItemIds(typeof declared === 'function' ? declared(options) : declared);
+}
+
 export type ConditionValueFormat = 'primitive' | 'object';
 
 export interface ConditionSummaryRow {

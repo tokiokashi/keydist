@@ -26,6 +26,8 @@ export interface SentenceRunController {
   readonly session: SentenceSession | undefined;
   /** 直前の打鍵が違うキーだった時の、次に打つキーの名前。次の正しい打鍵で消える。 */
   readonly wrongKey: string | undefined;
+  /** 直前の打鍵が、次に押すキーをShiftの有無だけ違えて押したものだった時の、Shiftの過不足。 */
+  readonly wrongShift: 'press' | 'release' | undefined;
   /** `rounds`は1本の文を打つ回数。省略すると個人速度の測定の回数（`SENTENCE_ROUNDS`）。 */
   start(plans: readonly SentencePlan[], rounds?: number): void;
   cancel(): void;
@@ -38,6 +40,7 @@ export interface SentenceRunController {
 export function useSentenceRun(options: SentenceRunOptions): SentenceRunController {
   const [session, setSession] = useState<SentenceSession | undefined>(undefined);
   const [wrongKey, setWrongKey] = useState<string | undefined>(undefined);
+  const [wrongShift, setWrongShift] = useState<'press' | 'release' | undefined>(undefined);
   // 打鍵ごとに最新の進行を読む。描画を待たずに続けて届く打鍵でも取りこぼさないよう、refにも持つ。
   const sessionRef = useRef<SentenceSession | undefined>(undefined);
   const optionsRef = useRef(options);
@@ -63,6 +66,7 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
           setSession(pressed.session);
           // 出力の文字の読み方だけが残っている時は、キーボードが送る文字をそのまま案内する。
           setWrongKey(pressed.outcome.expectedIsOutput ? pressed.outcome.expectedKey.toUpperCase() : keyLabel(pressed.outcome.expectedKey));
+          setWrongShift(pressed.outcome.shift);
           return;
         }
         // 打つキーだった。ブラウザの検索などの働きと、他の層のキー操作へ渡さない。
@@ -72,6 +76,7 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
         }
         if (pressed.outcome.kind === 'ignored') return;
         setWrongKey(undefined);
+        setWrongShift(undefined);
         if (pressed.outcome.kind === 'run-finished') {
           sessionRef.current = undefined;
           setSession(undefined);
@@ -98,14 +103,16 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
     thumbKeysRef.current = sentenceUsesThumbKeys(plans);
     sessionRef.current = next;
     setWrongKey(undefined);
+    setWrongShift(undefined);
     setSession(next);
   }, []);
 
   const cancel = useCallback(() => {
     sessionRef.current = undefined;
     setWrongKey(undefined);
+    setWrongShift(undefined);
     setSession(undefined);
   }, []);
 
-  return { session, wrongKey, start, cancel };
+  return { session, wrongKey, wrongShift, start, cancel };
 }

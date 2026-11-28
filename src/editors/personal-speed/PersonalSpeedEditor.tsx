@@ -1065,7 +1065,7 @@ export function PersonalSpeedEditor({
                       あと{remainingSentenceStrokes(sentenceRun)}打
                     </p>
                     <p className="personal-speed-warning" role="status">
-                      {sentenceRunner.wrongKey === undefined ? '' : wrongKeyText(sentenceRunner.wrongKey)}
+                      {sentenceRunner.wrongKey === undefined ? '' : wrongKeyText(sentenceRunner.wrongKey, sentenceRunner.wrongShift)}
                     </p>
                     <button type="button" data-personal-speed-sentence-cancel onClick={cancelSentence}>
                       中止
