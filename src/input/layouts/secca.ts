@@ -1,10 +1,11 @@
+import { runStepsToEnd } from '../semantics/index.ts';
 import { THUMB_KEY } from '../shapes/geometry.ts';
 import { NAGINATA_TRIGGER_MEANINGS, NAGINATA_V18_FACES, TWO_LAYER_COMPACT_LABELS } from './naginata.ts';
 import {
   SINGLE_LAYER_ID,
   fromFaces,
   withAliases,
-  withSequenceInputs,
+  withSequenceInputsSteps,
   withThumbShiftAlternatives,
   type Face,
   type KanjiDirectDeclaration,
@@ -118,9 +119,13 @@ function seccaFaces(kana: KanaCells): Face[] {
   return faces;
 }
 
-/** 取得した表（`tables/secca.json`）から配列を作る。 */
-function seccaLayout(table: unknown): Layout {
-  const sections = new Map(SECTIONS.map((section) => [section, parseSection(table, section)] as const));
+/** 取得した表（`tables/secca.json`）から配列を作る。作る途中で`yield`する。 */
+function* seccaLayoutSteps(table: unknown): Generator<void, Layout> {
+  const sections = new Map<Section, SeccaRow[]>();
+  for (const section of SECTIONS) {
+    sections.set(section, parseSection(table, section));
+    yield;
+  }
   const kana = readKana(sections.get('kana')!);
   const faces = seccaFaces(kana);
   const unused = [...kana.chords].filter(([, used]) => !used).map(([id]) => id);
@@ -149,8 +154,12 @@ function seccaLayout(table: unknown): Layout {
   const sequences: [string, Sequence][] = SEQUENTIAL_SECTIONS.flatMap((section) =>
     sections.get(section)!.map(({ output, keys }): [string, Sequence] => [output, stepsOf(keys)]),
   );
-  return withSequenceInputs(base, sequences);
+  yield;
+  return yield* withSequenceInputsSteps(base, sequences);
 }
+
+/** 取得した表（`tables/secca.json`）から配列を作る。 */
+const seccaLayout = (table: unknown): Layout => runStepsToEnd(seccaLayoutSteps(table));
 
 /** 表を取得する前に出せる項目（名前・別名・使う物理キー）と、表から配列を作る関数。 */
 export const SECCA_DECLARATION: KanjiDirectDeclaration = {
@@ -161,4 +170,5 @@ export const SECCA_DECLARATION: KanjiDirectDeclaration = {
   // 英字26キーと`, . / ;`。空白キーは右親指で打つ。センターシフトのかなは、親指の設定で左親指にもなる
   physicalKeys: [...'qwertyuiopasdfghjkl;zxcvbnm,./', THUMB_KEY.RT, THUMB_KEY.LT],
   layoutFromTable: seccaLayout,
+  layoutStepsFromTable: seccaLayoutSteps,
 };

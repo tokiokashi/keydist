@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { generateTrace, DEFAULT_TRACE_POLICY } from '#trace/generate.ts';
 import { buildGeometry, THUMB_KEY } from '../shapes/geometry.ts';
@@ -7,6 +8,7 @@ import { isKanjiDirectLayout } from './kanji-direct.ts';
 import { pendingKanjiDirectLayouts } from './kanji-direct-tables.ts';
 import { uncoveredKana } from './kana-coverage.ts';
 import { physicalKeysUsedByLayout } from './physical-keys.ts';
+import { SECCA_DECLARATION } from './secca.ts';
 
 const SECCA = loadedKanjiDirectLayout('secca');
 const geometry = buildGeometry('row-staggered');
@@ -74,4 +76,12 @@ test('表を取得する前の配列の宣言が、表から導いた漢直で�
   assert.deepEqual(pending.aliases, SECCA.aliases);
   assert.equal(isKanjiDirectLayout(pending), isKanjiDirectLayout(SECCA));
   assert.deepEqual([...physicalKeysUsedByLayout(pending)].sort(), [...physicalKeysUsedByLayout(SECCA)].sort());
+});
+
+test('途中で処理を返しながら作った配列は、一度に作った配列と一致する', () => {
+  const table = JSON.parse(readFileSync(new URL('./tables/secca.json', import.meta.url), 'utf8')) as unknown;
+  const steps = SECCA_DECLARATION.layoutStepsFromTable!(table);
+  let next = steps.next();
+  while (!next.done) next = steps.next();
+  assert.deepEqual(next.value, SECCA_DECLARATION.layoutFromTable(table));
 });

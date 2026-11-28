@@ -41,7 +41,11 @@ function hash53(text: string): string {
 
 /** 表（JSON）から配列を作り、配列のidと表の中身から決まる識別子を付けて返す。 */
 export function tableLayoutWithIdentity(table: unknown, layoutFromTable: (table: unknown) => Layout): Layout {
-  const layout = layoutFromTable(table);
+  return withTableIdentity(layoutFromTable(table), table);
+}
+
+/** 表から作り終えた配列に、`tableLayoutWithIdentity`と同じ識別子を付けて返す。配列を途中で`yield`しながら作る時に使う。 */
+export function withTableIdentity(layout: Layout, table: unknown): Layout {
   sources.set(layout, { identity: `${layout.id}:${hash53(JSON.stringify(table))}` as TableIdentity, table });
   return layout;
 }
