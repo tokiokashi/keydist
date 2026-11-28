@@ -6,6 +6,7 @@
 `src/interpretation/corpus-context.ts`（文脈の長さの推定）、
 実行は `scripts/corpus-ngram-tables.ts`（結果をMarkdownの表で出す。`--context` で文脈の長さの推定を出す）。画面には出さない。
 処理は配列の定義を参照せず、品詞を使わない。出現回数をそのまま重みにする以外の重みと、配列の良し悪しを決める基準は作らない。距離モデルの値（`spec/distance-model.md`）は変えない。
+文節の読みの系列の表を、配列で打鍵して集計する解析は `spec/distance-model.md` §13が定義する（`src/interpretation/ngram-table-analysis.ts`）。次数ごとの「足りている最大の次数」は、その解析で選べる表の次数の上限になる。
 
 ## 入力
 
