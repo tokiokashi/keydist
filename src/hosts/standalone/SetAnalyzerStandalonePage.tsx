@@ -54,9 +54,6 @@ import './standalone.css';
  * 書き込みはすべて`dispatch`を経由する
  * （`SingleAnalyzerStandalonePage.tsx`と同じ形）。テキストは単体ページ全体で
  * 共有の「最後に使ったテキスト」を使う。
- *
- * 配列は常に選べる（組み込みカタログに最初から入っている）ため、旧`use-ensure-setup.ts`の
- * ような「手持ちが空なら初期Setupを作る」副作用は無くなった。
  */
 export interface SetAnalyzerStandalonePageProps<Options, Extracted, RowContext> {
   /** 単体ページに載せるAnalyzer（各Analyzerの`definition.tsx`がexportする、ペインに渡すもの）。 */

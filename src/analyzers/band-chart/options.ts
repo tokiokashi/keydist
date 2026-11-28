@@ -18,7 +18,6 @@ export const DEFAULT_BAND_CHART_QUANTITY: BandQuantityId = 'distance';
 
 /** 並べ替えの境目の上限。区分が最も多い量（指ごと、10区分）の境目の数。 */
 export const MAX_SORT_BOUNDARY = 9;
-export const SORT_BOUNDARY_VALUES = Array.from({ length: MAX_SORT_BOUNDARY + 1 }, (_, index) => index) as readonly number[];
 
 export const BAND_SORT_DIRECTIONS = ['desc', 'asc'] as const;
 export type BandSortDirection = (typeof BAND_SORT_DIRECTIONS)[number];

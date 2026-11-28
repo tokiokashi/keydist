@@ -507,55 +507,6 @@ export function triggerChordsDisplayText(
   return [...new Set(unique.map(({ keys, groups }) => keys.map((key) => label(key, groups)).join(' + ')))].join(' / ');
 }
 
-export interface PresentationTriggerGuideStyle {
-  readonly kind: 'layer' | 'combo';
-  readonly colorSlot?: number;
-}
-
-/**
- * legacy key-pattern pickerと同じ規則で、gestureの起点になり得るphysical keyへ
- * presentation色を割り当てる。layerはlayerShiftStylesのseries slotを再利用し、
- * composition/comboは専用色として扱う。
- */
-export function presentationTriggerGuideStyles(layout: Layout): ReadonlyMap<string, PresentationTriggerGuideStyle> {
-  const groups = classifyPresentationFaces(layout);
-  const ordered = orderedPresentationLayers(groups);
-  const faceStyles = layerShiftStyles(ordered);
-  const styles = new Map<string, PresentationTriggerGuideStyle>();
-
-  for (const layer of ordered) {
-    for (const face of layer.faces) {
-      const colorSlot = faceStyles.get(face)?.colorSlot;
-      for (const rawKey of displayTriggerKeys(face)) {
-        const key = resolveKeyId(rawKey);
-        if (styles.has(key)) continue;
-        styles.set(key, {
-          kind: 'layer',
-          ...(colorSlot === undefined ? {} : { colorSlot }),
-        });
-      }
-    }
-  }
-
-  for (const face of groups.combos) {
-    for (const rawKey of displayTriggerKeys(face)) {
-      const key = resolveKeyId(rawKey);
-      if (!styles.has(key)) styles.set(key, { kind: 'combo' });
-    }
-  }
-
-  for (const combo of layout.resolvedComboDefinitions ?? []) {
-    for (const variant of combo.keyVariants ?? [combo.keys]) {
-      for (const rawKey of variant) {
-        const key = resolveKeyId(rawKey);
-        if (!styles.has(key)) styles.set(key, { kind: 'combo' });
-      }
-    }
-  }
-
-  return styles;
-}
-
 /**
  * 個々のchordをカンペへ列挙せず、authoring済みsemantic groupだけを短いラベルとして返す。
  */
@@ -603,7 +554,7 @@ export function compactLayerGuideDefinitions(layout: DefaultLayerNameLayout & Pi
 }
 
 /**
- * legacy layer diagramと同じseries color slotを、単キーで成立するlayer keyへ割り当てる。
+ * 層ごとのヒートマップ（`layerShiftStyles`）と同じseries color slotを、単キーで成立するlayer keyへ割り当てる。
  * 複合triggerの構成キーは常時着色せず、必要時の動的ガイドへ委ねる。
  * 同一physical keyが複数layerの起点ならauthoring順で先に現れるlayerの色を採用する。
  */

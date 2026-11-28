@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { columnSortOption, type ColumnSortOptionValue, defineOption, defineOptions, picklistUrlCodec } from '#analyzers/options.ts';
+import { columnSortOption, defineOption, defineOptions, picklistUrlCodec } from '#analyzers/options.ts';
 import { ADJACENT_PAIRS, ALL_FINGERS } from '#input/shapes/geometry.ts';
 
 /**
@@ -16,8 +16,6 @@ export type FingerMatrixSurfaceId = (typeof FINGER_MATRIX_SURFACE_IDS)[number];
 
 /** 列のid。指の列は指のid、指間の列は隣り合う2本の指のidを`-`でつないだもの（抽出の列のidと同じ）。 */
 export const FINGER_MATRIX_COLUMN_IDS: readonly string[] = [...ALL_FINGERS, ...ADJACENT_PAIRS.map((pair) => `${pair[0]}-${pair[1]}`)];
-
-export type FingerMatrixSort = ColumnSortOptionValue<string>;
 
 export const fingerMatrixOptions = defineOptions({
   surface: defineOption<FingerMatrixSurfaceId>({

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { APP_STATE_STORAGE_KEY } from '#app/state/app-state-storage.ts';
-import { patchAppStateSlice } from '#app/state/app-state-storage.ts';
+import { APP_STATE_STORAGE_KEY, patchAppStateSlice } from '#app/state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import {
   createDefaultInputConverterPreferences,

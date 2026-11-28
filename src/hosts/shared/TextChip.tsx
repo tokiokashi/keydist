@@ -149,7 +149,7 @@ function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, 
   // 後・描画の前に打った文字は下書きにだけあり、複製の保存値（書き込んだ時点の本文）には無い。
   // 保存値へ揃えるとその文字が消える。「自分の書き込みで移った」かは書き込み側
   // （`onTextContentCommit.wasRedirected`）が知っているので、それに従う。他タブが作った複製へ移った
-  // 場合や他タブの書き換えで揃う経路は従来どおり保存値へ揃える。
+  // 場合や他タブの書き換えで揃う経路は保存値へ揃える。
   const currentKey = refKey(resolved.ref);
   const [textDraft, setTextDraft] = useState(resolved.text);
   const [textDraftSource, setTextDraftSource] = useState({ text: resolved.text, ref: resolved.ref });

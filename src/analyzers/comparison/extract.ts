@@ -1,18 +1,21 @@
 import {
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
-import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
-import { ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
-import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
 import { computeComparisonRowValues, type ComparisonRowValues } from '../comparison-column-values.ts';
+import {
+  DISCIPLINE_TARGET_A,
+  DISCIPLINE_TARGET_B,
+  DISCIPLINE_TRACE,
+  disciplineMember,
+  disciplineMetrics,
+  disciplineSetContext,
+} from '../set-discipline-material.ts';
 import { ALTERNATE_COMPARISON_OPTIONS, COMPARISON_COLUMN_IDS, DEFAULT_COMPARISON_OPTIONS, comparisonOptions, type ComparisonOptions } from './options.ts';
-import { LAYOUT_MISSING_REASON } from '#input/setup/index.ts';
 
 /**
  * 比較表Analyzerの抽出。
@@ -78,139 +81,10 @@ export function computeComparisonExtraction(members: readonly AnalyzerSetMember[
 // 入れ忘れ防止テストの材料
 // ---------------------------------------------------------------------------
 
-function fixtureKey(id: string, finger: Finger, x: number, y = 2): Key {
-  return { id, finger, x, y, row: 2, col: 0 };
-}
-
-export function fixturePress(finger: Finger, id: string, x: number, y = 2): Press {
-  return { finger, keys: [fixtureKey(id, finger, x, y)], target: { x, y }, origin: { at: { x, y }, from: 'home' }, gap: 1, distance: 0, sfb: false };
-}
-
-function fixtureParticipation(p: Press): StrokeParticipation {
-  return { hand: p.finger.startsWith('L') ? 'left' : 'right', finger: p.finger, keys: p.keys, roles: ['output'] };
-}
-
-export function fixtureStroke(index: number, presses: Press[]): Stroke {
-  return {
-    index,
-    char: String(index),
-    inputChar: String(index),
-    inputIndex: index,
-    selectionIndex: index,
-    kanaStart: index,
-    kanaEnd: index,
-    aggregationGroupId: 'single',
-    classifications: [],
-    triggerKeys: [],
-    pairedTriggerKeys: [],
-    participations: presses.map(fixtureParticipation),
-    presses,
-    distance: 0,
-    positions: {} as Stroke['positions'],
-  };
-}
-
-export const FIXTURE_TRACE: Trace = {
-  strokes: [
-    fixtureStroke(0, [fixturePress('LI', 'f', 4)]),
-    fixtureStroke(1, [fixturePress('LM', 'd', 3)]),
-    fixtureStroke(2, [fixturePress('RI', 'j', 7)]),
-  ],
-  errors: [],
-  skipped: 0,
-  skippedPositions: [],
-  skippedByKind: { kanji: 0, symbol: 0, other: 0 },
-  inputChars: 3,
-  comboHits: [],
-  comboDefinitions: 0,
-  layerDefinitions: [],
-};
-
-function fixtureFingerRecord(): Record<Finger, number> {
-  return Object.fromEntries(ALL_FINGERS.map((finger) => [finger, 0])) as Record<Finger, number>;
-}
-
-export function fixtureMetrics(totalUnits: number): Metrics {
-  return {
-    geometryId: 'row-staggered',
-    geometryName: 'Row-staggered',
-    fingerAssignmentId: 'default',
-    fingerAssignmentName: '既定',
-    fingerAssignmentHasMultiFingerKeys: false,
-    conditions: DEFAULT_METRIC_CONDITIONS,
-    strokes: 3,
-    actions: 3,
-    presses: 3,
-    skipped: 0,
-    inputChars: 3,
-    perFinger: fixtureFingerRecord(),
-    perFingerPresses: fixtureFingerRecord(),
-    perFingerPressEvents: fixtureFingerRecord(),
-    totalUnits,
-    totalMm: totalUnits * 19,
-    meanPerStroke: totalUnits / 3,
-    perCharUnits: totalUnits / 3,
-    perCharSteps: 1,
-    perCharPresses: 1,
-    perActionPresses: 1,
-    perPressUnits: totalUnits / 3,
-    movedPressShare: 100,
-    perMovedPressUnits: totalUnits / 3,
-    textChars: 3,
-    textCharsPerAction: 1,
-    actionsPerTextChar: 1,
-    actionsPerUnit: 3 / (totalUnits || 1),
-    textCharsPerUnit: 3 / (totalUnits || 1),
-    unitsPerTextChar: totalUnits / 3,
-    singleTapLayerRate: 100,
-    singleTapRate: 100,
-    singleKeyRate: 100,
-    adjacent: [],
-    adjacentHomeSpacings: [],
-    adjacentDistribution: [],
-    sameFinger: 0,
-    perFingerSameFinger: fixtureFingerRecord(),
-    combos: { definitions: 0, matched: 0, hits: 0 },
-    layers: [],
-    comboPresses: 0,
-    comboKeyCounts: new Map(),
-    comboKeyDistance: new Map(),
-    keyCounts: new Map(),
-    keyDistance: new Map(),
-  };
-}
-
-// 比較表はTraceRequesterを使わないので、フィクスチャでは「呼ばれたら気づく」スタブにする。
-const UNUSED_REQUEST_TRACE = {
-  requestTrace: () => {
-    throw new Error('unused');
-  },
-};
-
-const FIXTURE_TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_TARGET_B: AnalysisTarget = { kind: 'setup', setupId: 'fixture-b' };
-const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
-
 const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
-  {
-    target: FIXTURE_TARGET_A,
-    trace: FIXTURE_TRACE,
-    analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
-    metrics: fixtureMetrics(10),
-    requestTrace: UNUSED_REQUEST_TRACE,
-    remember: noRemember,
-  },
-  {
-    target: FIXTURE_TARGET_B,
-    trace: FIXTURE_TRACE,
-    analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
-    metrics: fixtureMetrics(20),
-    requestTrace: UNUSED_REQUEST_TRACE,
-    remember: noRemember,
-  },
+  disciplineMember(DISCIPLINE_TARGET_A, { trace: DISCIPLINE_TRACE, metrics: disciplineMetrics(10) }),
+  disciplineMember(DISCIPLINE_TARGET_B, { trace: DISCIPLINE_TRACE, metrics: disciplineMetrics(20) }),
 ];
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /**
  * engine（`engine/cache.ts`の`getSetExtraction`）が呼ぶ、Analyzer契約の実体。
@@ -227,7 +101,7 @@ export const comparisonDefinition: SetAnalyzerDefinition<ComparisonOptions, Comp
   optionsDiscipline: {
     sample: DEFAULT_COMPARISON_OPTIONS,
     alternates: ALTERNATE_COMPARISON_OPTIONS,
-    context: () => ({ members: FIXTURE_MEMBERS, failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(FIXTURE_MEMBERS),
   },
 });
 

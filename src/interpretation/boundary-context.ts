@@ -12,7 +12,6 @@ import { spanTotals, wholeTotals, type SpanIndex, type SpanMetricId } from './sp
 
 /** 並びの長さ [文字]。 */
 export const BOUNDARY_CONTEXT_LENGTHS = [1, 2, 3] as const;
-export type BoundaryContextLength = (typeof BOUNDARY_CONTEXT_LENGTHS)[number];
 
 /** 比べる指標。1文字あたりの距離。 */
 export const BOUNDARY_CONTEXT_METRIC: SpanMetricId = 'perCharUnits';
