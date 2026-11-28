@@ -187,6 +187,8 @@ export interface ResolveEngineInputOptions {
  * 頼らない（settings-items.tsのromajiRuleIdコメントと同じ判断）。
  */
 function withoutRomaji(layout: Layout): Layout {
+  // 外すものが無ければ同じ配列を返す。表から作った配列の識別子（`table-identity.ts`）を、コピーで失わないため。
+  if (layout.romajiTable === undefined) return layout;
   const { romajiTable: _romajiTable, ...rest } = layout;
   return rest;
 }

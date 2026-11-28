@@ -382,8 +382,15 @@ function segmentsEntirely(chars: readonly string[], canonicalInputs: CanonicalIn
   return true;
 }
 
+const maxHeadingLengthCache = new WeakMap<CanonicalInputMap, number>();
+
 function maxHeadingLength(canonicalInputs: CanonicalInputMap): number {
-  return Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
+  const known = maxHeadingLengthCache.get(canonicalInputs);
+  if (known !== undefined) return known;
+  let max = 1;
+  for (const output of canonicalInputs.keys()) max = Math.max(max, [...output].length);
+  maxHeadingLengthCache.set(canonicalInputs, max);
+  return max;
 }
 
 /**

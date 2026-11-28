@@ -8,6 +8,7 @@
  */
 import { TCODE_DECLARATION } from './tcode.ts';
 import { SECCA_DECLARATION } from './secca.ts';
+import { tableIdentityOf, tableLayoutWithIdentity } from './table-identity.ts';
 import { TUT_CODE_DECLARATION } from './tut-code.ts';
 import type { KanjiDirectDeclaration, Layout } from './types.ts';
 
@@ -19,6 +20,23 @@ const DECLARATION_BY_ID = new Map(KANJI_DIRECT_DECLARATIONS.map((declaration) =>
 export type KanjiDirectTableLoader = (tableFile: string) => Promise<unknown>;
 
 export type KanjiDirectStatus = 'loaded' | 'loading' | 'failed';
+
+function declarationOf(id: string): KanjiDirectDeclaration {
+  const declaration = DECLARATION_BY_ID.get(id);
+  if (declaration === undefined) throw new Error(`表を別のファイルとして配る配列ではない: ${id}`);
+  return declaration;
+}
+
+/**
+ * 表（JSON）から配列を作る。メインスレッドが送った表からWorkerが配列を作る時に使う。
+ * 作った配列の識別子が、送り手の識別子と食い違えば（表の中身が違えば）例外を投げる。
+ */
+export function layoutFromTableSource(id: string, table: unknown, identity: string): Layout {
+  const declaration = declarationOf(id);
+  const layout = tableLayoutWithIdentity(table, declaration.layoutFromTable);
+  if (tableIdentityOf(layout) !== identity) throw new Error(`表の識別子が送り手と食い違う: ${id}`);
+  return layout;
+}
 
 /** 表を取得する前の配列。同じidに対して、いつも同じ値を返す。 */
 const pendingLayouts = new Map<string, Layout>(
@@ -73,9 +91,8 @@ export function configureKanjiDirectLoader(next: KanjiDirectTableLoader | undefi
 
 /** 取得済みの表（JSON）から配列を作って置く。ブラウザ以外（検査・テスト・スクリプト）が表を直接置く時にも使う。 */
 export function registerKanjiDirectTable(id: string, table: unknown): void {
-  const declaration = DECLARATION_BY_ID.get(id);
-  if (declaration === undefined) throw new Error(`表を別のファイルとして配る配列ではない: ${id}`);
-  loadedLayouts.set(id, declaration.layoutFromTable(table));
+  const declaration = declarationOf(id);
+  loadedLayouts.set(id, tableLayoutWithIdentity(table, declaration.layoutFromTable));
   failed.delete(id);
   notify();
 }
@@ -98,7 +115,7 @@ export function requestKanjiDirectLayout(id: string): Promise<void> {
       (table) => {
         inFlight.delete(id);
         try {
-          loadedLayouts.set(id, declaration.layoutFromTable(table));
+          loadedLayouts.set(id, tableLayoutWithIdentity(table, declaration.layoutFromTable));
         } catch {
           failed.add(id);
         }

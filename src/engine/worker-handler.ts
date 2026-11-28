@@ -1,6 +1,7 @@
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineCache } from './cache.ts';
 import { summarizeEngineTrace } from './pipeline.ts';
+import { fromWireInput, fromWireMember, type WireLayoutStore } from './worker-wire.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from './worker-protocol.ts';
 
 function unregisteredAnalyzerError(definitionId: string): Error {
@@ -27,26 +28,32 @@ export interface EngineWorkerRegistry {
 export function createEngineWorkerHandler(cache: EngineCache, registry: EngineWorkerRegistry): (request: EngineWorkerRequest) => EngineWorkerResponse {
   const single = new Map(registry.single.map((definition) => [definition.id, definition]));
   const set = new Map(registry.set.map((definition) => [definition.id, definition]));
+  // 表から作った配列。同じ識別子の依頼には、識別子だけが届く（`worker-wire.ts`）
+  const layouts: WireLayoutStore = new Map();
 
   function solve(request: EngineWorkerRequest): unknown {
+    // 表で届いた配列は、依頼が失敗する場合でも先に作る。送り手は、送った配列をWorkerが持つものとして次から識別子だけを送る
     switch (request.kind) {
       case 'trace-summary':
         // Traceは複製せず、打鍵の列を除いた要約だけをメインスレッドへ返す
-        return summarizeEngineTrace(cache.getTrace(request.input));
+        return summarizeEngineTrace(cache.getTrace(fromWireInput(request.input, layouts)));
       case 'extraction': {
+        const input = fromWireInput(request.input, layouts);
         const definition = single.get(request.definitionId);
         if (definition === undefined) throw unregisteredAnalyzerError(request.definitionId);
-        return cache.getExtraction(request.input, definition, request.options);
+        return cache.getExtraction(input, definition, request.options);
       }
       case 'set-extraction': {
+        const members = request.members.map((member) => fromWireMember(member, layouts));
         const definition = set.get(request.definitionId);
         if (definition === undefined) throw unregisteredAnalyzerError(request.definitionId);
-        return cache.getSetExtraction(request.members, definition, request.options);
+        return cache.getSetExtraction(members, definition, request.options);
       }
       case 'set-warmup': {
+        const member = fromWireMember(request.member, layouts);
         const definition = set.get(request.definitionId);
         if (definition === undefined) throw unregisteredAnalyzerError(request.definitionId);
-        cache.warmSetMember(request.member, definition, request.step);
+        cache.warmSetMember(member, definition, request.step);
         return undefined;
       }
     }

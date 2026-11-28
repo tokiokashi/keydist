@@ -5,6 +5,7 @@ import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 import { SAMPLE_TEXT_JA } from '../../test/kana-sample-text.ts';
+import { mapWithKanjiDirectTables } from '../../test/kanji-direct-tables.ts';
 
 /** 漢字を含まない日本語の入力（読みの辞書を使わずに計算できる）。 */
 const KANA_SAMPLE = SAMPLE_TEXT_JA.replace(/\s+/g, '');
@@ -404,6 +405,63 @@ test('段の依頼が走っている間に打ち切られても、Workerは止�
   assert.equal(workers.length, 1, '同じWorkerが続きを受けた');
   assert.equal(workers[0]!.received.length, 2, '打ち切った抽出の残りの段は送られない');
   remote.dispose();
+});
+
+test('表から作った配列は、表をWorkerごとに1度だけ送り、2度目からは識別子だけを送っても計算結果が一致する', async () => {
+  const layouts = mapWithKanjiDirectTables(LAYOUT_BY_ID);
+  const setup: Setup = { id: 'setup-tcode', number: 1, layoutId: 'tcode', shapeId: 'row-staggered' };
+  const resolution = resolveEngineInput({
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
+    catalog: { layouts, shapes: CATALOG.shapes },
+    userLayouts: new Map(),
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text: KANA_SAMPLE,
+    language: 'ja',
+  });
+  assert.ok(resolution.ok);
+  const input = resolution.input;
+  const workers: Array<ReturnType<typeof createFakeWorker>> = [];
+  const remote = createWorkerEngineComputer(() => {
+    const fake = createFakeWorker();
+    workers.push(fake);
+    return fake.worker;
+  });
+  const local = createEngineCache();
+
+  assert.deepStrictEqual(await remote.getTraceSummary(input), summarizeEngineTrace(local.getTrace(input)));
+  assert.deepStrictEqual(
+    await remote.getExtraction(input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS),
+    local.getExtraction(input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS),
+  );
+  const wireLayouts = workers[0]!.received.map((message) => ('input' in message ? message.input.wireLayout : undefined));
+  assert.ok(wireLayouts[0] !== undefined && 'table' in wireLayouts[0], '最初の依頼は配列を作った表を送る');
+
+  // 識別子を持たない（派生した）配列は、毎回送る
+  const derived = { ...input, layout: { ...input.layout } };
+  await remote.getTraceSummary(derived);
+  await remote.getTraceSummary({ ...derived, text: `${KANA_SAMPLE}あ` });
+  const derivedWire = workers[0]!.received.slice(2).map((message) => ('input' in message ? message.input.wireLayout : undefined));
+  assert.ok(derivedWire.every((wire) => wire !== undefined && 'layout' in wire));
+  remote.dispose();
+
+  // 取り消しでWorkerを立て直したら、新しいWorkerへもう一度配列を送る
+  const controller = new AbortController();
+  const restarted: Array<ReturnType<typeof createFakeWorker>> = [];
+  const restarting = createWorkerEngineComputer(() => {
+    const fake = createFakeWorker({ manual: true });
+    restarted.push(fake);
+    return fake.worker;
+  });
+  const stale = restarting.getTraceSummary(input, controller.signal);
+  const next = restarting.getTraceSummary(input);
+  controller.abort();
+  await assert.rejects(stale, EngineAbortError);
+  const resent = restarted[1]!.received[0]!;
+  assert.ok('input' in resent && 'table' in resent.input.wireLayout, '立て直したWorkerには表をもう一度送る');
+  restarted[1]!.held.shift()!();
+  assert.deepStrictEqual(await next, summarizeEngineTrace(local.getTrace(input)));
+  restarting.dispose();
 });
 
 test('メインスレッドへ返すTraceは打鍵の列を含まない要約で、打鍵の列以外の値は計算結果と同じ', async () => {
