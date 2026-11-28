@@ -1,13 +1,5 @@
 import * as v from 'valibot';
-import {
-  booleanUrlCodec,
-  columnSortOption,
-  type ColumnSortOptionValue,
-  defineOption,
-  defineOptions,
-  stringSetUrlCodec,
-  type OptionUrlCodec,
-} from '#analyzers/options.ts';
+import { booleanUrlCodec, columnSortOption, defineOption, defineOptions, stringSetUrlCodec, type OptionUrlCodec } from '#analyzers/options.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
 
@@ -111,9 +103,6 @@ const visibleColumnsUrl: OptionUrlCodec<readonly ComparisonColumnId[]> = (() => 
   const set = stringSetUrlCodec('columns', COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_IDS.length);
   return { ...set, encode: (value) => value.join(',') };
 })();
-
-/** 並び替えの状態。`null`は並び替えなし（対象の一覧の順のまま）。 */
-export type ComparisonSort = ColumnSortOptionValue<ComparisonColumnId>;
 
 export const comparisonOptions = defineOptions({
   /** 表示する列。空集合は「既定の列を表示」という意味にはしない（要求どおり0列を描く）。 */
