@@ -15,8 +15,6 @@ export const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = (() => 
   return aliases;
 })();
 
-const ALIAS_SOURCE_RANGE = /[\uff01-\uff5e]/;
-
 export const normalizeEvaluationChar = (char: string): string => EVALUATION_CHAR_ALIASES[char] ?? char;
 
 /** 文字列の各文字に全角形の記号の別名を当てる。文字数は変わらない。 */
@@ -35,8 +33,6 @@ export function evaluationCanonicalInputs(layout: Pick<Layout, 'canonicalInputs'
   if (cached) return cached;
   let changed = false;
   for (const heading of source.keys()) {
-    // 別名の元は全角形の範囲にだけあるので、範囲の外の見出しは文字ごとに引かずに飛ばす（雪華は約2.8万見出しある）
-    if (!ALIAS_SOURCE_RANGE.test(heading)) continue;
     if (normalizeEvaluationHeading(heading) !== heading) {
       changed = true;
       break;
