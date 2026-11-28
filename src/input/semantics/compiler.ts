@@ -667,7 +667,7 @@ const activationPathsCanConflict = (left: InputAlternative, right: InputAlternat
   });
 };
 
-/** 途中で処理を返せる処理の、返す位置の間隔。1回の `yield` までに進める項目数。 */
+/** 途中で処理を返せる処理の、返す位置の間隔。1回の`yield`までに進める項目数。 */
 export const STEP_INTERVAL = 512;
 
 /** 途中で処理を返せる処理を、返さずに最後まで進めて結果を取る。 */
@@ -689,7 +689,7 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
 }
 
 /**
- * `validateCanonicalInputMap` と同じ検証を、`STEP_INTERVAL` 項目ごとに `yield` する形で進める。
+ * `validateCanonicalInputMap`と同じ検証を、`STEP_INTERVAL`項目ごとに`yield`する形で進める。
  * 見出しが数万ある配列（漢直）の検証を、呼び出し側が途中で画面のスレッドへ処理を返しながら進めるために使う。
  */
 export function* validateCanonicalInputMapSteps(inputs: CanonicalInputMap): Generator<void, void> {

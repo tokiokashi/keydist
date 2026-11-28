@@ -119,7 +119,7 @@ function seccaFaces(kana: KanaCells): Face[] {
   return faces;
 }
 
-/** 取得した表（`tables/secca.json`）から配列を作る。作る途中で `yield` する。 */
+/** 取得した表（`tables/secca.json`）から配列を作る。作る途中で`yield`する。 */
 function* seccaLayoutSteps(table: unknown): Generator<void, Layout> {
   const sections = new Map<Section, SeccaRow[]>();
   for (const section of SECTIONS) {

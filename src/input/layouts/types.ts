@@ -327,8 +327,8 @@ export interface KanjiDirectDeclaration {
   /** 取得して読み込んだ表（JSON）から配列を作る。形が違えば例外を投げる。 */
   readonly layoutFromTable: (table: unknown) => Layout;
   /**
-   * `layoutFromTable` と同じ配列を、途中で `yield` する形で作る。持つ配列は、呼び出し側が `yield` のたびに画面のスレッドへ処理を返しながら作れる。
-   * 最後まで進めた結果は `layoutFromTable` の結果と一致する。
+   * `layoutFromTable`と同じ配列を、途中で`yield`する形で作る。持つ配列は、呼び出し側が`yield`のたびに画面のスレッドへ処理を返しながら作れる。
+   * 最後まで進めた結果は`layoutFromTable`の結果と一致する。
    */
   readonly layoutStepsFromTable?: (table: unknown) => Generator<void, Layout>;
 }
@@ -702,7 +702,7 @@ export function withSequenceInputs(layout: Layout, entries: readonly (readonly [
 }
 
 /**
- * `withSequenceInputs` と同じ配列を、一定の項目数ごとに `yield` する形で作る。
+ * `withSequenceInputs`と同じ配列を、一定の項目数ごとに`yield`する形で作る。
  * 数万の字を持つ配列（漢直）を、呼び出し側が途中で画面のスレッドへ処理を返しながら作るために使う。
  */
 export function* withSequenceInputsSteps(layout: Layout, entries: readonly (readonly [string, Sequence])[]): Generator<void, Layout> {

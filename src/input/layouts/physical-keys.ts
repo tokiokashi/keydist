@@ -10,8 +10,8 @@ export function physicalKeysUsedByLayout(layout: Pick<Layout, 'canonicalInputs' 
 }
 
 /**
- * `physicalKeysUsedByLayout` と同じ集合を、`STEP_INTERVAL` 項目ごとに `yield` する形で求める。
- * 求めた集合は配列の `canonicalInputs` ごとに覚え、同じ配列に対しては二度求めない。
+ * `physicalKeysUsedByLayout`と同じ集合を、`STEP_INTERVAL`項目ごとに`yield`する形で求める。
+ * 求めた集合は配列の`canonicalInputs`ごとに覚え、同じ配列に対しては二度求めない。
  * 数万の見出しを持つ配列（漢直）の集合を、配列を作る間に先に求めておくために使う。
  */
 export function* physicalKeysUsedByLayoutSteps(layout: Pick<Layout, 'canonicalInputs' | 'pendingTable'>): Generator<void, ReadonlySet<string>> {

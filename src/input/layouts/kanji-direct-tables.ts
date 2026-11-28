@@ -39,10 +39,10 @@ export function layoutFromTableSource(id: string, table: unknown, identity: stri
   return layout;
 }
 
-/** 配列を作る処理が、画面のスレッドを続けて占めてよい時間（ミリ秒）。超えたら、次の `yield` で処理を返す。 */
+/** 配列を作る処理が、画面のスレッドを続けて占めてよい時間（ミリ秒）。超えたら、次の`yield`で処理を返す。 */
 const BUILD_BUDGET_MS = 16;
 
-/** 画面のスレッドへ処理を返す。`scheduler.yield` があればそれで、なければ次のタスクへ回す。 */
+/** 画面のスレッドへ処理を返す。`scheduler.yield`があればそれで、なければ次のタスクへ回す。 */
 function yieldToMainThread(): Promise<void> {
   const scheduler = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
   if (scheduler?.yield !== undefined) return scheduler.yield();
@@ -57,8 +57,8 @@ function* stepsWithWarmup(steps: Generator<void, Layout>): Generator<void, Layou
 }
 
 /**
- * 表から配列を作る。途中で `yield` する作り方を持つ宣言は、一定の時間ごとに画面のスレッドへ処理を返しながら作る。
- * 持たない宣言は一度に作る。どちらも、できる配列は `layoutFromTable` と同じ。
+ * 表から配列を作る。途中で`yield`する作り方を持つ宣言は、一定の時間ごとに画面のスレッドへ処理を返しながら作る。
+ * 持たない宣言は一度に作る。どちらも、できる配列は`layoutFromTable`と同じ。
  */
 async function buildLayoutYielding(declaration: KanjiDirectDeclaration, table: unknown): Promise<Layout> {
   if (declaration.layoutStepsFromTable === undefined) return tableLayoutWithIdentity(table, declaration.layoutFromTable);
