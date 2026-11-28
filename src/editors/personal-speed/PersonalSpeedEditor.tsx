@@ -3,6 +3,8 @@ import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { Fragment, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import { browserKeyBindingsForShape, EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
+import { jisShapeIdFor } from '#input/shapes/jis-shape.ts';
+import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import { FINGERS, isPresetGeometryKind, presetGeometryStandard, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { OVERHEAD_KINDS, SIMULTANEOUS_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import {
@@ -92,7 +94,7 @@ import './personal-speed.css';
 
 /** 測るキーを決める配列・物理配列・指の割り当ての選択肢。 */
 export interface PersonalSpeedCatalog {
-  readonly layouts: readonly Pick<Layout, 'id' | 'name' | 'legends' | 'homeKeys'>[];
+  readonly layouts: readonly Pick<Layout, 'id' | 'name' | 'legends' | 'homeKeys' | 'requiresJisShape' | 'canonicalInputs' | 'pendingTable'>[];
   readonly shapes: readonly PhysicalShape[];
   readonly fingerAssignments: readonly FingerAssignment[];
 }
@@ -451,7 +453,13 @@ export function PersonalSpeedEditor({
   // 測定を始めた時のキーの対応。案内に出す親指のキーの名前は、測定が使う対応で決める。
   const [measureBindings, setMeasureBindings] = useState<BrowserKeyBindingOverrides>(EMPTY_BROWSER_KEY_BINDING_OVERRIDES);
   const measureBindingsRef = useRef<BrowserKeyBindingOverrides>(EMPTY_BROWSER_KEY_BINDING_OVERRIDES);
-  const standard = shape !== undefined && isPresetGeometryKind(shape.id) ? presetGeometryStandard(shape.id) : undefined;
+  // JISの物理配列が要る配列は、選んだ物理配列と同じ形のJISの物理配列で打鍵の列を作るので、キーの対応と刻印の名前もその物理配列で決める。
+  // 選んだ物理配列の対応のままでは、`ろ`のキー（`IntlRo`）からキーのidを引けない。
+  const bindingShapeId = useMemo(
+    () => (layout?.requiresJisShape === true && shape !== undefined ? jisShapeIdFor(shape, physicalKeysUsedByLayout(layout)) : selection.shapeId),
+    [layout, shape, selection.shapeId],
+  );
+  const standard = isPresetGeometryKind(bindingShapeId) ? presetGeometryStandard(bindingShapeId) : undefined;
   const keyLabel = useMemo(() => {
     const legends = basis?.ok ? basis.basis.legends : new Map<string, string>();
     return (keyId: string) => calibrationKeyLabel(legends, keyId, measureBindings, standard);
@@ -498,7 +506,7 @@ export function PersonalSpeedEditor({
     });
   };
   // 押下からキーを引く対応は、選んだ物理配列の対応に、利用者の対応を重ねたもの。測定を始めた時点の値を使う。
-  const codeBindings = () => browserKeyBindingsForShape(selection.shapeId, readKeyBindingOverrides());
+  const codeBindings = () => browserKeyBindingsForShape(bindingShapeId, readKeyBindingOverrides());
   // 測定を始める時に対応を1回だけ読み、測定の取得と案内の両方が同じ対応を使うようにする。
   const snapshotBindings = () => {
     const bindings = codeBindings();

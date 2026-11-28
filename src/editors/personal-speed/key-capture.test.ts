@@ -413,3 +413,12 @@ test('親指のキーを止めた押下の離しは、受け付けない状態�
   // 止めていない押下の離しは、受け付けない間は止めない
   assert.deepEqual(dispatch('keyup', { key: ' ', code: 'Space' }), { prevented: 0, stopped: 0 });
 });
+
+test('文章を打つ測定は、Shiftを押しながらの押下を、event.keyが1文字でなくてもcodeからキーが引ければ取り、Shiftそのものは取らない', () => {
+  // JISキーボードのShift+0は、event.keyが1文字にならない環境がある
+  assert.equal(isCalibrationKeyPress(press('', { code: 'Digit0', shiftKey: true }), {}, true), true);
+  assert.equal(isCalibrationKeyPress(press('', { code: 'IntlRo', shiftKey: true }), { IntlRo: 'r3c10' }, true), true);
+  assert.equal(isCalibrationKeyPress(press('', { code: 'Digit0', shiftKey: true }), {}, false), false);
+  assert.equal(isCalibrationKeyPress(press('Shift', { code: 'ShiftLeft', shiftKey: true }), {}, true), false);
+  assert.equal(isCalibrationKeyPress(press('Escape', { code: 'Escape', shiftKey: true }), {}, true), false);
+});
