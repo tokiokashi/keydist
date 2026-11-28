@@ -5,8 +5,6 @@ import type { SingleTargetSelection } from './single-target-selection.ts';
 /**
  * `SingleTargetSelection`のcodec。payloadは`{ target? }`。
  *
- * 版1はAnalyzerごとに持っていた旧資産（`keydist:analyzer-target-selections`）とは別のキーに
- * 置く新しい資産の版で、旧資産からの移行は持たない（互換は守らない。AGENTS.md）。
  * 対象が壊れていれば診断付きで「まだ選んでいない」へ戻す。
  */
 export const SINGLE_TARGET_SELECTION_CODEC: AssetCodec<SingleTargetSelection> = defineAssetCodec({

@@ -585,7 +585,7 @@ export function fromFaces(id: string, name: string, faces: readonly Face[], thum
         origin: 'face',
       });
 
-      // legacy/presentation mapはauthoring上の先頭pathだけを保持する。
+      // `map`はauthoring上の先頭pathだけを保持する
       if (!map.has(output)) map.set(output, sequence);
       // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
       if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
@@ -783,7 +783,7 @@ export function withComposedOutputs(layout: Layout, entries: Readonly<Record<str
       appendCanonicalAlternative(canonicalInputs, output, alternative);
     }
 
-    // legacy/presentation mapは両componentにdefault sequenceがある場合だけ補完する。
+    // `map`は両componentにdefault sequenceがある場合だけ補完する
     // canonical composition自体の成立条件には使わない。
     if (map.has(output) || !sourceSequence || !markSequence) continue;
 
@@ -1096,7 +1096,7 @@ export function withCombos(id: string, name: string, layout: Layout, combos: Com
       appendCanonicalAlternative(canonicalInputs, output, alternative);
     }
 
-    // legacy/presentation metadataは既存defaultを上書きしない。
+    // `map`などのpresentation metadataは、既にあるdefaultを上書きしない
     if (!map.has(output)) {
       const sequence: Sequence = [keys];
       map.set(output, sequence);
@@ -1150,7 +1150,7 @@ export function withoutRomajiOnlyInputs(layout: Layout): Layout {
     const kept = alternatives.filter((alternative) => !alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input'));
     if (kept.length > 0) canonicalInputs.set(output, kept);
   }
-  // legacy mapはwithCombosが見出しを足しただけなので、canonicalから消えた見出しだけを落とす。
+  // `map`はwithCombosが見出しを足しただけなので、canonicalから消えた見出しだけを落とす。
   const map = new Map(layout.map);
   for (const combo of scoped) {
     if (!canonicalInputs.has(combo.output)) map.delete(combo.output);

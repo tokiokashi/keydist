@@ -6,7 +6,6 @@
  * 器（単体ページ / 将来のWorkspace）をまたいで共有する資産なので、器ごとの選択
  * （`standalone-text-selection-storage.ts`）とは別のキーにする。
  *
- * 既存の資産キー（`keydist:setup-library`等）と衝突しない名前にする。旧`keydist:standalone-text`
- * は読まない（`AGENTS.md`「利用者の保存データの互換は守らない」。移行処理は無い）。
+ * 他の資産キー（`keydist:setup-library`等）と衝突しない名前にする。
  */
 export const TEXT_LIBRARY_STORAGE_KEY = 'keydist:text-library';

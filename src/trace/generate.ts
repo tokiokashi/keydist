@@ -326,7 +326,7 @@ function evaluationUnitsOf(text: string, layout: Layout, romajiChunks: readonly 
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
   const bracketAliases = bracketAliasesFor(layout);
-  // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
+  // 見出し探索もcanonicalInputsを正とする。Layout.mapの見出しの長さには依存しない
   const canonicalInputs = evaluationCanonicalInputs(layout);
   const normalizeChar = (char: string) => normalizeEvaluationChar(bracketAliases[char] ?? char);
   const substituted =
