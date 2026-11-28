@@ -18,6 +18,16 @@ type SentenceAssets = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'f
 const UNBUILDABLE_TEXT = 'この配列・物理配列・指の割り当ての組では、示す文を打つ打鍵の列を作れません。別の組を選んでください。';
 
 /**
+ * 指の割り当てが、打鍵の列を作る物理配列のキーを全部は持たない時の理由。
+ * JISの物理配列が要る配列は、選んだ物理配列と同じ形のJISの物理配列で打つので、ANSIの物理配列用の割り当てではJISだけにあるキーの指を決められない。
+ */
+function geometryText(requiresJisShape: boolean): string {
+  return requiresJisShape
+    ? 'この配列はJISの物理配列で打つので、この指の割り当てでは打つ指を決められないキーがあります。JISの物理配列用の指の割り当てを選んでください。'
+    : 'この物理配列と指の割り当ての組では、打つ指を決められないキーがあります。別の組を選んでください。';
+}
+
+/**
  * 全体の条件に、選んだ物理配列と指の割り当てを重ねた上書き。配列・物理配列・Setupなどのレベルの上書きは
  * 読まない（この画面で選んだ組を、そのまま使うため）。
  * 選んだ指の割り当てが、選んだ物理配列の既定の時は書かない。JISの物理配列が要る配列は、選んだ物理配列と同じ形のJISの物理配列へ
@@ -103,7 +113,10 @@ export function personalSpeedSentenceBuilder(assets: SentenceAssets): (selection
         language: 'ja',
         verbatimText: true,
       });
-      if (!resolved.ok) return { ok: false, message: UNBUILDABLE_TEXT };
+      if (!resolved.ok) {
+        if (resolved.error.kind !== 'geometry') return { ok: false, message: UNBUILDABLE_TEXT };
+        return { ok: false, message: geometryText(catalog.setupCatalog.layouts.get(selection.layoutId)?.requiresJisShape === true) };
+      }
       const traceResult = generateEngineTrace(resolved.input);
       const { trace } = traceResult;
       if (!playableTrace(trace)) {
