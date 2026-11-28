@@ -8,7 +8,7 @@ import {
 } from '#analyzers/contract.ts';
 import { analysisTargetKey } from '#input/setup/index.ts';
 import { buildSpanIndex, guideScaleOf, spanSpread, spanTotals, spanValue, type SpanIndex, type SpanMetricId } from '#interpretation/span-metrics.ts';
-import { type Trace } from '#trace/generate.ts';
+import type { Trace } from '#trace/generate.ts';
 import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
 import { rangeBoundsOf, textRangeBounds } from '#input/text/display-ranges.ts';
 import { PRNG_NAME } from '#interpretation/prng.ts';

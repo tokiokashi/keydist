@@ -55,12 +55,12 @@ function memberInputFor(layoutId: string, input: ResolvedInput): EngineSetMember
   return { target: targetFor(layoutId), resolution: { ok: true, input } };
 }
 
-function assertSeriesMatchesLegacy(series: NSensitivitySeries | undefined, input: ResolvedInput): void {
+function assertSeriesMatchesNSensitivity(series: NSensitivitySeries | undefined, input: ResolvedInput): void {
   assert.ok(series, '対応する系列が見つからない');
   assert.equal(series!.kind, 'ok');
   if (series!.kind !== 'ok') return;
 
-  const legacyPoints = nSensitivity(
+  const directPoints = nSensitivity(
     input.text,
     input.layout,
     input.geometry,
@@ -71,10 +71,10 @@ function assertSeriesMatchesLegacy(series: NSensitivitySeries | undefined, input
     input.arpeggioInterpretation,
   );
 
-  assert.equal(series!.points.length, legacyPoints.length);
-  for (let i = 0; i < legacyPoints.length; i++) {
-    assert.equal(series!.points[i]!.windowSize, legacyPoints[i]!.windowSize, `windowSize[${i}]`);
-    assert.equal(series!.points[i]!.values.totalUnits, legacyPoints[i]!.totalUnits, `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`);
+  assert.equal(series!.points.length, directPoints.length);
+  for (let i = 0; i < directPoints.length; i++) {
+    assert.equal(series!.points[i]!.windowSize, directPoints[i]!.windowSize, `windowSize[${i}]`);
+    assert.equal(series!.points[i]!.values.totalUnits, directPoints[i]!.totalUnits, `totalUnits[${i}] (N=${directPoints[i]!.windowSize})`);
   }
 }
 
@@ -90,11 +90,11 @@ test('cache.getSetExtraction: 異なる配列の2メンバーそれぞれが、�
   );
 
   assert.equal(result.extracted.series.length, 2);
-  assertSeriesMatchesLegacy(
+  assertSeriesMatchesNSensitivity(
     result.extracted.series.find((s) => s.targetKey === 'setup:setup-qwerty'),
     inputA,
   );
-  assertSeriesMatchesLegacy(
+  assertSeriesMatchesNSensitivity(
     result.extracted.series.find((s) => s.targetKey === 'setup:setup-colemak-dh'),
     inputB,
   );
@@ -111,7 +111,7 @@ test('cache.getSetExtraction: 長い日本語サンプル・windowSize=7（非�
   const result = cache.getSetExtraction([memberInputFor('qwerty', input)], nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
 
   assert.equal(result.extracted.series.length, 1);
-  assertSeriesMatchesLegacy(result.extracted.series[0], input);
+  assertSeriesMatchesNSensitivity(result.extracted.series[0], input);
 });
 
 test('cache.getSetExtraction: 解決に失敗したメンバーは系列から落ちてfailuresに回る（実engine経路でも部分失敗を保つ）', () => {

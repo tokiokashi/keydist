@@ -15,10 +15,8 @@ import { N_SENSITIVITY_RANGE, computeMemberSeries, computeNSensitivityExtraction
 import { ALTERNATE_N_SENSITIVITY_OPTIONS, DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions } from './options.ts';
 
 /**
- * `computeMemberSeries`（`extract.ts`）が、旧実装`nSensitivity`（`sensitivity.ts`。
- * legacyの`AnalyzerSensitivityResults`が呼んでいたのと同じ関数）と全11点ビット一致することを
- * 検証する（新しいextractの点が、旧nSensitivity(...)の出力と一致することを
- * 全11N・bit-for-bitでassertする）。
+ * `computeMemberSeries`（`extract.ts`）の点が、Nごとに直接計算する`nSensitivity`（`sensitivity.ts`）の出力と
+ * 全11N・bit-for-bitで一致することを検証する。
  *
  * 条件: 配列qwerty・物理配列row-staggered・指割当既定・テキスト"hello world"・windowSize等は
  * engineの既定（`EMPTY_SETTINGS_OVERRIDES`）。2つ目のケースとして配列colemak-dhでも同様に確認する。
@@ -70,7 +68,7 @@ function checkLayout(layoutId: string, text: string): void {
 
   const series = computeMemberSeries(member);
 
-  const legacyPoints = nSensitivity(
+  const directPoints = nSensitivity(
     input.text,
     input.layout,
     input.geometry,
@@ -81,18 +79,18 @@ function checkLayout(layoutId: string, text: string): void {
     input.arpeggioInterpretation,
   );
 
-  assert.equal(series.points.length, legacyPoints.length);
-  for (let i = 0; i < legacyPoints.length; i++) {
-    assert.equal(series.points[i]!.windowSize, legacyPoints[i]!.windowSize, `windowSize[${i}]`);
-    assert.equal(series.points[i]!.values.totalUnits, legacyPoints[i]!.totalUnits, `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`);
+  assert.equal(series.points.length, directPoints.length);
+  for (let i = 0; i < directPoints.length; i++) {
+    assert.equal(series.points[i]!.windowSize, directPoints[i]!.windowSize, `windowSize[${i}]`);
+    assert.equal(series.points[i]!.values.totalUnits, directPoints[i]!.totalUnits, `totalUnits[${i}] (N=${directPoints[i]!.windowSize})`);
   }
 }
 
-test('computeMemberSeries: qwerty/"hello world" で旧nSensitivityと全11N一致する', () => {
+test('computeMemberSeries: qwerty/"hello world" でnSensitivityと全11N一致する', () => {
   checkLayout('qwerty', 'hello world');
 });
 
-test('computeMemberSeries: colemak-dh/"hello world" で旧nSensitivityと全11N一致する', () => {
+test('computeMemberSeries: colemak-dh/"hello world" でnSensitivityと全11N一致する', () => {
   checkLayout('colemak-dh', 'hello world');
 });
 

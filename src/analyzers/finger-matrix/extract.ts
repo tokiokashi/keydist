@@ -5,7 +5,7 @@ import {
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { type Metrics } from '#interpretation/metrics.ts';
+import type { Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey } from '#input/setup/index.ts';
 import { ADJACENT_PAIRS, ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
 import {
