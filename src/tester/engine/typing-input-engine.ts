@@ -495,6 +495,33 @@ export class TypingInputEngine {
     )[0];
   }
 
+  /**
+   * 文字をまだ出していない打鍵（打ちかけの入力）に、今の打鍵を続けても、どの入力にも続かない時の、打ちかけの打鍵の数。
+   * 打ちかけの入力が無い時と、今の打鍵が何かの入力に続く時は `undefined`。
+   */
+  #unassignedContinuation(signature: string): number | undefined {
+    let count = 0;
+    while (count < this.#segments.length) {
+      const segment = this.#segments[this.#segments.length - 1 - count];
+      if (segment.visibleOutput !== '' || segment.operationSignatures.length !== 1) break;
+      count += 1;
+    }
+    if (count === 0) return undefined;
+
+    const signatures = this.#segments.slice(this.#segments.length - count).map((segment) => segment.operationSignatures[0]);
+    let pendingLength = 0;
+    for (let length = 1; length <= count; length += 1) {
+      const tail = [...signatures.slice(count - length), signature];
+      const isProperPrefix = (path: readonly string[], size: number) => size < path.length && sameStrings(path.slice(0, size), tail.slice(0, size));
+      for (const candidate of this.#candidates) {
+        if (!this.#eligible(candidate)) continue;
+        if (isProperPrefix(candidate.operationSignatures, length + 1)) return undefined;
+        if (isProperPrefix(candidate.operationSignatures, length)) pendingLength = length;
+      }
+    }
+    return pendingLength > 0 ? pendingLength : undefined;
+  }
+
   #hasStandaloneInput(key: PhysicalKeyId): boolean {
     return this.#candidates.some((candidate) => {
       if (!this.#eligible(candidate)) return false;
@@ -646,6 +673,15 @@ export class TypingInputEngine {
         },
         ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys),
       ];
+    }
+
+    const unassigned = this.#unassignedContinuation(step.signature);
+    if (unassigned !== undefined) {
+      // 割り当ての無い組は、打ちかけの入力も今の打鍵も文字を出さず、どちらも次の入力に使わない。T-Codeの入力環境tcも、割り当ての無い組で入力を打ち切る。
+      this.#segments.splice(this.#segments.length - unassigned, unassigned);
+      this.#lastActions = undefined;
+      this.#resetRecognitionWindow();
+      return this.#replayUnconsumedWindowKeys(unconsumedWindowKeys);
     }
 
     const direct = this.#singleStepCandidate(step.signature);
