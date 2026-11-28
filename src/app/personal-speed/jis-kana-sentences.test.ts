@@ -99,3 +99,15 @@ for (const selection of SELECTIONS) {
     assert.equal(sentenceSessionFinished(played.session), true);
   });
 }
+
+for (const selection of [
+  { shapeId: 'jis-row-staggered', fingerAssignmentId: 'default' },
+  { shapeId: 'row-staggered', fingerAssignmentId: 'qwerty-optimized' },
+  { shapeId: 'row-staggered', fingerAssignmentId: 'angle-mod' },
+]) {
+  test(`JISかな配列で、JISのキーを持たない指の割り当て（${selection.shapeId}・${selection.fingerAssignmentId}）を選ぶと、JISの物理配列用の割り当てを選ぶよう示す`, () => {
+    const built = build({ layoutId: 'jis-kana', ...selection }, MEASUREMENT_SENTENCES[0]);
+    assert.ok(!built.ok);
+    assert.match(built.message, /JISの物理配列用の指の割り当てを選んでください/);
+  });
+}
