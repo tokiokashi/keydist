@@ -264,6 +264,6 @@ test('reverseLookupは物理配列に無いキーを答えにせず、打てな�
   for (const route of reverseLookup(layout, 'あいう', 5, ansi)) {
     for (const key of keysOf(route)) assert.ok(ansi.has(resolveKeyId(key)), key);
   }
-  // 制限なしでは従来どおり答える（画面側が理由を区別する根拠）
+  // 制限なしでは答える（画面側が理由を区別する根拠）
   assert.ok(reverseLookup(layout, 'ー', 3).length > 0);
 });

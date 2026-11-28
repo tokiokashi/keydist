@@ -126,7 +126,7 @@ test('canonical identityはoptional holdKeysの情報を保持しselection ident
   );
 });
 
-test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
+test('Step列はordered SemanticInput sequenceへcompileする', () => {
   const inputs = compileSequenceSemanticInputs('x', [['space', 'j'], ['j']], 'single');
 
   assert.equal(inputs.length, 2);
@@ -152,7 +152,7 @@ test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
   });
 });
 
-test('legacy Step compilerはStep間の再押下を許しorder Requirementへ重複させない', () => {
+test('Step列のcompilerはStep間の再押下を許しorder Requirementへ重複させない', () => {
   const inputs = compileSequenceSemanticInputs('x', [['d'], ['d', 'k'], ['d']], 'single');
 
   assert.equal(inputs.length, 3);
@@ -165,12 +165,12 @@ test('legacy Step compilerはStep間の再押下を許しorder Requirementへ重
   assert.deepEqual(inputs[2].requirements, []);
 });
 
-test('legacy Step compilerは空Sequence / 空Stepをerrorにする', () => {
+test('Step列のcompilerは空Sequence / 空Stepをerrorにする', () => {
   assert.throws(() => compileSequenceSemanticInputs('x', [], 'single'), /1 step以上必要/);
   assert.throws(() => compileSequenceSemanticInputs('x', [[]], 'single'), /1 key以上必要/);
 });
 
-test('fromKanaはlegacy Step列をcanonical SemanticInput列として保持する', () => {
+test('fromKanaはStep列をcanonical SemanticInput列として保持する', () => {
   const layout = fromKana('direct-sequence', 'direct-sequence', {
     x: [['space', 'j'], ['j']],
   });
@@ -637,7 +637,7 @@ test('presentation-only membershipは同じセルの異なるsemantic outputと�
   );
 });
 
-test('legacy fromFaces mapは相互Faceを明示しても既存の打鍵列を保持する', () => {
+test('fromFacesのmapは相互Faceを明示しても既存の打鍵列を保持する', () => {
   const shingeta = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
   assert.deepEqual(shingeta.map.get('れ'), [['k', 'd']]);
   assert.deepEqual(shingeta.map.get('さ'), [['l', 's']]);
@@ -656,7 +656,7 @@ test('built-in Layoutは全map outputにcanonical SemanticInput sequenceを持�
   }
 });
 
-test('Face prefixはlegacy 2 Stepでもcanonicalでは1 SemanticInputのorder制約になる', () => {
+test('Face prefixは2 Stepでもcanonicalでは1 SemanticInputのorder制約になる', () => {
   const tsuki = LOADED_LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
   assert.equal(tsuki.map.get('ぬ')?.length, 2);
 
@@ -708,7 +708,7 @@ test('fromRowsは同じoutputの複数物理キーをcanonical alternativeとし
     alternatives.map((alternative) => alternative.semanticInputs[0].physicalKeys),
     [['q'], ['w']],
   );
-  assert.deepEqual(layout.map.get('a'), [['q']], 'legacy mapはauthoring defaultだけを保持する');
+  assert.deepEqual(layout.map.get('a'), [['q']], 'mapはauthoring defaultだけを保持する');
 });
 
 test('fromKana tuple定義は同じoutputの複数pathを保持する', () => {
@@ -804,7 +804,7 @@ test('withComposedOutputsはcanonical sourceだけでsemantic compositionでき�
     alternatives[0].semanticInputs.map((input) => input.physicalKeys),
     [['f'], ['j']],
   );
-  assert.equal(layout.map.has('が'), false, 'legacy map defaultが無くてもcanonical compositionは成立する');
+  assert.equal(layout.map.has('が'), false, 'mapのdefaultが無くてもcanonical compositionは成立する');
 });
 
 test('withComposedOutputsは既存direct pathを失わずcomposed alternativeをappendする', () => {
@@ -823,7 +823,7 @@ test('withComposedOutputsは既存direct pathを失わずcomposed alternativeを
     alternatives[1].semanticInputs.map((input) => input.physicalKeys),
     [['f'], ['j']],
   );
-  assert.deepEqual(layout.map.get('が'), [['k']], 'legacy defaultはdirect pathを維持する');
+  assert.deepEqual(layout.map.get('が'), [['k']], 'mapのdefaultはdirect pathを維持する');
 });
 
 test('withCombosは既存direct pathを失わずcombo alternativeをappendする', () => {
@@ -839,7 +839,7 @@ test('withCombosは既存direct pathを失わずcombo alternativeをappendする
   assert.equal(alternatives.length, 2);
   assert.deepEqual(alternatives[0].semanticInputs[0].physicalKeys, ['q']);
   assert.deepEqual(alternatives[1].semanticInputs[0].physicalKeys, ['f', 'j']);
-  assert.deepEqual(layout.map.get('ab'), [['q']], 'legacy defaultはdirect pathを維持する');
+  assert.deepEqual(layout.map.get('ab'), [['q']], 'mapのdefaultはdirect pathを維持する');
 });
 
 test('youonOnlyはcombo alternative自身のcontext requirementとして保持する', () => {

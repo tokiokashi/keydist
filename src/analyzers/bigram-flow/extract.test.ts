@@ -25,10 +25,8 @@ import { bigramFlowDefinition, computeBigramFlowExtraction, type BigramFlowExtra
 import { ALTERNATE_BIGRAM_FLOW_OPTIONS, DEFAULT_BIGRAM_FLOW_OPTIONS, bigramFlowOptions, type BigramFlowOptions } from './options.ts';
 
 /**
- * `computeBigramFlowExtraction`（`extract.ts`）が、旧`bigram-flow-view.tsx`が
- * componentの中で直接計算していたのと同じ値を返すことを検証する（「抽出」への切り出し。数値そのものは動かないのが正しい。AGENTS.md「リファクタでは
- * 数値が動かないのが正しい」）。旧経路の関数（`bigram-vectors.ts`の各集計関数）を
- * ここで直接呼び、`computeBigramFlowExtraction`の出力と突き合わせる。
+ * `computeBigramFlowExtraction`（`extract.ts`）が、`bigram-vectors.ts`の各集計関数を直接呼んで組み立てた値
+ * （`referenceExtraction`）と同じ値を返すことを検証する。
  */
 
 const key = (id: string, finger: Finger, x: number, y = 2): Key => ({
@@ -148,7 +146,7 @@ function referenceExtraction(trace: Trace, options: BigramFlowOptions): BigramFl
   };
 }
 
-test('computeBigramFlowExtractionは旧view実装が計算していたのと同じ値を返す（既定options）', () => {
+test('computeBigramFlowExtractionは各集計関数を直接呼んだ値と同じ値を返す（既定options）', () => {
   const trace = fixtureTrace();
   const extracted = computeBigramFlowExtraction(trace, DEFAULT_BIGRAM_FLOW_OPTIONS);
   const reference = referenceExtraction(trace, DEFAULT_BIGRAM_FLOW_OPTIONS);
@@ -164,7 +162,7 @@ test('computeBigramFlowExtractionは旧view実装が計算していたのと同�
   assert.equal(extracted.hasCrossHandInAnalysis, reference.hasCrossHandInAnalysis);
 });
 
-test('computeBigramFlowExtractionは1指選択・within-hand・bandwidth変更でも旧実装と同じ値になる', () => {
+test('computeBigramFlowExtractionは1指選択・within-hand・bandwidth変更でも各集計関数を直接呼んだ値と同じになる', () => {
   const trace = fixtureTrace();
   const variants: BigramFlowOptions[] = [
     { ...DEFAULT_BIGRAM_FLOW_OPTIONS, selectedFingers: ['index'] },
