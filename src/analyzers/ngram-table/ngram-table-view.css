@@ -71,22 +71,48 @@
   white-space: normal;
 }
 
-/* 見出しの行が狭くても、次数と先読みの値は省略せず、対象の札が先に縮む。 */
+/*
+ * 個別画面の見出し。名前・対象の欄・解析設定・操作を1つのgridの列に置くと、名前と操作が幅を取って対象の欄が潰れ、
+ * 次数と先読みが他のボタンに重なる。この見出しは折り返す並びにして、入らない部品だけを下の行へ送る。
+ */
+.pane-frame-header:not([data-lead]):has(.ngram-table-header-control) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.pane-frame-header:not([data-lead]):has(.ngram-table-header-control) .pane-frame-target {
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+.pane-frame-header:not([data-lead]):has(.ngram-table-header-control) .pane-settings-button,
+.pane-frame-header:not([data-lead]):has(.ngram-table-header-control) .pane-frame-menu {
+  flex: none;
+}
+
+/*
+ * 見出しの行の、次数と先読みの値。対象の欄と同じ行に入る間は同じ行に置き、入らない幅で初めて下の行へ送る
+ * （対象の欄の基準幅を持たせ、先読みなどのボタンどうし、解析設定のボタンと重ならないようにする）。
+ * 対象の欄は、下の行へ送る前に、読める幅（基準幅）までは縮む。
+ */
+.pane-frame-target:has(.ngram-table-header-control) {
+  flex-wrap: wrap;
+}
+
+.pane-frame-target:has(.ngram-table-header-control) .target-selection {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+}
+
 .ngram-table-header-control {
   display: inline-flex;
   flex: none;
   gap: 0.3rem;
 }
 
-/* 狭い幅で対象の札と解析設定のボタンに挟まれても、重ならないよう左右の余白を詰める。 */
+/* 左右の余白を詰めて、狭い幅でも1行に収まりやすくする。 */
 .ngram-table-header-control .popover-select-button {
-  flex: none;
   padding: 0 0.45rem;
-}
-
-/* 見出しの行に次数と先読みが入らない幅では、対象の欄の下の行へ送る。解析設定のボタンと重ならない。 */
-@container pane (width <= 32rem) {
-  .pane-frame-target:has(.ngram-table-header-control) {
-    flex-wrap: wrap;
-  }
 }
