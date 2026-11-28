@@ -9,6 +9,7 @@ import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { SegmentationInput } from '#input/text/segmentation.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
+import type { NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
 import type { PaneText } from './reading-evaluation.ts';
 import type { ConditionValueNames } from './condition-summary.ts';
 
@@ -57,6 +58,7 @@ export function resolvePaneInput(
   resolvedText: PaneText,
   segmentation?: SegmentationInput,
   keystrokeRecord?: KeystrokeRecord,
+  ngramTable?: NgramTableAsset,
 ): ResolvedInputResult {
   const resolution = resolveEngineInput({
     target,
@@ -76,6 +78,7 @@ export function resolvePaneInput(
     notationWords: resolvedText.notationWords,
     segmentation,
     keystrokeRecord,
+    ngramTable,
   });
   // 組み込みの漢直の配列の表は、配列が計算に使われる時に取得する。取得が済むとカタログが作り直され、ペインが解決し直す
   if (!resolution.ok && resolution.error.kind === 'layout-table' && resolution.error.status === 'loading') {

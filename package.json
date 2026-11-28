@@ -17,8 +17,9 @@
   "scripts": {
     "postinstall": "patch-package --error-on-fail",
     "dev": "vite",
-    "build": "vite build && node --experimental-strip-types scripts/check-prerender-render.ts && node --experimental-strip-types --experimental-vm-modules --disable-warning=ExperimentalWarning scripts/check-modulepreload.ts && node --experimental-strip-types scripts/check-public-package-json.ts && node --experimental-strip-types scripts/check-corpus-assets.ts && node --experimental-strip-types scripts/check-kanji-direct-assets.ts && node --experimental-strip-types scripts/write-workspace-fallback.ts",
+    "build": "vite build && node --experimental-strip-types scripts/check-prerender-render.ts && node --experimental-strip-types --experimental-vm-modules --disable-warning=ExperimentalWarning scripts/check-modulepreload.ts && node --experimental-strip-types scripts/check-public-package-json.ts && node --experimental-strip-types scripts/check-corpus-assets.ts && node --experimental-strip-types scripts/check-kanji-direct-assets.ts && node --experimental-strip-types scripts/check-ngram-table-assets.ts && node --experimental-strip-types scripts/write-workspace-fallback.ts",
     "check:sample": "node --experimental-strip-types scripts/check-sample-text.ts",
+    "check:corpus-table": "node --experimental-strip-types scripts/generate-corpus-ngram-table.ts --check",
     "generate:reading-candidates": "node --experimental-strip-types scripts/generate-reading-candidates.ts",
     "generate:kana-fixtures": "node --experimental-strip-types scripts/generate-kana-fixtures.ts",
     "generate:analyzer-regression-fixture": "node --experimental-strip-types scripts/gen-analyzer-regression-fixture.ts",

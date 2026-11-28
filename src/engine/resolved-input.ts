@@ -10,6 +10,7 @@ import type { NotationWord } from '#input/text/notation-words.ts';
 import { notationExcessFor, type NotationExcess, type ReadingConditions } from '#input/text/reading.ts';
 import type { SegmentationInput } from '#input/text/segmentation.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
+import type { NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
 import { isBuiltin, ROMAJI_RULES, tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { uncoveredTextPositions, type TracePolicy } from '#trace/generate.ts';
@@ -171,6 +172,11 @@ export interface ResolveEngineInputOptions {
    * 抽出が記録を今の入力と照らして使う（`extractionAssets.keystrokeRecord`）。
    */
   readonly keystrokeRecord?: KeystrokeRecord | undefined;
+  /**
+   * 解析が読む文節の読みの表（1つの次数）。表を入力にする解析のペインだけが渡す（`extractionAssets.ngramTable`）。
+   * テキストとは独立に決まる値なので、評価に渡すテキストの前処理は通さない。
+   */
+  readonly ngramTable?: NgramTableAsset | undefined;
   /**
    * 前処理を通さず、`text` をそのまま評価に渡す。画面に出した文を利用者がそのまま打つ場面（個人速度の示す文）が使う。
    */
@@ -386,6 +392,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       extractionAssets: {
         personalSpeed: options.personalSpeed,
         keystrokeRecord: options.keystrokeRecord,
+        ngramTable: options.ngramTable,
         textLanguage: options.language,
         segmentation:
           options.segmentation === undefined || options.verbatimText === true

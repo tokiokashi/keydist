@@ -11,6 +11,8 @@ import type { NotationWord } from '#input/text/notation-words.ts';
 import type { SegmentationAssets } from '#input/text/segmentation.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
+import type { NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
+import type { TableAnalysisSetup } from '#interpretation/ngram-table-analysis.ts';
 import type { RecordCheck } from '#interpretation/record/keystroke-gaps.ts';
 import type { OptionsDefinition, OptionsDisciplineCheck, OptionsDisciplineFixture, OptionsRegistry, OptionsValueMap } from './options.ts';
 
@@ -88,6 +90,11 @@ export interface ExtractionAssets {
   readonly segmentation: SegmentationAssets | undefined;
   /** ペインが選んだ打鍵の記録（`spec/keystroke-record.md`）。選んでいない、または手元に無ければ`undefined` */
   readonly keystrokeRecord: KeystrokeRecord | undefined;
+  /**
+   * 表を入力にする解析（`spec/distance-model.md` §13）が読む、文節の読みの表の1つの次数。表を使うペインだけが器から受け取る。無ければ`undefined`。
+   * 評価に渡すテキストとは独立に決まる値で、Traceと構造解析の結果を変えない。
+   */
+  readonly ngramTable: NgramTableAsset | undefined;
 }
 
 export const DEFAULT_EXTRACTION_ASSETS: ExtractionAssets = {
@@ -95,6 +102,7 @@ export const DEFAULT_EXTRACTION_ASSETS: ExtractionAssets = {
   textLanguage: 'ja',
   segmentation: undefined,
   keystrokeRecord: undefined,
+  ngramTable: undefined,
 };
 
 /** 単一Setup対象の抽出に渡す値。 */
@@ -131,6 +139,11 @@ export interface AnalyzerSetMember {
   readonly trace: Trace;
   readonly analysis: AggregatedAnalysisResult;
   readonly metrics: Metrics;
+  /**
+   * このメンバーの配列・物理配列・Trace方針。Traceを読まず、項目を自分で打鍵して集計する抽出（表を入力にする解析）が使う。
+   * engineが組み立てる時は必ず持ち、テストの材料は、読まない抽出に対しては省略できる。
+   */
+  readonly setup?: TableAnalysisSetup;
   /**
    * このメンバー（Setup）自身の解決済み入力を土台にした`TraceRequester`。
    *

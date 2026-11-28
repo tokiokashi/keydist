@@ -4,6 +4,7 @@ import type { LayoutCategory } from '#input/layouts/layout-category.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { TraceSummary } from '#trace/generate.ts';
+import type { NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
 import type { PaneHelp } from './pane-help.tsx';
 import type { TargetMark } from '#ui/theme/target-marks.ts';
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from './contract.ts';
@@ -202,6 +203,8 @@ export interface SetBodyProps<Extracted, Options, RowContext> {
   readonly playbackJump?: PlaybackJump;
   /** 文節の区切りを使う設定の時の、区切りの用意の状態。`SetAnalyzerPaneParts.usesSegmentation` を宣言したAnalyzerにだけ渡す。 */
   readonly segmentation?: SegmentationStatus;
+  /** 表を入力にする解析の、表の用意の状態。`SetAnalyzerPaneParts.ngramTable` を宣言したAnalyzerにだけ渡す。 */
+  readonly ngramTable?: NgramTableStatus;
   /** ペインで選べる打鍵の記録。`SetAnalyzerPaneParts.selectedRecordId` を宣言したAnalyzerにだけ渡す。 */
   readonly keystrokeRecords?: readonly KeystrokeRecordChoice[];
   /** 選んでいる打鍵の記録の、物理配列・指の割り当て・条件の名前。選んでいない時は渡さない。 */
@@ -260,6 +263,9 @@ export interface FigureImageReadout {
  */
 export type SegmentationStatus = 'ready' | 'unsupported' | 'failed';
 
+/** 表を入力にする解析の、表の用意の状態。`failed` は表を読み込めなかった時で、値を出さない。 */
+export type NgramTableStatus = 'ready' | 'failed';
+
 /** 別のペインの図で押された文字位置への移動を、打鍵再生のペインに伝える形。宛先でなければ `charPosition` は `undefined`（番号だけ進む）。 */
 export interface PlaybackSeekDelivery {
   /** 操作のたびに増える。本体は、当てた番号と比べて新しい操作だけを当てる */
@@ -302,6 +308,14 @@ export interface SetRowSource {
   readonly mark: TargetMark | undefined;
 }
 
+/** 表を入力にするAnalyzerが、解析設定と表から決める値。 */
+export interface NgramTableDeclaration<Options> {
+  /** 解析設定が選ぶ表の次数。選べない次数なら、ホストが選べる次数の最大に直す。 */
+  readonly orderOf: (options: Options) => number;
+  /** 条件の要約に添える出どころ（表の元のテキスト・次数・先読み・区切り・読みの変換・表の規模）。表を読み込む前は`undefined`が渡る。 */
+  readonly provenance: (asset: NgramTableAsset | undefined, options: Options) => readonly { readonly label: string; readonly value: string }[];
+}
+
 /**
  * Setのホスト（単体ページ・Workspaceのペイン・ペイン本体）が引数に取る形。
  * 各Setの`definition.tsx`がこの形のオブジェクトを1つexportし、ホストへ渡すだけで
@@ -333,6 +347,12 @@ export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
    * 求めている間だけ、ホストが分割器を読み込み、区切りを入力へ載せる（求めない設定では分割器に触れない）。
    */
   readonly usesSegmentation?: (options: Options) => boolean;
+  /**
+   * 表を入力にする解析（`spec/distance-model.md` §13）の宣言。持つAnalyzerだけが渡す。
+   * 宣言すると、ホストが同梱の表を取得し、評価に渡すテキストの代わりに日本語の最小のテキストで対象を解決し（テキストは値を変えない）、
+   * 解析設定が選ぶ次数の表を入力へ載せる。選べる次数は`useNgramTableChoices`で入力部品へ渡す。
+   */
+  readonly ngramTable?: NgramTableDeclaration<Options>;
   /**
    * 解析設定が選んでいる打鍵の記録の`id`（選んでいなければ空）。持つAnalyzerだけが宣言する。
    * 宣言すると、ホストが手元の記録から選んだ記録を引いて入力へ載せ、選べる記録の一覧を本体へ`keystrokeRecords`で渡す。

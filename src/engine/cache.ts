@@ -226,6 +226,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
       trace: traceResult.trace,
       analysis: interpretationResult.analysis,
       metrics: interpretationResult.metrics,
+      setup: { layout: input.layout, geometry: input.geometry, tracePolicy: input.tracePolicy, romajiRuleId: input.romajiRuleId },
       assets: input.extractionAssets,
       // メンバー自身の解決済み入力を土台にする（`AnalyzerSetMember.requestTrace`のコメント
       // 参照。N感度は各メンバーごとに独立したNの掃引が要るため、先頭メンバー等の
