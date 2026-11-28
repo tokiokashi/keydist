@@ -1,26 +1,26 @@
 import {
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
   type SetAnalyzerWarmup,
 } from '#analyzers/contract.ts';
-import { ADJACENT_PAIRS, ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
+import { ADJACENT_PAIRS, ALL_FINGERS } from '#input/shapes/geometry.ts';
+import { adjacentExcessSamples, adjacentMeanStdDev, adjacentPairStats, computeTraceScalars, type Metrics } from '#interpretation/metrics.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
+import type { Stroke, Trace } from '#trace/generate.ts';
 import {
-  adjacentExcessSamples,
-  adjacentMeanStdDev,
-  adjacentPairStats,
-  computeTraceScalars,
-  DEFAULT_METRIC_CONDITIONS,
-  type Metrics,
-} from '#interpretation/metrics.ts';
-import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
-import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
+  DISCIPLINE_TARGET_A,
+  disciplineMember,
+  disciplineMetrics,
+  disciplinePress,
+  disciplineSetContext,
+  disciplineStroke,
+  disciplineTrace,
+} from '../set-discipline-material.ts';
 import { ALTERNATE_N_SENSITIVITY_OPTIONS, DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions, type NSensitivityOptions } from './options.ts';
 import { N_SENSITIVITY_METRIC_IDS, type NSensitivityMetricId } from './metric-catalog.ts';
-import { LAYOUT_MISSING_REASON } from '#input/setup/index.ts';
 
 /**
  * N感度Analyzerの抽出。
@@ -137,128 +137,32 @@ export function computeNSensitivityExtraction(
 // 入れ忘れ防止テストの材料
 // ---------------------------------------------------------------------------
 
-function fixtureKey(id: string, finger: Finger, x: number, y = 2): Key {
-  return { id, finger, x, y, row: 2, col: 0 };
-}
-
-function fixturePress(finger: Finger, id: string, x: number, y = 2): Press {
-  return { finger, keys: [fixtureKey(id, finger, x, y)], target: { x, y }, origin: { at: { x, y }, from: 'home' }, gap: 1, distance: 1, sfb: false };
-}
-
-function fixtureParticipation(p: Press): StrokeParticipation {
-  return { hand: p.finger.startsWith('L') ? 'left' : 'right', finger: p.finger, keys: p.keys, roles: ['output'] };
+/** N=windowSizeぶんだけstroke数を変えたTraceを返す、テスト用の単純なスタブ。 */
+function fixtureTrace(strokeCount: number): Trace {
+  return disciplineTrace(
+    Array.from({ length: strokeCount }, (_, index) =>
+      disciplineStroke(index, [disciplinePress('LI', 'f', 4, 2, 1)], { distance: 1, positions: fixturePositions() }),
+    ),
+  );
 }
 
 function fixturePositions(): Stroke['positions'] {
   return Object.fromEntries(ALL_FINGERS.map((finger, i) => [finger, { x: i, y: 2 }])) as Stroke['positions'];
 }
 
-function fixtureStroke(index: number, presses: Press[]): Stroke {
-  return {
-    index,
-    char: String(index),
-    inputChar: String(index),
-    inputIndex: index,
-    selectionIndex: index,
-    kanaStart: index,
-    kanaEnd: index,
-    aggregationGroupId: 'single',
-    classifications: [],
-    triggerKeys: [],
-    pairedTriggerKeys: [],
-    participations: presses.map(fixtureParticipation),
-    presses,
-    distance: presses.reduce((sum, p) => sum + p.distance, 0),
-    positions: fixturePositions(),
-  };
-}
-
-function fixtureTrace(strokeCount: number): Trace {
-  return {
-    strokes: Array.from({ length: strokeCount }, (_, index) => fixtureStroke(index, [fixturePress('LI', 'f', 4)])),
-    errors: [],
-    skipped: 0,
-    skippedPositions: [],
-    skippedByKind: { kanji: 0, symbol: 0, other: 0 },
-    inputChars: strokeCount,
-    comboHits: [],
-    comboDefinitions: 0,
-    layerDefinitions: [],
-  };
-}
-
-function fixtureMetrics(totalUnits: number): Metrics {
-  return {
-    geometryId: 'row-staggered',
-    geometryName: 'Row-staggered',
-    fingerAssignmentId: 'default',
-    fingerAssignmentName: '既定',
-    fingerAssignmentHasMultiFingerKeys: false,
-    conditions: DEFAULT_METRIC_CONDITIONS,
-    strokes: 3,
-    actions: 3,
-    presses: 3,
-    skipped: 0,
-    inputChars: 3,
-    perFinger: {} as Metrics['perFinger'],
-    perFingerPresses: {} as Metrics['perFingerPresses'],
-    perFingerPressEvents: {} as Metrics['perFingerPressEvents'],
-    totalUnits,
-    totalMm: totalUnits * 19,
-    meanPerStroke: totalUnits / 3,
-    perCharUnits: totalUnits / 3,
-    perCharSteps: 1,
-    perCharPresses: 1,
-    perActionPresses: 1,
-    perPressUnits: totalUnits / 3,
-    movedPressShare: 100,
-    perMovedPressUnits: totalUnits / 3,
-    textChars: 3,
-    textCharsPerAction: 1,
-    actionsPerTextChar: 1,
-    actionsPerUnit: 3 / (totalUnits || 1),
-    textCharsPerUnit: 3 / (totalUnits || 1),
-    unitsPerTextChar: totalUnits / 3,
-    singleTapLayerRate: 100,
-    singleTapRate: 100,
-    singleKeyRate: 100,
-    adjacent: [],
-    adjacentHomeSpacings: ADJACENT_PAIRS.map(() => 1),
-    adjacentDistribution: [],
-    sameFinger: 0,
-    perFingerSameFinger: {} as Metrics['perFingerSameFinger'],
-    combos: { definitions: 0, matched: 0, hits: 0 },
-    layers: [],
-    comboPresses: 0,
-    comboKeyCounts: new Map(),
-    comboKeyDistance: new Map(),
-    keyCounts: new Map(),
-    keyDistance: new Map(),
-  };
-}
-
-/** N=windowSizeぶんだけstroke数を変えたTraceを返す、テスト用の単純なスタブ。 */
-function fixtureRequestTrace(): AnalyzerSetMember['requestTrace'] {
-  return {
-    requestTrace: (request) => fixtureTrace((request.tracePolicy?.windowSize ?? 3) + 1),
-  };
-}
-
-const FIXTURE_TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
-
 const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
-  {
-    target: FIXTURE_TARGET_A,
+  disciplineMember(DISCIPLINE_TARGET_A, {
     trace: fixtureTrace(4),
-    analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
-    metrics: fixtureMetrics(4),
-    requestTrace: fixtureRequestTrace(),
-    remember: noRemember,
-  },
+    metrics: disciplineMetrics(4, {
+      perFinger: {} as Metrics['perFinger'],
+      perFingerPresses: {} as Metrics['perFingerPresses'],
+      perFingerPressEvents: {} as Metrics['perFingerPressEvents'],
+      perFingerSameFinger: {} as Metrics['perFingerSameFinger'],
+      adjacentHomeSpacings: ADJACENT_PAIRS.map(() => 1),
+    }),
+    requestTrace: { requestTrace: (request) => fixtureTrace((request.tracePolicy?.windowSize ?? 3) + 1) },
+  }),
 ];
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /**
  * engine（`engine/cache.ts`の`getSetExtraction`）が呼ぶ、Analyzer契約の実体。
@@ -273,6 +177,6 @@ export const nSensitivityDefinition: SetAnalyzerDefinition<NSensitivityOptions, 
   optionsDiscipline: {
     sample: DEFAULT_N_SENSITIVITY_OPTIONS,
     alternates: ALTERNATE_N_SENSITIVITY_OPTIONS,
-    context: () => ({ members: FIXTURE_MEMBERS, failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(FIXTURE_MEMBERS),
   },
 });
