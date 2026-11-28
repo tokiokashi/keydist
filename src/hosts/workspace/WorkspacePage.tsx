@@ -46,6 +46,7 @@ import { KeySelectionContext, useKeySelectionStore } from '#hosts/shared/key-sel
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
 import type { BunsetsuSource } from '#hosts/shared/segmentation.ts';
+import type { NgramTableSource } from '#hosts/shared/ngram-table.ts';
 import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
 import { useHeldEvaluation, useResolvedTextSelection } from '#hosts/shared/use-resolved-text-selection.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
@@ -89,6 +90,8 @@ export interface WorkspacePageProps {
   readonly reading: ReadingSource;
   /** 文節の分割器の入口（`app` が組み立てる）。区切りを使うペインが求めるまで呼ばない。 */
   readonly bunsetsu?: BunsetsuSource;
+  /** 同梱の文節の読みの表の入口（`app` が組み立てる）。表を入力にする解析のペインが求めるまで呼ばない。 */
+  readonly ngramTables?: NgramTableSource;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** ペインのidの発行。 */
@@ -123,6 +126,7 @@ export function WorkspacePage({
   cache,
   reading,
   bunsetsu,
+  ngramTables,
   catalog,
   generateTextId,
   generateId,
@@ -220,6 +224,7 @@ export function WorkspacePage({
             resolvedText: evaluation.text,
             reading: evaluation.state,
             ...(bunsetsu === undefined ? {} : { bunsetsu }),
+            ...(ngramTables === undefined ? {} : { ngramTables }),
             cache,
             dispatch,
             presetLibrary: assets.presetLibrary,
@@ -242,6 +247,7 @@ export function WorkspacePage({
       assetsReady,
       playbackSeek,
       bunsetsu,
+      ngramTables,
     ],
   );
 

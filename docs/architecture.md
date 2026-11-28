@@ -307,7 +307,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **かな3文字までの並びとの比べ方**（定義は `docs/kana-chain-comparison.md`）。n-gramの表の数え方（`interpretation/ngram-table.ts`）、2次マルコフ連鎖の生成文（`interpretation/markov-text.ts`）、元のテキスト・生成文・対照テキストの比べ方と順位・判定（`interpretation/chain-comparison.ts`）は、画面に依存しない純粋な関数。評価（Traceの生成）は呼び出し側が渡す関数で行う。連鎖・生成文・判定は画面に出さず、`scripts/kana-chain-comparison.ts` がコーパスの範囲で実行して表を出す。対照テキストの値は、画面の「対照テキストとの比較」に出す
 - **境目のまわりの並びを揃えたランダムな区切りとの比べ方**（定義は `docs/boundary-context-comparison.md`）。並びの型ごとの区切りの数を文節と揃えたランダムな区切りの作成、選ぶ余地が無い区切りの割合、順位と判定、境目の打鍵が占める割合（`interpretation/boundary-context.ts`）は、画面に依存しない純粋な関数。今は画面に出さず、`scripts/kana-chain-comparison.ts` の `--stage boundary` が全文で実行して表を出す
 - **コーパスの文節の読みとかなのn-gramの表と、統計が足りているかの量**（定義は `docs/corpus-ngram.md`）。系列の作り方、次数ごとの表、統計が足りているかの量（続きが1種類の文脈の出現の割合ほか。`interpretation/corpus-ngram.ts`）は、配列の定義を参照しない純粋な関数。今は画面に出さず、`scripts/corpus-ngram-tables.ts` が全文で実行して次数ごとの量を出す。同じ文書の「文脈の長さの推定」（距離を置いた2単位の相互情報量を、並べ替えた組と比べて、依存を検出できる長さを出す。`interpretation/corpus-context.ts`）も、配列の定義を参照しない純粋な関数で、同じスクリプトの `--context` が出す
-- **文節のn-gramの表による解析**（定義は `spec/distance-model.md` §13、判断は `docs/adr/0026-ngram-table-entry-by-last-bunsetsu.md` から `0029-ngram-table-quantities.md`）。表の項目をホームの状態から打ち、最後の文節の距離を出現回数の重みで足す計算（`interpretation/ngram-table-analysis.ts`）は、画面に依存しない純粋な関数。配列・物理配列・Trace生成の方針は呼び出し側が渡す。先読みを文節の数で数える部分は `trace/generate.ts` の `lookaheadBoundaries` と `trace/finger-selection.ts` の先読みの位置（`PlannedInput.windowStart`）が持ち、渡さなければ今の解析の数え方のまま変わらない。今は画面に出さず、`scripts/corpus-ngram-table-analysis.ts` が標準のコーパスで実行して結果を出す
+- **文節のn-gramの表による解析**（定義は `spec/distance-model.md` §13、判断は `docs/adr/0026-ngram-table-entry-by-last-bunsetsu.md` から `0029-ngram-table-quantities.md`）。表の項目をホームの状態から打ち、最後の文節の距離を出現回数の重みで足す計算（`interpretation/ngram-table-analysis.ts`）は、画面に依存しない純粋な関数。配列・物理配列・Trace生成の方針は呼び出し側が渡す。先読みを文節の数で数える部分は `trace/generate.ts` の `lookaheadBoundaries` と `trace/finger-selection.ts` の先読みの位置（`PlannedInput.windowStart`）が持ち、渡さなければ今の解析の数え方のまま変わらない。画面には「文節の表による解析」（`analyzers/ngram-table/`）が出す。`scripts/corpus-ngram-table-analysis.ts` は標準のコーパスで実行して結果を出す
 
 ### 文節ごとの統計（文節の区切りを使う、もう1つのMulti）
 
@@ -369,7 +369,17 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **評価に渡すテキストを抽出が読む**。各配列は自分のテキストと区切りで求め、基準（区切りが渡された最初の対象）とテキストまたは区切りが違う配列があれば画面に知らせ、文節の数を配列ごとに出す。全配列が同じなら文節の数は1つだけ出す（文にせず「文節 61」の形）
 - **座標は `box-plot/figure-model.ts`**（純粋）。縦軸は0から始め、目盛りの数字と軸の名前の列はスクロールしない別のSVGにし、枠と列（箱と名前）の図だけを横にスクロールする。列の幅は下限（`MIN_COLUMN_WIDTH`）を割らず、配列が多くて領域に収まらなければ図が領域より広くなる。名前は箱の下に縦書きで置く: かな・漢字は1字ずつ立て、英数字の並びは右へ90度倒す（`verticalLabelRuns`。字体の縦書きの字形に頼らず、字の位置を自分で決める）。文字幅の見積もりと名前の切り詰めは帯グラフと共有する（`analyzers/figure-text.ts`）
 - **図の書式は散布図と同じ**（枠で囲む・目盛りは枠の内向き・格子線なし・軸の名前は中央、キャプションは図の下）。箱は全配列で1色・同じ太さにし、ひげの外の値・基準の線・回帰直線は描かない
-- **列の順は対象の順**（左から右）で、値で並べ替えない。全体の図の列を押す（Enter・Spaceも）と、その配列を「選んだ配列」に入れ、もう一度押すと外す（何本でも選べ、保存しない。対象から外れた配列は選びから外す）。選んだ配列が1つ以上ある間、全体の図の下に、選んだ配列だけの図を同じ対象の順で描く。縦軸は全体の図と同じ範囲（選んだ範囲に縮めると差が大きく見えるため）で、列の幅だけが選んだ数に応じて上限まで広がる。選んだ配列の図の列を押すと、その配列の5つの値を図の下に表で出す（全体の図の列は表を出さない）。「選んだ配列を外す」で選びをまとめて外す。図の画像コピーは、2つの図のそれぞれに付く。部品は帯グラフと同じもの（`analyzers/copy-image-control.tsx`）を使う。選んでいる列の強調は画像に入れない。色は `box-plot-view.css` の `:root` に置く
+- **列の順は対象の順**（左から右）で、値で並べ替えない。全体の図の列を押す（Enter・Spaceも）と、その配列を「選んだ配列」に入れ、もう一度押すと外す（何本でも選べ、保存しない。対象から外れた配列は選びから外す）。選んだ配列が1つ以上ある間、全体の図の下に、選んだ配列だけの図を同じ対象の順で描く。縦軸は全体の図と同じ範囲（選んだ範囲に縮めると差が大きく見えるため）で、列の幅だけが選んだ数に応じて上限まで広がる。選んだ配列の図の列を押すと、その配列の5つの値を図の下に表で出す（全体の図の列は表を出さない）。「選んだ配列を外す」で選びをまとめて外す。図の画像コピーは、2つの図のそれぞれに付く。部品は帯グラフと同じもの（`analyzers/copy-image-control.tsx`）を使う。選んでいる列の強調は画像に入れない。色は `box-figure.css` の `:root` に置く
+
+### 文節の表による解析（表を入力にする、もう1つのMulti）
+
+標準のコーパスの文節の読みの表を、配列・Setupごとに打った指の移動距離を、出現回数で重み付けして出すMulti（`analyzers/ngram-table/`）。定義は `spec/distance-model.md` §13、判断は `docs/adr/0030-ngram-table-analyzer.md`。
+
+- **入力は表と対象の条件で、評価に渡すテキストは読まない。** メンバーは固定の最小の日本語のテキストで解決し、抽出は `AnalyzerSetMember.setup`（配列・物理配列・Trace方針・綴りの規則）で表の項目を打つ。テキストの選択を変えても値は動かない
+- **表は `ExtractionAssets.ngramTable`（選んだ次数の1表）で受ける。** 主スレッドが取得し（`platform/ngram/table-loader.ts`）、`app` が器へ注入する（`hosts/shared/ngram-table.ts`・`analyzers/ngram-table-context.tsx`）。同梱の表は選べる次数の1ファイルで、JavaScriptに含めず、表を使うペインが現れた時に取得する。読み込み中と失敗はペインの状態に載せ、表が無い間は値を出さない。`assetsKeyOf` は表の識別子をキーに入れる
+- **解析設定は表の次数 `order` と文節の先読み `lookahead`**（どちらも `affects: 'extract'`）。今の解析の先読み `N`（かなで数える）とは別で、どちらも他方を変えない。選べる次数と既定は、表のファイルが持つ（§13.5）。先読みが次数+1以上の時は計算し直さない
+- **出す量**は、総移動距離・入力1かなあたりの移動距離・打てなかった文字の数の表（`FigureTable`）と、文節の移動距離とそれをかな数で割った値の、出現回数で重み付けした分布の箱ひげ図の2つ。箱の部品は箱ひげ図と共有する（`analyzers/box-figure.tsx`・`box-figure-model.ts`・`box-figure.css`）。図の読み方は、各図の見出しの行のⓘに置く。優劣・順位・合成スコアは出さない
+- **条件の要約と出どころの札**: 表の元のテキスト（出典・アーカイブのsha256）・表の次数・文節の先読み・文節の区切り・読みの変換・表の規模を、条件の要約に添える（`ngram-table/provenance.ts`）。読みの変換は辞書の名前と版だけを出す。青空文庫が残すことを希望する情報（底本・入力者・校正者・ファイル作成）と加えた変更は、表のファイルに持ち、出どころの札に出す。表の次数と文節の先読みの値は、見出しの行に常に出す（「0次の表」「先読み2文節」）。個別画面の見出しは折り返す並びにし（`ngram-table-view.css`）、対象の欄は読める幅（8rem）までは縮み、それでも入らない部品だけを下の行へ送るので、ボタンどうしは重ならない。条件の要約の閉じた1行は、この2つの札を先頭に置いて省略しにくくするが、狭い幅では端が切れる。全文は押して開く条件のモーダルで読める。選べる次数が1つの間は、見出しの次数を押せない値の表示にする。表の元のテキストに加えた変更の文は、画面側（`provenance.ts`）に持ち、表のファイルの `colophon.changes` は作業履歴として別に持つ。表を使わない条件（連鎖・アルペジオの解釈、記号と英数字の取り除き、今の先読みN）は、条件の要約に出さない（`conditionExcludeIds`）
 
 ### 条件の要約
 
@@ -498,7 +508,7 @@ src/
     shapes/          物理配列
     semantics/       trigger / action realization
     romaji/
-    text/            サンプルテキストと言語。`corpus/` は同梱の評価テキストの本文（`*.txt`）と出典（`SOURCES.md`・`catalog.json`）
+    text/            サンプルテキストと言語。`corpus/` は同梱の評価テキストの本文（`*.txt`）と出典（`SOURCES.md`・`catalog.json`）、`ngram/` は同梱の文節の読みの表（`*.json`。生成は `scripts/generate-corpus-ngram-table.ts`）
     settings/        カスケードの仕組み
     setup/           Setup
     combo-set/       利用者が定義したコンボの組と、配列への重ね方
@@ -530,7 +540,7 @@ src/
     theme/           token
     keyboard/        キーボード図など、入力の型を知る部品
     charts/          グラフの部品（系列の点の見本など）
-  platform/          storage・ブラウザAPI。`reading/` は漢字の読みの解析（Worker・wasm・辞書の取得と保存）、`corpus/` は同梱の評価テキストの本文の取得、`bunsetsu/` は文節の分割器（BudouX）
+  platform/          storage・ブラウザAPI。`reading/` は漢字の読みの解析（Worker・wasm・辞書の取得と保存）、`corpus/` は同梱の評価テキストの本文の取得、`ngram/` は同梱の文節の読みの表の取得、`bunsetsu/` は文節の分割器（BudouX）
   app/               組み立て・シェル・AppState。打鍵の記録の画面（`record/`）は、全文の打鍵の列を作る計算を専用のWorkerへ逃がす（`record-worker.ts`。Workerが無い環境では呼び出した側のスレッドで計算する）
   routes/            TanStack Startの規約どおり。createFileRouteだけの薄いファイル
   router.tsx

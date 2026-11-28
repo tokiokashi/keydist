@@ -17,6 +17,7 @@ import { runChartDefinition } from '#analyzers/run-chart/extract.ts';
 import { scatterDefinition } from '#analyzers/scatter/extract.ts';
 import { bandChartDefinition } from '#analyzers/band-chart/extract.ts';
 import { boxPlotDefinition } from '#analyzers/box-plot/extract.ts';
+import { ngramTableDefinition } from '#analyzers/ngram-table/extract.ts';
 import { WORKSPACE_ANALYZERS } from '#hosts/workspace/analyzer-registry.ts';
 import { ANALYZER_OPTIONS_DECODERS } from './analyzer-options-decoders.ts';
 
@@ -38,6 +39,7 @@ const DEFINITIONS = [
   scatterDefinition,
   bandChartDefinition,
   boxPlotDefinition,
+  ngramTableDefinition,
 ];
 
 test('全Analyzerの解析設定を、そのAnalyzerの定義と同じdecodeOptionsで読む', () => {

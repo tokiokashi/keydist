@@ -16,6 +16,7 @@ import { CONTROL_TEXTS_PANE_META } from '#analyzers/control-texts/pane-meta.ts';
 import { SCATTER_PANE_META } from '#analyzers/scatter/pane-meta.ts';
 import { BAND_CHART_PANE_META } from '#analyzers/band-chart/pane-meta.ts';
 import { BOX_PLOT_PANE_META } from '#analyzers/box-plot/pane-meta.ts';
+import { NGRAM_TABLE_PANE_META } from '#analyzers/ngram-table/pane-meta.ts';
 import { WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
 import { TopTargetPick } from '../app/top/TopTargetPick.tsx';
 import { SAMPLE_KINDS, sampleLabel } from '#engine/sample-workspace.ts';
@@ -86,6 +87,9 @@ function SidebarSample() {
         </Link>
         <Link className="sidebar-link" to="/analyzer/box-plot">
           {BOX_PLOT_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/ngram-table">
+          {NGRAM_TABLE_PANE_META.name}
         </Link>
       </section>
       <section className="sidebar-group">

@@ -917,6 +917,15 @@ h2.pane-frame-title {
   color: var(--text-muted);
 }
 
+.pane-condition-summary:not([data-compact]) .pane-condition-trigger {
+  overflow: hidden;
+}
+
+.pane-condition-provenance[data-keep-width] {
+  flex-shrink: 0;
+  overflow: visible;
+}
+
 .pane-condition-diffs h4 {
   margin: 0 0 0.3rem;
   padding-top: 0.45rem;

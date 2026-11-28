@@ -3,7 +3,14 @@ import type { EngineSetMemberInput } from '#engine/request.ts';
 import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
 import { layoutCategory } from '#input/layouts/layout-category.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
-import type { KeystrokeRecordChoice, PlaybackJump, SegmentationStatus, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
+import type {
+  KeystrokeRecordChoice,
+  NgramTableStatus,
+  PlaybackJump,
+  SegmentationStatus,
+  SetAnalyzerPaneParts,
+  SetRowSource,
+} from '#analyzers/pane-parts.tsx';
 import { recordTargetMatches } from '#interpretation/record/keystroke-gaps.ts';
 import { textDigest } from '#interpretation/record/keystroke-record.ts';
 import { keystrokeRecordTexts } from '../keystroke-record-texts.ts';
@@ -34,6 +41,9 @@ import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { comboSetProvenanceOfTargets, isWaitingForReading, readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
 import { useSegmentation } from '../segmentation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
+import { NGRAM_TABLE_PANE_TEXT, useNgramTable } from '../ngram-table.ts';
+import { NgramTableChoicesProvider } from '#analyzers/ngram-table-context.tsx';
+import { ngramTableAssetOf } from '#interpretation/ngram-table-asset.ts';
 
 /**
  * 対象の集合を見るAnalyzer（Set）のペイン。どのSetも、渡された`analyzer`だけが違う。個別画面とWorkspaceのペインが同じこのcomponentを使う。
@@ -70,9 +80,37 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   onOptionsChange,
   linkNotices,
 }: SetAnalyzerPaneProps<Options, Extracted, RowContext>) {
-  const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
+  const { setups, overrides, catalog, cache, dispatch, assetsReady } = env;
+  // 表を入力にする解析は、評価に渡すテキストを読まない。対象の解決には最小のテキストを使い、漢字の読みも待たない
+  const usesTable = analyzer.ngramTable !== undefined;
+  const resolvedText = usesTable ? NGRAM_TABLE_PANE_TEXT : env.resolvedText;
+  const readingState = usesTable ? undefined : env.reading;
   // 辞書の読み込み中は、評価に渡すテキストがまだ無いので依頼を出さない（漢字を打てない文字に数えた暫定の数値を出さない）
-  const readingLoading = isWaitingForReading(env.reading);
+  const readingLoading = isWaitingForReading(readingState);
+  // 表を入力にする解析は、同梱の表を取得してから依頼を出す。選べない次数は、選べる次数の最大に直す
+  const tableState = useNgramTable(env.ngramTables, usesTable);
+  const tableFile = tableState.status === 'ready' ? tableState.file : undefined;
+  const wantedOrder = analyzer.ngramTable?.orderOf(options);
+  const tableOrder =
+    tableFile === undefined || wantedOrder === undefined
+      ? undefined
+      : tableFile.selectableOrders.includes(wantedOrder)
+        ? wantedOrder
+        : tableFile.defaultOrder;
+  const tableAsset = useMemo(
+    () => (tableFile === undefined || tableOrder === undefined ? undefined : ngramTableAssetOf(tableFile, tableOrder)),
+    [tableFile, tableOrder],
+  );
+  const tableChoices = useMemo(
+    () => (tableFile === undefined ? undefined : { selectableOrders: tableFile.selectableOrders, defaultOrder: tableFile.defaultOrder }),
+    [tableFile],
+  );
+  const tableLoading = usesTable && tableState.status === 'loading';
+  const tableStatus: NgramTableStatus | undefined = !usesTable
+    ? undefined
+    : tableState.status === 'failed' || env.ngramTables === undefined
+      ? 'failed'
+      : 'ready';
   // 文節の区切りを求める設定の間だけ、分割器を呼ぶ。日本語以外のテキストは材料が無く、区切りを使わずに計算する
   const wantsSegmentation = analyzer.usesSegmentation?.(options) === true;
   const segmentationBasis = useMemo(() => segmentationBasisOf(resolvedText), [resolvedText]);
@@ -86,7 +124,10 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       : segmentationBasis === undefined
         ? 'unsupported'
         : 'ready';
-  const conditionProvenance = useMemo(() => readingProvenance(resolvedText.reading), [resolvedText.reading]);
+  const conditionProvenance = useMemo(
+    () => [...readingProvenance(resolvedText.reading), ...(analyzer.ngramTable?.provenance(tableAsset, options) ?? [])],
+    [resolvedText.reading, analyzer, tableAsset, options],
+  );
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
   const { choiceGroups, targets, colorByKey, markByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
 
@@ -107,10 +148,10 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       targets.map(
         (target): EngineSetMemberInput => ({
           target,
-          resolution: resolvePaneInput(target, setupsById, catalog, overrides, resolvedText, segmentationInput, selectedRecord),
+          resolution: resolvePaneInput(target, setupsById, catalog, overrides, resolvedText, segmentationInput, selectedRecord, tableAsset),
         }),
       ),
-    [targets, setupsById, catalog, overrides, resolvedText, segmentationInput, selectedRecord],
+    [targets, setupsById, catalog, overrides, resolvedText, segmentationInput, selectedRecord, tableAsset],
   );
   const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
 
@@ -236,7 +277,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   const waitsForScreen = chrome.computeOnlyWhenOnScreen === true;
   const { ref: frameRef, onScreen } = usePaneOnScreen<HTMLElement>(waitsForScreen);
   const shown = onScreen && chrome.coveredByMaximizedPane !== true;
-  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading && !segmentationLoading && shown);
+  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading && !segmentationLoading && !tableLoading && shown);
   const { Body, Settings, HeaderControl, TargetItem } = analyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
@@ -267,100 +308,103 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
 
   return (
     <TextLanguageProvider value={resolvedText.language}>
-      <PaneFrame
-        assetsReady={assetsReady}
-        name={analyzer.name}
-        description={analyzer.description}
-        help={resolvePaneHelp(analyzer.help, resolvedText.language)}
-        recommendedWidthRem={recommendedWidthRemOf(analyzer)}
-        headingLevel={chrome.headingLevel}
-        stickyHeader={chrome.stickyHeader}
-        menuItems={chrome.menuItems}
-        headerAction={chrome.headerAction}
-        targetBinding={chrome.targetBinding}
-        optionsBinding={chrome.optionsBinding}
-        showPaneNameInSettings={chrome.showPaneNameInSettings}
-        target={
-          <TargetSelection
-            mode="multiple"
-            groups={choiceGroups}
-            selected={targets}
-            summary={targetSummary}
-            onChange={onTargetsChange}
-            open={selectionOpen}
-            onOpenChange={setSelectionOpen}
-            autoOpen={assetsReady && chrome.autoOpenTargetSelection ? targets.length === 0 && !chrome.holdTargetSelectionClosed : undefined}
-            extraItem={
-              TargetItem === undefined ? undefined : (
-                <TargetItem
-                  value={baselineTargetKey}
-                  candidates={candidates}
-                  onChange={(nextKey) => {
-                    const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
-                    onBaselineChange(next);
-                  }}
-                />
-              )
-            }
-          />
-        }
-        {...(HeaderControl === undefined ? {} : { targetExtra: <HeaderControl options={options} onOptionsChange={onOptionsChange} /> })}
-        settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
-        onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
-        conditionRows={conditionSummary.rows}
-        conditionEditor={{
-          overrides,
-          dispatch,
-          presetLibrary: env.presetLibrary,
-          generatePresetId: env.generatePresetId,
-          undo: env.undo,
-          shapes: catalog.setupCatalog.shapes,
-          customFingerAssignments: catalog.customFingerAssignments,
-          customRomajiRules: catalog.customRomajiRules,
-          ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
-          hiddenIds: excludeIds,
-          // 手持ちに無いSetup（削除したもの）へは、`/setup` で開いても別のSetupが選ばれるだけなので出さない
-          openSetups: targets.flatMap((target) =>
-            target.kind === 'setup' && setupsById.has(target.setupId)
-              ? [{ id: target.setupId, name: namedByKey.get(analysisTargetKey(target))?.displayName ?? target.setupId }]
-              : [],
-          ),
-        }}
-        conditionTargetDiffs={conditionSummary.diffs}
-        conditionProvenance={provenanceItems}
-        reading={env.reading}
-        engineState={extraction}
-        frameRef={frameRef}
-        waitingForScreen={waitsForScreen && !shown && extraction.status === 'idle'}
-        linkNotices={linkNotices}
-        {...(targets.length === 0
-          ? {
-              // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
-              // 押せないボタンが一瞬見えてから表に置き換わるのを避けるため、空のペインにする
-              emptyContent: assetsReady ? (
-                <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
-                  配列・Setupを選ぶ
-                </button>
-              ) : null,
-            }
-          : {})}
-      >
-        {extracted === undefined ? undefined : (
-          <Body
-            extracted={extracted}
-            order={order}
-            rowContext={rowContext}
-            baselineTargetKey={baselineTargetKey}
-            options={options}
-            onOptionsChange={onOptionsChange}
-            copyFigureImage={copyFigureImage}
-            {...(playbackJump === undefined ? {} : { playbackJump })}
-            {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
-            {...(keystrokeRecords === undefined ? {} : { keystrokeRecords })}
-            {...(recordTexts === undefined ? {} : { keystrokeRecordTexts: recordTexts })}
-          />
-        )}
-      </PaneFrame>
+      <NgramTableChoicesProvider value={tableChoices}>
+        <PaneFrame
+          assetsReady={assetsReady}
+          name={analyzer.name}
+          description={analyzer.description}
+          help={resolvePaneHelp(analyzer.help, resolvedText.language)}
+          recommendedWidthRem={recommendedWidthRemOf(analyzer)}
+          headingLevel={chrome.headingLevel}
+          stickyHeader={chrome.stickyHeader}
+          menuItems={chrome.menuItems}
+          headerAction={chrome.headerAction}
+          targetBinding={chrome.targetBinding}
+          optionsBinding={chrome.optionsBinding}
+          showPaneNameInSettings={chrome.showPaneNameInSettings}
+          target={
+            <TargetSelection
+              mode="multiple"
+              groups={choiceGroups}
+              selected={targets}
+              summary={targetSummary}
+              onChange={onTargetsChange}
+              open={selectionOpen}
+              onOpenChange={setSelectionOpen}
+              autoOpen={assetsReady && chrome.autoOpenTargetSelection ? targets.length === 0 && !chrome.holdTargetSelectionClosed : undefined}
+              extraItem={
+                TargetItem === undefined ? undefined : (
+                  <TargetItem
+                    value={baselineTargetKey}
+                    candidates={candidates}
+                    onChange={(nextKey) => {
+                      const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
+                      onBaselineChange(next);
+                    }}
+                  />
+                )
+              }
+            />
+          }
+          {...(HeaderControl === undefined ? {} : { targetExtra: <HeaderControl options={options} onOptionsChange={onOptionsChange} /> })}
+          settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
+          onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
+          conditionRows={conditionSummary.rows}
+          conditionEditor={{
+            overrides,
+            dispatch,
+            presetLibrary: env.presetLibrary,
+            generatePresetId: env.generatePresetId,
+            undo: env.undo,
+            shapes: catalog.setupCatalog.shapes,
+            customFingerAssignments: catalog.customFingerAssignments,
+            customRomajiRules: catalog.customRomajiRules,
+            ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
+            hiddenIds: excludeIds,
+            // 手持ちに無いSetup（削除したもの）へは、`/setup` で開いても別のSetupが選ばれるだけなので出さない
+            openSetups: targets.flatMap((target) =>
+              target.kind === 'setup' && setupsById.has(target.setupId)
+                ? [{ id: target.setupId, name: namedByKey.get(analysisTargetKey(target))?.displayName ?? target.setupId }]
+                : [],
+            ),
+          }}
+          conditionTargetDiffs={conditionSummary.diffs}
+          conditionProvenance={provenanceItems}
+          reading={readingState}
+          engineState={extraction}
+          frameRef={frameRef}
+          waitingForScreen={waitsForScreen && !shown && extraction.status === 'idle'}
+          linkNotices={linkNotices}
+          {...(targets.length === 0
+            ? {
+                // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
+                // 押せないボタンが一瞬見えてから表に置き換わるのを避けるため、空のペインにする
+                emptyContent: assetsReady ? (
+                  <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
+                    配列・Setupを選ぶ
+                  </button>
+                ) : null,
+              }
+            : {})}
+        >
+          {extracted === undefined ? undefined : (
+            <Body
+              extracted={extracted}
+              order={order}
+              rowContext={rowContext}
+              baselineTargetKey={baselineTargetKey}
+              options={options}
+              onOptionsChange={onOptionsChange}
+              copyFigureImage={copyFigureImage}
+              {...(playbackJump === undefined ? {} : { playbackJump })}
+              {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
+              {...(tableStatus === undefined ? {} : { ngramTable: tableStatus })}
+              {...(keystrokeRecords === undefined ? {} : { keystrokeRecords })}
+              {...(recordTexts === undefined ? {} : { keystrokeRecordTexts: recordTexts })}
+            />
+          )}
+        </PaneFrame>
+      </NgramTableChoicesProvider>
     </TextLanguageProvider>
   );
 }

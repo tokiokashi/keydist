@@ -1,0 +1,118 @@
+/* 箱ひげ図の部品（box-plot-*）の見た目は箱ひげ図と同じものを使う。ここは配置だけを持つ。 */
+.ngram-table-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.ngram-table-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 1rem;
+}
+
+.ngram-table-figures {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 0;
+}
+
+.ngram-table-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.ngram-table-notice {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.ngram-table-excluded {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.ngram-table-excluded li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ngram-table-excluded [role='alert'] {
+  color: var(--danger);
+}
+
+/* 選べる次数が1つの間、次数は押せない札にせず、値だけを同じ大きさで出す。 */
+.ngram-table-fixed-value {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* 狭い幅でも結果の表の全列が初めから見えるよう、見出しは折り返す。 */
+[data-ngram-table-results] .figure-table th {
+  white-space: normal;
+}
+
+/*
+ * 個別画面の見出し。名前・対象の欄・解析設定・操作を1つのgridの列に置くと、名前と操作が幅を取って対象の欄が潰れ、
+ * 次数と先読みが他のボタンに重なる。この見出しは折り返す並びにして、入らない部品だけを下の行へ送る。
+ */
+.pane-frame-header:not([data-lead]):has(.ngram-table-header-control) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.pane-frame-header:not([data-lead]):has(.ngram-table-header-control) .pane-frame-target {
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+.pane-frame-header:not([data-lead]):has(.ngram-table-header-control) .pane-settings-button,
+.pane-frame-header:not([data-lead]):has(.ngram-table-header-control) .pane-frame-menu {
+  flex: none;
+}
+
+/*
+ * 見出しの行の、次数と先読みの値。対象の欄と同じ行に入る間は同じ行に置き、入らない幅で初めて下の行へ送る
+ * （対象の欄の基準幅を持たせ、先読みなどのボタンどうし、解析設定のボタンと重ならないようにする）。
+ * 対象の欄は、下の行へ送る前に、読める幅（基準幅）までは縮む。
+ */
+.pane-frame-target:has(.ngram-table-header-control) {
+  flex-wrap: wrap;
+}
+
+.pane-frame-target:has(.ngram-table-header-control) .target-selection {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+}
+
+.ngram-table-header-control {
+  display: inline-flex;
+  flex: none;
+  gap: 0.3rem;
+}
+
+/* 左右の余白を詰めて、狭い幅でも1行に収まりやすくする。 */
+.ngram-table-header-control .popover-select-button {
+  padding: 0 0.45rem;
+}

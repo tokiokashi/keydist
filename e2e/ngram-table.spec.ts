@@ -1,0 +1,27 @@
+import { expect, PAGE_TAG, test } from './fixtures.ts';
+
+/** 文節の表による解析のe2e。値はunit testで固定しているので、ここでは画面の配線（表を取得して、結果の表と2つの図が出る）だけを見る。 */
+
+test('表を取得して、結果の表と2つの分布の図が出る', { tag: PAGE_TAG }, async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('keydist:multi-target-selection') === null) {
+      localStorage.setItem(
+        'keydist:multi-target-selection',
+        JSON.stringify({
+          version: 1,
+          targets: [
+            { kind: 'layout', layoutId: 'qwerty' },
+            { kind: 'layout', layoutId: 'dvorak' },
+          ],
+        }),
+      );
+    }
+  });
+  await page.goto('/analyzer/ngram-table');
+  const feature = page.locator('[data-react-feature="ngram-table"]');
+  const results = feature.locator('[data-ngram-table-results]');
+  await expect(results).toBeVisible({ timeout: 120_000 });
+  await expect(results.locator('tbody tr')).toHaveCount(2);
+  await expect(feature.locator('[data-ngram-table-distribution="distance"] [data-box-plot-box]')).toHaveCount(2);
+  await expect(feature.locator('[data-ngram-table-distribution="perKana"] [data-box-plot-box]')).toHaveCount(2);
+});

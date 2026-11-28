@@ -15,6 +15,7 @@ import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
 import type { BunsetsuSource } from '#hosts/shared/segmentation.ts';
+import type { NgramTableSource } from '#hosts/shared/ngram-table.ts';
 import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
 import { useHeldEvaluation, useResolvedTextSelection } from '#hosts/shared/use-resolved-text-selection.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
@@ -66,6 +67,8 @@ export interface SetAnalyzerStandalonePageProps<Options, Extracted, RowContext> 
   readonly reading: ReadingSource;
   /** 文節の分割器の入口（`app` が組み立てる）。区切りを使う設定のときだけ呼ぶ。 */
   readonly bunsetsu?: BunsetsuSource;
+  /** 同梱の文節の読みの表の入口（`app` が組み立てる）。表を入力にする解析のときだけ呼ぶ。 */
+  readonly ngramTables?: NgramTableSource;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
@@ -98,6 +101,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   cache,
   reading,
   bunsetsu,
+  ngramTables,
   catalog,
   generateTextId,
   onTextContentCommit,
@@ -108,6 +112,8 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   onOpenPlayback,
 }: SetAnalyzerStandalonePageProps<Options, Extracted, RowContext>) {
   const analyzerId = analyzer.definition.id;
+  // 表を入力にする解析は評価に渡すテキストを読まないので、テキストの選択と読みの直しを出さない
+  const usesText = analyzer.ngramTable === undefined;
   const { resolved, body: textBody } = useResolvedTextSelection(assets.standaloneTextSelection, assets.textLibrary);
   const resolvedText = useStableResolvedText(resolved);
   // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
@@ -155,6 +161,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
       resolvedText: evaluation.text,
       reading: evaluation.state,
       ...(bunsetsu === undefined ? {} : { bunsetsu }),
+      ...(ngramTables === undefined ? {} : { ngramTables }),
       cache,
       dispatch,
       presetLibrary: assets.presetLibrary,
@@ -163,7 +170,20 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
       assetsReady,
       ...(openPlayback === undefined ? {} : { openPlayback }),
     }),
-    [assets.setupLibrary, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady, openPlayback, bunsetsu],
+    [
+      assets.setupLibrary,
+      assets.presetLibrary,
+      catalog,
+      evaluation,
+      cache,
+      dispatch,
+      generatePresetId,
+      undo,
+      assetsReady,
+      openPlayback,
+      bunsetsu,
+      ngramTables,
+    ],
   );
 
   const changeOptions = (next: Options) => {
@@ -197,7 +217,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
             const selection = assets.multiTargetSelection;
             const encoded = encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource);
             for (const [key, value] of encoded.params) params.append(key, value);
-            const text = encodeTextToUrl(assets.standaloneTextSelection);
+            const text = usesText ? { params: new URLSearchParams(), userText: false } : encodeTextToUrl(assets.standaloneTextSelection);
             for (const [key, value] of text.params) params.append(key, value);
             const changedConditions = changedConditionLabels({
               targets: selection.targets,
@@ -219,24 +239,28 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
           },
         }}
       >
-        <TextChip
-          holder="standalone"
-          textLibrary={assets.textLibrary}
-          selection={assets.standaloneTextSelection}
-          dispatch={dispatch}
-          generateTextId={generateTextId}
-          onTextContentCommit={onTextContentCommit}
-        />
-        <ReadingChip
-          evaluation={evaluation}
-          source={reading}
-          targets={assets.multiTargetSelection.targets}
-          setups={assets.setupLibrary.setups}
-          catalog={catalog}
-          overrides={assets.setupLibrary.overrides}
-          onCorrect={(ref, surface, value) => dispatch(setReadingCorrectionCommand(ref, surface, value))}
-          onCorrectWord={(ref, remove, add) => dispatch(setWordReadingCorrectionCommand(ref, remove, add))}
-        />
+        {usesText ? (
+          <>
+            <TextChip
+              holder="standalone"
+              textLibrary={assets.textLibrary}
+              selection={assets.standaloneTextSelection}
+              dispatch={dispatch}
+              generateTextId={generateTextId}
+              onTextContentCommit={onTextContentCommit}
+            />
+            <ReadingChip
+              evaluation={evaluation}
+              source={reading}
+              targets={assets.multiTargetSelection.targets}
+              setups={assets.setupLibrary.setups}
+              catalog={catalog}
+              overrides={assets.setupLibrary.overrides}
+              onCorrect={(ref, surface, value) => dispatch(setReadingCorrectionCommand(ref, surface, value))}
+              onCorrectWord={(ref, remove, add) => dispatch(setWordReadingCorrectionCommand(ref, remove, add))}
+            />
+          </>
+        ) : null}
         <DefaultShapeChip
           overrides={assets.setupLibrary.overrides}
           dispatch={dispatch}

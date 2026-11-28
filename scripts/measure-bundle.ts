@@ -85,6 +85,11 @@ export async function measureBundle(publicDir: string): Promise<Record<string, S
   const tableSizes = await Promise.all(tableAssets.map((name) => sizeOfAsset(`assets/${name}`)));
   // 表が無いビルドを測る時は、この項目を出さない。表の欠けは `check-kanji-direct-assets.ts` が見る
   if (tableSizes.length > 0) result['漢直の表（最大の1ファイル）'] = tableSizes.reduce((largest, size) => (size.gzip > largest.gzip ? size : largest));
+  // 文節の読みの表も、表を使う解析が現れた時に取得する独立したファイル。ファイル名は `<元の名前>-<ハッシュ>.json` になる
+  const ngramNames = (await readdir(fileURLToPath(new URL('../src/input/text/ngram/', import.meta.url)))).filter((name) => name.endsWith('.json'));
+  const ngramAssets = assets.filter((name) => ngramNames.some((table) => new RegExp(`^${table.slice(0, -'.json'.length)}-[^/]*\\.json$`).test(name)));
+  const ngramSizes = await Promise.all(ngramAssets.map((name) => sizeOfAsset(`assets/${name}`)));
+  if (ngramSizes.length > 0) result['文節の表（最大の1ファイル）'] = ngramSizes.reduce((largest, size) => (size.gzip > largest.gzip ? size : largest));
   result.CSS全体 = sum(await Promise.all(assets.filter((name) => name.endsWith('.css')).map((name) => sizeOfAsset(`assets/${name}`))));
   return result;
 }

@@ -10,6 +10,7 @@ import type { PaneMenuItem } from '../PaneHeaderParts.tsx';
 import type { PlaybackSeekStore } from '../playback-seek.ts';
 import type { PaneReadingState, PaneText } from '../reading-evaluation.ts';
 import type { BunsetsuSource } from '../segmentation.ts';
+import type { NgramTableSource } from '../ngram-table.ts';
 import type { PaneCatalog } from '../resolve-pane-input.ts';
 
 /**
@@ -40,6 +41,8 @@ export interface PaneEnvironment {
   readonly reading?: PaneReadingState;
   /** 文節の分割器の入口。区切りを使うペインだけが呼ぶ。省略すると区切りを使えない。 */
   readonly bunsetsu?: BunsetsuSource;
+  /** 同梱の文節の読みの表の入口。表を入力にする解析のペインだけが呼ぶ。省略すると表を使えない。 */
+  readonly ngramTables?: NgramTableSource;
   /** 抽出・Traceのキャッシュ。器の中のペイン全部で同じものを渡し、計算を共有する。 */
   readonly cache: EngineComputer;
   /** 資産への書き込み（条件のモーダルが全体のレベルの条件を書き換える）。 */

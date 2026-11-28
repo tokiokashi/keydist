@@ -6,6 +6,7 @@ import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { SetAnalyzerStandalonePage } from '#hosts/standalone/index.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { sharedBunsetsuSource } from './bunsetsu-source.ts';
+import { sharedNgramTableSource } from './ngram-table-source.ts';
 import { sharedReadingSource } from './reading-source.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
@@ -80,6 +81,7 @@ export function StandaloneSetAnalyzerApp<Options, Extracted, RowContext>({
         cache={sharedEngineComputer}
         reading={sharedReadingSource}
         bunsetsu={sharedBunsetsuSource}
+        ngramTables={sharedNgramTableSource}
         catalog={catalog}
         generateTextId={generateTextId}
         generatePresetId={generatePresetId}

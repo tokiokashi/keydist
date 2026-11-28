@@ -22,6 +22,10 @@ export const sha256Of = (data: string | Uint8Array): string => createHash('sha25
 export interface StandardCorpus {
   /** 注記を除いた全文 */
   readonly corpus: string;
+  /** 取得元のファイルの先頭の作品名と著者名の行 */
+  readonly work: string;
+  /** 取得元のファイルの末尾にある、底本から青空文庫の由来の注までの行。原文のまま */
+  readonly colophon: string;
   /** 漢字を読みに直したテキストと、読みに置き換えた語の数 */
   readonly reading: { readonly text: string; readonly replacedWords: number };
   /** 原文の上の文節の区切りの数 */
@@ -35,7 +39,13 @@ export async function loadStandardCorpus(source: string | undefined): Promise<St
   const zip = await archiveBytes(source);
   const entry = (await extractZip(zip)).get(AOZORA_SOURCE.entryName);
   if (entry === undefined) throw new Error(`zipに${AOZORA_SOURCE.entryName}が無い`);
-  const corpus = convertAozora(extractBody(new TextDecoder('shift_jis', { fatal: true }).decode(entry))).text;
+  const raw = new TextDecoder('shift_jis', { fatal: true }).decode(entry).replace(/\r\n?/g, '\n');
+  const corpus = convertAozora(extractBody(raw)).text;
+  const lines = raw.split('\n');
+  const footer = lines.findIndex((line) => line.startsWith('底本：'));
+  if (footer === -1) throw new Error('末尾の底本の情報が見つからない');
+  const work = lines.slice(0, 2).join('　');
+  const colophon = lines.slice(footer).join('\n').trim();
 
   // 原文を形態素解析 → 読みに置き換え。分割器は原文に1回だけ当て、語の境目へ寄せて読みの位置へ写す
   const lindera = await import('lindera-wasm');
@@ -45,5 +55,5 @@ export async function loadStandardCorpus(source: string | undefined): Promise<St
   const reading = convertToReading(corpus, tokens);
   const sourceBoundaries = offsetsOfChunks(splitBunsetsu(corpus));
   const readingBoundaries = mapBoundariesToReading(corpus, tokens, sourceBoundaries);
-  return { corpus, reading, sourceBoundaryCount: sourceBoundaries.length, readingBoundaries };
+  return { corpus, work, colophon, reading, sourceBoundaryCount: sourceBoundaries.length, readingBoundaries };
 }

@@ -33,6 +33,8 @@ import { SCATTER_PANE_META } from '#analyzers/scatter/pane-meta.ts';
 import { bandChartDefinition } from '#analyzers/band-chart/extract.ts';
 import { BAND_CHART_PANE_META } from '#analyzers/band-chart/pane-meta.ts';
 import { boxPlotDefinition } from '#analyzers/box-plot/extract.ts';
+import { ngramTableDefinition } from '#analyzers/ngram-table/extract.ts';
+import { NGRAM_TABLE_PANE_META } from '#analyzers/ngram-table/pane-meta.ts';
 import { BOX_PLOT_PANE_META } from '#analyzers/box-plot/pane-meta.ts';
 
 /**
@@ -74,6 +76,7 @@ export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
   { id: scatterDefinition.id, ...SCATTER_PANE_META, cardinality: 'set' },
   { id: bandChartDefinition.id, ...BAND_CHART_PANE_META, cardinality: 'set' },
   { id: boxPlotDefinition.id, ...BOX_PLOT_PANE_META, cardinality: 'set' },
+  { id: ngramTableDefinition.id, ...NGRAM_TABLE_PANE_META, cardinality: 'set' },
 ];
 
 export function findWorkspaceAnalyzer(analyzerId: string): WorkspaceAnalyzerEntry | undefined {
