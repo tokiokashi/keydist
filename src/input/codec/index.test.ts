@@ -8,7 +8,6 @@ import {
   droppedNotObject,
   decodeField,
   defineAssetCodec,
-  encodedSizeBytes,
   type DecodeFailure,
   type MigrationStep,
 } from './index.ts';
@@ -207,12 +206,6 @@ test('診断の文: v.integer()など形の違う既定の文も日本語にな�
 
 test('診断の文: 型名のobjectを出さない', () => {
   assert.doesNotMatch(droppedNotObject('ペイン'), /object/);
-});
-
-test('encodedSizeBytes: JSONにした時のUTF-8バイト数を返す', () => {
-  assert.equal(encodedSizeBytes({ a: 1 }), new TextEncoder().encode('{"a":1}').length);
-  // マルチバイト文字も正しく数える（文字数ではなくバイト数）。
-  assert.equal(encodedSizeBytes({ a: 'あ' }), new TextEncoder().encode('{"a":"あ"}').length);
 });
 
 test('診断の文: variantの判別の欄が無い時は欄が無いことを伝え、選べる値に無い時と区別する', () => {

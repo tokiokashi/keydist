@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { inputAlternativeSelectionIdentity } from '#input/semantics/index.ts';
 import { evaluationCanonicalInputs } from '#input/text/char-alias.ts';
 import { romajiToKana, romajiTypingCorrectness } from './live-romaji.ts';
-import { reverseLookup, reverseLookupGuideIndexForText, reverseLookupStepMatchesRecognition } from './reverse-lookup.ts';
+import { reverseLookup, reverseLookupGuideIndexForText } from './reverse-lookup.ts';
 import { typingTargetPresentation } from './typing-target.ts';
 
 const fullwidthLayout = LAYOUT_BY_ID.get('asuka')!;
@@ -76,14 +75,9 @@ test('全角形の英字は半角の英字と同じに扱わない', () => {
   );
 });
 
-test('案内の進み具合と打鍵の認識も、幅の違いを同じに扱う', () => {
+test('案内の進み具合も、幅の違いを同じに扱う', () => {
   const route = reverseLookup(fullwidthLayout, '!?', 1)[0]!;
   assert.equal(reverseLookupGuideIndexForText(fullwidthLayout, route, '！'), route.steps[0]!.actions.length);
-  const accepted = route.steps[0]!.acceptedAlternativeSelectionIdentities;
-  const alternative = [...fullwidthLayout.canonicalInputs.get('！')!].find((candidate) =>
-    accepted.includes(inputAlternativeSelectionIdentity(candidate)),
-  )!;
-  assert.equal(reverseLookupStepMatchesRecognition(route.steps[0]!, { output: '！', alternative }), true);
 });
 
 test('見出しの表は評価と同じ関数を共有し、全角形の見出しは半角の見出しへ合流する', () => {

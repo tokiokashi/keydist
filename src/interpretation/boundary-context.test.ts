@@ -8,7 +8,6 @@ import {
   BOUNDARY_CONTEXT_FORCED_RATIO_LIMIT,
   boundaryContextVerdict,
   boundaryInterior,
-  boundaryInteriorOfTrace,
   boundaryShare,
   comparableBoundaries,
   compareBoundaryContext,
@@ -179,10 +178,4 @@ test('文節ごとの内側の値は文字数2以上の文節についてだけ�
   assert.ok(Math.abs(result.segmentInteriorMedian! - (values[0]! + values[1]!) / 2) < 1e-12);
   assert.ok(Math.abs(result.segmentInteriorP90! - values[1]!) < 1e-12);
   assert.equal(boundaryInterior(index, [1, 2, 3, 4, 5, 6, 7, 8, 9]).segmentInteriorCount, 0);
-});
-
-test('Traceと区切りの列から直接求めた値は、索引から求めた値と一致する', () => {
-  const bunsetsu = bunsetsuLike(CHARS.length);
-  const trace = generateTrace(TEXT, LAYOUT_BY_ID.get('qwerty')!, geometry, { windowSize: 3, sfbHomeCost: true });
-  assert.deepEqual(boundaryInteriorOfTrace(trace, bunsetsu), boundaryInterior(buildSpanIndex(trace), bunsetsu));
 });

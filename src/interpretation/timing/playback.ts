@@ -283,23 +283,6 @@ export function playbackFingerPositionKeys(stroke: Stroke | undefined, geometry:
   return positionedKeys;
 }
 
-/** 現在のステップより前に入力し終えた単位を、直近から指定数だけ返す。 */
-export function playbackCompletedInputs(strokes: readonly Stroke[], cursor: number, limit = DEFAULT_PLAYBACK_RATE_WINDOW): string[] {
-  const end = Math.min(Math.max(0, cursor), strokes.length);
-  if (end === 0 || limit <= 0) return [];
-  const currentInputIndex = strokes[end - 1].inputIndex;
-  const completed: string[] = [];
-
-  for (let at = 0; at < end; ) {
-    const inputIndex = strokes[at].inputIndex;
-    let next = at + 1;
-    while (next < strokes.length && strokes[next].inputIndex === inputIndex) next++;
-    if (next <= end && inputIndex !== currentInputIndex) completed.push(strokes[next - 1].inputChar);
-    at = next;
-  }
-  return completed.slice(-limit);
-}
-
 export type PlaybackInputPreviewKind = 'completed' | 'current' | 'planned';
 
 export interface PlaybackInputPreviewSegment {

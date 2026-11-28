@@ -1,16 +1,13 @@
 import {
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { analysisTargetKey, LAYOUT_MISSING_REASON, type AnalysisTarget } from '#input/setup/index.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
 import { bandShares, traceBandCounts, type BandCounts, type BandQuantityId } from '#interpretation/band-quantities.ts';
-import { generateTrace } from '#trace/generate.ts';
+import { disciplineSetContext, generatedDisciplineMember } from '../set-discipline-material.ts';
 import { ALTERNATE_BAND_CHART_OPTIONS, DEFAULT_BAND_CHART_OPTIONS, bandChartOptions, type BandChartOptions } from './options.ts';
 
 /**
@@ -121,26 +118,10 @@ export function computeBandChartExtraction(
 // ---------------------------------------------------------------------------
 
 const FIXTURE_TEXT = 'さしすせそたちつてと';
-const FIXTURE_TARGET: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
 
 function fixtureMembers(): readonly AnalyzerSetMember[] {
-  const trace = generateTrace(FIXTURE_TEXT, LAYOUT_BY_ID.get('qwerty')!, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true });
-  return [
-    {
-      target: FIXTURE_TARGET,
-      text: FIXTURE_TEXT,
-      trace,
-      // この抽出が読まない値は材料に含めない
-      analysis: undefined as never,
-      metrics: undefined as never,
-      requestTrace: { requestTrace: () => trace },
-      remember: noRemember,
-    },
-  ];
+  return [generatedDisciplineMember(FIXTURE_TEXT, { text: FIXTURE_TEXT })];
 }
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /** engine（`engine/cache.ts` の `getSetExtraction`）が呼ぶ、Analyzer契約の実体。 */
 export const bandChartDefinition: SetAnalyzerDefinition<BandChartOptions, BandChartExtracted> = defineSetAnalyzer({
@@ -152,6 +133,6 @@ export const bandChartDefinition: SetAnalyzerDefinition<BandChartOptions, BandCh
   optionsDiscipline: {
     sample: DEFAULT_BAND_CHART_OPTIONS,
     alternates: ALTERNATE_BAND_CHART_OPTIONS,
-    context: () => ({ members: fixtureMembers(), failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(fixtureMembers()),
   },
 });

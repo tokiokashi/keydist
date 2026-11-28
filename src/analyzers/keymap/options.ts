@@ -1,5 +1,5 @@
 import { defineOptions } from '#analyzers/options.ts';
-import { layerDetailOption, type LayerDetail } from '#analyzers/layer-detail.ts';
+import { layerDetailOption } from '#analyzers/layer-detail.ts';
 
 /**
  * キーマップAnalyzerの解析設定。表示だけが変わる項目（`affects: 'view'`）で、テキストにも依らない。
@@ -12,8 +12,6 @@ export const keymapOptions = defineOptions({
 });
 
 export type KeymapOptions = typeof keymapOptions.defaultOptions;
-
-export type KeymapLayerDetail = LayerDetail;
 
 export const DEFAULT_KEYMAP_OPTIONS: KeymapOptions = keymapOptions.defaultOptions;
 

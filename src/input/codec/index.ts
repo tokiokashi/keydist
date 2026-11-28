@@ -247,15 +247,6 @@ function describeIssues(issues: readonly BaseIssue<unknown>[]): string {
   return [...new Set(issues.map(describeIssue))].join('。');
 }
 
-/**
- * 共有リンクのサイズ上限チェック用のヘルパー。
- * 上限そのものの判定・警告UIはまだ作っていない。
- * ここでは「JSONにした時のバイト数」を返すだけの小さな関数に留める（過剰実装しない）。
- */
-export function encodedSizeBytes(value: unknown): number {
-  return new TextEncoder().encode(JSON.stringify(value)).length;
-}
-
 export {
   describeFileDecodeFailure,
   describeJsonSyntaxError,

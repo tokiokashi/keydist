@@ -1,7 +1,6 @@
 import { createMulberry32 } from './prng.ts';
 import { boundaryCharValue, median, quantileNearestRank, rankAmong, SEGMENT_SEED_COUNT, type RankAmongRandom } from './segments.ts';
-import type { Trace } from '#trace/generate.ts';
-import { buildSpanIndex, spanTotals, wholeTotals, type SpanIndex, type SpanMetricId } from './span-metrics.ts';
+import { spanTotals, wholeTotals, type SpanIndex, type SpanMetricId } from './span-metrics.ts';
 
 /**
  * 文節の区切りの直後の1文字の量が、区切りのまわりの1〜3文字の並びだけで説明できるかを比べる
@@ -13,7 +12,6 @@ import { buildSpanIndex, spanTotals, wholeTotals, type SpanIndex, type SpanMetri
 
 /** 並びの長さ [文字]。 */
 export const BOUNDARY_CONTEXT_LENGTHS = [1, 2, 3] as const;
-export type BoundaryContextLength = (typeof BOUNDARY_CONTEXT_LENGTHS)[number];
 
 /** 比べる指標。1文字あたりの距離。 */
 export const BOUNDARY_CONTEXT_METRIC: SpanMetricId = 'perCharUnits';
@@ -213,9 +211,4 @@ export function boundaryInterior(index: SpanIndex, bunsetsu: readonly number[]):
     segmentInteriorMedian: median(sorted),
     segmentInteriorP90: quantileNearestRank(sorted, 0.9),
   };
-}
-
-/** Traceと文節の区切りの列から直接求める。 */
-export function boundaryInteriorOfTrace(trace: Trace, bunsetsu: readonly number[]): BoundaryInterior {
-  return boundaryInterior(buildSpanIndex(trace), bunsetsu);
 }

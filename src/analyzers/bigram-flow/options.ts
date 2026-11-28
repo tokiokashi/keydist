@@ -151,13 +151,6 @@ export const ALTERNATE_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = {
 };
 
 /**
- * `AnalyzerDefinition.decodeOptions`（`analyzers/contract.ts`）の実装。宣言（`bigramFlowOptions`）
- * から導く（`defineSingleAnalyzer`が使う本体そのもの）。未知の形式・壊れた値は既定値へ戻し、
- * 診断を積む（例外を投げない）。`extract.test.ts`等が直接importして使えるよう関数としても公開する。
- */
-export const decodeBigramFlowOptions = bigramFlowOptions.decodeOptions;
-
-/**
  * `AnalyzerDefinition.extractKeyOf`（`analyzers/contract.ts`）の実装。宣言から導く
  * （`items`ごとの`affects`/`normalizeForExtractKey`を舐めるだけで、ここで個別に
  * 列挙する経路は無い）。

@@ -8,7 +8,6 @@ import { compileSequenceInputAlternative } from '../semantics/index.ts';
 import {
   advanceKeyPatternPresentation,
   allLayerTriggerKeys,
-  allTriggerKeys,
   buildKeyPatternMatrix,
   EMPTY_KEY_PATTERN_PRESENTATION_STATE,
   findActiveLayerFace,
@@ -293,20 +292,6 @@ test('summarizeCandidateMatches: 複数候補も畳まず全部並べる', () =>
   assert.equal(summarizeCandidateMatches(matches), 'あ / い');
 });
 
-test('allTriggerKeys: canonical realizationのtriggerとcombo物理キーを両方拾う', () => {
-  const face = faceFromEntries(['j'], 'simultaneous', { k: 'あ' });
-  const faceLayout = compiledFaces(face);
-  const combo = compileSequenceInputAlternative('x', [['l', ';']], COMBO_LAYER_ID, ['composition'], [], 'combo');
-  const layout = {
-    ...faceLayout,
-    canonicalInputs: new Map([...faceLayout.canonicalInputs, ['x', [combo]] as const]),
-  };
-  const keys = allTriggerKeys(layout);
-  assert.ok(keys.has('j'));
-  assert.ok(keys.has('l'));
-  assert.ok(keys.has(';'));
-});
-
 test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面を返す', () => {
   const shiftFace = faceFromEntries(['f'], 'prefix', { j: 'あ', k: 'い' });
   const layout = stubLayout({
@@ -561,7 +546,7 @@ test('allLayerTriggerKeysは薙刀式のmodifier起点を常時表示せずSandS
 test('allLayerTriggerKeysはcombo membershipをlayer triggerへ混ぜない', () => {
   const base = fromRows('combo-trigger-separation', 'combo-trigger-separation', ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'], {});
   const layout = withCombos('combo-trigger-separation', 'combo-trigger-separation', base, [['X', ['a', 's']]]);
-  assert.equal(allTriggerKeys(layout).has('a'), true);
+  assert.ok([...layout.canonicalInputs.values()].some((alternatives) => alternatives.some((alternative) => alternative.origin === 'combo')));
   assert.equal(allLayerTriggerKeys(layout).has('a'), false);
 });
 

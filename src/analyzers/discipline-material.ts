@@ -35,6 +35,13 @@ export function singleDisciplineContext(layout: Layout, text: string): Omit<Sing
   };
 }
 
+/** 組み込みの配列を、idで引く。 */
+export function builtinDisciplineLayout(id: string): Layout {
+  const layout = LAYOUT_BY_ID.get(id);
+  if (layout === undefined) throw new Error(`組み込みの配列「${id}」が見つかりません`);
+  return layout;
+}
+
 /**
  * 単打・行指定キーの面のレイヤーと、コンボ枠を持つ組み込みの配列（かわせみ配列+）で、
  * 単打・行指定キーの面のレイヤー・コンボ枠のどれにも押下がつくテキスト
@@ -42,14 +49,10 @@ export function singleDisciplineContext(layout: Layout, text: string): Omit<Sing
  * レイヤーやコンボの中身を読む`extract`が、表示だけの設定に依存していないかを確かめるのに使う。
  */
 export function layerComboDisciplineContext(): ReturnType<typeof singleDisciplineContext> {
-  const layout = LAYOUT_BY_ID.get('kawasemi-plus');
-  if (layout === undefined) throw new Error('組み込みの配列「kawasemi-plus」が見つかりません');
-  return singleDisciplineContext(layout, 'あいうえおかくが');
+  return singleDisciplineContext(builtinDisciplineLayout('kawasemi-plus'), 'あいうえおかくが');
 }
 
 /** QWERTYで左右の手をまたぐ短いテキストを打った材料。レイヤーとコンボには依らない`extract`の検査に使う。 */
 export function plainDisciplineContext(): ReturnType<typeof singleDisciplineContext> {
-  const layout = LAYOUT_BY_ID.get('qwerty');
-  if (layout === undefined) throw new Error('組み込みの配列「qwerty」が見つかりません');
-  return singleDisciplineContext(layout, 'fdjadsk');
+  return singleDisciplineContext(builtinDisciplineLayout('qwerty'), 'fdjadsk');
 }

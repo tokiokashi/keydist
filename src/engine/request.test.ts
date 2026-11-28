@@ -334,7 +334,7 @@ test('peekが値を返す入力は、計算中もstaleも挟まず同期にready
   scheduler.flush();
   assert.equal(computeCalls, 0);
 
-  // 知らない入力は従来どおり: 直前の値をstaleで持ったまま計算する
+  // 知らない入力は、直前の値をstaleで持ったまま計算する
   channel.request(okResolution('b'));
   assert.deepEqual(states.at(-1), { status: 'stale', value: 'peeked:a' });
   scheduler.flush();

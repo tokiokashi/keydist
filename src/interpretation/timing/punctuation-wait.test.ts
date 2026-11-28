@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { NO_PUNCTUATION_WAIT, planPunctuationWaits, type PunctuationWaitMs } from './punctuation-wait.ts';
+import { planPunctuationWaits, type PunctuationWaitMs } from './punctuation-wait.ts';
+
+const NO_PUNCTUATION_WAIT: PunctuationWaitMs = { commaBeforeMs: 0, commaAfterMs: 0, periodBeforeMs: 0, periodAfterMs: 0 };
 
 /** 4つとも違う値にして、どの項目がどの位置に入ったかを区別する。 */
 const WAITS: PunctuationWaitMs = { commaBeforeMs: 300, commaAfterMs: 200, periodBeforeMs: 100, periodAfterMs: 500 };
