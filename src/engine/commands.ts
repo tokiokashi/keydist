@@ -330,17 +330,6 @@ export function resetCascadeItemCommand(level: CascadeLevel, itemId: SettingsIte
 }
 
 /**
- * 1レベルの、指定した項目の上書きだけをまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。
- * 指定に無い項目の上書きは残す。
- */
-export function resetCascadeItemsCommand(level: CascadeLevel, itemIds: readonly SettingsItemId[], workspaceId?: string): Command<KeydistAssets> {
-  return cascadeCommand('指定した項目の設定をまとめてリセットする', workspaceId, (overrides) => ({
-    ok: true,
-    overrides: itemIds.reduce((current, id) => resetSettingsItem(current, level, id), overrides),
-  }));
-}
-
-/**
  * 複数のレベルから、指定した項目の上書きをまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。
  * 条件のモーダルの「すべて既定値に戻す」が、全体・Workspace・今の配列の上書きを一度に消すために使う。
  */

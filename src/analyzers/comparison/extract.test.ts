@@ -13,7 +13,8 @@ import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations
 import { analyzeHandRhythm } from '#interpretation/structure/hand-rhythm.ts';
 import { handRhythmDefinition } from '#analyzers/hand-rhythm/extract.ts';
 import { pairRowsOf } from '#analyzers/hand-rhythm/value-rows.ts';
-import { computeComparisonExtraction, computeComparisonRowValues, fixtureMetrics, fixturePress, fixtureStroke, FIXTURE_TRACE } from './extract.ts';
+import { computeComparisonExtraction, computeComparisonRowValues } from './extract.ts';
+import { DISCIPLINE_TRACE, disciplineMetrics, disciplinePress, disciplineStroke } from '../set-discipline-material.ts';
 import { DEFAULT_HAND_RHYTHM_OPTIONS } from '#analyzers/hand-rhythm/options.ts';
 import { ALTERNATE_COMPARISON_OPTIONS, COMPARISON_COLUMNS, DEFAULT_COMPARISON_OPTIONS, comparisonOptions } from './options.ts';
 
@@ -204,21 +205,21 @@ test('Hand Rhythmの列: 実在の配列で、列の値が互いに異なり、�
 test('Hand Rhythmの列: 両手の打鍵を含む組の割合は、押す手が無い打鍵を含む組を分母に入れない', () => {
   // 左→右が1回、右→左が1回、左→左が1回、左→両手（切り替え0.5・継続0.5）、両手→左（継続1）の5組と、押す手が無い打鍵を含む組2。
   // 両手を含む組は2組で、分母は5組。後者は分母に入れない。
-  const left = fixtureStroke(0, [fixturePress('LI', 'f', 4)]);
-  const right = fixtureStroke(1, [fixturePress('RI', 'j', 7)]);
-  const both = fixtureStroke(2, [fixturePress('LI', 'f', 4), fixturePress('RI', 'j', 7)]);
-  const none = fixtureStroke(3, []);
+  const left = disciplineStroke(0, [disciplinePress('LI', 'f', 4)]);
+  const right = disciplineStroke(1, [disciplinePress('RI', 'j', 7)]);
+  const both = disciplineStroke(2, [disciplinePress('LI', 'f', 4), disciplinePress('RI', 'j', 7)]);
+  const none = disciplineStroke(3, []);
   const strokes = [left, right, left, left, both, left, none, left];
   const aggregate = analyzeHandRhythm(strokes).aggregate;
   assert.equal(aggregate.switches, 2.5);
   assert.equal(aggregate.continuations, 2.5);
   assert.equal(aggregate.bothHandPairs, 2);
-  const row = computeComparisonRowValues(fixtureMetrics(1), { ...FIXTURE_TRACE, strokes });
+  const row = computeComparisonRowValues(disciplineMetrics(1), { ...DISCIPLINE_TRACE, strokes });
   assert.equal(row.bothHandPairShare, (2 / 5) * 100);
 });
 
 test('Hand Rhythmの列: 打鍵が無い入力では、割合と件数が0で、平均と最長の長さは値なし', () => {
-  const row = computeComparisonRowValues(fixtureMetrics(0), { ...FIXTURE_TRACE, strokes: [] });
+  const row = computeComparisonRowValues(disciplineMetrics(0), { ...DISCIPLINE_TRACE, strokes: [] });
   for (const column of [
     'handSwitches',
     'handContinuations',
@@ -356,14 +357,14 @@ test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（比
 
 test('文字数に関わる5つの比: 値を持たない（null）時は、列の値がNaNになり0を当てはめない', () => {
   const none = { textCharsPerAction: null, actionsPerTextChar: null, actionsPerUnit: null, textCharsPerUnit: null, unitsPerTextChar: null };
-  const row = computeComparisonRowValues({ ...fixtureMetrics(0), ...none }, FIXTURE_TRACE);
+  const row = computeComparisonRowValues({ ...disciplineMetrics(0), ...none }, DISCIPLINE_TRACE);
   for (const id of ['textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
     assert.ok(Number.isNaN(row[id]), id);
   }
   // アクション/文字を持たない古い形の値でも、表示は値が無い扱いになり壊れない
-  const { actionsPerTextChar: _omitted, ...withoutField } = fixtureMetrics(6);
-  assert.ok(Number.isNaN(computeComparisonRowValues(withoutField as ReturnType<typeof fixtureMetrics>, FIXTURE_TRACE).actionsPerTextChar));
-  const valued = computeComparisonRowValues(fixtureMetrics(6), FIXTURE_TRACE);
+  const { actionsPerTextChar: _omitted, ...withoutField } = disciplineMetrics(6);
+  assert.ok(Number.isNaN(computeComparisonRowValues(withoutField as ReturnType<typeof disciplineMetrics>, DISCIPLINE_TRACE).actionsPerTextChar));
+  const valued = computeComparisonRowValues(disciplineMetrics(6), DISCIPLINE_TRACE);
   for (const id of ['textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
     assert.ok(Number.isFinite(valued[id]), id);
   }
