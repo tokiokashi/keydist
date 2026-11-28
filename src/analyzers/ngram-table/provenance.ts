@@ -9,6 +9,7 @@ import { SOURCE_TEXT_LABEL } from './pane-meta.ts';
 export interface NgramTableProvenanceItem {
   readonly label: string;
   readonly value: string;
+  readonly keepWidth?: boolean;
 }
 
 const integer = new Intl.NumberFormat('ja-JP');
@@ -27,9 +28,9 @@ export function ngramTableProvenance(asset: NgramTableAsset | undefined, options
   const archive = source.archive === undefined ? '' : `（${source.archive.fileName}、sha256 ${source.archive.sha256.slice(0, 12)}…）`;
   const size = tableSize(asset);
   const items: NgramTableProvenanceItem[] = [
+    { label: '表の次数', value: `${asset.order}次`, keepWidth: true },
+    { label: '文節の先読み', value: `${options.lookahead}文節`, keepWidth: true },
     { label: SOURCE_TEXT_LABEL, value: `${source.name}${archive}` },
-    { label: '表の次数', value: `${asset.order}次` },
-    { label: '文節の先読み', value: `${options.lookahead}文節` },
   ];
   if (source.segmentation.origin === 'splitter') {
     items.push({ label: '文節の区切り', value: `${source.segmentation.splitter.name}（${source.segmentation.splitter.version}）、日本語のモデル` });
@@ -37,12 +38,12 @@ export function ngramTableProvenance(asset: NgramTableAsset | undefined, options
     items.push({ label: '文節の区切り', value: '利用者の指定' });
   }
   if (source.reading !== null) {
-    const { library, dictionary } = source.reading;
-    items.push({
-      label: '読みの変換',
-      value: `${library.name}（${library.version}）、辞書 ${dictionary.name}（${dictionary.version}）`,
-    });
+    const { dictionary } = source.reading;
+    items.push({ label: '読みの辞書', value: `${dictionary.name}（${dictionary.version}）` });
   }
+  const { colophon } = asset;
+  items.push({ label: '底本・入力・校正など', value: colophon.original.replaceAll('\n', ' ').replace(/\s+/g, ' ') });
+  items.push({ label: '加えた変更', value: colophon.changes });
   items.push({ label: '表の規模', value: `出現数 ${integer.format(size.occurrences)}、項目 ${integer.format(size.entries)}` });
   return items;
 }

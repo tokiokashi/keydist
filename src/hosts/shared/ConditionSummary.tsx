@@ -123,7 +123,7 @@ export function ConditionSummary({ rows, header, targetDiffs = [], provenance = 
             )}
             {targetDiffs.length > 0 ? <span className="pane-condition-diff-flag">対象ごとに差あり</span> : null}
             {provenance.map((item) => (
-              <span key={item.label} className="pane-condition-provenance">
+              <span key={item.label} className="pane-condition-provenance" data-keep-width={item.keepWidth || undefined}>
                 {item.label}: {item.value}
               </span>
             ))}

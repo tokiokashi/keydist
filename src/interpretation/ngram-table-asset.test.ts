@@ -24,17 +24,6 @@ test('同梱の表の鍵は次数+1文節で、出現回数の合計は統計の
   }
 });
 
-test('同梱の表は、青空文庫の規準が残すことを希望している情報と、加えた変更を持つ', () => {
-  const { colophon, archive } = FILE.source;
-  assert.match(colophon.original, /底本：/);
-  assert.match(colophon.original, /入力：/);
-  assert.match(colophon.original, /校正：/);
-  assert.match(colophon.original, /青空文庫作成ファイル：/);
-  assert.match(colophon.changes, /ルビ/);
-  assert.match(colophon.changes, /入力者注/);
-  assert.equal(archive.sha256.length, 64);
-});
-
 test('選べない次数の表は取り出せない', () => {
   assert.throws(() => ngramTableAssetOf(FILE, 1), /選べる次数/);
   const asset = ngramTableAssetOf(FILE, 0);

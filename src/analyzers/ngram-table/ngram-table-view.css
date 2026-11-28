@@ -52,3 +52,34 @@
 .ngram-table-excluded [role='alert'] {
   color: var(--danger);
 }
+
+/* 選べる次数が1つの間、次数は押せない札にせず、値だけを同じ大きさで出す。 */
+.ngram-table-fixed-value {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* 狭い幅でも結果の表の全列が初めから見えるよう、見出しは折り返す。 */
+[data-ngram-table-results] .figure-table th {
+  white-space: normal;
+}
+
+/* 見出しの行が狭くても、次数と先読みの値は省略せず、対象の札が先に縮む。 */
+.ngram-table-header-control {
+  display: inline-flex;
+  flex: none;
+  gap: 0.3rem;
+}
+
+/* 狭い幅で対象の札と解析設定のボタンに挟まれても、重ならないよう左右の余白を詰める。 */
+.ngram-table-header-control .popover-select-button {
+  flex: none;
+  padding: 0 0.45rem;
+}

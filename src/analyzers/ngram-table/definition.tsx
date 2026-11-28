@@ -23,7 +23,7 @@ import {
   type NgramDisplayRow,
   type NgramRowContext,
 } from './figure-model.ts';
-import { DISTANCE_FIGURE, NGRAM_TABLE_PANE_META, NO_TABLE_MESSAGE, PER_KANA_FIGURE, ngramTableSourceItems } from './pane-meta.ts';
+import { DISTANCE_FIGURE, NGRAM_TABLE_PANE_META, NO_TABLE_MESSAGE, PER_KANA_FIGURE, figureHelp } from './pane-meta.ts';
 import { DEFAULT_NGRAM_TABLE_OPTIONS, ngramTableOptions, type NgramTableOptions } from './options.ts';
 import { ngramTableProvenance } from './provenance.ts';
 import type { NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
@@ -76,6 +76,7 @@ function DistributionFigure({ kind, rows, width, copyFigureImage }: Distribution
   return (
     <div className="ngram-table-distribution" data-ngram-table-distribution={kind}>
       <div className="ngram-table-heading">
+        <InfoButton name="図の読み方" description={figure.caption} help={figureHelp(kind)} />
         <FigureTableSwitch pressed={asTable} onToggle={() => setAsTable((current) => !current)} target={figure.caption} />
         {copyFigureImage === undefined || asTable ? null : <CopyImageControl copyFigureImage={copyFigureImage} source={imageSource} />}
       </div>
@@ -142,9 +143,6 @@ export function NgramTableBody({ extracted, order, rowContext, ngramTable, copyF
 
       {rows.length > 0 ? (
         <>
-          <div className="ngram-table-heading">
-            <InfoButton name="図の見方" description={NGRAM_TABLE_PANE_META.description} help={helpOf(extracted)} />
-          </div>
           <div data-ngram-table-results="">
             <FigureTable model={resultsTableModel(rows)} />
           </div>
@@ -177,16 +175,9 @@ export function NgramTableBody({ extracted, order, rowContext, ngramTable, copyF
   );
 }
 
-/** 図の見方。表の元のテキストの出どころは、抽出が表を持つ時だけ足す（青空文庫の規準が残すことを希望している情報を含む）。 */
-function helpOf(extracted: NgramTableExtracted) {
-  const base = NGRAM_TABLE_PANE_META.help;
-  if (extracted.basis === undefined) return base;
-  return { ...base, items: [...base.items, ...ngramTableSourceItems(extracted.basis)] };
-}
-
 const LOOKAHEAD_CHOICES = Array.from({ length: BUNSETSU_LOOKAHEAD.max - BUNSETSU_LOOKAHEAD.min + 1 }, (_, index) => {
   const value = BUNSETSU_LOOKAHEAD.min + index;
-  return { value: String(value), label: `先読み${value}文節` };
+  return { value: String(value), label: `先読み${value}` };
 });
 
 /** 解析設定が選ぶ次数を、選べる次数に直した値。表を読み込む前は、解析設定の値のまま。 */
@@ -197,7 +188,7 @@ function effectiveOrder(options: NgramTableOptions, choices: ReturnType<typeof u
 
 function orderChoices(options: NgramTableOptions, choices: ReturnType<typeof useNgramTableChoices>) {
   const orders = choices?.selectableOrders ?? [effectiveOrder(options, choices)];
-  return orders.map((order) => ({ value: String(order), label: `${order}次の表` }));
+  return orders.map((order) => ({ value: String(order), label: `${order}次` }));
 }
 
 /** 表の次数と文節の先読みの選択。別々の項目で、片方を変えてももう片方の選べる範囲と既定は変わらない。 */
@@ -227,21 +218,28 @@ export function NgramTableSettings({ options, onOptionsChange }: AnalyzerSetting
 /** ペインの見出しの行に置く、表の次数と文節の先読みの選択。解析設定の小窓の同じ項目と同じ値を読み書きする。 */
 export function NgramTableHeaderControl({ options, onOptionsChange }: AnalyzerSettingsProps<NgramTableOptions>) {
   const choices = useNgramTableChoices();
+  const orders = orderChoices(options, choices);
   return (
-    <>
-      <PopoverSelect
-        label="表の次数"
-        value={String(effectiveOrder(options, choices))}
-        choices={orderChoices(options, choices)}
-        onChange={(next) => onOptionsChange({ ...options, order: Number(next) })}
-      />
+    <span className="ngram-table-header-control">
+      {orders.length > 1 ? (
+        <PopoverSelect
+          label="表の次数"
+          value={String(effectiveOrder(options, choices))}
+          choices={orders}
+          onChange={(next) => onOptionsChange({ ...options, order: Number(next) })}
+        />
+      ) : (
+        <span className="ngram-table-fixed-value" title="表の次数">
+          {orders[0]?.label}
+        </span>
+      )}
       <PopoverSelect
         label="文節の先読み"
         value={String(options.lookahead)}
         choices={LOOKAHEAD_CHOICES}
         onChange={(next) => onOptionsChange({ ...options, lookahead: Number(next) })}
       />
-    </>
+    </span>
   );
 }
 
@@ -255,8 +253,8 @@ export const ngramTableAnalyzer = {
   defaultOptions: DEFAULT_NGRAM_TABLE_OPTIONS,
   urlOptions: ngramTableOptions,
   rowContext: ({ targetKey, label, fullName }) => ({ targetKey, label, fullName }),
-  // 今の解析の先読みN（かなで数える）は使わない。この解析の文節の先読みが別にある
-  conditionExcludeIds: ['windowSize'],
+  // 今の解析の先読みN（かなで数える）と、Traceを解釈する条件（連鎖・アルペジオ）、評価に渡すテキストの前処理は、この解析の値を変えない
+  conditionExcludeIds: ['windowSize', 'chainInterpretation', 'arpeggioInterpretation', 'keepSymbols', 'keepAlphanumerics'],
   ngramTable: {
     orderOf: (options: NgramTableOptions) => options.order,
     provenance: (asset: NgramTableAsset | undefined, options: NgramTableOptions) => ngramTableProvenance(asset, options),

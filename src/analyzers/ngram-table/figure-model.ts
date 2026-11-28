@@ -4,8 +4,10 @@ import { distanceText, type BoxFigureRow, type BoxQuantiles, type BoxRowContext 
 import type { NgramTableExtracted, NgramTableOkRow } from './extract.ts';
 import {
   DISTANCE_FIGURE,
+  NGRAM_TABLE_PANE_META,
   NO_TABLE_MESSAGE,
-  PER_KANA_DISTANCE_LABEL,
+  PER_KANA_COLUMN_LABEL,
+  UNTYPED_COLUMN_LABEL,
   PER_KANA_DISTANCE_UNIT,
   PER_KANA_FIGURE,
   TOTAL_DISTANCE_LABEL,
@@ -112,9 +114,9 @@ export function totalDistanceText(value: number): string {
 /** Setupごとの結果の表。行は対象の順で、値で並べ替えない。 */
 export function resultsTableModel(rows: readonly NgramDisplayRow[]): FigureTableModel {
   return {
-    caption: '表による解析の結果',
+    caption: NGRAM_TABLE_PANE_META.name,
     rowHeader: '配列',
-    columns: [`${TOTAL_DISTANCE_LABEL} [${TOTAL_DISTANCE_UNIT}]`, `${PER_KANA_DISTANCE_LABEL} [${PER_KANA_DISTANCE_UNIT}]`, '打てなかった文字'],
+    columns: [`${TOTAL_DISTANCE_LABEL} [${TOTAL_DISTANCE_UNIT}]`, `${PER_KANA_COLUMN_LABEL} [${PER_KANA_DISTANCE_UNIT}]`, UNTYPED_COLUMN_LABEL],
     rows: rows.map((row) => {
       const { analysis } = row.row;
       return {

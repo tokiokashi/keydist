@@ -213,6 +213,8 @@ export function evaluationText(resolved: ResolvedText, source: ReadingSource, ou
 export interface ConditionProvenanceItem {
   readonly label: string;
   readonly value: string;
+  /** 閉じた1行で幅が足りない時も省略せず、全文を出す（解析設定の値のように、小窓を開かずに読める必要がある項目）。 */
+  readonly keepWidth?: boolean;
 }
 
 /** 直した表記の数と語の数の言い方。0の方は言わない（「2表記と3語」「2表記」「3語」）。 */
