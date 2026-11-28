@@ -6,7 +6,7 @@ import { buildGeometry, THUMB_KEY } from '../shapes/geometry.ts';
 import { layoutKind } from './kind.ts';
 import { isStageUserLayout, updateUserLayout } from './layout-edit.ts';
 import { buildUserCatalog, userInputLayouts } from './user-catalog.ts';
-import { decodeUserLayouts, isValidUserLayout, toLayout, USER_LAYOUTS_CODEC, type FaceUserLayout, type StageUserLayout } from './user-layouts.ts';
+import { decodeUserLayouts, toLayout, USER_LAYOUTS_CODEC, type FaceUserLayout, type StageUserLayout } from './user-layouts.ts';
 
 /** 単打の面と左親指の面を持ち、濁点を後置して合成する、面で定義する配列。 */
 const FACE_LAYOUT: FaceUserLayout = {
@@ -67,9 +67,9 @@ test('面の形は段の形・取り込み形式と併せ持てず、どれを�
     assert.match(result.diagnostics[0]!.message, new RegExp(`「${Object.keys(extra)[0]}」`));
   }
   // faces だけ・composition だけの半端な形も、段の形として通さない
-  assert.equal(isValidUserLayout({ ...clone(STAGE_LAYOUT), faces: [] }), false);
+  assert.deepEqual(decodeUserLayouts([{ ...clone(STAGE_LAYOUT), faces: [] }]).value, []);
   const { faces: _faces, ...withoutFaces } = clone(FACE_LAYOUT);
-  assert.equal(isValidUserLayout(withoutFaces), false);
+  assert.deepEqual(decodeUserLayouts([withoutFaces]).value, []);
 });
 
 test('USER_LAYOUTS_CODEC: 面で定義する配列が往復する', () => {

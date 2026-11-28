@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { APP_STATE_STORAGE_KEY } from '#app/state/app-state-storage.ts';
+import { patchAppStateSlice } from '#app/state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import {
   createDefaultInputConverterPreferences,
@@ -10,7 +11,6 @@ import {
   INPUT_CONVERTER_PREFERENCES_STORAGE_KEY,
   INPUT_CONVERTER_PREFERENCES_VERSION,
   loadInputConverterPreferences,
-  saveInputConverterPreferences,
   selectRequestedLayout,
   serializeInputConverterPreferences,
   type InputConverterLayoutPreferencesV2,
@@ -265,10 +265,10 @@ test('loadInputConverterPreferences falls back to defaults when storage.getItem 
   assert.deepEqual(result, createDefaultInputConverterPreferences(defaults));
 });
 
-test('saveInputConverterPreferences writes the Tester slice under AppState and round-trips', () => {
+test('the Tester slice written under AppState round-trips through loadInputConverterPreferences', () => {
   const storage = memoryStorage();
   const prefs = samplePreferences();
-  saveInputConverterPreferences(storage, prefs);
+  patchAppStateSlice(storage, 'inputConverter', prefs);
   assert.deepEqual(JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter, prefs);
   assert.equal(storage.getItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY), null);
   assert.deepEqual(loadInputConverterPreferences(storage, catalogs, defaults), prefs);
@@ -283,7 +283,7 @@ test('loadInputConverterPreferences migrates and removes the legacy preference k
   assert.deepEqual(JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter, prefs);
 });
 
-test('saveInputConverterPreferences swallows a storage.setItem failure', () => {
+test('writing the Tester slice swallows a storage.setItem failure', () => {
   const storage: KeyValueStorage = {
     getItem: () => null,
     setItem: () => {
@@ -291,7 +291,7 @@ test('saveInputConverterPreferences swallows a storage.setItem failure', () => {
     },
     removeItem: () => {},
   };
-  assert.doesNotThrow(() => saveInputConverterPreferences(storage, createDefaultInputConverterPreferences(defaults)));
+  assert.doesNotThrow(() => patchAppStateSlice(storage, 'inputConverter', createDefaultInputConverterPreferences(defaults)));
 });
 
 test('contract: only durable practice state is serialized; interaction transients remain excluded', () => {

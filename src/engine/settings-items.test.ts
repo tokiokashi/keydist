@@ -14,7 +14,6 @@ import {
   resolveGlobalDefaultShapeId,
   resolveSettings,
   resetSettingsItem,
-  resetSettingsLevel,
   setSettingsOverride,
   type SettingsCascadeOverrides,
 } from './settings-items.ts';
@@ -241,7 +240,7 @@ test('spaceThumb: 左親指キーを他の入力に使う配列ではnot-applica
   assert.ok(resolved.spaceThumb.diagnostics.some((d) => d.kind === 'invalid-fallback'));
 });
 
-test('リセット: 項目単位・レベル単位が実レジストリでも動く', () => {
+test('リセット: 項目単位が実レジストリでも動く', () => {
   const level = { kind: 'layout' as const, layoutId: asuka.id };
   let overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES;
   overrides = (setSettingsOverride(overrides, level, 'windowSize', 6) as { ok: true; overrides: SettingsCascadeOverrides }).overrides;
@@ -250,9 +249,6 @@ test('リセット: 項目単位・レベル単位が実レジストリでも動
   overrides = resetSettingsItem(overrides, level, 'windowSize');
   assert.equal(resolveSettings(overrides, contextFor(asuka)).windowSize.value, 3);
   assert.equal(resolveSettings(overrides, contextFor(asuka)).sfbHomeCost.value, false);
-
-  overrides = resetSettingsLevel(overrides, level);
-  assert.deepEqual(overrides, EMPTY_SETTINGS_OVERRIDES);
 });
 
 // 「同じ入力で旧実装と同じ数値が出ることがfixtureで確認されている」ことを

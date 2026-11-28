@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { inputAlternativeSelectionIdentity } from '#input/semantics/index.ts';
 import type { InputAlternativeOrigin } from '#input/semantics/types.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { JIS_KANA } from '#input/layouts/jis-kana.ts';
@@ -16,8 +15,6 @@ import {
   reverseLookupGuideActions,
   reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
-  reverseLookupStepLabel,
-  reverseLookupStepMatchesRecognition,
   type ReverseLookupRoute,
 } from './reverse-lookup.ts';
 
@@ -122,52 +119,6 @@ test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', ()
       ],
     }),
     '右親指 → H + J',
-  );
-});
-
-test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18');
-  assert.ok(layout);
-  assert.equal(
-    reverseLookupStepLabel(layout, {
-      output: 'x',
-      origin: 'face',
-      actions: [['thumb-r'], ['h', 'j']],
-      aggregationGroupIds: ['layer:test'],
-      actionKeyAlternatives: [[['thumb-r']], [['h', 'j']]],
-      actionParticipationAlternatives: [[{ outputKeys: [], triggerKeys: ['thumb-r'] }], [{ outputKeys: ['h', 'j'], triggerKeys: [] }]],
-      acceptedAlternativeSelectionIdentities: ['test-alternative'],
-    }),
-    '右親指 → H + J',
-  );
-});
-
-test('reverseLookupStepMatchesRecognitionは同じcanonical alternativeだけを一致扱いする', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18');
-  assert.ok(layout);
-  const route = reverseLookup(layout, 'かな')[0];
-  assert.ok(route);
-  const step = route.steps[0];
-  assert.ok(step);
-
-  const exact = layout.canonicalInputs
-    .get(step.output)
-    ?.find((alternative) => step.acceptedAlternativeSelectionIdentities.includes(inputAlternativeSelectionIdentity(alternative)));
-  assert.ok(exact);
-
-  assert.equal(
-    reverseLookupStepMatchesRecognition(step, {
-      output: step.output,
-      alternative: exact,
-    }),
-    true,
-  );
-  assert.equal(
-    reverseLookupStepMatchesRecognition(step, {
-      output: '別',
-      alternative: exact,
-    }),
-    false,
   );
 });
 

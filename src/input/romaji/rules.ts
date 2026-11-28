@@ -1,5 +1,5 @@
-import { UNSAFE_OBJECT_KEYS, type CodecDiagnostic, type DecodedWithDiagnostics } from '../codec/index.ts';
-import { droppedDuplicateId, droppedNotArray, droppedReservedKey } from '#input/codec/index.ts';
+import type { CodecDiagnostic } from '../codec/index.ts';
+import { droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
 import { azik } from './azik.ts';
 import { gact10 } from './gact10.ts';
 import { jlod } from './jlod.ts';
@@ -27,12 +27,6 @@ export interface RomajiRuleSpec {
 export interface UserRomajiRule extends RomajiRuleSpec {
   id: string;
   name: string;
-}
-
-export interface RomajiSettings {
-  rules: UserRomajiRule[];
-  /** 日本語モードで使うローマ字ルール。キーは配列 id */
-  assignments: Record<string, RomajiRuleId>;
 }
 
 export const ROMAJI_RULES: Record<
@@ -249,31 +243,6 @@ export function decodeUserRomajiRules(raw: unknown, path: string, diagnostics: C
     rules.push(candidate);
   });
   return rules;
-}
-
-/**
- * 保存された自作のローマ字規則と割り当てを読む。値があって想定の形でない時（nullを含む）と、
- * 壊れた要素を捨てる時は診断を積む。`undefined`（保存が無い・項目が無い）は空で正しいので診断しない。
- */
-export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnostics<RomajiSettings> {
-  const diagnostics: CodecDiagnostic[] = [];
-  if (!isRecord(value)) {
-    if (value !== undefined) diagnostics.push({ path: '', message: '形式が不正なため自作のローマ字規則を捨てました' });
-    return { value: { rules: [], assignments: {} }, diagnostics };
-  }
-  const rules = decodeUserRomajiRules(value.rules, 'rules', diagnostics);
-  const assignments: Record<string, string> = {};
-  if (isRecord(value.assignments)) {
-    for (const [key, id] of Object.entries(value.assignments)) {
-      // 予約名のキーは代入で自分のプロパティにならず黙って消えるので、捨てる旨を診断に残す
-      if (UNSAFE_OBJECT_KEYS.has(key)) diagnostics.push({ path: `assignments.${key}`, message: droppedReservedKey(key) });
-      else if (typeof id === 'string') assignments[key] = id;
-      else diagnostics.push({ path: `assignments.${key}`, message: '文字列でないため規則の割り当てを捨てました' });
-    }
-  } else if (value.assignments !== undefined) {
-    diagnostics.push({ path: 'assignments', message: '形式が不正なため規則の割り当てを捨てました' });
-  }
-  return { value: { rules, assignments }, diagnostics };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

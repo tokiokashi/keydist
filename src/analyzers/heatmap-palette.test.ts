@@ -6,7 +6,6 @@ import {
   HEAT_GROUND,
   HEAT_INK,
   HEAT_STOPS,
-  HEAT_THEMES,
   contrastRatio,
   heatMultiBlobMixSample,
   heatMultiBlobSample,
@@ -20,6 +19,9 @@ import {
   type HeatSample,
   type HeatTheme,
 } from './heatmap-palette.ts';
+
+// 色の並びを持つテーマ全部。`HEAT_STOPS` は `Record<HeatTheme, ...>` なので、テーマを足すと抜けなく含まれる。
+const HEAT_THEMES = Object.keys(HEAT_STOPS) as HeatTheme[];
 
 // 強度0〜1を細かく刻んだ点。キーの塗りは描画と同じ関数（heatMultiKeySample）で色を求める。
 const KEY_STEPS = 1000;

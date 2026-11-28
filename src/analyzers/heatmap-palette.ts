@@ -15,7 +15,6 @@ import { HEAT_BLOB_LEVELS } from './heatmap-blob.ts';
  */
 
 export type HeatTheme = 'light' | 'dark';
-export const HEAT_THEMES = ['light', 'dark'] as const satisfies readonly HeatTheme[];
 
 /** sRGBの各成分（0〜255）。 */
 export type HeatRgb = readonly [number, number, number];

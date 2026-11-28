@@ -68,7 +68,6 @@ import { findWorkspace, withWorkspaceConditionOverrides, withWorkspaceText, type
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import {
   resetSettingsItem,
-  resetSettingsLevel,
   setSettingsOverride,
   withWorkspaceConditions,
   type SettingsCascadeOverrides,
@@ -351,14 +350,6 @@ export function resetCascadeItemsAtLevelsCommand(
   return cascadeCommand('複数のレベルの設定をまとめてリセットする', workspaceId, (overrides) => ({
     ok: true,
     overrides: targets.reduce((current, { level, itemIds }) => itemIds.reduce((inner, id) => resetSettingsItem(inner, level, id), current), overrides),
-  }));
-}
-
-/** 1レベルの上書きを全項目まとめて消す。no-op判定の理由は`resetCascadeItemCommand`と同じ。 */
-export function resetCascadeLevelCommand(level: CascadeLevel, workspaceId?: string): Command<KeydistAssets> {
-  return cascadeCommand('レベルの設定をまとめてリセットする', workspaceId, (overrides) => ({
-    ok: true,
-    overrides: resetSettingsLevel(overrides, level),
   }));
 }
 

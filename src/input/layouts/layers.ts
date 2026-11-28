@@ -224,38 +224,6 @@ export function presentationLayerGuide(
   return { legends, triggerKeys };
 }
 
-/**
- * recognition window内のmodifier roleから、現在成立可能なpresentation aggregationを返す。
- * UIがFaceやlayout idを解釈せず、canonical semanticのroles / aggregationGroupIdをauthorityにする。
- * 複合modifierが揃った場合は、より多くのmodifier keyを要求するgroupを優先する。
- */
-export function activeModifierAggregationGroupIds(layout: Pick<Layout, 'canonicalInputs'>, recognitionKeys: readonly string[]): readonly string[] {
-  const active = new Set(recognitionKeys.map(resolveKeyId));
-  if (active.size === 0) return [];
-
-  const matches: { id: string; modifierCount: number }[] = [];
-  for (const alternatives of layout.canonicalInputs.values()) {
-    for (const alternative of alternatives) {
-      for (const input of alternative.semanticInputs) {
-        const physical = new Set(input.physicalKeys.map(resolveKeyId));
-        if (![...active].every((key) => physical.has(key))) continue;
-
-        const modifierKeys = [...new Set(input.roles.filter((role) => role.role === 'modifier').map((role) => resolveKeyId(role.key)))];
-        if (modifierKeys.length === 0) continue;
-        if (!modifierKeys.every((key) => active.has(key))) continue;
-
-        matches.push({
-          id: input.aggregationGroupId,
-          modifierCount: modifierKeys.length,
-        });
-      }
-    }
-  }
-
-  const maxModifierCount = Math.max(0, ...matches.map((match) => match.modifierCount));
-  return [...new Set(matches.filter((match) => match.modifierCount === maxModifierCount).map((match) => match.id))];
-}
-
 /** canonical aggregationに属するoutput key -> legend。 */
 export function aggregationLegendMap(layout: Pick<Layout, 'canonicalInputs'>, aggregationGroupId: string): ReadonlyMap<string, string> {
   const legends = new Map<string, string>();
@@ -537,24 +505,6 @@ export function triggerChordsDisplayText(
   }
 
   return [...new Set(unique.map(({ keys, groups }) => keys.map((key) => label(key, groups)).join(' + ')))].join(' / ');
-}
-
-/**
- * canonical semantic上でmodifier roleを持つphysical key。
- * analysis互換用。Input Converterの表示trigger判定はauthoring realizationを使う。
- */
-export function modifierPhysicalKeys(layout: Pick<Layout, 'canonicalInputs'>): ReadonlySet<string> {
-  const keys = new Set<string>();
-  for (const alternatives of layout.canonicalInputs.values()) {
-    for (const alternative of alternatives) {
-      for (const input of alternative.semanticInputs) {
-        for (const role of input.roles) {
-          if (role.role === 'modifier') keys.add(resolveKeyId(role.key));
-        }
-      }
-    }
-  }
-  return keys;
 }
 
 export interface PresentationTriggerGuideStyle {
