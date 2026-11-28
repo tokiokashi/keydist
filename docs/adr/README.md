@@ -70,3 +70,4 @@
 | [0028](0028-ngram-table-orders-up-to-sufficient.md) | 選べる表の次数を、統計が足りている最大の次数までにし、0次は常に選べる | 採用 |
 | [0029](0029-ngram-table-quantities.md) | 表による解析が出す量は、総量・かなあたりの値と、割った分布・割らない分布の2通りにする | 採用 |
 | [0030](0030-ngram-table-analyzer.md) | 表による解析を、固定の最小テキストで解決したSet Analyzerとして置き、表は主スレッドで取得してWorkerへ渡す | 採用 |
+| [0031](0031-ngram-table-from-user-text.md) | 表による解析の表の元に、利用者のテキストを足し、表は計算用Workerの依頼で作る | 採用 |

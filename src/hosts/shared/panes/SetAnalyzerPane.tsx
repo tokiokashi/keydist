@@ -41,9 +41,9 @@ import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { comboSetProvenanceOfTargets, isWaitingForReading, readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
 import { useSegmentation } from '../segmentation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
-import { NGRAM_TABLE_PANE_TEXT, useNgramTable } from '../ngram-table.ts';
+import { NGRAM_TABLE_PANE_TEXT, useNgramTable, useUserNgramTable, userTableRequestOf } from '../ngram-table.ts';
 import { NgramTableChoicesProvider } from '#analyzers/ngram-table-context.tsx';
-import { ngramTableAssetOf } from '#interpretation/ngram-table-asset.ts';
+import { ngramTableAssetOf, ngramTableSetOfFile, type NgramTableSet } from '#interpretation/ngram-table-asset.ts';
 
 /**
  * 対象の集合を見るAnalyzer（Set）のペイン。どのSetも、渡された`analyzer`だけが違う。個別画面とWorkspaceのペインが同じこのcomponentを使う。
@@ -81,36 +81,63 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   linkNotices,
 }: SetAnalyzerPaneProps<Options, Extracted, RowContext>) {
   const { setups, overrides, catalog, cache, dispatch, assetsReady } = env;
-  // 表を入力にする解析は、評価に渡すテキストを読まない。対象の解決には最小のテキストを使い、漢字の読みも待たない
+  // 表を入力にする解析は、対象の解決に評価に渡すテキストを使わない。最小のテキストで解決し、漢字の読みも待たない。
+  // 表の元が選んだテキストの時だけ、そのテキストを表を作る入力にする（対象の解決は変えない）
   const usesTable = analyzer.ngramTable !== undefined;
+  const fromText = usesTable && analyzer.ngramTable?.usesText(options) === true;
   const resolvedText = usesTable ? NGRAM_TABLE_PANE_TEXT : env.resolvedText;
-  const readingState = usesTable ? undefined : env.reading;
+  const readingState = usesTable ? (fromText ? env.reading : undefined) : env.reading;
+  // 辞書を読み込めなかったテキストは、読みに直せなかった漢字で走りを切って表を作る。読めなかった旨は条件の要約に出す。
+  // ペインの知らせ（漢字を打てない文字に数える）は、この解析の数え方と違うので出さない
+  const paneReadingState = fromText && readingState?.kind === 'failed' ? ({ kind: 'none' } as const) : readingState;
   // 辞書の読み込み中は、評価に渡すテキストがまだ無いので依頼を出さない（漢字を打てない文字に数えた暫定の数値を出さない）
   const readingLoading = isWaitingForReading(readingState);
-  // 表を入力にする解析は、同梱の表を取得してから依頼を出す。選べない次数は、選べる次数の最大に直す
-  const tableState = useNgramTable(env.ngramTables, usesTable);
-  const tableFile = tableState.status === 'ready' ? tableState.file : undefined;
+  // 表を入力にする解析は、表を用意してから依頼を出す。選べない次数は、選べる次数の最大に直す
+  const corpusState = useNgramTable(env.ngramTables, usesTable && !fromText);
+  const textBasis = useMemo(() => (fromText ? segmentationBasisOf(env.resolvedText) : undefined), [fromText, env.resolvedText]);
+  const textSegmentation = useSegmentation(env.bunsetsu, textBasis, fromText && !readingLoading);
+  const textSegmentationInput = textSegmentation.status === 'ready' ? textSegmentation.input : undefined;
+  const userRequest = useMemo(
+    () => (fromText && textSegmentationInput !== undefined ? userTableRequestOf(env.resolvedText, textSegmentationInput) : undefined),
+    [fromText, env.resolvedText, textSegmentationInput],
+  );
+  const userState = useUserNgramTable(cache, userRequest);
+  const corpusFile = corpusState.status === 'ready' ? corpusState.file : undefined;
+  const corpusSet = useMemo(() => (corpusFile === undefined ? undefined : ngramTableSetOfFile(corpusFile)), [corpusFile]);
+  // 状態の入れ物は描画のたびに作り直されるので、依存には中の表を渡す（表の入れ物の同一性が、依頼の作り直しを決める）
+  const userSet = userState.status === 'ready' ? userState.set : undefined;
+  const tableSet: NgramTableSet | undefined = fromText ? userSet : corpusSet;
   const wantedOrder = analyzer.ngramTable?.orderOf(options);
   const tableOrder =
-    tableFile === undefined || wantedOrder === undefined
+    tableSet === undefined || wantedOrder === undefined
       ? undefined
-      : tableFile.selectableOrders.includes(wantedOrder)
+      : tableSet.selectableOrders.includes(wantedOrder)
         ? wantedOrder
-        : tableFile.defaultOrder;
+        : tableSet.defaultOrder;
   const tableAsset = useMemo(
-    () => (tableFile === undefined || tableOrder === undefined ? undefined : ngramTableAssetOf(tableFile, tableOrder)),
-    [tableFile, tableOrder],
+    () =>
+      // 数えられる文節が無い表は、値を出せないので解析に渡さない
+      tableSet === undefined || tableOrder === undefined || tableSet.sufficiency[0]?.occurrences === 0
+        ? undefined
+        : ngramTableAssetOf(tableSet, tableOrder),
+    [tableSet, tableOrder],
   );
   const tableChoices = useMemo(
-    () => (tableFile === undefined ? undefined : { selectableOrders: tableFile.selectableOrders, defaultOrder: tableFile.defaultOrder }),
-    [tableFile],
+    () => (tableSet === undefined ? undefined : { selectableOrders: tableSet.selectableOrders, defaultOrder: tableSet.defaultOrder }),
+    [tableSet],
   );
-  const tableLoading = usesTable && tableState.status === 'loading';
+  const tableLoading =
+    usesTable &&
+    (fromText
+      ? textSegmentation.status === 'loading' || (userRequest !== undefined && userState.status === 'loading')
+      : corpusState.status === 'loading');
   const tableStatus: NgramTableStatus | undefined = !usesTable
     ? undefined
-    : tableState.status === 'failed' || env.ngramTables === undefined
-      ? 'failed'
-      : 'ready';
+    : fromText
+      ? textTableStatus(env.resolvedText.language, env.bunsetsu !== undefined, textSegmentation.status, userState, tableSet)
+      : corpusState.status === 'failed' || env.ngramTables === undefined
+        ? 'failed'
+        : 'ready';
   // 文節の区切りを求める設定の間だけ、分割器を呼ぶ。日本語以外のテキストは材料が無く、区切りを使わずに計算する
   const wantsSegmentation = analyzer.usesSegmentation?.(options) === true;
   const segmentationBasis = useMemo(() => segmentationBasisOf(resolvedText), [resolvedText]);
@@ -125,8 +152,11 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         ? 'unsupported'
         : 'ready';
   const conditionProvenance = useMemo(
-    () => [...readingProvenance(resolvedText.reading), ...(analyzer.ngramTable?.provenance(tableAsset, options) ?? [])],
-    [resolvedText.reading, analyzer, tableAsset, options],
+    () => [
+      ...readingProvenance(fromText ? env.resolvedText.reading : resolvedText.reading),
+      ...(analyzer.ngramTable?.provenance(tableAsset, options) ?? []),
+    ],
+    [fromText, env.resolvedText.reading, resolvedText.reading, analyzer, tableAsset, options],
   );
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
   const { choiceGroups, targets, colorByKey, markByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
@@ -370,7 +400,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
           }}
           conditionTargetDiffs={conditionSummary.diffs}
           conditionProvenance={provenanceItems}
-          reading={readingState}
+          reading={paneReadingState}
           engineState={extraction}
           frameRef={frameRef}
           waitingForScreen={waitsForScreen && !shown && extraction.status === 'idle'}
@@ -407,4 +437,21 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       </NgramTableChoicesProvider>
     </TextLanguageProvider>
   );
+}
+
+/**
+ * 表の元が選んだテキストの時の、表の用意の状態。作っている間は`ready`（値を出す前の計算中として扱う）。
+ * 日本語でないテキスト・分割器を使えない・表を作れない時は、値を出さない状態にする。
+ */
+function textTableStatus(
+  language: string,
+  hasSplitter: boolean,
+  segmentation: 'idle' | 'loading' | 'failed' | 'ready',
+  user: { readonly status: 'idle' | 'loading' | 'failed' | 'ready' },
+  set: NgramTableSet | undefined,
+): NgramTableStatus {
+  if (language !== 'ja') return 'unsupported';
+  if (!hasSplitter || segmentation === 'failed' || user.status === 'failed') return 'failed';
+  if (set !== undefined && set.sufficiency[0]?.occurrences === 0) return 'empty';
+  return 'ready';
 }

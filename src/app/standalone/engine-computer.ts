@@ -3,6 +3,8 @@ import { createEngineCache } from '#engine/cache.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInput } from '#engine/resolved-input.ts';
+import type { NgramTableSet } from '#interpretation/ngram-table-asset.ts';
+import type { UserNgramTableRequest } from '#interpretation/user-ngram-table.ts';
 import { createWorkerEngineComputer, type WorkerLike } from '#engine/worker-client.ts';
 
 /**
@@ -50,12 +52,18 @@ export const sharedEngineComputer: EngineComputer = {
   ) {
     return computer().getSetExtraction(members, definition, options, signal);
   },
+  getNgramTable(request: UserNgramTableRequest, signal?: AbortSignal) {
+    return computer().getNgramTable(request, signal);
+  },
   // 結果を引くだけで計算は始めない。実体（Worker）が未作成なら何も無いので、ここで作らない。
   peekTraceSummary(input: ResolvedInput) {
     return instance?.peekTraceSummary?.(input);
   },
   peekExtraction<Options, Extracted>(input: ResolvedInput, definition: SingleAnalyzerDefinition<Options, Extracted>, options: Options) {
     return instance?.peekExtraction?.(input, definition, options);
+  },
+  peekNgramTable(request: UserNgramTableRequest): NgramTableSet | undefined {
+    return instance?.peekNgramTable?.(request);
   },
   peekSetExtraction<Options, Extracted>(
     members: readonly EngineSetMemberInput[],

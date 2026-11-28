@@ -1,4 +1,7 @@
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import type { NgramTableSet } from '#interpretation/ngram-table-asset.ts';
+import type { UserNgramTableRequest } from '#interpretation/user-ngram-table.ts';
+import { stableStringify } from './cache-key.ts';
 import type { EngineComputer } from './computer.ts';
 import type { EngineExtractionResult, EngineTraceSummaryResult } from './pipeline.ts';
 import type { EngineSetMemberInput } from './request.ts';
@@ -26,6 +29,8 @@ export interface WorkerLike {
  */
 export const TRACE_MIRROR_MAX_ENTRIES = 32;
 export const EXTRACTION_MIRROR_MAX_ENTRIES = 32;
+/** 利用者のテキストから作った表の写しの最大件数。1件は表の全項目を持つので少なくする。 */
+export const NGRAM_TABLE_MIRROR_MAX_ENTRIES = 4;
 
 /** 常にPromiseを返す`EngineComputer`（`EngineComputer`は同期の値も許すので、こちらで狭める）。 */
 export interface WorkerEngineComputer extends EngineComputer {
@@ -42,6 +47,8 @@ export interface WorkerEngineComputer extends EngineComputer {
     options: Options,
     signal?: AbortSignal,
   ): Promise<EngineExtractionResult<Extracted>>;
+  getNgramTable(request: UserNgramTableRequest, signal?: AbortSignal): Promise<NgramTableSet>;
+  peekNgramTable(request: UserNgramTableRequest): NgramTableSet | undefined;
   /** Workerを止める。待ちと実行中の依頼は打ち切り扱いで拒否する。 */
   dispose(): void;
 }
@@ -102,6 +109,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
   // ここで持つ値は`get*`が返した値そのもの（数値は変わらない）。件数の上限は下の定数。
   const traceMirror = new LruCache<string, EngineTraceSummaryResult>(TRACE_MIRROR_MAX_ENTRIES);
   const extractionMirror = new LruCache<string, EngineExtractionResult<unknown>>(EXTRACTION_MIRROR_MAX_ENTRIES);
+  const ngramTableMirror = new LruCache<string, NgramTableSet>(NGRAM_TABLE_MIRROR_MAX_ENTRIES);
   let worker: WorkerLike | undefined;
   // 今のWorkerへ送った配列の識別子（`worker-wire.ts`）。Workerを止めたら、Workerが持つ配列も無くなるので空にする
   let sentLayouts = new Set<string>();
@@ -221,6 +229,16 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
     },
     peekTraceSummary(input: ResolvedInput): EngineTraceSummaryResult | undefined {
       return traceMirror.get(traceKeyOf(input));
+    },
+    getNgramTable(request: UserNgramTableRequest, signal?: AbortSignal): Promise<NgramTableSet> {
+      return remember(
+        ngramTableMirror,
+        stableStringify(request),
+        enqueue((id) => ({ id, kind: 'ngram-table', request }), signal),
+      );
+    },
+    peekNgramTable(request: UserNgramTableRequest): NgramTableSet | undefined {
+      return ngramTableMirror.get(stableStringify(request));
     },
     peekExtraction<Options, Extracted>(
       input: ResolvedInput,
