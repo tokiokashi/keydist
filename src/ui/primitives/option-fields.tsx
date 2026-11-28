@@ -5,7 +5,7 @@ import './option-fields.css';
  * 解析設定の項目を描く共通の入力部品（docs/architecture.md「Analyzerがペインに渡すもの」）。
  *
  * 各項目に「既定値へ戻す」を付けるのはここだけにする。Analyzerごとに戻す操作を作ると、
- * 戻す範囲（旧Bigram Flowの「標準に戻す」は3項目だけを戻していた）がAnalyzerごとにばらつき、
+ * 戻す範囲がAnalyzerごとにばらつき、
  * 利用者が「どこまで戻るか」を毎回読み取る必要が出るため。Analyzerは項目ごとの既定値
  * （`defaultOptions`）を渡すだけで、戻す操作の有無・見た目はこの部品が決める。
  */

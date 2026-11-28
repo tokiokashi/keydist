@@ -1,17 +1,14 @@
 import {
   DEFAULT_EXTRACTION_ASSETS,
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
-import { analysisTargetKey, LAYOUT_MISSING_REASON, type AnalysisTarget } from '#input/setup/index.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
 import { buildSpanIndex, guideScaleOf, spanSpread, spanTotals, spanValue, type SpanIndex, type SpanMetricId } from '#interpretation/span-metrics.ts';
-import { generateTrace, type Trace } from '#trace/generate.ts';
+import type { Trace } from '#trace/generate.ts';
 import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
 import { rangeBoundsOf, textRangeBounds } from '#input/text/display-ranges.ts';
 import { PRNG_NAME } from '#interpretation/prng.ts';
@@ -25,6 +22,7 @@ import {
 } from '#interpretation/record/keystroke-gaps.ts';
 import type { KeystrokeRecord } from '#interpretation/record/keystroke-record.ts';
 import { buildSegmentationReport, SEGMENT_SEED_COUNT, type SegmentationReport } from '#interpretation/segments.ts';
+import { disciplineSetContext, generatedDisciplineMember } from '../set-discipline-material.ts';
 import { ALTERNATE_RUN_CHART_OPTIONS, DEFAULT_RUN_CHART_OPTIONS, runChartOptions, type RunChartOptions } from './options.ts';
 
 /**
@@ -299,26 +297,10 @@ const FIXTURE_SEGMENTATION = {
   origin: 'kana-only',
   splitter: { name: 'fixture', version: '0' },
 } as const;
-const FIXTURE_TARGET: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
 
 function fixtureMembers(): readonly AnalyzerSetMember[] {
-  const trace = generateTrace(FIXTURE_TEXT, LAYOUT_BY_ID.get('qwerty')!, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true });
-  return [
-    {
-      target: FIXTURE_TARGET,
-      trace,
-      // この抽出が読まない値は材料に含めない
-      analysis: undefined as never,
-      metrics: undefined as never,
-      requestTrace: { requestTrace: () => trace },
-      assets: { ...DEFAULT_EXTRACTION_ASSETS, segmentation: FIXTURE_SEGMENTATION },
-      remember: noRemember,
-    },
-  ];
+  return [generatedDisciplineMember(FIXTURE_TEXT, { assets: { ...DEFAULT_EXTRACTION_ASSETS, segmentation: FIXTURE_SEGMENTATION } })];
 }
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /** engine（`engine/cache.ts` の `getSetExtraction`）が呼ぶ、Analyzer契約の実体。 */
 export const runChartDefinition: SetAnalyzerDefinition<RunChartOptions, RunChartExtracted> = defineSetAnalyzer({
@@ -336,6 +318,6 @@ export const runChartDefinition: SetAnalyzerDefinition<RunChartOptions, RunChart
   optionsDiscipline: {
     sample: DEFAULT_RUN_CHART_OPTIONS,
     alternates: ALTERNATE_RUN_CHART_OPTIONS,
-    context: () => ({ members: fixtureMembers(), failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(fixtureMembers()),
   },
 });

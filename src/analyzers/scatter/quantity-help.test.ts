@@ -13,7 +13,7 @@ import {
   scatterContour,
 } from './axes.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { mentionsUnit, readoutAriaLabel, readoutParts, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
+import { mentionsUnit, readoutAriaLabel, readoutParts, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 
 const INPUT_CHARS = 100;
 const PRESETS = SCATTER_PRESET_IDS.filter((id) => id !== 'free');
@@ -268,9 +268,16 @@ test('固定の説明は、線を引かない図があることと食い違わ�
 });
 
 test('点の読み取り: 名前と「(横, 縦)」に続けて、線を引く組だけ線の量の短い名前と値を出す', () => {
-  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((column) => [column, 7])) as Parameters<typeof readoutText>[0]['values'];
-  const readout = (axes: { x: Column; y: Column }, x: number, y: number, rowValues = values, language: 'ja' | 'en' = 'ja') =>
-    readoutText({ label: 'A', fullName: 'QWERTY', x, y, values: rowValues }, axes, scatterContour(axes.x, axes.y, INPUT_CHARS, language), language);
+  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((column) => [column, 7])) as Parameters<typeof readoutParts>[0]['values'];
+  const readout = (axes: { x: Column; y: Column }, x: number, y: number, rowValues = values, language: 'ja' | 'en' = 'ja') => {
+    const { name, coordinates, contour } = readoutParts(
+      { label: 'A', fullName: 'QWERTY', x, y, values: rowValues },
+      axes,
+      scatterContour(axes.x, axes.y, INPUT_CHARS, language),
+      language,
+    );
+    return [name, coordinates, ...(contour === undefined ? [] : [contour])].join('　');
+  };
   // 線を引く既定の組: u/かな = アクション数/かな × u/アクション。線の量は軸の名前と同じ縮めた名前で、単位は付けない
   assert.equal(readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }), 'QWERTY　(1.500, 2.000)　距離/カナ 3.000');
   // 線を引かない組: 線の量（u/キー・u/アクション・アクション/u）の名前と値を出さない
@@ -291,13 +298,12 @@ test('点の読み取り: 名前と「(横, 縦)」に続けて、線を引く�
   assert.equal(readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }, 'en'), 'QWERTY　(1.500, 2.000)　距離/字 3.000');
 });
 
-test('点の読み取りの部品: 座標は「(横, 縦)」の1つの文字列で、読み取りの文は部品を全角空白でつないだもの', () => {
-  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((c) => [c, 7])) as Parameters<typeof readoutText>[0]['values'];
+test('点の読み取りの部品: 座標は「(横, 縦)」の1つの文字列になる', () => {
+  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((c) => [c, 7])) as Parameters<typeof readoutParts>[0]['values'];
   const axes = SCATTER_PRESET_AXES.distance;
   const row = { label: 'A', fullName: 'QWERTY', x: 1.5, y: 2, values: { ...values, perCharUnits: 3 } };
   const contour = scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja');
   assert.deepEqual(readoutParts(row, axes, contour, 'ja'), { name: 'QWERTY', coordinates: '(1.500, 2.000)', contour: '距離/カナ 3.000' });
-  assert.equal(readoutText(row, axes, contour, 'ja'), 'QWERTY　(1.500, 2.000)　距離/カナ 3.000');
 });
 
 test('点の読み取り: 軸の名前に添える単位は、線の量の名前に付けない', () => {
@@ -309,7 +315,7 @@ test('点の読み取り: 軸の名前に添える単位は、線の量の名前
 });
 
 test('点の読み上げ用の名前は、量の名前を長い形で全て添える', () => {
-  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((c) => [c, 7])) as Parameters<typeof readoutText>[0]['values'];
+  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((c) => [c, 7])) as Parameters<typeof readoutParts>[0]['values'];
   const axes = SCATTER_PRESET_AXES.distance;
   assert.equal(
     readoutAriaLabel(

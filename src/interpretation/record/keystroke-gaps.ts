@@ -14,18 +14,6 @@ import type { KeystrokeRecord } from './keystroke-record.ts';
 /** 記録と今の入力が食い違う項目（仕様 §4.1の表の行）。 */
 export type RecordMismatchItem = 'target' | 'shape' | 'fingerAssignment' | 'conditions' | 'version' | 'text' | 'range' | 'keys';
 
-/** 食い違いを出す並び。 */
-export const RECORD_MISMATCH_ITEMS: readonly RecordMismatchItem[] = [
-  'target',
-  'shape',
-  'fingerAssignment',
-  'conditions',
-  'version',
-  'text',
-  'range',
-  'keys',
-];
-
 /** 記録の対象が、見ている対象に当たるか。配列は配列のid、Setupはidで当てる。 */
 export function recordTargetMatches(record: Pick<KeystrokeRecord, 'target'>, target: AnalysisTarget): boolean {
   return record.target.kind === 'layout'

@@ -71,7 +71,7 @@ const stroke = (index: number, presses: Press[], extra: StrokeParticipation[] = 
 
 const ends = (schedule: ReturnType<typeof playbackTimingSchedule>) => schedule.map((step) => Math.round(step.endMs));
 
-test('全指律速OFFは従来のbase scheduleと完全一致する', () => {
+test('全指律速OFFは、全指律速の設定を渡さないbase scheduleと完全一致する', () => {
   const analysis = analyzeStrokeStructure([
     stroke(0, [press('LI', at('LI'))]),
     stroke(1, [press('RI', at('RI'))]),

@@ -36,7 +36,7 @@ export interface KeyPatternTriggerActivation {
 }
 
 export interface KeyPatternPresentationState {
-  /** 現在のgestureをlegacy pickerへ渡すpress順付きphysical key列。 */
+  /** 現在のgestureを`matchKeyPatterns`へ渡すpress順付きphysical key列。 */
   readonly selectedKeys: readonly string[];
   /** release後も次の1打まで有効なone-shot trigger。 */
   readonly oneShotActivations: readonly KeyPatternTriggerActivation[];
@@ -488,25 +488,6 @@ export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string
     }
   }
   return undefined;
-}
-
-/** ガイド表示用: canonical pathが持つtriggerキー集合。 */
-export function allTriggerKeys(layout: Layout): ReadonlySet<string> {
-  const keys = new Set<string>();
-  for (const alternatives of layout.canonicalInputs.values()) {
-    for (const alternative of alternatives) {
-      for (const realization of alternative.baseRealizations) {
-        for (const key of realization.defaultTriggerKeys ?? []) keys.add(resolveKeyId(key));
-        for (const view of realization.alternateParticipations ?? []) {
-          for (const key of view.triggerKeys) keys.add(resolveKeyId(key));
-        }
-      }
-      if (alternative.origin === 'combo' && alternative.semanticInputs.length === 1) {
-        for (const key of alternative.semanticInputs[0].physicalKeys) keys.add(resolveKeyId(key));
-      }
-    }
-  }
-  return keys;
 }
 
 /**

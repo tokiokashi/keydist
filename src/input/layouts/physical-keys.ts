@@ -20,7 +20,7 @@ export function physicalKeysUsedByLayout(layout: Pick<Layout, 'canonicalInputs' 
 }
 
 /**
- * 通常gridと親指キーは従来どおり表示し、grid外の一般キーはlayoutが実際に使う時だけ表示する。
+ * 通常gridと親指キーは常に表示し、grid外の一般キーはlayoutが実際に使う時だけ表示する。
  * Shift等の将来追加されるgrid外キーもcanonical inputをauthorityに同じ規則で扱える。
  */
 export function visibleGeometryKeys(layout: Pick<Layout, 'canonicalInputs' | 'pendingTable'>, geometry: Geometry): readonly Key[] {

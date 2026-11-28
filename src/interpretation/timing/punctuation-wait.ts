@@ -18,13 +18,6 @@ export interface PunctuationWaitMs {
 export const PUNCTUATION_WAIT_MS_MIN = 0;
 export const PUNCTUATION_WAIT_MS_MAX = 10000;
 
-export const NO_PUNCTUATION_WAIT: PunctuationWaitMs = {
-  commaBeforeMs: 0,
-  commaAfterMs: 0,
-  periodBeforeMs: 0,
-  periodAfterMs: 0,
-};
-
 /** 待機の対象の読点・句点。文章を打つ測定で数えない文字の集合（§6.4）とは別の集合として持つ。 */
 const COMMA_CHARS: ReadonlySet<string> = new Set(['、', '，', ',']);
 const PERIOD_CHARS: ReadonlySet<string> = new Set(['。', '．', '.']);

@@ -19,7 +19,7 @@ function nextId(): string {
   return `text-${idCounter}`;
 }
 
-/** テスト用の最小ヘルパー: 空のテキストを1件作る（旧`createUserText`相当）。 */
+/** テスト用の最小ヘルパー: 空のテキストを1件作る。 */
 function withOneText(text = '', name = '新しいテキスト'): TextLibrary {
   idCounter = 0;
   return appendCopiedUserText(emptyTextLibrary(), nextId, { text, name }).library;

@@ -1,16 +1,20 @@
 import {
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
-import { analysisTargetKey, LAYOUT_MISSING_REASON, type AnalysisTarget } from '#input/setup/index.ts';
-import { ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
-import type { Trace } from '#trace/generate.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
 import { computeComparisonRowValues, type ComparisonRowValues } from '../comparison-column-values.ts';
+import {
+  DISCIPLINE_TARGET_A,
+  DISCIPLINE_TARGET_B,
+  disciplineMember,
+  disciplineMetrics,
+  disciplineSetContext,
+  disciplineTrace,
+} from '../set-discipline-material.ts';
 import { ALTERNATE_SCATTER_OPTIONS, DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 
 /**
@@ -66,93 +70,9 @@ export function computeScatterExtraction(members: readonly AnalyzerSetMember[], 
 // 入れ忘れ防止テストの材料
 // ---------------------------------------------------------------------------
 
-function fixtureFingerRecord(): Record<Finger, number> {
-  return Object.fromEntries(ALL_FINGERS.map((finger) => [finger, 0])) as Record<Finger, number>;
-}
-
-function fixtureMetrics(totalUnits: number): Metrics {
-  return {
-    geometryId: 'row-staggered',
-    geometryName: 'Row-staggered',
-    fingerAssignmentId: 'default',
-    fingerAssignmentName: '既定',
-    fingerAssignmentHasMultiFingerKeys: false,
-    conditions: DEFAULT_METRIC_CONDITIONS,
-    strokes: 3,
-    actions: 3,
-    presses: 3,
-    skipped: 0,
-    inputChars: 3,
-    perFinger: fixtureFingerRecord(),
-    perFingerPresses: fixtureFingerRecord(),
-    perFingerPressEvents: fixtureFingerRecord(),
-    totalUnits,
-    totalMm: totalUnits * 19,
-    meanPerStroke: totalUnits / 3,
-    perCharUnits: totalUnits / 3,
-    perCharSteps: 1,
-    perCharPresses: 1,
-    perActionPresses: 1,
-    perPressUnits: totalUnits / 3,
-    movedPressShare: 100,
-    perMovedPressUnits: totalUnits / 3,
-    textChars: 3,
-    textCharsPerAction: 1,
-    actionsPerTextChar: 1,
-    actionsPerUnit: 3 / (totalUnits || 1),
-    textCharsPerUnit: 3 / (totalUnits || 1),
-    unitsPerTextChar: totalUnits / 3,
-    singleTapLayerRate: 100,
-    singleTapRate: 100,
-    singleKeyRate: 100,
-    adjacent: [],
-    adjacentHomeSpacings: [],
-    adjacentDistribution: [],
-    sameFinger: 0,
-    perFingerSameFinger: fixtureFingerRecord(),
-    combos: { definitions: 0, matched: 0, hits: 0 },
-    layers: [],
-    comboPresses: 0,
-    comboKeyCounts: new Map(),
-    comboKeyDistance: new Map(),
-    keyCounts: new Map(),
-    keyDistance: new Map(),
-  };
-}
-
-const FIXTURE_TRACE: Trace = {
-  strokes: [],
-  errors: [],
-  skipped: 0,
-  skippedPositions: [],
-  skippedByKind: { kanji: 0, symbol: 0, other: 0 },
-  inputChars: 3,
-  comboHits: [],
-  comboDefinitions: 0,
-  layerDefinitions: [],
-};
-
-// 散布図はTraceRequesterを使わないので、フィクスチャでは「呼ばれたら気づく」スタブにする。
-const UNUSED_REQUEST_TRACE = {
-  requestTrace: () => {
-    throw new Error('unused');
-  },
-};
-
-const FIXTURE_TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_TARGET_B: AnalysisTarget = { kind: 'setup', setupId: 'fixture-b' };
-const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
-
-const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [FIXTURE_TARGET_A, FIXTURE_TARGET_B].map((target, index) => ({
-  target,
-  trace: FIXTURE_TRACE,
-  analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
-  metrics: fixtureMetrics(10 * (index + 1)),
-  requestTrace: UNUSED_REQUEST_TRACE,
-  remember: noRemember,
-}));
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
+const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [DISCIPLINE_TARGET_A, DISCIPLINE_TARGET_B].map((target, index) =>
+  disciplineMember(target, { trace: disciplineTrace([], 3), metrics: disciplineMetrics(10 * (index + 1)) }),
+);
 
 /** engine（`engine/cache.ts`の`getSetExtraction`）が呼ぶ、Analyzer契約の実体。 */
 export const scatterDefinition: SetAnalyzerDefinition<ScatterOptions, ScatterExtracted> = defineSetAnalyzer({
@@ -164,6 +84,6 @@ export const scatterDefinition: SetAnalyzerDefinition<ScatterOptions, ScatterExt
   optionsDiscipline: {
     sample: DEFAULT_SCATTER_OPTIONS,
     alternates: ALTERNATE_SCATTER_OPTIONS,
-    context: () => ({ members: FIXTURE_MEMBERS, failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(FIXTURE_MEMBERS),
   },
 });

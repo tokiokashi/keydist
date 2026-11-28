@@ -1,20 +1,18 @@
 import {
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
   type SetAnalyzerWarmup,
 } from '#analyzers/contract.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { analysisTargetKey, LAYOUT_MISSING_REASON, type AnalysisTarget } from '#input/setup/index.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
 import { DEFAULT_METRIC_CONDITIONS } from '#interpretation/metrics.ts';
 import { CONTROL_CONDITIONS, controlSeeds, meanDeviation, type ControlConditions, type MeanDeviation } from '#interpretation/control-comparison.ts';
 import { shuffledText, uniformText, type ControlTextKind } from '#interpretation/control-texts.ts';
 import { generateTrace } from '#trace/generate.ts';
 import { CONTROL_COLUMN_IDS, computeControlColumnValues, type ControlColumnId, type ControlColumnValues } from '../comparison-column-values.ts';
+import { DISCIPLINE_TARGET_A, disciplineMember, disciplineSetContext, generateDisciplineTrace } from '../set-discipline-material.ts';
 import { controlTextsOptions, DEFAULT_CONTROL_TEXTS_OPTIONS, type ControlTextsOptions } from './options.ts';
 
 /**
@@ -121,29 +119,20 @@ export function computeControlTextsExtraction(
 // ---------------------------------------------------------------------------
 
 const FIXTURE_TEXT = 'たちつてとなにぬねのはひふへほ';
-const FIXTURE_TARGET: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
 
 function fixtureMembers(): readonly AnalyzerSetMember[] {
-  const layout = LAYOUT_BY_ID.get('qwerty')!;
-  const geometry = buildGeometry('row-staggered');
-  const policy = { windowSize: 3, sfbHomeCost: true };
-  const trace = generateTrace(FIXTURE_TEXT, layout, geometry, policy);
+  const { layout, geometry, policy, trace } = generateDisciplineTrace(FIXTURE_TEXT);
   return [
-    {
-      target: FIXTURE_TARGET,
+    disciplineMember(DISCIPLINE_TARGET_A, {
       text: FIXTURE_TEXT,
       trace,
       // この抽出が読まない値は材料に含めない
       analysis: undefined as never,
       metrics: { conditions: DEFAULT_METRIC_CONDITIONS } as never,
       requestTrace: { requestTrace: (request) => generateTrace(request.text ?? FIXTURE_TEXT, layout, geometry, policy) },
-      remember: noRemember,
-    },
+    }),
   ];
 }
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /** engine（`engine/cache.ts`の`getSetExtraction`）が呼ぶ、Analyzer契約の実体。 */
 export const controlTextsDefinition: SetAnalyzerDefinition<ControlTextsOptions, ControlTextsExtracted> = defineSetAnalyzer({
@@ -156,6 +145,6 @@ export const controlTextsDefinition: SetAnalyzerDefinition<ControlTextsOptions, 
   optionsDiscipline: {
     sample: DEFAULT_CONTROL_TEXTS_OPTIONS,
     alternates: DEFAULT_CONTROL_TEXTS_OPTIONS,
-    context: () => ({ members: fixtureMembers(), failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(fixtureMembers()),
   },
 });

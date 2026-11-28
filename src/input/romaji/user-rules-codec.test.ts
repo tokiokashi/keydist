@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodeStoredRomajiSettings, type UserRomajiRule } from './rules.ts';
+import type { UserRomajiRule } from './rules.ts';
 import { USER_ROMAJI_RULES_CODEC } from './user-rules-codec.ts';
 
 const rule = (id: string, overrides: Record<string, string> = { し: 'si' }): UserRomajiRule => ({
@@ -65,18 +65,6 @@ test('壊れた要素とid重複は捨てて、最初の1件を残し、経路�
   assert.match(decoded.diagnostics[2].message, /重複/);
 });
 
-test('版を持たない旧形式の読み取りも、id重複を同じ扱いにする', () => {
-  const result = decodeStoredRomajiSettings({ rules: [rule('rule-a'), rule('rule-a')], assignments: {} });
-  assert.deepEqual(
-    result.value.rules.map((r) => r.id),
-    ['rule-a'],
-  );
-  assert.deepEqual(
-    result.diagnostics.map((d) => d.path),
-    ['rules[1]'],
-  );
-});
-
 test('組み込みの規則と同じidの自作の規則は捨てて、経路付きの診断を積む', () => {
   const decoded = USER_ROMAJI_RULES_CODEC.decode({
     version: 1,
@@ -91,4 +79,21 @@ test('組み込みの規則と同じidの自作の規則は捨てて、経路付
     decoded.diagnostics.map((d) => d.path),
     ['rules[0]', 'rules[3]'],
   );
+});
+
+test('基底にJLODとgACT10を持つ自作の規則を読める。基底が組み込みに無い値は捨てる', () => {
+  const decoded = USER_ROMAJI_RULES_CODEC.decode({
+    version: 1,
+    rules: [
+      { ...rule('rule-j'), base: 'jlod', generateSokuon: false },
+      { ...rule('rule-g'), base: 'gact10', generateSokuon: false },
+      { ...rule('rule-x'), base: 'unknown' },
+    ],
+  });
+  assert.ok(decoded.ok);
+  assert.deepEqual(
+    decoded.value.map((r) => r.id),
+    ['rule-j', 'rule-g'],
+  );
+  assert.equal(decoded.diagnostics.length, 1);
 });

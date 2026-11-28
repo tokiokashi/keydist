@@ -375,16 +375,6 @@ export function physicalAvailableKeys(geometry: { readonly keys: ReadonlyMap<str
   return new Set([...geometry.keys.keys()].map(resolveKeyId));
 }
 
-export function reverseLookupStepMatchesRecognition(
-  step: ReverseLookupStep,
-  recognition: { readonly output: string; readonly alternative: InputAlternative },
-): boolean {
-  return (
-    normalizeEvaluationHeading(recognition.output) === normalizeEvaluationHeading(step.output) &&
-    step.acceptedAlternativeSelectionIdentities.includes(inputAlternativeSelectionIdentity(recognition.alternative))
-  );
-}
-
 export function reverseLookupGuideActions(route: ReverseLookupRoute): readonly ReverseLookupGuideAction[] {
   return route.steps.flatMap((step, routeStepIndex) =>
     step.actions.map((keys, actionIndex) => ({
@@ -546,15 +536,6 @@ function stepLabels(
     cursor += step.actions.length;
     return labels.join(' → ');
   });
-}
-
-export function reverseLookupStepLabel(
-  layout: Layout,
-  step: ReverseLookupStep,
-  standard?: PhysicalKeyboardStandard,
-  naming: LayerKeyNaming = DEFAULT_LAYER_KEY_NAMING,
-): string {
-  return stepLabels(layout, [step], standard, naming)[0];
 }
 
 export function reverseLookupRouteLabel(

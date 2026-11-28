@@ -1,9 +1,4 @@
-import {
-  createAppStateSliceScheduler,
-  loadOrMigrateAppStateSlice,
-  patchAppStateSlice,
-  type AppStateSliceScheduler,
-} from '#app/state/app-state-storage.ts';
+import { createAppStateSliceScheduler, loadOrMigrateAppStateSlice, type AppStateSliceScheduler } from '#app/state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { decodeVersionedState } from '#platform/persistence/versioned-state.ts';
 import type { PanelId, WorkspacePanelDefinition, WorkspacePanelRegistry } from './panel-registry.ts';
@@ -159,10 +154,6 @@ export function loadWorkspaceState(
     },
     legacyKeys: [WORKSPACE_STORAGE_KEY],
   });
-}
-
-export function saveWorkspaceState(storage: KeyValueStorage, state: WorkspaceStateV1): void {
-  patchAppStateSlice(storage, 'workspace', state);
 }
 
 /**

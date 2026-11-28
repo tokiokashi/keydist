@@ -4,7 +4,6 @@ import {
   readOverride,
   withLevelOverrides,
   resetItem as resetItemGeneric,
-  resetLevel as resetLevelGeneric,
   resolveCascade,
   setOverride as setOverrideGeneric,
   type CascadeContext,
@@ -335,8 +334,4 @@ export function withWorkspaceConditions(
   conditions: LevelOverrides<SettingsValueMap> | undefined,
 ): SettingsCascadeOverrides {
   return withLevelOverrides(overrides, { kind: 'workspace' }, conditions);
-}
-
-export function resetSettingsLevel(overrides: SettingsCascadeOverrides, level: CascadeLevel): SettingsCascadeOverrides {
-  return resetLevelGeneric(overrides, level);
 }

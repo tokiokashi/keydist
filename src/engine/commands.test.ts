@@ -32,7 +32,6 @@ import {
   renameFingerAssignmentCommand,
   renameUserRomajiRuleCommand,
   resetCascadeItemCommand,
-  resetCascadeLevelCommand,
   selectTextCommand,
   setCascadeOverrideCommand,
   setMultiBaselineCommand,
@@ -151,7 +150,7 @@ test('resetCascadeItemCommand: 上書きが無い項目のリセットはno-op�
   assert.equal(step.history, history);
 });
 
-test('resetCascadeItemCommand / resetCascadeLevelCommand: 実際に上書きがある場合は消える', () => {
+test('resetCascadeItemCommand: 実際に上書きがある場合は消える', () => {
   let assets = emptyAssets();
   let history = emptyCommandHistory<KeydistAssets>();
 
@@ -166,10 +165,6 @@ test('resetCascadeItemCommand / resetCascadeLevelCommand: 実際に上書きが�
   assert.equal(step3.outcome.kind, 'applied');
   assert.equal(step3.assets.setupLibrary.overrides.global?.windowSize, undefined);
   assert.equal(step3.assets.setupLibrary.overrides.global?.sfbHomeCost, false);
-
-  const step4 = applyCommand(step3.assets, step3.history, resetCascadeLevelCommand({ kind: 'global' }));
-  assert.equal(step4.outcome.kind, 'applied');
-  assert.deepEqual(step4.assets.setupLibrary.overrides, {});
 });
 
 test('createSetupCommand: Setupを1件作成する。undoで手持ちが空に戻る', () => {

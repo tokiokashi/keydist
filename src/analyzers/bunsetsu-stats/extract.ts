@@ -1,15 +1,12 @@
 import {
   DEFAULT_EXTRACTION_ASSETS,
   defineSetAnalyzer,
-  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { analysisTargetKey, LAYOUT_MISSING_REASON, type AnalysisTarget } from '#input/setup/index.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import { analysisTargetKey } from '#input/setup/index.ts';
 import type { SegmenterInfo, SegmentationAssets, SegmentationOrigin } from '#input/text/segmentation.ts';
 import {
   analyzeBunsetsuText,
@@ -23,7 +20,7 @@ import {
   type FrequentBigram,
   type FrequentSegment,
 } from '#interpretation/bunsetsu-stats.ts';
-import { generateTrace } from '#trace/generate.ts';
+import { disciplineSetContext, generatedDisciplineMember } from '../set-discipline-material.ts';
 import { ALTERNATE_BUNSETSU_STATS_OPTIONS, DEFAULT_BUNSETSU_STATS_OPTIONS, bunsetsuStatsOptions, type BunsetsuStatsOptions } from './options.ts';
 
 /**
@@ -172,27 +169,10 @@ const FIXTURE_SEGMENTATION = {
   origin: 'kana-only',
   splitter: { name: 'fixture', version: '0' },
 } as const;
-const FIXTURE_TARGET: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
-const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
 
 function fixtureMembers(): readonly AnalyzerSetMember[] {
-  const trace = generateTrace(FIXTURE_TEXT, LAYOUT_BY_ID.get('qwerty')!, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true });
-  return [
-    {
-      target: FIXTURE_TARGET,
-      text: FIXTURE_TEXT,
-      trace,
-      // この抽出が読まない値は材料に含めない
-      analysis: undefined as never,
-      metrics: undefined as never,
-      requestTrace: { requestTrace: () => trace },
-      assets: { ...DEFAULT_EXTRACTION_ASSETS, segmentation: FIXTURE_SEGMENTATION },
-      remember: noRemember,
-    },
-  ];
+  return [generatedDisciplineMember(FIXTURE_TEXT, { text: FIXTURE_TEXT, assets: { ...DEFAULT_EXTRACTION_ASSETS, segmentation: FIXTURE_SEGMENTATION } })];
 }
-
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /** engine（`engine/cache.ts` の `getSetExtraction`）が呼ぶ、Analyzer契約の実体。 */
 export const bunsetsuStatsDefinition: SetAnalyzerDefinition<BunsetsuStatsOptions, BunsetsuStatsExtracted> = defineSetAnalyzer({
@@ -206,6 +186,6 @@ export const bunsetsuStatsDefinition: SetAnalyzerDefinition<BunsetsuStatsOptions
   optionsDiscipline: {
     sample: DEFAULT_BUNSETSU_STATS_OPTIONS,
     alternates: ALTERNATE_BUNSETSU_STATS_OPTIONS,
-    context: () => ({ members: fixtureMembers(), failures: FIXTURE_FAILURES }),
+    context: () => disciplineSetContext(fixtureMembers()),
   },
 });
