@@ -32,6 +32,7 @@ import {
   playbackStrokeAnnotation,
   type PlaybackOrderSpan,
 } from './structure-display.ts';
+import { playbackSequenceTable } from './sequence-table.ts';
 import type { PlaybackOptions } from './options.ts';
 import type { PlaybackTimingConditions } from './timing-conditions.ts';
 
@@ -69,6 +70,8 @@ export interface PlaybackFrame {
   readonly structureLabel: string;
   /** 面の定義があるキーの刻印。無いキーは配列の刻印を使う */
   readonly keyLabels: ReadonlyMap<string, string>;
+  /** 順次打鍵の続きの表で、字が決まるキー（output）と、続きがあるキー（continuation）。表を出さないステップでは空 */
+  readonly keyGuides: ReadonlyMap<string, 'output' | 'continuation'>;
   readonly activeKeys: ReadonlySet<string>;
   readonly triggerKeys: ReadonlySet<string>;
   /** 今の打鍵を打った指（打鍵に記録された、選んだ指）。開始前は空 */
@@ -169,6 +172,12 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
   const stroke = playbackStrokeAt(trace.strokes, cursor);
   const display = stroke ? playbackStrokeDisplay(layout, stroke) : undefined;
   const isRomaji = layout.romajiTable !== undefined;
+  const table = playbackSequenceTable(layout, trace.strokes, cursor);
+  const keyGuides = new Map<string, 'output' | 'continuation'>();
+  if (table) {
+    for (const key of table.continuations) keyGuides.set(key, 'continuation');
+    for (const key of table.outputs.keys()) keyGuides.set(key, 'output');
+  }
 
   const inputPreview = playbackInputPreview(trace.strokes, cursor, windowSize);
   const romajiInputPreview = isRomaji && options.showRomajiInput ? playbackRomajiInputPreview(trace.strokes, cursor, windowSize) : undefined;
@@ -184,7 +193,7 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     total,
     cursor,
     isRomaji,
-    currentText: stroke ? (display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)) : '—',
+    currentText: stroke ? (table?.output ?? display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)) : '—',
     kanaText: isRomaji ? (inputPreview.find((segment) => segment.kind === 'current')?.text ?? '—') : (stroke?.inputChar ?? '—'),
     typedText: stroke?.char ?? '—',
     plannedText: plan?.planned,
@@ -192,7 +201,8 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     romajiInputPreview,
     layerLabel: layerLabelOf(trace, stroke),
     structureLabel: structureLabelOf(analysis, cursor),
-    keyLabels: display?.keyLabels ?? new Map<string, string>(),
+    keyLabels: table?.outputs ?? display?.keyLabels ?? new Map<string, string>(),
+    keyGuides,
     activeKeys: new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []),
     triggerKeys: new Set(stroke?.triggerKeys ?? []),
     pressedFingers: [...new Set(stroke?.presses.map((press) => press.finger) ?? [])],
