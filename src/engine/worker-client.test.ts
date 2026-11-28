@@ -136,6 +136,23 @@ test('解決に失敗したメンバーを含む集合も、失敗を値のま�
   remote.dispose();
 });
 
+test('Worker越しに作った選んだテキストの表は、メインスレッドで作った表と一致し、一度作った入力は同期に引ける', async () => {
+  const request = {
+    name: 'テスト',
+    readingText: 'きょうはあさですきょうはひるです。',
+    boundaries: [4, 8, 12],
+    splitter: { name: 'splitter', version: '1' },
+    reading: null,
+  };
+  const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
+  assert.equal(remote.peekNgramTable(request), undefined);
+  const built = await remote.getNgramTable(request);
+  assert.deepStrictEqual(built, createEngineCache().getNgramTable(request));
+  assert.equal(remote.peekNgramTable(request), built);
+  assert.equal(remote.peekNgramTable({ ...request, boundaries: [4, 8] }), undefined);
+  remote.dispose();
+});
+
 test('Workerには1度に1件だけ送り、待ちのうちに打ち切られた依頼は送らない', async () => {
   const fake = createFakeWorker({ manual: true });
   const remote = createWorkerEngineComputer(() => fake.worker);

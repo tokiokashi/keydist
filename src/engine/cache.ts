@@ -21,6 +21,8 @@ import { describeResolvedInputError } from './resolved-input-errors.ts';
 import { createTraceRequesterFor } from './trace-requester.ts';
 import { checkKeystrokeRecord } from './keystroke-record-check.ts';
 import { recordTargetMatches } from '#interpretation/record/keystroke-gaps.ts';
+import type { NgramTableSet } from '#interpretation/ngram-table-asset.ts';
+import { buildUserNgramTable, type UserNgramTableRequest } from '#interpretation/user-ngram-table.ts';
 
 /**
  * 表示中のSetupだけを計算する前提なので大きくしなくてよい。
@@ -34,6 +36,9 @@ const DEFAULT_MAX_ENTRIES = 32;
  * N感度の既定のWorkspace（7配列 × 11通りのN）の77件に、条件を替えた分の余裕を足した値。
  */
 const DEFAULT_MAX_PART_ENTRIES = 1024;
+
+/** 利用者のテキストから作った表の最大保持件数。1件は表の全項目を持つので大きい。 */
+const MAX_NGRAM_TABLE_ENTRIES = 4;
 
 export interface EngineCacheOptions {
   /** Traceキャッシュの最大保持件数。省略時は`DEFAULT_MAX_ENTRIES`。 */
@@ -101,6 +106,8 @@ export interface EngineCache {
    * 抽出の値は段を先に求めても求めなくても同じ。メンバーの解決に失敗している時、Analyzerが段を持たない時は何もしない。
    */
   warmSetMember<Options, Extracted>(member: EngineSetMemberInput, definition: SetAnalyzerDefinition<Options, Extracted>, step: number): void;
+  /** 利用者のテキストの文節の読みの表を、入力の中身のキーで引く。無ければ作って積む。 */
+  getNgramTable(request: UserNgramTableRequest): NgramTableSet;
   /** 計算結果は永続化しない。明示的に空にする時だけ使う。 */
   clear(): void;
   readonly size: {
@@ -131,6 +138,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
   // ジェネリックで絞り込む（このファイル内では中身の型を知らないまま扱う）。
   const extractionCache = new LruCache<string, EngineExtractionResult<unknown>>(options.maxExtractionEntries ?? DEFAULT_MAX_ENTRIES);
   const partCache = new LruCache<string, unknown>(options.maxPartEntries ?? DEFAULT_MAX_PART_ENTRIES);
+  const ngramTableCache = new LruCache<string, NgramTableSet>(MAX_NGRAM_TABLE_ENTRIES);
   // 部分結果のキーにメンバーの中身（テキストと配列を含む長い文字列）を毎回入れると、部分結果の件数ぶんだけ長い文字列を持つ。
   // 中身は番号に置き換えて持つ。番号は使い回さないので、番号の記録が追い出された後に同じ中身が来ても、古い部分結果を引かない。
   const partOwnerIds = new LruCache<string, number>(DEFAULT_MAX_ENTRIES * 2);
@@ -250,6 +258,15 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     warmup.run(buildSetMember(member.target, member.resolution.input, setMemberKeyOf(member), definition.id), step);
   }
 
+  function getNgramTable(request: UserNgramTableRequest): NgramTableSet {
+    const key = stableStringify(request);
+    const cached = ngramTableCache.get(key);
+    if (cached) return cached;
+    const result = buildUserNgramTable(request);
+    ngramTableCache.set(key, result);
+    return result;
+  }
+
   function getSetExtraction<Options, Extracted>(
     members: readonly EngineSetMemberInput[],
     definition: SetAnalyzerDefinition<Options, Extracted>,
@@ -291,7 +308,9 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     getExtraction,
     getSetExtraction,
     warmSetMember,
+    getNgramTable,
     clear() {
+      ngramTableCache.clear();
       traceCache.clear();
       interpretationCache.clear();
       extractionCache.clear();

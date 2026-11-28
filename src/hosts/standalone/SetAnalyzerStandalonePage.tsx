@@ -112,8 +112,6 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   onOpenPlayback,
 }: SetAnalyzerStandalonePageProps<Options, Extracted, RowContext>) {
   const analyzerId = analyzer.definition.id;
-  // 表を入力にする解析は評価に渡すテキストを読まないので、テキストの選択と読みの直しを出さない
-  const usesText = analyzer.ngramTable === undefined;
   const { resolved, body: textBody } = useResolvedTextSelection(assets.standaloneTextSelection, assets.textLibrary);
   const resolvedText = useStableResolvedText(resolved);
   // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
@@ -126,6 +124,8 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   // `SingleAnalyzerStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
   // 資産への書き込みは呼び出し側がdebounceする（`onOptionsCommit`）。
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded, STANDALONE_WRITE_LOG_KEY);
+  // 表を入力にする解析は、表の元が選んだテキストの時だけテキストを使う。使わない間は、テキストの選択と読みの直しを出さない
+  const usesText = analyzer.ngramTable === undefined || analyzer.ngramTable.usesText(optionsDraft);
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
   const {
@@ -217,7 +217,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
             const selection = assets.multiTargetSelection;
             const encoded = encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource);
             for (const [key, value] of encoded.params) params.append(key, value);
-            const text = usesText ? { params: new URLSearchParams(), userText: false } : encodeTextToUrl(assets.standaloneTextSelection);
+            const text = usesText ? encodeTextToUrl(assets.standaloneTextSelection) : { params: new URLSearchParams(), userText: false };
             for (const [key, value] of text.params) params.append(key, value);
             const changedConditions = changedConditionLabels({
               targets: selection.targets,

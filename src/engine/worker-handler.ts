@@ -56,6 +56,8 @@ export function createEngineWorkerHandler(cache: EngineCache, registry: EngineWo
         cache.warmSetMember(member, definition, request.step);
         return undefined;
       }
+      case 'ngram-table':
+        return cache.getNgramTable(request.request);
     }
   }
 

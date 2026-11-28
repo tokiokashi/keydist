@@ -101,7 +101,10 @@ export function computeNgramTableExtraction(
 
 const FIXTURE_TABLE: NgramTableAsset = {
   id: 'fixture',
+  contentKey: 'fixture',
   order: 1,
+  changesText: 'テスト',
+  selectableOrders: [0, 1],
   source: {
     kind: 'corpus',
     name: 'テスト用の表',

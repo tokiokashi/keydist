@@ -7,10 +7,11 @@ import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { analyzeNgramTable } from '#interpretation/ngram-table-analysis.ts';
-import { ngramTableAssetOf, ngramTableMap, parseNgramTableFile, type NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
+import { ngramTableAssetOf, ngramTableMap, ngramTableSetOfFile, parseNgramTableFile, type NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
 import { LOADED_LAYOUT_BY_ID } from '../../../test/kanji-direct-tables.ts';
 import { computeNgramTableExtraction, ngramTableDefinition, type NgramTableOkRow } from './extract.ts';
 import { distributionBoxRows, ngramTableModel } from './figure-model.ts';
+import { USER_TABLE_MAX_ORDER } from '#interpretation/user-ngram-table.ts';
 import { DEFAULT_NGRAM_TABLE_OPTIONS, DEFAULT_TABLE_ORDER, MAX_TABLE_ORDER } from './options.ts';
 
 const CATALOG = {
@@ -45,7 +46,10 @@ const SOURCE = {
 /** 小さな表。次数1の項目3つ。先読みを1文節にすると、直前の文節で動いた指の位置が引き継がれず、距離が変わる項目を含む。 */
 const SMALL_TABLE: NgramTableAsset = {
   id: 'fixture',
+  contentKey: 'fixture',
   order: 1,
+  changesText: 'テスト',
+  selectableOrders: [0, 1],
   source: SOURCE,
   colophon: { work: 'テスト', original: 'テスト', changes: 'テスト' },
   keys: ['ひ\u0000ふ', 'あい\u0000あい', 'ほ\u0000ほ'],
@@ -70,7 +74,7 @@ function memberOf(layoutId: string, table: NgramTableAsset | undefined): Analyze
 test('抽出の値は、表の解析（analyzeNgramTable）を同じ条件で呼んだ値と一致し、結果の条件に要求した先読みが入る', () => {
   const member = memberOf('qwerty', SMALL_TABLE);
   const direct = analyzeNgramTable(ngramTableMap(SMALL_TABLE), 1, member.setup!, 2, SOURCE);
-  const extracted = computeNgramTableExtraction([member], [], { order: 1, lookahead: 5 });
+  const extracted = computeNgramTableExtraction([member], [], { source: 'corpus', order: 1, lookahead: 5 });
   const row = extracted.rows[0] as NgramTableOkRow;
   assert.equal(row.kind, 'ok');
   // 先読みNは次数+1より大きくしても結果が同じ（仕様 §13.3）。条件には要求した値を書く
@@ -105,7 +109,8 @@ test('先読みだけを変えた時、次数+1以上なら計算し直さず、
       return memo.get(key) as never;
     },
   };
-  const at = (lookahead: number) => (computeNgramTableExtraction([member], [], { order: 1, lookahead }).rows[0] as NgramTableOkRow).analysis;
+  const at = (lookahead: number) =>
+    (computeNgramTableExtraction([member], [], { source: 'corpus', order: 1, lookahead }).rows[0] as NgramTableOkRow).analysis;
   const two = at(2);
   const eight = at(8);
   const one = at(1);
@@ -120,7 +125,7 @@ test('engineを通した集合の抽出が、解決済みの入力の配列・�
     target: { kind: 'layout', layoutId } as const,
     resolution: { ok: true, input: resolved(layoutId, SMALL_TABLE) } as const,
   }));
-  const { extracted } = cache.getSetExtraction(members, ngramTableDefinition, { order: 1, lookahead: 2 });
+  const { extracted } = cache.getSetExtraction(members, ngramTableDefinition, { source: 'corpus' as const, order: 1, lookahead: 2 });
   for (const member of members) {
     const input = member.resolution.input;
     const direct = analyzeNgramTable(ngramTableMap(SMALL_TABLE), 1, input, 2, SMALL_TABLE.source);
@@ -128,7 +133,7 @@ test('engineを通した集合の抽出が、解決済みの入力の配列・�
     assert.equal(row.analysis.totalDistance, direct.totalDistance, member.target.layoutId);
   }
   // 次数と先読みは抽出のキーに入るので、変えると別の結果になる
-  const other = cache.getSetExtraction(members, ngramTableDefinition, { order: 1, lookahead: 1 }).extracted;
+  const other = cache.getSetExtraction(members, ngramTableDefinition, { source: 'corpus' as const, order: 1, lookahead: 1 }).extracted;
   const before = (extracted.rows[0] as NgramTableOkRow).analysis.totalDistance;
   assert.notEqual((other.rows[0] as NgramTableOkRow).analysis.totalDistance, before);
 });
@@ -139,10 +144,28 @@ test('解析設定の次数の既定と上限は、同梱の表の既定の次�
   // 表を作り直して既定の次数や確かめる最大の次数が変わったら、解析設定の既定と上限も直す
   assert.equal(DEFAULT_TABLE_ORDER, SHIPPED.defaultOrder);
   assert.equal(MAX_TABLE_ORDER, SHIPPED.sufficiency.length - 1);
+  // 選んだテキストから作る表が数える最大の次数は、解析設定で持てる次数の上限と同じ
+  assert.equal(USER_TABLE_MAX_ORDER, MAX_TABLE_ORDER);
+});
+
+test('表の中身のキーが違えば、識別子と次数が同じ表でも抽出を使い回さず、同じなら使い回す', () => {
+  const cache = createEngineCache();
+  const run = (table: NgramTableAsset) =>
+    cache.getSetExtraction(
+      [{ target: { kind: 'layout', layoutId: 'qwerty' } as const, resolution: { ok: true, input: resolved('qwerty', table) } as const }],
+      ngramTableDefinition,
+      { source: 'text' as const, order: 1, lookahead: 2 },
+    ).extracted;
+  const other: NgramTableAsset = { ...SMALL_TABLE, contentKey: 'other', keys: ['あ\u0000い'], counts: [5] };
+  const first = run(SMALL_TABLE);
+  assert.equal(run({ ...SMALL_TABLE }), first, '同じ中身のキーなら、同じ抽出を返す');
+  const second = run(other);
+  assert.notEqual(second, first);
+  assert.equal((second.rows[0] as NgramTableOkRow).analysis.occurrences, 5);
 });
 
 test('同梱の標準のコーパスの表で、QWERTYの0次の値が、スクリプトで測った値と一致する', { timeout: 120_000 }, () => {
-  const asset = ngramTableAssetOf(SHIPPED, 0);
+  const asset = ngramTableAssetOf(ngramTableSetOfFile(SHIPPED), 0);
   const member = memberOf('qwerty', asset);
   const row = computeNgramTableExtraction([member], [], DEFAULT_NGRAM_TABLE_OPTIONS).rows[0] as NgramTableOkRow;
   assert.equal(row.analysis.occurrences, 79736);

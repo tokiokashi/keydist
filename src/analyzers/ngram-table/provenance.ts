@@ -12,9 +12,18 @@ export interface NgramTableProvenanceItem {
   readonly keepWidth?: boolean;
 }
 
-/** 表の元のテキストに加えた変更（画面に出す文。表のファイルの `colophon.changes` は作業履歴として別に持つ）。 */
-const CHANGES_TEXT =
-  'ルビ・入力者注・外字の注・章見出しの行を取り除き、漢字を含む語を辞書の読みに置き換えて文節に区切り、文節の読みの並びの出現回数だけを数えました。';
+/** テキストの名前をかぎ括弧で囲む。組み込みの名前は、すでに「」で始まるので二重にしない。 */
+function quotedName(name: string): string {
+  return name.startsWith('「') ? name : `「${name}」`;
+}
+
+const SELECTABLE_ORDERS_LABEL = '選べる次数';
+
+/** 選べる次数は0次から途切れずに続く。1つだけなら、その旨を添える。 */
+export function selectableOrdersText(orders: readonly number[]): string {
+  const highest = orders[orders.length - 1] ?? 0;
+  return highest === 0 ? '0次だけ' : `0次から${highest}次まで`;
+}
 
 const integer = new Intl.NumberFormat('ja-JP');
 
@@ -34,20 +43,22 @@ export function ngramTableProvenance(asset: NgramTableAsset | undefined, options
   const items: NgramTableProvenanceItem[] = [
     { label: '表の次数', value: `${asset.order}次`, keepWidth: true },
     { label: '文節の先読み', value: `${options.lookahead}文節`, keepWidth: true },
-    { label: SOURCE_TEXT_LABEL, value: `${source.name}${archive}` },
+    { label: SOURCE_TEXT_LABEL, value: source.kind === 'user-text' ? `選んだテキスト${quotedName(source.name)}` : `${source.name}${archive}` },
+    { label: SELECTABLE_ORDERS_LABEL, value: selectableOrdersText(asset.selectableOrders), keepWidth: true },
   ];
   if (source.segmentation.origin === 'splitter') {
     items.push({ label: '文節の区切り', value: `${source.segmentation.splitter.name}（${source.segmentation.splitter.version}）、日本語のモデル` });
   } else {
     items.push({ label: '文節の区切り', value: '利用者の指定' });
   }
-  if (source.reading !== null) {
+  // 選んだテキストの読みの辞書は、ペインが読みの変換の項目として別に出す（読みの直しと一緒に）
+  if (source.reading !== null && source.kind === 'corpus') {
     const { dictionary } = source.reading;
     items.push({ label: '読みの辞書', value: `${dictionary.name}（${dictionary.version}）` });
   }
   const { colophon } = asset;
-  items.push({ label: '底本・入力・校正など', value: colophon.original.replaceAll('\n', ' ').replace(/\s+/g, ' ') });
-  items.push({ label: '加えた変更', value: CHANGES_TEXT });
+  if (colophon.original !== '') items.push({ label: '底本・入力・校正など', value: colophon.original.replaceAll('\n', ' ').replace(/\s+/g, ' ') });
+  items.push({ label: '加えた変更', value: asset.changesText });
   items.push({ label: '表の規模', value: `出現数 ${integer.format(size.occurrences)}、項目 ${integer.format(size.entries)}` });
   return items;
 }

@@ -108,11 +108,28 @@
 
 .ngram-table-header-control {
   display: inline-flex;
-  flex: none;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+  max-width: 100%;
   gap: 0.3rem;
 }
 
 /* 左右の余白を詰めて、狭い幅でも1行に収まりやすくする。 */
 .ngram-table-header-control .popover-select-button {
   padding: 0 0.45rem;
+}
+
+/*
+ * Workspaceのペインの見出し。表の元・次数・先読みの3つの札を持つので、対象の欄と1段に並べる幅の目安を、他のペインの48remより広い64remにする。
+ * それ以下では、先頭・解析設定・⋯を1段目、対象の欄全体を2段目に置く（`pane-frame.css`の`data-extra`の見出しと同じ並び）。
+ */
+@container pane (19.4rem < width <= 64rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead]:has(.ngram-table-header-control) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "lead settings menu"
+      "target target target";
+    gap: 0.5rem 0.35rem;
+  }
 }

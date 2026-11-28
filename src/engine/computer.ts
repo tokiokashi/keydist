@@ -1,5 +1,7 @@
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineExtractionResult, EngineTraceSummaryResult } from './pipeline.ts';
+import type { NgramTableSet } from '#interpretation/ngram-table-asset.ts';
+import type { UserNgramTableRequest } from '#interpretation/user-ngram-table.ts';
 import type { EngineSetMemberInput, MaybePromise } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 
@@ -31,6 +33,11 @@ export interface EngineComputer {
     options: Options,
     signal?: AbortSignal,
   ): MaybePromise<EngineExtractionResult<Extracted>>;
+  /**
+   * 利用者のテキストの文節の読みの表を作る（`interpretation/user-ngram-table.ts`）。数え上げは長いテキストで時間がかかるので、
+   * Workerへ逃がす実装ではWorkerの中で行う。同じ入力には同じ値を返す。
+   */
+  getNgramTable(request: UserNgramTableRequest, signal?: AbortSignal): MaybePromise<NgramTableSet>;
 
   /**
    * 計算済みの結果があれば、待たずに同期で返す（無ければ`undefined`。計算は始めない）。
@@ -45,6 +52,7 @@ export interface EngineComputer {
     definition: SingleAnalyzerDefinition<Options, Extracted>,
     options: Options,
   ): EngineExtractionResult<Extracted> | undefined;
+  peekNgramTable?(request: UserNgramTableRequest): NgramTableSet | undefined;
   peekSetExtraction?<Options, Extracted>(
     members: readonly EngineSetMemberInput[],
     definition: SetAnalyzerDefinition<Options, Extracted>,

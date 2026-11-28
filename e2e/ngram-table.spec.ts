@@ -1,8 +1,13 @@
 import { expect, PAGE_TAG, test } from './fixtures.ts';
+import { useKanaText } from './kana-text-helper.ts';
 
-/** 文節の表による解析のe2e。値はunit testで固定しているので、ここでは画面の配線（表を取得して、結果の表と2つの図が出る）だけを見る。 */
+/**
+ * 文節の表による解析のe2e。値はunit testで固定しているので、ここでは画面の配線を見る。
+ * 表の元を選んだテキストにして、そのテキストから作った表で結果の表と2つの図が出て、テキストの選択が現れることを見る。
+ */
 
-test('表を取得して、結果の表と2つの分布の図が出る', { tag: PAGE_TAG }, async ({ page }) => {
+test('表の元を選んだテキストにすると、そのテキストから作った表で、結果の表と2つの分布の図が出る', { tag: PAGE_TAG }, async ({ page }) => {
+  await useKanaText(page);
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:multi-target-selection') === null) {
       localStorage.setItem(
@@ -17,10 +22,11 @@ test('表を取得して、結果の表と2つの分布の図が出る', { tag: 
       );
     }
   });
-  await page.goto('/analyzer/ngram-table');
+  await page.goto('/analyzer/ngram-table?source=text');
   const feature = page.locator('[data-react-feature="ngram-table"]');
   const results = feature.locator('[data-ngram-table-results]');
   await expect(results).toBeVisible({ timeout: 120_000 });
+  await expect(page.locator('.context-bar button.text-chip')).toBeVisible();
   await expect(results.locator('tbody tr')).toHaveCount(2);
   await expect(feature.locator('[data-ngram-table-distribution="distance"] [data-box-plot-box]')).toHaveCount(2);
   await expect(feature.locator('[data-ngram-table-distribution="perKana"] [data-box-plot-box]')).toHaveCount(2);

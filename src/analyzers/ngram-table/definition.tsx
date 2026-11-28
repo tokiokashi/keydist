@@ -23,8 +23,15 @@ import {
   type NgramDisplayRow,
   type NgramRowContext,
 } from './figure-model.ts';
-import { DISTANCE_FIGURE, NGRAM_TABLE_PANE_META, NO_TABLE_MESSAGE, PER_KANA_FIGURE, figureHelp } from './pane-meta.ts';
-import { DEFAULT_NGRAM_TABLE_OPTIONS, ngramTableOptions, type NgramTableOptions } from './options.ts';
+import { DISTANCE_FIGURE, NGRAM_TABLE_PANE_META, PER_KANA_FIGURE, figureHelp, tableUnavailableMessage } from './pane-meta.ts';
+import {
+  DEFAULT_NGRAM_TABLE_OPTIONS,
+  ngramTableOptions,
+  TABLE_SOURCE_LABELS,
+  TABLE_SOURCES,
+  type NgramTableOptions,
+  type TableSourceChoice,
+} from './options.ts';
 import { ngramTableProvenance } from './provenance.ts';
 import type { NgramTableAsset } from '#interpretation/ngram-table-asset.ts';
 import './ngram-table-view.css';
@@ -124,11 +131,11 @@ function DistributionFigure({ kind, rows, width, copyFigureImage }: Distribution
 
 const NO_KEYS: ReadonlySet<string> = new Set();
 
-export function NgramTableBody({ extracted, order, rowContext, ngramTable, copyFigureImage }: NgramTableBodyProps) {
+export function NgramTableBody({ extracted, order, rowContext, ngramTable, options, copyFigureImage }: NgramTableBodyProps) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [measured, measureFigure] = useElementWidth(measureRef);
   const width = measured === undefined || measured <= 0 ? FALLBACK_WIDTH : measured;
-  const unavailable = ngramTable === 'failed';
+  const unavailable = ngramTable !== undefined && ngramTable !== 'ready';
   const model = useMemo(() => ngramTableModel(extracted, order, rowContext), [extracted, order, rowContext]);
   const rows = unavailable ? [] : model.rows;
   const excluded = unavailable ? model.excluded.filter((row) => row.status === 'failed') : model.excluded;
@@ -137,7 +144,7 @@ export function NgramTableBody({ extracted, order, rowContext, ngramTable, copyF
     <section className="ngram-table-feature" data-react-feature="ngram-table">
       {unavailable ? (
         <p className="ngram-table-notice" data-ngram-table-unavailable="">
-          {NO_TABLE_MESSAGE}
+          {tableUnavailableMessage(ngramTable, options.source)}
         </p>
       ) : null}
 
@@ -175,6 +182,8 @@ export function NgramTableBody({ extracted, order, rowContext, ngramTable, copyF
   );
 }
 
+const SOURCE_CHOICES = TABLE_SOURCES.map((value) => ({ value, label: TABLE_SOURCE_LABELS[value] }));
+
 const LOOKAHEAD_CHOICES = Array.from({ length: BUNSETSU_LOOKAHEAD.max - BUNSETSU_LOOKAHEAD.min + 1 }, (_, index) => {
   const value = BUNSETSU_LOOKAHEAD.min + index;
   return { value: String(value), label: `先読み${value}文節` };
@@ -203,12 +212,17 @@ export function NgramTableSettings({ options, onOptionsChange }: AnalyzerSetting
     ),
     onChange: (next: string) => onOptionsChange({ ...options, order: Number(next) }),
   };
+  const sourceBinding = {
+    ...bindOption({ source: options.source }, { source: DEFAULT_NGRAM_TABLE_OPTIONS.source }, () => undefined, 'source'),
+    onChange: (next: TableSourceChoice) => onOptionsChange({ ...options, source: next }),
+  };
   const lookaheadBinding = {
     ...bindOption({ lookahead: String(options.lookahead) }, { lookahead: String(DEFAULT_NGRAM_TABLE_OPTIONS.lookahead) }, () => undefined, 'lookahead'),
     onChange: (next: string) => onOptionsChange({ ...options, lookahead: Number(next) }),
   };
   return (
     <div className="option-groups">
+      <SelectOptionField label="表の元" binding={sourceBinding} choices={SOURCE_CHOICES} />
       <SelectOptionField label="表の次数" binding={orderBinding} choices={orderChoices(options, choices)} />
       <SelectOptionField label="文節の先読み" binding={lookaheadBinding} choices={LOOKAHEAD_CHOICES} />
     </div>
@@ -221,6 +235,7 @@ export function NgramTableHeaderControl({ options, onOptionsChange }: AnalyzerSe
   const orders = orderChoices(options, choices);
   return (
     <span className="ngram-table-header-control">
+      <PopoverSelect label="表の元" value={options.source} choices={SOURCE_CHOICES} onChange={(next) => onOptionsChange({ ...options, source: next })} />
       {orders.length > 1 ? (
         <PopoverSelect
           label="表の次数"
@@ -257,6 +272,7 @@ export const ngramTableAnalyzer = {
   conditionExcludeIds: ['windowSize', 'chainInterpretation', 'arpeggioInterpretation', 'keepSymbols', 'keepAlphanumerics'],
   ngramTable: {
     orderOf: (options: NgramTableOptions) => options.order,
+    usesText: (options: NgramTableOptions) => options.source === 'text',
     provenance: (asset: NgramTableAsset | undefined, options: NgramTableOptions) => ngramTableProvenance(asset, options),
   },
 } satisfies SetAnalyzerPaneParts<NgramTableOptions, NgramTableExtracted, NgramTableRowContext>;

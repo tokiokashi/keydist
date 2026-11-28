@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { BUNSETSU_KEY_SEPARATOR } from './corpus-ngram.ts';
-import { derivedOrdersMatch, ngramTableAssetOf, ngramTableMap, parseNgramTableFile } from './ngram-table-asset.ts';
+import { derivedOrdersMatch, ngramTableAssetOf, ngramTableMap, ngramTableSetOfFile, parseNgramTableFile } from './ngram-table-asset.ts';
 
 const RAW = JSON.parse(readFileSync(new URL('../input/text/ngram/standard-corpus-bunsetsu.json', import.meta.url), 'utf8')) as unknown;
 const FILE = parseNgramTableFile(RAW);
@@ -25,8 +25,8 @@ test('同梱の表の鍵は次数+1文節で、出現回数の合計は統計の
 });
 
 test('選べない次数の表は取り出せない', () => {
-  assert.throws(() => ngramTableAssetOf(FILE, 1), /選べる次数/);
-  const asset = ngramTableAssetOf(FILE, 0);
+  assert.throws(() => ngramTableAssetOf(ngramTableSetOfFile(FILE), 1), /選べる次数/);
+  const asset = ngramTableAssetOf(ngramTableSetOfFile(FILE), 0);
   assert.equal(ngramTableMap(asset).size, asset.keys.length);
   assert.equal(ngramTableMap(asset), ngramTableMap(asset));
 });

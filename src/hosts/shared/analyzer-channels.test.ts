@@ -159,6 +159,7 @@ test('結果を同期に引ける計算機では、解決し直した同じ中�
       return result;
     },
     getSetExtraction: (members, definition, options) => cache.getSetExtraction(members, definition, options),
+    getNgramTable: (request) => cache.getNgramTable(request),
     peekTraceSummary: (input) => remembered.get(traceKey(input)) as never,
     peekExtraction: (input) => remembered.get(extractionKey(input)) as never,
   };

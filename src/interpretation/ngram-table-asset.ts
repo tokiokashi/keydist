@@ -48,20 +48,54 @@ export interface NgramTableFile {
   readonly tables: readonly NgramTableOrder[];
 }
 
+/** 標準のコーパスの表の、画面に出す「加えた変更」の文。ファイルの `colophon.changes` は作業履歴として別に持つ。 */
+export const STANDARD_CORPUS_CHANGES_TEXT =
+  'ルビ・入力者注・外字の注・章見出しの行を取り除き、漢字を含む語を辞書の読みに置き換えて文節に区切り、文節の読みの並びの出現回数だけを数えました。';
+
+/**
+ * 表の入れ物。標準のコーパスは同梱のファイル（`ngramTableSetOfFile`）から、利用者のテキストは計算用Workerが作る
+ * （`interpretation/user-ngram-table.ts`）。解析が読む1つの次数の表は`ngramTableAssetOf`で取り出す。
+ */
+export interface NgramTableSet {
+  /** 表を見分ける識別子。解析の結果に併記する */
+  readonly id: string;
+  /** 表の中身を見分ける値。標準のコーパスは取得元のsha256と分割器・辞書の版、利用者のテキストは読みのテキストと区切りの照合値と、分割器・辞書の版。抽出のキーに入れる */
+  readonly contentKey: string;
+  readonly source: TableSource;
+  /** 表の元のテキストの注記。画面の図の見方に出す */
+  readonly colophon: NgramTableColophon;
+  /** 条件の要約に出す「加えた変更」の文。表ごとに持つ */
+  readonly changesText: string;
+  /** 次数ごとの統計が足りているかの量。0次から、確かめた最大の次数まで */
+  readonly sufficiency: readonly OrderSufficiency[];
+  /** 選べる次数（仕様 §13.5）。`tables`に表がある次数と同じ */
+  readonly selectableOrders: readonly number[];
+  readonly defaultOrder: number;
+  readonly tables: readonly NgramTableOrder[];
+}
+
 /** 解析が読む、1つの次数の表と出どころ。計算用Workerへ複製して渡す値なので、鍵と回数を配列のまま持つ。 */
 export interface NgramTableAsset {
   readonly id: string;
+  /** 表の中身を見分ける値（`NgramTableSet.contentKey`） */
+  readonly contentKey: string;
   readonly order: number;
   readonly source: TableSource;
   /** 表の元のテキストの注記。画面の図の見方に出す */
   readonly colophon: NgramTableColophon;
+  readonly changesText: string;
+  /** 表の元のテキストで選べる次数 */
+  readonly selectableOrders: readonly number[];
   readonly keys: readonly string[];
   readonly counts: readonly number[];
 }
 
-/** 表の中身を比べる値。同じ表を同じ次数で選んでいる間は変わらない。抽出のキーに入れる。 */
-export function ngramTableAssetKey(asset: NgramTableAsset): { readonly id: string; readonly sha256: string; readonly order: number } {
-  return { id: asset.id, sha256: asset.source.archive?.sha256 ?? '', order: asset.order };
+/**
+ * 表の中身を比べる値。同じ表を同じ次数で選んでいる間は変わらず、表の元のテキスト・読み・区切り・版のどれかが変わると変わる。
+ * 抽出のキーに入れる。
+ */
+export function ngramTableAssetKey(asset: NgramTableAsset): { readonly id: string; readonly contentKey: string; readonly order: number } {
+  return { id: asset.id, contentKey: asset.contentKey, order: asset.order };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -166,11 +200,38 @@ export function tableSourceOfFile(file: NgramTableFile): TableSource {
   };
 }
 
-/** ファイルから、選んだ次数の表を取り出す。選べない次数を渡したら例外を投げる。 */
-export function ngramTableAssetOf(file: NgramTableFile, order: number): NgramTableAsset {
-  const table = file.tables.find((candidate) => candidate.order === order);
-  if (table === undefined) throw new Error(`同梱の表に${order}次は無い（選べる次数: ${file.selectableOrders.join('・')}）`);
-  return { id: file.id, order, source: tableSourceOfFile(file), colophon: file.source.colophon, keys: table.keys, counts: table.counts };
+/** 標準のコーパスの表のファイルを、表の入れ物にする。 */
+export function ngramTableSetOfFile(file: NgramTableFile): NgramTableSet {
+  const { archive } = file.source;
+  const info = (value: SegmenterInfo) => `${value.name}@${value.version}`;
+  return {
+    id: file.id,
+    contentKey: [archive.sha256, info(file.segmentation.splitter), info(file.reading.library), info(file.reading.dictionary)].join('|'),
+    source: tableSourceOfFile(file),
+    colophon: file.source.colophon,
+    changesText: STANDARD_CORPUS_CHANGES_TEXT,
+    sufficiency: file.sufficiency,
+    selectableOrders: file.selectableOrders,
+    defaultOrder: file.defaultOrder,
+    tables: file.tables,
+  };
+}
+
+/** 入れ物から、選んだ次数の表を取り出す。選べない次数を渡したら例外を投げる。 */
+export function ngramTableAssetOf(set: NgramTableSet, order: number): NgramTableAsset {
+  const table = set.tables.find((candidate) => candidate.order === order);
+  if (table === undefined) throw new Error(`表に${order}次は無い（選べる次数: ${set.selectableOrders.join('・')}）`);
+  return {
+    id: set.id,
+    contentKey: set.contentKey,
+    order,
+    source: set.source,
+    colophon: set.colophon,
+    changesText: set.changesText,
+    selectableOrders: set.selectableOrders,
+    keys: table.keys,
+    counts: table.counts,
+  };
 }
 
 const MAP_BY_ASSET = new WeakMap<NgramTableAsset, ReadonlyMap<string, number>>();

@@ -1,4 +1,5 @@
 import type { Layout } from '#input/layouts/types.ts';
+import type { UserNgramTableRequest } from '#interpretation/user-ngram-table.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 
@@ -51,6 +52,12 @@ export type EngineWorkerRequest =
       readonly member: WireSetMember;
       readonly definitionId: string;
       readonly step: number;
+    }
+  | {
+      /** 利用者のテキストの文節の読みの表を作る（`EngineComputer.getNgramTable`）。 */
+      readonly id: number;
+      readonly kind: 'ngram-table';
+      readonly request: UserNgramTableRequest;
     };
 
 export type EngineWorkerResponse =

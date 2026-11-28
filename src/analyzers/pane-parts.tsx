@@ -263,8 +263,11 @@ export interface FigureImageReadout {
  */
 export type SegmentationStatus = 'ready' | 'unsupported' | 'failed';
 
-/** 表を入力にする解析の、表の用意の状態。`failed` は表を読み込めなかった時で、値を出さない。 */
-export type NgramTableStatus = 'ready' | 'failed';
+/**
+ * 表を入力にする解析の、表の用意の状態。`failed` は表を読み込めなかった・作れなかった時、
+ * `unsupported` は表の元のテキストが日本語でない時、`empty` は表の元のテキストに数えられる文節が無い時で、どれも値を出さない。
+ */
+export type NgramTableStatus = 'ready' | 'failed' | 'unsupported' | 'empty';
 
 /** 別のペインの図で押された文字位置への移動を、打鍵再生のペインに伝える形。宛先でなければ `charPosition` は `undefined`（番号だけ進む）。 */
 export interface PlaybackSeekDelivery {
@@ -312,6 +315,8 @@ export interface SetRowSource {
 export interface NgramTableDeclaration<Options> {
   /** 解析設定が選ぶ表の次数。選べない次数なら、ホストが選べる次数の最大に直す。 */
   readonly orderOf: (options: Options) => number;
+  /** 解析設定が、アプリで選んだテキストから表を作る設定か。そうなら、ホストがテキストの選択を出し、テキストから表を作る。 */
+  readonly usesText: (options: Options) => boolean;
   /** 条件の要約に添える出どころ（表の元のテキスト・次数・先読み・区切り・読みの変換・表の規模）。表を読み込む前は`undefined`が渡る。 */
   readonly provenance: (asset: NgramTableAsset | undefined, options: Options) => readonly { readonly label: string; readonly value: string }[];
 }
@@ -349,7 +354,8 @@ export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
   readonly usesSegmentation?: (options: Options) => boolean;
   /**
    * 表を入力にする解析（`spec/distance-model.md` §13）の宣言。持つAnalyzerだけが渡す。
-   * 宣言すると、ホストが同梱の表を取得し、評価に渡すテキストの代わりに日本語の最小のテキストで対象を解決し（テキストは値を変えない）、
+   * 宣言すると、ホストが表（同梱の標準のコーパスの表、またはアプリで選んだテキストから作った表）を用意し、
+   * 評価に渡すテキストの代わりに日本語の最小のテキストで対象を解決し（選んだテキストは対象の解決を変えず、表を作る入力にだけ使う）、
    * 解析設定が選ぶ次数の表を入力へ載せる。選べる次数は`useNgramTableChoices`で入力部品へ渡す。
    */
   readonly ngramTable?: NgramTableDeclaration<Options>;
