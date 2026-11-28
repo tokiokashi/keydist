@@ -34,9 +34,20 @@ export function tableSize(asset: NgramTableAsset): { readonly occurrences: numbe
   return { occurrences, entries: asset.keys.length };
 }
 
+/** 表の元が選んだテキストの時に並べる、今の解析の値の測り方。先読みの数え方が、表による解析と違うことを添える。 */
+const CURRENT_ANALYSIS_ITEM: NgramTableProvenanceItem = {
+  label: '今の解析',
+  value: '選んだテキストを頭から打鍵して集計。先読みNはかなで数える',
+};
+
 /** 選んだ表と解析設定から、出どころの札を作る。`asset` が無い間（読み込み中・読み込めなかった）は出さない。 */
 export function ngramTableProvenance(asset: NgramTableAsset | undefined, options: NgramTableOptions): readonly NgramTableProvenanceItem[] {
   if (asset === undefined) return [];
+  const items = tableProvenanceItems(asset, options);
+  return options.source === 'text' ? [...items, CURRENT_ANALYSIS_ITEM] : items;
+}
+
+function tableProvenanceItems(asset: NgramTableAsset, options: NgramTableOptions): readonly NgramTableProvenanceItem[] {
   const { source } = asset;
   const archive = source.archive === undefined ? '' : `（${source.archive.fileName}、sha256 ${source.archive.sha256.slice(0, 12)}…）`;
   const size = tableSize(asset);

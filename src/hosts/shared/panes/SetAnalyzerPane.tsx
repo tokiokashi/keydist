@@ -15,11 +15,11 @@ import { recordTargetMatches } from '#interpretation/record/keystroke-gaps.ts';
 import { textDigest } from '#interpretation/record/keystroke-record.ts';
 import { keystrokeRecordTexts } from '../keystroke-record-texts.ts';
 import {
+  conditionExcludeIdsOf,
   conditionHeaderInfoFromResolvedInput,
   globalConditionLevels,
   globalConditionValues,
   multiTargetConditionSummary,
-  settingsItemIds,
   traceConditionSummary,
   type ConditionSummaryScope,
   type ConditionValueNames,
@@ -43,6 +43,8 @@ import { useSegmentation } from '../segmentation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 import { NGRAM_TABLE_PANE_TEXT, useNgramTable, useUserNgramTable, userTableRequestOf } from '../ngram-table.ts';
 import { NgramTableChoicesProvider } from '#analyzers/ngram-table-context.tsx';
+import type { CurrentAnalysisExtracted, CurrentAnalysisState } from '#analyzers/current-analysis.ts';
+import type { ExtractionRequestState } from '#engine/engine-requests.ts';
 import { ngramTableAssetOf, ngramTableSetOfFile, type NgramTableSet } from '#interpretation/ngram-table-asset.ts';
 
 /**
@@ -187,7 +189,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
 
   // 表示名は常に集合全体に対して計算する。解決に失敗したメンバーは、共通性の判定からは除く
   // （`naming.ts`の`TargetNameSource.failed`参照）。
-  const excludeIds = useMemo(() => settingsItemIds(analyzer.conditionExcludeIds), [analyzer]);
+  const excludeIds = useMemo(() => conditionExcludeIdsOf(analyzer.conditionExcludeIds, options), [analyzer, options]);
   const summaryScope = useMemo((): ConditionSummaryScope => setPaneConditionScope(resolvedText.language), [resolvedText.language]);
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
   const namedTargets = useMemo(
@@ -308,6 +310,20 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   const { ref: frameRef, onScreen } = usePaneOnScreen<HTMLElement>(waitsForScreen);
   const shown = onScreen && chrome.coveredByMaximizedPane !== true;
   const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading && !segmentationLoading && !tableLoading && shown);
+  // 表の元が選んだテキストの時は、同じテキストを今の解析で測って並べる。対象は評価に渡すテキストで解決し直す（表による解析の対象の解決は変えない）。
+  // 辞書の読み込み中は、表による解析と同じく依頼を出さない
+  const currentDefinition = fromText ? analyzer.ngramTable?.currentAnalysis : undefined;
+  const currentMembers = useMemo(
+    (): readonly EngineSetMemberInput[] =>
+      currentDefinition === undefined
+        ? []
+        : targets.map(
+            (target): EngineSetMemberInput => ({ target, resolution: resolvePaneInput(target, setupsById, catalog, overrides, env.resolvedText) }),
+          ),
+    [currentDefinition, targets, setupsById, catalog, overrides, env.resolvedText],
+  );
+  const current = useAnalyzerSetPane(cache, currentDefinition, NO_ANALYSIS_OPTIONS, currentMembers, !readingLoading && shown);
+  const currentAnalysis = currentAnalysisState(currentDefinition !== undefined, current.extraction);
   const { Body, Settings, HeaderControl, TargetItem } = analyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
@@ -429,6 +445,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
               {...(playbackJump === undefined ? {} : { playbackJump })}
               {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
               {...(tableStatus === undefined ? {} : { ngramTable: tableStatus })}
+              {...(currentAnalysis === undefined ? {} : { currentAnalysis })}
               {...(keystrokeRecords === undefined ? {} : { keystrokeRecords })}
               {...(recordTexts === undefined ? {} : { keystrokeRecordTexts: recordTexts })}
             />
@@ -454,4 +471,14 @@ function textTableStatus(
   if (!hasSplitter || segmentation === 'failed' || user.status === 'failed') return 'failed';
   if (set !== undefined && set.sufficiency[0]?.occurrences === 0) return 'empty';
   return 'ready';
+}
+
+/** 解析設定を持たない付随の抽出に渡す値。 */
+const NO_ANALYSIS_OPTIONS: Record<string, never> = {};
+
+/** 今の解析の値の依頼の状態を、本体へ渡す状態にする。依頼しない時は`undefined`。 */
+function currentAnalysisState(requested: boolean, extraction: ExtractionRequestState<CurrentAnalysisExtracted>): CurrentAnalysisState | undefined {
+  if (!requested) return undefined;
+  if (extraction.status === 'ready' || extraction.status === 'stale') return { status: 'ready', extracted: extraction.value.extracted };
+  return extraction.status === 'failed' ? { status: 'failed' } : { status: 'loading' };
 }

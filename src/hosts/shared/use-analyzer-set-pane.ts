@@ -18,7 +18,8 @@ const IDLE_EXTRACTION: ExtractionRequestState<never> = { status: 'idle' };
  */
 export function useAnalyzerSetPane<Options, Extracted>(
   cache: EngineComputer,
-  definition: SetAnalyzerDefinition<Options, Extracted>,
+  /** `undefined`の間は依頼を出さない（条件によって依頼しないAnalyzerの付随の抽出に使う）。 */
+  definition: SetAnalyzerDefinition<Options, Extracted> | undefined,
   options: Options,
   members: readonly EngineSetMemberInput[],
   /** falseの間は依頼を出さない（漢字を読みに直す辞書の読み込み中は、評価に渡すテキストがまだ無い）。 */
@@ -28,7 +29,7 @@ export function useAnalyzerSetPane<Options, Extracted>(
   const channelsRef = useRef<AnalyzerSetPaneChannels<Options> | undefined>(undefined);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || definition === undefined) return;
     channelsRef.current = syncAnalyzerSetPaneChannels(channelsRef.current, {
       cache,
       definition,
